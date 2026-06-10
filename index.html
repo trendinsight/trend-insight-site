@@ -133,6 +133,13 @@
   .contact p{color:#b9c4d6;margin-bottom:34px;}
   .contact .email{display:inline-block;margin-top:26px;color:#9dbcf9;font-size:.95rem;}
 
+  /* Subscribe form */
+  .sub-form{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;max-width:600px;margin:0 auto 8px;}
+  .sub-form input[type=text],.sub-form input[type=email]{padding:13px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;font-family:inherit;font-size:.95rem;flex:1;min-width:170px;}
+  .sub-form input::placeholder{color:#92a1b8;}
+  .sub-form input:focus{outline:2px solid var(--accent);border-color:var(--accent);}
+  .sub-form button{border:none;cursor:pointer;font-family:inherit;}
+
   /* Footer */
   footer{background:#081830;color:#7d8aa0;padding:40px 0;font-size:.85rem;}
   .footer-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;}
@@ -342,10 +349,16 @@ document.querySelectorAll('.filter-btn').forEach(function(btn){
 
 <section id="contact" class="contact">
   <div class="container">
-    <h2>함께 시장의 흐름을 읽어보세요</h2>
-    <p>리포트 구독, 분석 의뢰, 제휴 문의 모두 환영합니다.</p>
-    <a href="mailto:contact@trend-insight.co.kr" class="btn-primary">이메일로 문의하기</a>
-    <span class="email" style="display:block;">contact@trend-insight.co.kr</span>
+    <h2>리포트를 이메일로 받아보세요</h2>
+    <p>새 브리핑과 기업분석 리포트 소식을 이메일로 보내드립니다.</p>
+    <form name="subscribe" method="POST" action="/thanks.html" data-netlify="true" data-netlify-honeypot="bot-field" class="sub-form">
+      <input type="hidden" name="form-name" value="subscribe">
+      <p style="display:none"><input name="bot-field"></p>
+      <input type="text" name="name" placeholder="이름 (선택)">
+      <input type="email" name="email" placeholder="이메일 주소" required>
+      <button type="submit" class="btn-primary">구독 신청</button>
+    </form>
+    <span class="email">분석 의뢰·제휴 문의: contact@trend-insight.co.kr</span>
   </div>
 </section>
 
