@@ -140,6 +140,17 @@
   .sub-form input:focus{outline:2px solid var(--accent);border-color:var(--accent);}
   .sub-form button{border:none;cursor:pointer;font-family:inherit;}
 
+  /* Mission & Vision */
+  .mv{background:var(--bg-soft);}
+  .mv-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:8px;}
+  .mv-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:36px 32px;}
+  .mv-card .label{font-size:.78rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:16px;}
+  .mv-card.mission .label{color:var(--t-red);}
+  .mv-card.vision .label{color:var(--i-blue);}
+  .mv-card .ko{font-size:1.25rem;font-weight:800;color:var(--navy);line-height:1.5;margin-bottom:10px;letter-spacing:-.01em;}
+  .mv-card .en{font-size:.92rem;color:var(--muted);font-style:italic;}
+  @media (max-width:720px){.mv-grid{grid-template-columns:1fr;}}
+
   /* Footer */
   footer{background:#081830;color:#7d8aa0;padding:40px 0;font-size:.85rem;}
   .footer-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;}
@@ -165,6 +176,7 @@
     <nav class="nav-links">
       <a href="#services">서비스</a>
       <a href="#about">회사소개</a>
+      <a href="#mv">미션·비전</a>
       <a href="#reports">리포트</a>
       <a href="#insights">최신 글</a>
       <a href="#contact">문의하기</a>
@@ -253,6 +265,25 @@
         <li><div><b>정성 검증</b><span>사업 모델·경쟁 환경·리스크 점검</span></div></li>
         <li><div><b>인사이트 도출</b><span>투자 시사점과 핵심 모니터링 포인트 제시</span></div></li>
       </ol>
+    </div>
+  </div>
+</section>
+
+<section id="mv" class="mv">
+  <div class="container">
+    <div class="section-label">Mission &amp; Vision</div>
+    <h2 class="section-title">우리가 일하는 이유</h2>
+    <div class="mv-grid">
+      <div class="mv-card mission">
+        <div class="label">Mission</div>
+        <p class="ko">모든 이해관계자의 행복을 위해 자본을 지킨다</p>
+        <p class="en">We protect capital for the happiness of all stakeholders.</p>
+      </div>
+      <div class="mv-card vision">
+        <div class="label">Vision</div>
+        <p class="ko">신뢰받는 리스크 관리 투자 조직</p>
+        <p class="en">A trusted investment organization built on risk management.</p>
+      </div>
     </div>
   </div>
 </section>
