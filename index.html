@@ -405,16 +405,16 @@ document.querySelectorAll('.filter-btn').forEach(function(btn){
   <div class="container">
     <h2>리포트를 이메일로 받아보세요</h2>
     <p>새 브리핑과 기업분석 리포트 소식을 이메일로 보내드립니다.</p>
-    <form action="https://formsubmit.co/sungsangkyung77@gmail.com" method="POST" class="sub-form">
-      <input type="hidden" name="_subject" value="[Trend Insight] 새 구독 신청">
-      <input type="hidden" name="_captcha" value="false">
-      <input type="hidden" name="_template" value="table">
-      <input type="hidden" name="_next" value="https://trend-insight-site.sungsangkyung77.workers.dev/thanks.html">
-      <input type="text" name="_honey" style="display:none">
+    <form id="subscribe-form" class="sub-form">
+      <input type="hidden" name="access_key" value="8ac07bea-64a0-4a45-b57b-9b88474cfff0">
+      <input type="hidden" name="subject" value="[Trend Insight] 새 구독 신청">
+      <input type="hidden" name="from_name" value="Trend Insight 구독폼">
+      <input type="checkbox" name="botcheck" style="display:none">
       <input type="text" name="이름" placeholder="이름 (선택)">
       <input type="email" name="이메일" placeholder="이메일 주소" required>
       <button type="submit" class="btn-primary">구독 신청</button>
     </form>
+    <p id="subscribe-msg" style="display:none;margin-top:6px;font-weight:600;"></p>
     <span class="email">분석 의뢰·제휴 문의: contact@trend-insight.co.kr</span>
   </div>
 </section>
@@ -432,6 +432,33 @@ document.querySelectorAll('.filter-btn').forEach(function(btn){
   </div>
 </footer>
 
+<script>
+(function(){
+  var f=document.getElementById('subscribe-form');
+  var msg=document.getElementById('subscribe-msg');
+  if(!f) return;
+  f.addEventListener('submit',function(e){
+    e.preventDefault();
+    var btn=f.querySelector('button');
+    btn.disabled=true; btn.textContent='전송 중...';
+    fetch('https://api.web3forms.com/submit',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Accept':'application/json'},
+      body:JSON.stringify(Object.fromEntries(new FormData(f)))
+    }).then(function(r){return r.json();}).then(function(d){
+      if(d.success){
+        f.style.display='none';
+        msg.style.color='#1e7d34'; msg.textContent='✓ 구독 신청이 완료되었습니다. 감사합니다!';
+        msg.style.display='block';
+      } else { throw new Error(d.message||'실패'); }
+    }).catch(function(){
+      btn.disabled=false; btn.textContent='구독 신청';
+      msg.style.color='#c0392b'; msg.textContent='전송에 실패했습니다. 잠시 후 다시 시도해 주세요.';
+      msg.style.display='block';
+    });
+  });
+})();
+</script>
 </body>
 </html>
 <!-- redeploy trigger 2026-06-28T14:33:25Z -->
