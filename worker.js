@@ -221,6 +221,28 @@ async function ckQuote(code) {
   };
 }
 
+// 폴링 API 실패/차단 시: 일봉 마지막 2봉으로 시세 구성 + 자동완성으로 종목명 조회
+async function ckQuoteFallback(code, rows) {
+  const n = rows.length;
+  const last = rows[n - 1], prev = rows[n - 2];
+  let name = null;
+  try {
+    const items = await ckSearch(code);
+    const hit = items.find(x => x.code === code) || items[0];
+    if (hit) name = hit.name;
+  } catch (e) { /* 이름 조회 실패 허용 */ }
+  const change = prev ? last.close - prev.close : null;
+  return {
+    code, name,
+    price: last.close,
+    change,
+    change_rate: change != null && prev.close ? R2((change / prev.close) * 100) : null,
+    volume: last.volume,
+    market_status: null,
+    as_of: last.date,
+  };
+}
+
 // ── 글로벌 지수 (Yahoo) ──
 async function ckIndex(symbol) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=10d&interval=1d`;
@@ -365,6 +387,9 @@ async function ckAnalyzeFull(code) {
   if (rows.length < 120) return { ok: false, error: "120봉 미만(상장초기 종목)" };
   let quote = null;
   try { quote = await ckQuote(code); } catch (e) { /* 시세 실패해도 분석은 제공 */ }
+  if (!quote || quote.price == null) {
+    try { quote = await ckQuoteFallback(code, rows); } catch (e) { /* 폴백도 실패 허용 */ }
+  }
   const signals = ckAnalyze(rows);
   const chart = ckChart(rows, 120);
   return { ok: true, data: { code, name: (quote && quote.name) || code, quote, signals, chart } };
@@ -455,7 +480,13 @@ async function handleCockpit(req, url, ctx) {
     if (p === "indices") return await ckCached(req, 60, async () => wrap(await ckIndices()));
     if (p.startsWith("quote/")) {
       const code = p.slice(6).replace(/[^0-9A-Za-z]/g, "");
-      return await ckCached(req, 20, async () => wrap(await ckQuote(code)));
+      return await ckCached(req, 20, async () => {
+        try {
+          const q = await ckQuote(code);
+          if (q.price != null) return wrap(q);
+        } catch (e) { /* 폴백으로 진행 */ }
+        return wrap(await ckQuoteFallback(code, await ckOHLCV(code, 10)));
+      });
     }
     if (p.startsWith("analyze/")) {
       const code = p.slice(8).replace(/[^0-9A-Za-z]/g, "");
@@ -497,4 +528,19 @@ export default {
         const d = await updateGauge(env);
         return new Response(JSON.stringify({
           ok: true, updated: d.updated, as_of: d.kospi.date,
-          kospi
+          kospi: { score: d.kospi.score, zone: d.kospi.zone },
+          kosdaq: { score: d.kosdaq.score, zone: d.kosdaq.zone },
+        }), { headers: JSON_HEADERS });
+      } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
+      }
+    }
+
+    if (url.pathname === "/data/market-gauge.json") {
+      const v = await env.GAUGE_KV.get("market-gauge");
+      if (v) return new Response(v, { headers: JSON_HEADERS });
+    }
+
+    return env.ASSETS.fetch(req);
+  },
+};
