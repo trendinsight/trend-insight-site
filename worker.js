@@ -396,7 +396,14 @@ async function ckAnalyzeFull(code) {
 }
 
 // ── 거래량 상위 (네이버 sise_quant, EUC-KR) ──
-async function ckRanking(market = "KOSPI", top = 10) {
+// ETF·ETN·인버스·레버리지 등 패시브 상품 판별 (브랜드 접두어 + 키워드)
+const CK_ETF_PREFIX = /^(KODEX|TIGER|RISE|ACE|SOL|PLUS|HANARO|KIWOOM|KOSEF|KBSTAR|ARIRANG|KTOP|TREX|UNICORN|TIMEFOLIO|BNK|FOCUS|1Q|WOORI|DAISHIN|마이티|마이다스|히어로즈|파워)\b/i;
+const CK_ETF_KEYWORD = /(ETN|ETF|레버리지|인버스|선물|합성|액티브|채권|배당혼합|TOP\s?\d)/i;
+function ckIsEtf(name) {
+  return CK_ETF_PREFIX.test(name) || CK_ETF_KEYWORD.test(name);
+}
+
+async function ckRanking(market = "KOSPI", top = 10, includeEtf = false) {
   const sosok = market.toUpperCase() === "KOSDAQ" ? 1 : 0;
   const r = await fetch(`https://finance.naver.com/sise/sise_quant.naver?sosok=${sosok}`, { headers: CK_HEADERS });
   if (!r.ok) throw new Error(`ranking HTTP ${r.status}`);
@@ -410,6 +417,7 @@ async function ckRanking(market = "KOSPI", top = 10) {
     const codeM = chunk.match(/code=(\d{6})/);
     const nameM = chunk.match(/class="tltle"[^>]*>([^<]+)</);
     if (!codeM || !nameM) continue;
+    if (!includeEtf && ckIsEtf(nameM[1].trim())) continue;
     const tds = [...chunk.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)]
       .map(x => x[1].replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim());
     out.push({
@@ -495,7 +503,8 @@ async function handleCockpit(req, url, ctx) {
     if (p === "ranking") {
       const market = url.searchParams.get("market") || "KOSPI";
       const top = Math.min(parseInt(url.searchParams.get("top") || "10", 10) || 10, 30);
-      return await ckCached(req, 60, async () => wrap(await ckRanking(market, top)));
+      const inclEtf = url.searchParams.get("etf") === "1";
+      return await ckCached(req, 60, async () => wrap(await ckRanking(market, top, inclEtf)));
     }
     if (p === "screener") {
       const market = url.searchParams.get("market") || "KOSPI";
