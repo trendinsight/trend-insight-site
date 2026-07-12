@@ -116,4 +116,54 @@ function trend(name,hist,selIdx){
   const anchor=selIdx>n*0.85?`text-anchor="end" x="${xs(selIdx)-7}"`:`text-anchor="start" x="${xs(selIdx)+7}"`;
   return `<div class="card chart-card"><h2>${name} 종합 과열도 추이 <span style="font-size:.8rem;color:var(--muted)">최근 ${n}거래일</span></h2>
   <svg viewBox="0 0 ${W} ${H}" style="width:100%">
-    ${band(75,100,"rgba(229,115,115,.12)")}${band(0,25,"rgba(1
+    ${band(75,100,"rgba(229,115,115,.12)")}${band(0,25,"rgba(102,187,106,.12)")}${ticks}
+    <path d="${line}" fill="none" stroke="#2e6ff2" stroke-width="2"/>
+    <line x1="${xs(selIdx)}" x2="${xs(selIdx)}" y1="${ys(100)}" y2="${ys(0)}" stroke="#b22f2f" stroke-width="1" stroke-dasharray="4 3"/>
+    <circle cx="${xs(selIdx)}" cy="${ys(s.score)}" r="4.5" fill="#b22f2f"/>
+    <text ${anchor} y="${ys(s.score)-8}" font-size="11" font-weight="700" fill="#0b1f3f">${fd(s.date)} · ${s.score}%</text>
+    ${lbls}
+  </svg>
+  <div class="legend"><b style="color:#c62828">붉은 영역</b> 과매수권(75%↑) · <b style="color:#2e7d32">초록 영역</b> 과매도권(25%↓) · <b style="color:#b22f2f">점선</b> 조회 날짜</div></div>`;
+}
+
+let DATA=null;
+const iso=s=>s.slice(0,4)+"-"+s.slice(4,6)+"-"+s.slice(6,8);
+
+function findIdx(hist,ymd){ // ymd: "YYYYMMDD" → 해당일 또는 직전 거래일 인덱스
+  let idx=-1;
+  for(let i=0;i<hist.length;i++){if(hist[i].date<=ymd)idx=i;else break;}
+  return idx;
+}
+
+function render(ymd){ // ymd null → 최신
+  const msg=document.getElementById("datemsg");
+  msg.style.display="none";
+  let ki,qi;
+  const kh=DATA.kospi.history,qh=DATA.kosdaq.history;
+  if(!ymd){ki=kh.length-1;qi=qh.length-1;}
+  else{
+    ki=findIdx(kh,ymd);qi=findIdx(qh,ymd);
+    if(ki<0||qi<0){msg.textContent="조회 가능 범위("+fd(kh[0].date)+" ~ "+fd(kh[kh.length-1].date)+") 이전 날짜입니다.";msg.style.display="block";return;}
+    if(kh[ki].date!==ymd){msg.textContent="선택일은 휴장일이라 직전 거래일("+fd(kh[ki].date)+") 기준으로 표시합니다.";msg.style.display="block";}
+  }
+  const k=kh[ki],q=qh[qi];
+  document.getElementById("asof").textContent=fd(k.date);
+  document.getElementById("datepick").value=iso(k.date);
+  document.getElementById("grid").innerHTML=
+    card("KOSPI",k)+card("KOSDAQ",q)+trend("KOSPI",kh,ki)+trend("KOSDAQ",qh,qi);
+}
+
+fetch("data/market-gauge.json?t="+Date.now()).then(r=>r.json()).then(d=>{
+  DATA=d;
+  document.getElementById("updated").textContent=d.updated;
+  const h=d.kospi.history,dp=document.getElementById("datepick");
+  dp.min=iso(h[0].date);dp.max=iso(h[h.length-1].date);
+  render(null);
+  const go=()=>{const v=dp.value;if(v)render(v.replaceAll("-",""))};
+  document.getElementById("datego").onclick=go;
+  dp.onchange=go;
+  document.getElementById("datelatest").onclick=()=>render(null);
+}).catch(()=>{document.getElementById("err").style.display="block"});
+</script>
+</body>
+</html>
