@@ -805,11 +805,13 @@ function slAnalyzeStock(rows, holding, marketOverall, trailPct, stopLossPct) {
   };
 }
 
-async function slHoldings(env, offset = 0, limit = SL.AUTO_TOP_N) {
+async function slHoldings(env, offset = 0, limit = SL.AUTO_TOP_N, excludeEtf = true) {
   const q = await env.RISK_DB.prepare(
     "SELECT code,name,qty,buy_amount,eval_amount,weight FROM holdings ORDER BY eval_amount DESC LIMIT ? OFFSET ?"
   ).bind(limit, offset).all();
-  return q.results.map(h => ({
+  let rows = q.results;
+  if (excludeEtf) rows = rows.filter(h => !ckIsEtf(String(h.name || "")));
+  return rows.map(h => ({
     code: String(h.code).padStart(6, "0"),
     name: h.name,
     weight: h.weight,
@@ -858,7 +860,8 @@ const SL_VLABEL = { SELL: "즉시 손절 후보", WATCH: "경고(감시)", TRIM:
 // ── 자동 점검(크론·수동 refresh 공용): 상위 N 스캔 → KV 저장 → 신규 신호 알림 ──
 async function slRefresh(env, { notify = false, topN = SL.AUTO_TOP_N, trailPct = SL.TRAIL_PCT, session = "close" } = {}) {
   const market = await slMarket();
-  const holdings = await slHoldings(env, 0, topN);
+  // ETF 제외 후에도 topN개 개별 종목을 확보하도록 여유 있게 조회
+  const holdings = (await slHoldings(env, 0, topN * 2 + 30)).slice(0, topN);
   const results = await slScanList(env, holdings, market, trailPct);
 
   // 이전 결과와 비교해 신규/승격 신호 검출
@@ -878,7 +881,7 @@ async function slRefresh(env, { notify = false, topN = SL.AUTO_TOP_N, trailPct =
     session,                         // "intraday"(13시) | "close"(16시) | "manual"
     as_of: market.KOSPI?.date || null,
     trail_pct: trailPct,
-    scope: { top_n: topN, total: (await env.RISK_DB.prepare("SELECT COUNT(*) n FROM holdings").first()).n },
+    scope: { top_n: topN, etf_excluded: true, total: (await env.RISK_DB.prepare("SELECT COUNT(*) n FROM holdings").first()).n },
     market,
     results,
   };
@@ -917,7 +920,7 @@ async function handleStopLoss(req, url, env) {
       const total = (await env.RISK_DB.prepare("SELECT COUNT(*) n FROM holdings").first()).n;
       const holdings = await slHoldings(env, offset, limit);
       const results = await slScanList(env, holdings, market, trailPct);
-      return new Response(JSON.stringify({ ok: true, data: { total, offset, count: holdings.length, market, results } }), { headers: JSON_HEADERS });
+      return new Response(JSON.stringify({ ok: true, data: { total, offset, count: holdings.length, etf_excluded: limit - holdings.length, market, results } }), { headers: JSON_HEADERS });
     }
     if (p === "refresh") {
       const topN = Math.min(parseInt(url.searchParams.get("n") || SL.AUTO_TOP_N, 10) || SL.AUTO_TOP_N, SL.AUTO_TOP_N);

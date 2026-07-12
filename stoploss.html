@@ -91,6 +91,7 @@ th{color:var(--muted);font-weight:600;font-size:.76rem;background:#f9fafc}
   <h1>손절 레이더 <span style="font-size:.9rem;color:var(--red)">STOP-LOSS RADAR</span></h1>
   <p class="sub">보유종목을 5가지 매도 기준(50일선 붕괴 · 시장 천장 · 분산일 · 클라이맥스 탑 · 트레일링 스탑)과
   리스크 규정 손절선으로 자동 점검하고, 이익 구간의 과매수 종목은 <b style="color:var(--trim)">부분 익절(TRIM)</b> 후보로 따로 제시합니다.
+  ETF·ETN 등 패시브 상품은 점검 대상에서 제외됩니다.
   평일 13시(장중 참고)·16시(종가 확정) 자동 갱신, 신규 SELL/WATCH 신호는 텔레그램으로 알립니다.</p>
 
   <div id="err"></div>
@@ -107,7 +108,7 @@ th{color:var(--muted);font-weight:600;font-size:.76rem;background:#f9fafc}
 
   <div class="ctrl">
     <button class="btn" id="btnRefresh">지금 다시 점검 (상위 40)</button>
-    <button class="btn ghost" id="btnFull">전체 스캔 (전 종목)</button>
+    <button class="btn ghost" id="btnFull">전체 스캔 (전 종목 · ETF 제외)</button>
     <select id="trail">
       <option value="12">트레일링 -12%</option>
       <option value="15" selected>트레일링 -15% (기본)</option>
@@ -209,7 +210,7 @@ function render(data){
   $("nHold").textContent=g("HOLD").length;
   $("meta").innerHTML=`기준일 <b>${fd(data.as_of)}</b> · 갱신 <b>${data.updated||"—"}</b>
     <span class="badge">${SESSION[data.session]||data.session||""}</span>
-    <span class="badge">점검 ${rs.length}종목${data.scope?` / 전체 ${data.scope.total}`:""}</span>
+    <span class="badge">점검 ${rs.length}종목${data.scope?` / 전체 ${data.scope.total}`:""} · ETF 제외</span>
     <span class="badge">트레일링 -${data.trail_pct||15}%</span>`;
   let html="";
   if(g("SELL").length){
