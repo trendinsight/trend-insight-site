@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>리스크 계기판 — Trend Insight</title>
+<style>
+:root{
+  --bg:#0b0e14; --card:#131826; --card2:#0f1420; --line:#1f2738;
+  --tx:#dbe2f0; --tx2:#8a94ab; --tx3:#5b6478;
+  --ok:#34d399; --warn:#fbbf24; --breach:#fb923c; --crit:#f87171;
+  --accent:#60a5fa; --accent2:#818cf8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:'Pretendard','Noto Sans KR',-apple-system,sans-serif;line-height:1.5;padding-bottom:60px}
+a{color:var(--accent);text-decoration:none}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px}
+header{border-bottom:1px solid var(--line);padding:18px 0;margin-bottom:20px}
+header .wrap{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+h1{font-size:20px;font-weight:800}
+h1 small{color:var(--tx3);font-weight:400;font-size:12px;margin-left:8px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:4px 12px;font-size:12px;color:var(--tx2)}
+.chip b{color:var(--tx)}
+h2{font-size:15px;font-weight:700;margin:26px 0 12px;color:var(--tx);display:flex;align-items:center;gap:8px}
+h2 .sub{font-size:11px;color:var(--tx3);font-weight:400}
+.grid{display:grid;gap:12px}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:860px){.g4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:480px){.g4{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.kpi .lbl{font-size:12px;color:var(--tx2);margin-bottom:6px;display:flex;justify-content:space-between}
+.kpi .val{font-size:24px;font-weight:800;letter-spacing:-.5px}
+.kpi .cap{font-size:11px;color:var(--tx3);margin-top:4px}
+.bar{height:7px;background:var(--card2);border-radius:4px;margin-top:10px;overflow:hidden;position:relative}
+.bar i{display:block;height:100%;border-radius:4px;transition:width .6s}
+.bar .lim{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--tx2);opacity:.7}
+.badge{display:inline-block;font-size:10.5px;font-weight:700;border-radius:6px;padding:2px 7px;vertical-align:1px}
+.b-ok{background:rgba(52,211,153,.13);color:var(--ok)}
+.b-warn{background:rgba(251,191,36,.13);color:var(--warn)}
+.b-breach{background:rgba(251,146,60,.15);color:var(--breach)}
+.b-crit{background:rgba(248,113,113,.15);color:var(--crit)}
+.banner{border-radius:14px;padding:14px 18px;margin-bottom:4px;display:flex;gap:18px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);background:linear-gradient(120deg,var(--card),var(--card2))}
+.banner .verdict{font-size:17px;font-weight:800}
+.banner .cnt{font-size:12.5px;color:var(--tx2)}
+.banner .cnt b{font-size:15px;margin-right:2px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:11px;color:var(--tx3);font-weight:600;text-align:right;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td{padding:7px 8px;border-bottom:1px solid rgba(31,39,56,.55);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:none}
+.nm{font-weight:600}
+.nm .code{color:var(--tx3);font-size:11px;margin-left:5px;font-weight:400}
+.pos{color:var(--ok)}.neg{color:var(--crit)}
+.wbar{display:inline-block;width:64px;height:5px;background:var(--card2);border-radius:3px;margin-left:8px;vertical-align:2px;overflow:hidden}
+.wbar i{display:block;height:100%;background:var(--accent)}
+.calc{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:760px){.calc{grid-template-columns:1fr}}
+.f{margin-bottom:12px}
+.f label{display:block;font-size:11.5px;color:var(--tx2);margin-bottom:5px}
+.f input{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:9px;color:var(--tx);font-size:14px;padding:9px 12px;outline:none;font-variant-numeric:tabular-nums}
+.f input:focus{border-color:var(--accent)}
+.srch{position:relative}
+.srch .dd{position:absolute;left:0;right:0;top:100%;background:var(--card2);border:1px solid var(--line);border-radius:9px;z-index:20;max-height:220px;overflow:auto;display:none}
+.srch .dd div{padding:8px 12px;cursor:pointer;font-size:13px}
+.srch .dd div:hover{background:var(--card)}
+.res{background:var(--card2);border-radius:10px;padding:14px;font-size:13px}
+.res .row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed rgba(31,39,56,.8)}
+.res .row:last-child{border-bottom:none}
+.res .big{font-size:19px;font-weight:800}
+.note{font-size:11.5px;color:var(--tx3);margin-top:10px;line-height:1.6}
+.rulelist{font-size:12.5px;color:var(--tx2);line-height:2}
+.rulelist b{color:var(--tx);font-variant-numeric:tabular-nums}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:760px){.two{grid-template-columns:1fr}}
+.scroll{max-height:420px;overflow-y:auto}
+button{background:var(--accent);border:none;border-radius:9px;color:#0b0e14;font-weight:700;font-size:13px;padding:9px 16px;cursor:pointer}
+button.ghost{background:var(--card2);color:var(--tx2);border:1px solid var(--line)}
+#loading{text-align:center;color:var(--tx3);padding:60px 0;font-size:13px}
+footer{margin-top:36px;border-top:1px solid var(--line);padding:18px 0;font-size:11.5px;color:var(--tx3);line-height:1.7}
+.live{font-size:11px;color:var(--tx3)}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <h1>리스크 계기판 <small>Risk Manager · 자본을 지킨다</small></h1>
+  <div class="chips">
+    <span class="chip" id="chipGauge">시장온도계 —</span>
+    <span class="chip">기준일 <b id="chipAsof">—</b></span>
+    <span class="chip"><a href="index.html">← Trend Insight</a></span>
+  </div>
+</div></header>
+<div class="wrap">
+<div id="loading">데이터 로딩 중…</div>
+<div id="app" style="display:none">
+
+  <div class="banner" id="banner"></div>
+
+  <h2>핵심 계기 <span class="sub">규정 대비 현재 위치</span></h2>
+  <div class="grid g4" id="kpis"></div>
+
+  <h2>매수 전 사전점검 · 포지션 사이징 <span class="sub">규정 §1.1 §2.1 §2.2 §3.1 자동 적용</span></h2>
+  <div class="card"><div class="calc">
+    <div>
+      <div class="f srch"><label>종목 검색 (이름/코드)</label>
+        <input id="q" placeholder="예: 삼성전자 또는 005930" autocomplete="off">
+        <div class="dd" id="dd"></div></div>
+      <div class="f"><label>매수가 (원) — 실시간 시세 자동 입력</label><input id="price" inputmode="numeric"></div>
+      <div class="f"><label>손절가 (원) — 기본: 매수가 −25% (§2.1)</label><input id="stop" inputmode="numeric"></div>
+      <div class="f"><label>매수 예정 금액 (원) — 비우면 규정상 최대치로 계산</label><input id="amt" inputmode="numeric" placeholder="예: 10000000"></div>
+      <button id="calcBtn">사전점검 실행</button>
+    </div>
+    <div><div class="res" id="calcRes">
+      종목을 선택하고 사전점검을 실행하세요.<br><br>
+      <span class="note">손절 없는 매수는 사이징이 불가능합니다 — 손절가를 먼저 정하는 것이 규정의 출발점입니다.</span>
+    </div></div>
+  </div></div>
+
+  <h2>집중도 — 상위 종목 <span class="sub">한도 §1.1: 종목당 최대 <span id="limTxt"></span>% (총자산 기준)</span></h2>
+  <div class="card scroll"><table id="topTbl">
+    <thead><tr><th>종목</th><th>평가금액</th><th>비중</th><th>한도소진</th><th>수익률</th><th>당일</th><th>손절선</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+
+  <h2>손절 관리 <span class="sub">§2.1 매입가 대비 −<span id="stopTxt"></span>% 이탈 = 규정 미집행 상태</span></h2>
+  <div class="two">
+    <div class="card"><div class="kpi"><div class="lbl">손절선 이탈 (CRITICAL)</div><div class="val neg" id="critCnt">—</div><div class="cap" id="critCap"></div></div>
+      <div class="scroll" style="margin-top:10px"><table id="critTbl"><thead><tr><th>종목</th><th>평가금액</th><th>수익률</th></tr></thead><tbody></tbody></table></div></div>
+    <div class="card"><div class="kpi"><div class="lbl">손절선 접근 (WATCH, −20%~−25%)</div><div class="val" style="color:var(--warn)" id="watchCnt">—</div><div class="cap" id="watchCap"></div></div>
+      <div class="scroll" style="margin-top:10px"><table id="watchTbl"><thead><tr><th>종목</th><th>평가금액</th><th>수익률</th></tr></thead><tbody></tbody></table></div></div>
+  </div>
+  <p class="note" style="margin-top:10px">※ 규정(§2.1)은 2026-07-12 제정 — 그 이전에 취득한 레거시 보유분에 소급 적용되어 이탈 종목이 많이 표시됩니다. 레거시 처리 방침(단계적 정리 / 예외 등록 / 손절선 재설정)은 별도 결정이 필요하며, 신규 매수부터는 규정이 온전히 적용됩니다.</p>
+
+  <h2>하방 시나리오 &amp; 구조 진단</h2>
+  <div class="grid g4" id="scen"></div>
+
+  <h2>리스크 규정 헌법 <span class="sub">개정은 세션에서 — 매매 당일 완화 개정 금지 원칙</span></h2>
+  <div class="card rulelist" id="rules"></div>
+
+</div>
+</div>
+<footer><div class="wrap">
+  이 계기판은 규정 대비 <b>팩트와 한도만</b> 제시하며 매수/매도 지시를 하지 않습니다. 시세는 네이버 금융 기준(지연 가능), 보유 데이터는 마지막 동기화(sync_risk.py) 시점 기준입니다.<br>
+  Mission: 모든 이해관계자의 행복을 위해 자본을 지킨다 · −50% 손실은 +100%로만 복구된다.
+</div></footer>
+
+<script>
+const API = "";
+const fmt = n => n==null?"—":Math.round(n).toLocaleString("ko-KR");
+const fmtE = n => n==null?"—":(Math.abs(n)>=1e8? (n/1e8).toFixed(2)+"억" : Math.round(n/1e4).toLocaleString()+"만");
+const pct = (n,d=1) => n==null?"—":(n*100).toFixed(d)+"%";
+let S=null, T=null, quotes={};
+
+function badge(cls,txt){return `<span class="badge b-${cls}">${txt}</span>`}
+function lvl(ratio){ // 한도 소진율 → 등급
+  if(ratio>=1) return "crit"; if(ratio>=0.85) return "breach"; if(ratio>=0.7) return "warn"; return "ok";
+}
+const lvlColor={ok:"var(--ok)",warn:"var(--warn)",breach:"var(--breach)",crit:"var(--crit)"};
+
+async function load(){
+  const r = await fetch(API+"/api/risk/state").then(r=>r.json());
+  if(!r.ok) throw new Error(r.error);
+  S = r.data;
+  // 파생값
+  const evalSum = S.holdings.reduce((a,h)=>a+(h.eval_amount||0),0);
+  const buySum  = S.holdings.reduce((a,h)=>a+(h.buy_amount||0),0);
+  const cash = Number(S.meta.cash||0);
+  T = {
+    evalSum, buySum, cash,
+    equity: evalSum+cash,
+    pl: evalSum-buySum,
+    stopPct: S.rules.stop_loss_pct.value/100,
+    maxPos: S.rules.max_position_pct.value/100,
+    minCash: S.rules.min_cash_pct.value/100,
+    mLimit: S.rules.monthly_loss_limit_pct.value/100,
+    warnR: S.rules.warn_ratio.value,
+    baseline: Number(S.meta.month_baseline_equity||0)||null,
+  };
+  T.cashRatio = cash/T.equity;
+  T.mChange = T.baseline? (T.equity-T.baseline)/T.baseline : null;
+  T.buyHalt = T.mChange!=null && T.mChange <= -T.mLimit;
+  render();
+  document.getElementById("loading").style.display="none";
+  document.getElementById("app").style.display="block";
+  loadGauge(); loadQuotes();
+}
+
+async function loadGauge(){
+  try{
+    const g = await fetch(API+"/data/market-gauge.json").then(r=>r.json());
+    document.getElementById("chipGauge").innerHTML =
+      `시장온도계 코스피 <b>${g.kospi.score}</b> ${g.kospi.zone} · 코스닥 <b>${g.kosdaq.score}</b> ${g.kosdaq.zone}`;
+  }catch(e){}
+}
+
+async function loadQuotes(){
+  try{
+    const codes = S.holdings.slice(0,20).map(h=>h.code).join(",");
+    const r = await fetch(API+"/api/risk/quotes?codes="+codes).then(r=>r.json());
+    if(r.ok){ quotes=r.data; renderTop(); }
+  }catch(e){}
+}
+
+function render(){
+  document.getElementById("chipAsof").textContent = S.meta.as_of||"—";
+  document.getElementById("limTxt").textContent = S.rules.max_position_pct.value;
+  document.getElementById("stopTxt").textContent = S.rules.stop_loss_pct.value;
+
+  // 위반 집계
+  const crit = S.holdings.filter(h=>h.ret!=null && h.ret <= -T.stopPct);
+  const watch = S.holdings.filter(h=>h.ret!=null && h.ret > -T.stopPct && h.ret <= -0.20);
+  const posOver = S.holdings.filter(h=>(h.eval_amount||0)/T.equity >= T.maxPos);
+  const cashBreach = T.cashRatio < T.minCash;
+  let nB=posOver.length+(cashBreach?1:0)+(T.buyHalt?1:0), nC=crit.length, nW=watch.length;
+  const verdict = nC>0?["crit","CRITICAL — 손절 규정 미집행 상태"]
+      : nB>0?["breach","BREACH — 한도 위반 있음"]
+      : nW>0?["warn","WATCH — 경고 구간"] : ["ok","규정 준수"];
+  document.getElementById("banner").innerHTML = `
+    <span class="verdict" style="color:${lvlColor[verdict[0]]}">${verdict[1]}</span>
+    <span class="cnt"><b style="color:var(--crit)">${nC}</b>CRITICAL</span>
+    <span class="cnt"><b style="color:var(--breach)">${nB}</b>BREACH</span>
+    <span class="cnt"><b style="color:var(--warn)">${nW}</b>WATCH</span>
+    <span class="cnt" style="margin-left:auto">총자산 <b>${fmtE(T.equity)}</b> · 평가손익 <b class="neg">${fmtE(T.pl)} (${pct(T.pl/T.buySum)})</b> · ${S.count}종목</span>`;
+
+  // KPI 카드
+  const maxH = S.holdings[0]||{};
+  const maxW = (maxH.eval_amount||0)/T.equity;
+  const kpi = [
+    {lbl:"현금 비율 (§3.1 최소 "+S.rules.min_cash_pct.value+"%)", val:pct(T.cashRatio),
+     ratio: T.cashRatio<T.minCash?1:(T.minCash/T.cashRatio), inv:true,
+     cap:`예수금 ${fmtE(T.cash)} / 총자산 ${fmtE(T.equity)}`,
+     cls: T.cashRatio<T.minCash?"crit":(T.cashRatio<T.minCash*1.2?"warn":"ok")},
+    {lbl:"월간 손익 (§2.2 한도 −"+S.rules.monthly_loss_limit_pct.value+"%)",
+     val:(T.mChange==null?"—":(T.mChange>=0?"+":"")+pct(T.mChange)),
+     ratio: T.mChange==null?0:Math.max(0,-T.mChange/T.mLimit),
+     cap: T.buyHalt?"⛔ 월간 한도 도달 — 신규 매수 중단":"기준: "+(S.meta.month_baseline_date||"—")+" 자산 "+fmtE(T.baseline),
+     cls: T.buyHalt?"crit":lvl(T.mChange==null?0:-T.mChange/T.mLimit)},
+    {lbl:"최대 종목 비중 (§1.1 한도 "+S.rules.max_position_pct.value+"%)", val:pct(maxW),
+     ratio:maxW/T.maxPos, cap:(maxH.name||"—")+" "+fmtE(maxH.eval_amount), cls:lvl(maxW/T.maxPos)},
+    {lbl:"손절선 이탈 종목 (§2.1)", val:crit.length+"종목",
+     ratio:crit.length?1:0,
+     cap:"평가액 합계 "+fmtE(crit.reduce((a,h)=>a+(h.eval_amount||0),0)),
+     cls:crit.length?"crit":"ok"},
+  ];
+  document.getElementById("kpis").innerHTML = kpi.map(k=>`
+    <div class="card kpi"><div class="lbl"><span>${k.lbl}</span>${badge(k.cls,k.cls.toUpperCase())}</div>
+    <div class="val" style="color:${lvlColor[k.cls]}">${k.val}</div>
+    <div class="bar"><i style="width:${Math.min(100,k.ratio*100)}%;background:${lvlColor[k.cls]}"></i><span class="lim" style="left:85%"></span></div>
+    <div class="cap">${k.cap}</div></div>`).join("");
+
+  renderTop();
+
+  // 손절 테이블
+  const rowsOf = list => list.map(h=>`<tr><td class="nm">${h.name}<span class="code">${h.code}</span></td>
+      <td>${fmtE(h.eval_amount)}</td><td class="neg">${pct(h.ret)}</td></tr>`).join("");
+  document.getElementById("critCnt").textContent = crit.length+"종목";
+  document.getElementById("critCap").textContent = "평가액 "+fmtE(crit.reduce((a,h)=>a+(h.eval_amount||0),0))+" · 총자산의 "+pct(crit.reduce((a,h)=>a+(h.eval_amount||0),0)/T.equity);
+  document.querySelector("#critTbl tbody").innerHTML = rowsOf(crit.slice().sort((a,b)=>b.eval_amount-a.eval_amount));
+  document.getElementById("watchCnt").textContent = watch.length+"종목";
+  document.getElementById("watchCap").textContent = "평가액 "+fmtE(watch.reduce((a,h)=>a+(h.eval_amount||0),0));
+  document.querySelector("#watchTbl tbody").innerHTML = rowsOf(watch.slice().sort((a,b)=>b.eval_amount-a.eval_amount));
+
+  // 시나리오 & 구조
+  const addLoss = S.holdings.reduce((a,h)=>{
+    if(!h.buy_amount||!h.eval_amount) return a;
+    const floor = h.buy_amount*(1-T.stopPct);
+    return a + Math.max(0, h.eval_amount-floor);
+  },0);
+  const top2 = (S.holdings[0]?.eval_amount||0)+(S.holdings[1]?.eval_amount||0);
+  const top20 = S.holdings.slice(0,20).reduce((a,h)=>a+(h.eval_amount||0),0);
+  const scen = [
+    {lbl:"전 종목 손절 발동 시 추가 손실", val:fmtE(addLoss), cap:"총자산의 "+pct(addLoss/T.equity)+" (이미 이탈분 제외)", cls:addLoss/T.equity>0.15?"breach":"warn"},
+    {lbl:"상위 2종목 합산 비중", val:pct(top2/T.equity), cap:S.holdings.slice(0,2).map(h=>h.name).join(" · "), cls:lvl((top2/T.equity)/(T.maxPos*2))},
+    {lbl:"상위 20종목 집중도", val:pct(top20/T.equity), cap:"나머지 "+(S.count-20)+"종목 = "+pct((T.evalSum-top20)/T.equity), cls:"ok"},
+    {lbl:"종목 수 (관리 가능성)", val:S.count+"종목", cap:S.count>50?"과분산 — 개별 종목 분석·손절 집행이 사실상 불가능한 규모":"", cls:S.count>50?"breach":"ok"},
+  ];
+  document.getElementById("scen").innerHTML = scen.map(k=>`
+    <div class="card kpi"><div class="lbl"><span>${k.lbl}</span>${badge(k.cls,k.cls.toUpperCase())}</div>
+    <div class="val">${k.val}</div><div class="cap">${k.cap}</div></div>`).join("");
+
+  // 규정
+  document.getElementById("rules").innerHTML = Object.values(S.rules)
+    .map(r=>`${r.label}: <b>${r.value}</b> <span style="color:var(--tx3)">(개정 ${r.updated_at})</span>`).join("<br>");
+}
+
+function renderTop(){
+  const tb = document.querySelector("#topTbl tbody");
+  tb.innerHTML = S.holdings.slice(0,20).map(h=>{
+    const w = (h.eval_amount||0)/T.equity, use = w/T.maxPos;
+    const q = quotes[h.code];
+    const day = q&&q.change_rate!=null? `<span class="${q.change_rate>=0?'pos':'neg'}">${q.change_rate>=0?'+':''}${q.change_rate}%</span>` : `<span class="live">—</span>`;
+    const st = h.ret==null?"—": h.ret<=-T.stopPct?badge("crit","이탈"): h.ret<=-0.2?badge("warn","접근"):badge("ok","정상");
+    return `<tr><td class="nm">${h.name}<span class="code">${h.code}</span></td>
+      <td>${fmtE(h.eval_amount)}</td>
+      <td>${pct(w)}<span class="wbar"><i style="width:${Math.min(100,use*100)}%"></i></span></td>
+      <td style="color:${lvlColor[lvl(use)]}">${(use*100).toFixed(0)}%</td>
+      <td class="${h.ret>=0?'pos':'neg'}">${pct(h.ret)}</td><td>${day}</td><td>${st}</td></tr>`;
+  }).join("");
+}
+
+/* ── 사이징 계산기 ── */
+let selCode=null;
+const $=id=>document.getElementById(id);
+let ddTimer=null;
+$("q").addEventListener("input",e=>{
+  clearTimeout(ddTimer); const v=e.target.value.trim();
+  if(!v){$("dd").style.display="none";return}
+  ddTimer=setTimeout(async()=>{
+    const r=await fetch(API+"/api/cockpit/search?q="+encodeURIComponent(v)).then(r=>r.json()).catch(()=>null);
+    const items=(r&&r.ok?r.data:[]);
+    $("dd").innerHTML=items.map(x=>`<div data-c="${x.code}" data-n="${x.name}">${x.name} <span class="code" style="color:var(--tx3)">${x.code} · ${x.market||""}</span></div>`).join("")||"<div>검색 결과 없음</div>";
+    $("dd").style.display="block";
+    [...$("dd").children].forEach(el=>el.onclick=()=>pick(el.dataset.c,el.dataset.n));
+  },300);
+});
+async function pick(code,name){
+  selCode=code; $("q").value=`${name} (${code})`; $("dd").style.display="none";
+  try{
+    const r=await fetch(API+"/api/cockpit/quote/"+code).then(r=>r.json());
+    if(r.ok&&r.data.price){ $("price").value=r.data.price; $("stop").value=Math.round(r.data.price*(1-T.stopPct)); }
+  }catch(e){}
+}
+$("price").addEventListener("change",()=>{ const p=+$("price").value; if(p>0&&!$("stop").value) $("stop").value=Math.round(p*(1-T.stopPct)); });
+
+$("calcBtn").onclick=()=>{
+  const p=+$("price").value, st=+$("stop").value, amtIn=+$("amt").value||null;
+  const out=$("calcRes");
+  if(!selCode||!p){out.innerHTML="종목과 매수가를 입력하세요.";return}
+  if(!st||st>=p){out.innerHTML=`<b style="color:var(--crit)">손절가가 없거나 매수가 이상입니다.</b><br><span class="note">손절 없는 매수는 사이징이 불가능합니다 (§2.1). 손절가를 먼저 정하세요.</span>`;return}
+  const held = S.holdings.find(h=>h.code===selCode);
+  const heldEval = held? held.eval_amount:0;
+  // 규정상 최대 신규 매수 금액
+  const capPos = T.maxPos*T.equity - heldEval;            // §1.1 종목 한도 여유
+  const capCash = T.cash - T.minCash*T.equity;            // §3.1 최소 현금 유지
+  const capMax = Math.max(0, Math.min(capPos, capCash));
+  const amt = amtIn!=null? amtIn : capMax;
+  const qty = Math.floor(amt/p);
+  const lossPS = p-st, loss = qty*lossPS;
+  const stopDrop=(p-st)/p;
+  const checks = [
+    ["§1.1 종목 비중", (heldEval+qty*p)/T.equity <= T.maxPos+1e-9,
+      `매수 후 ${pct((heldEval+qty*p)/T.equity)} / 한도 ${pct(T.maxPos)}${held?` (기존 보유 ${fmtE(heldEval)})`:""}`],
+    ["§2.1 손절폭", stopDrop <= T.stopPct+1e-9, `매수가 대비 −${(stopDrop*100).toFixed(1)}% / 규정 −${S.rules.stop_loss_pct.value}% 이내`],
+    ["§2.2 월간 한도", !T.buyHalt, T.buyHalt?"월간 손실 한도 도달 — 신규 매수 중단":"월간 한도 여유 있음"],
+    ["§3.1 현금 유지", T.cash-qty*p >= T.minCash*T.equity-1e-9, `매수 후 현금 ${fmtE(T.cash-qty*p)} / 최소 ${fmtE(T.minCash*T.equity)}`],
+  ];
+  const allOk=checks.every(c=>c[1]);
+  out.innerHTML = `
+    <div class="row"><span>규정상 최대 신규 매수 금액</span><b>${fmt(capMax)}원</b></div>
+    <div class="row"><span>점검 대상 ${amtIn?"(입력 금액)":"(최대치 기준)"}</span><b class="big">${fmt(qty)}주 ≈ ${fmt(qty*p)}원</b></div>
+    <div class="row"><span>손절 시 손실 (${fmt(st)}원 이탈)</span><b class="neg">−${fmt(loss)}원 (총자산의 ${pct(loss/T.equity,2)})</b></div>
+    ${checks.map(c=>`<div class="row"><span>${c[0]}</span><span>${c[1]?badge("ok","PASS"):badge("crit","FAIL")} <span class="note">${c[2]}</span></span></div>`).join("")}
+    <div class="row"><span>종합</span><b style="color:${allOk?"var(--ok)":"var(--crit)"}">${allOk?"진행 가능":"위반 — 강행 시 사유를 Journal에 기록"}</b></div>`;
+};
+
+load().catch(e=>{document.getElementById("loading").textContent="로딩 실패: "+e;});
+</script>
+</body>
+</html>
