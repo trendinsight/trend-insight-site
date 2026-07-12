@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>손절 레이더 | Trend Insight</title>
-<meta name="description" content="보유종목 손절매 후보 자동 점검 — 50일선 붕괴·시장 천장·분산일·클라이맥스 탑·트레일링 스탑 5가지 매도 기준">
+<meta name="description" content="보유종목 손절매 후보 자동 점검 — 50일선 붕괴·시장 천장·분산일·클라이맥스 탑·트레일링 스탑 5가지 매도 기준 + 이익 구간 부분 익절(TRIM)">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
 :root{--navy:#0b1f3f;--accent:#2e6ff2;--red:#b22f2f;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg:#f5f7fb;
@@ -18,7 +18,6 @@ header .hnav a{font-weight:600;font-size:.85rem;opacity:.8;margin-left:16px}
 .wrap{max-width:1080px;margin:0 auto;padding:30px 16px 60px}
 h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
 .sub{color:var(--muted);font-size:.9rem;margin:6px 0 16px}
-/* 시장 국면 배너 */
 .regime{border-radius:14px;padding:18px 22px;margin-bottom:18px;color:#fff;display:flex;flex-wrap:wrap;gap:10px 24px;align-items:center}
 .regime.r-off{background:linear-gradient(120deg,#8e1f1f,#c62828)}
 .regime.r-caution{background:linear-gradient(120deg,#b55e00,#e65100)}
@@ -27,7 +26,6 @@ h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
 .regime .desc{font-size:.85rem;opacity:.92}
 .regime .idx{background:rgba(255,255,255,.14);border-radius:10px;padding:6px 12px;font-size:.82rem;font-weight:600}
 .regime .idx b{font-size:.9rem}
-/* 요약 카운터 */
 .counts{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
 @media(max-width:600px){.counts{grid-template-columns:repeat(2,1fr)}}
 .cnt{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 18px;text-align:center;cursor:pointer;transition:transform .12s}
@@ -38,7 +36,6 @@ h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
 .meta{font-size:.82rem;color:var(--muted);margin-bottom:14px}
 .meta b{color:var(--navy)}
 .badge{display:inline-block;border-radius:999px;padding:2px 10px;font-size:.75rem;font-weight:700;background:#eef2f8;color:#39506e;margin-left:6px}
-/* 컨트롤 */
 .ctrl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:22px}
 .btn{font-family:inherit;font-size:.86rem;font-weight:700;border:none;border-radius:10px;padding:10px 18px;cursor:pointer;color:#fff;background:var(--accent)}
 .btn.ghost{background:#fff;color:#39506e;border:1px solid var(--line)}
@@ -47,7 +44,6 @@ select{font-family:inherit;font-size:.85rem;font-weight:600;padding:9px 10px;bor
 #prog{display:none;flex:1;min-width:180px;height:10px;background:#e4e9f1;border-radius:5px;overflow:hidden}
 #prog i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
 #msg{font-size:.82rem;color:var(--muted)}
-/* 섹션/카드 */
 .sect{margin:26px 0 10px;font-size:1.05rem;font-weight:800;display:flex;align-items:center;gap:8px}
 .sect .pill{font-size:.75rem;border-radius:999px;padding:2px 10px;color:#fff}
 .sect.s-sell{color:var(--sell)}.sect.s-sell .pill{background:var(--sell)}
@@ -75,7 +71,6 @@ select{font-family:inherit;font-size:.85rem;font-weight:600;padding:9px 10px;bor
 .action{margin-top:10px;background:var(--sell-bg);border-radius:10px;padding:9px 12px;font-size:.83rem;font-weight:700;color:var(--sell)}
 .card.v-watch .action{background:var(--watch-bg);color:var(--watch)}
 .card.v-trim .action{background:var(--trim-bg);color:var(--trim)}
-/* HOLD 테이블 */
 table{width:100%;border-collapse:collapse;font-size:.85rem;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
 th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right}
 th:first-child,td:first-child{text-align:left}
@@ -170,23 +165,23 @@ function actionText(r){
     if(codes.includes("CLIMAX"))return "클라이맥스 탑 의심 — 급등 소진 구간, 이익 실현 분할 매도 검토.";
     return "복수 신호 중첩 — 규칙상 즉시 손절 후보입니다.";
   }
-  if(codes.includes("MA50_BELOW"))return "오늘 첫 이탈 — 내일도 50일선 아래로 마감하면 매도 원칙 적용.";
-  if(codes.includes("TRAIL_NEAR"))return "트레일링 스탑 근접 — 임계 도달 시 기계적 손절선. 예약 주문 고려.";
-  if(codes.includes("EXHAUST_GAP"))return "고점권 소진 갭 — 추가 하락 시 익절 분할 검토.";
-  if(codes.includes("DISTRIBUTION"))return "기관 매도 흔적 반복 — 비중 축소 검토, 추가 매수 금지.";
   if(r.verdict==="TRIM"){
     const lv=r.trim_level||1;
     if(lv>=3)return "과매수 신호 중첩(강) — 1/2 부분 익절 검토. 잔여 물량은 트레일링 스탑으로 관리.";
     if(lv===2)return "과매수 신호 2개 — 1/3~1/2 부분 익절 검토. 추격 매수 금지.";
     return "과매수 진입 — 1/3 부분 익절로 이익 확보 검토. 추세는 유지 중이므로 전량 매도 아님.";
   }
+  if(codes.includes("MA50_BELOW"))return "오늘 첫 이탈 — 내일도 50일선 아래로 마감하면 매도 원칙 적용.";
+  if(codes.includes("TRAIL_NEAR"))return "트레일링 스탑 근접 — 임계 도달 시 기계적 손절선. 예약 주문 고려.";
+  if(codes.includes("EXHAUST_GAP"))return "고점권 소진 갭 — 추가 하락 시 익절 분할 검토.";
+  if(codes.includes("DISTRIBUTION"))return "기관 매도 흔적 반복 — 비중 축소 검토, 추가 매수 금지.";
   return "경고 신호 감시 — 악화 시 SELL 승격.";
 }
 
 function cardHTML(r){
   const pnl=r.pnl_pct==null?"":`<span class="${r.pnl_pct>=0?"pnl-p":"pnl-m"}">${r.pnl_pct>0?"+":""}${r.pnl_pct}%</span>`;
   const sigs=r.signals.map(s=>`<div class="sig"><span class="g g-${s.grade}">${s.grade}</span>${s.msg}</div>`).join("");
-  const bad=(cond)=>cond?" bad":"";
+  const bad=cond=>cond?" bad":"";
   return `<div class="card v-${r.verdict.toLowerCase()}">
     <h3><span>${r.name} <small style="color:var(--muted);font-weight:600">${r.code}</small></span>
     <span class="px">${won(r.price)}원 ${pnl}</span></h3>
@@ -262,4 +257,38 @@ async function refresh(){
     await loadSaved();
     $("msg").textContent="완료";
   }catch(e){$("err").style.display="block";$("err").textContent="점검 실패: "+e.message;}
-  b.disabl
+  b.disabled=false;setTimeout(()=>$("msg").textContent="",4000);
+}
+
+async function fullScan(){
+  const b=$("btnFull");b.disabled=true;$("btnRefresh").disabled=true;
+  $("prog").style.display="block";
+  try{
+    $("msg").textContent="시장 국면 판정 중…";
+    const mk=(await(await fetch("/api/stoploss/market")).json()).data;
+    const LIMIT=20;let offset=0,total=null,all=[];
+    while(total===null||offset<total){
+      $("msg").textContent=`전 종목 스캔 중… ${offset}${total?"/"+total:""}`;
+      const r=await fetch(`/api/stoploss/scan?offset=${offset}&limit=${LIMIT}&trail=${$("trail").value}&regime=${mk.overall}`);
+      const d=await r.json();
+      if(!d.ok)throw new Error(d.error||"scan 실패");
+      total=d.data.total;all=all.concat(d.data.results);offset+=LIMIT;
+      $("prog").firstElementChild.style.width=Math.min(100,offset/total*100)+"%";
+    }
+    const ORD={SELL:0,WATCH:1,TRIM:2,HOLD:3};
+    all.sort((a,b)=>((ORD[a.verdict]??4)-(ORD[b.verdict]??4))||((b.score??-1)-(a.score??-1))||((b.trim_level??0)-(a.trim_level??0)));
+    render({updated:new Date().toLocaleString("ko-KR"),session:"browser",as_of:mk.KOSPI&&mk.KOSPI.date,
+      trail_pct:$("trail").value,scope:{total},market:mk,results:all});
+    $("msg").textContent="전체 스캔 완료";
+  }catch(e){$("err").style.display="block";$("err").textContent="전체 스캔 실패: "+e.message;}
+  $("prog").style.display="none";$("prog").firstElementChild.style.width="0";
+  b.disabled=false;$("btnRefresh").disabled=false;setTimeout(()=>$("msg").textContent="",5000);
+}
+
+$("btnRefresh").onclick=refresh;
+$("btnFull").onclick=fullScan;
+
+loadSaved().then(ok=>{if(!ok)refresh();});
+</script>
+</body>
+</html>
