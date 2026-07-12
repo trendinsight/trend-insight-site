@@ -206,11 +206,18 @@ async function ckQuote(code) {
   const j = await r.json();
   const d = j.datas && j.datas[0];
   if (!d) throw new Error("quote: no data");
-  const num = x => { const n = Number(String(x).replace(/,/g, "")); return Number.isFinite(n) ? n : null; };
+  const num = x => { const n = Number(String(x ?? "").replace(/,/g, "")); return Number.isFinite(n) ? n : null; };
+  // 하락(4=하한, 5=하락)이면 대비/등락률에 음수 부호 적용
+  const dir = d.compareToPreviousPrice && ["4", "5"].includes(String(d.compareToPreviousPrice.code)) ? -1 : 1;
+  const abs = v => (v == null ? null : Math.abs(v) * dir);
   return {
-    code, name: d.nm || null,
-    price: num(d.nv), change: num(d.cv), change_rate: num(d.cr),
-    volume: num(d.aq), market_status: d.ms || null,
+    code,
+    name: d.stockName || d.nm || null,
+    price: num(d.closePriceRaw ?? d.closePrice ?? d.nv),
+    change: abs(num(d.compareToPreviousClosePriceRaw ?? d.compareToPreviousClosePrice ?? d.cv)),
+    change_rate: abs(num(d.fluctuationsRatioRaw ?? d.fluctuationsRatio ?? d.cr)),
+    volume: num(d.accumulatedTradingVolumeRaw ?? d.accumulatedTradingVolume ?? d.aq),
+    market_status: d.marketStatus || d.ms || null,
   };
 }
 
@@ -490,19 +497,4 @@ export default {
         const d = await updateGauge(env);
         return new Response(JSON.stringify({
           ok: true, updated: d.updated, as_of: d.kospi.date,
-          kospi: { score: d.kospi.score, zone: d.kospi.zone },
-          kosdaq: { score: d.kosdaq.score, zone: d.kosdaq.zone },
-        }), { headers: JSON_HEADERS });
-      } catch (e) {
-        return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
-      }
-    }
-
-    if (url.pathname === "/data/market-gauge.json") {
-      const v = await env.GAUGE_KV.get("market-gauge");
-      if (v) return new Response(v, { headers: JSON_HEADERS });
-    }
-
-    return env.ASSETS.fetch(req);
-  },
-};
+          kospi
