@@ -754,6 +754,25 @@ function slAnalyzeStock(rows, holding, marketOverall, trailPct, stopLossPct) {
     }
   }
 
+  // 6. 이익 구간 과매수 — 부분 익절(TRIM) 신호 (등급 TP, 위험점수 미가산)
+  const extPct = ma50 != null ? (price / ma50 - 1) * 100 : 0;
+  let nTP = 0;
+  if (pnl != null && pnl > 0) {
+    if (rsi14 >= 70) {
+      const strong = rsi14 >= 80;
+      signals.push(["TP", "TP_RSI", `RSI ${Math.round(rsi14)} 과매수${strong ? "(강)" : ""}${nearHigh ? " · 고점권" : ""}`]);
+      nTP += strong ? 2 : 1;
+    }
+    if (extPct >= 20) {
+      signals.push(["TP", "TP_EXT", `50일선 대비 +${R1(extPct)}% 과이격 — 평균 회귀 위험`]);
+      nTP++;
+    }
+    if (runup10 >= 20) {
+      signals.push(["TP", "TP_RUNUP", `10거래일 +${R1(runup10)}% 단기 급등 — 이익 실현 압력`]);
+      nTP++;
+    }
+  }
+
   // 시장 국면 반영 (기준 2)
   let nCrit = signals.filter(s => s[0] === "CRIT").length;
   const nWarn = signals.filter(s => s[0] === "WARN").length;
@@ -767,7 +786,7 @@ function slAnalyzeStock(rows, holding, marketOverall, trailPct, stopLossPct) {
     signals.push(["INFO", "MARKET_CAUTION", "시장 주의 국면 — 경고 신호 주시"]);
   }
 
-  const verdict = nCrit >= 1 ? "SELL" : nWarn >= 1 ? "WATCH" : "HOLD";
+  const verdict = nCrit >= 1 ? "SELL" : nWarn >= 1 ? "WATCH" : nTP >= 1 ? "TRIM" : "HOLD";
   return {
     code: holding.code,
     name: holding.name || holding.code,
@@ -781,6 +800,7 @@ function slAnalyzeStock(rows, holding, marketOverall, trailPct, stopLossPct) {
     drawdown_from_peak: R1(drawdown),
     pnl_pct: pnl != null ? R1(pnl) : null,
     verdict, score,
+    trim_level: nTP,
     signals: signals.map(([grade, code2, msg]) => ({ grade, code: code2, msg })),
   };
 }
@@ -813,8 +833,9 @@ async function slScanList(env, holdings, market, trailPct) {
       return slAnalyzeStock(rows, h, market.overall, trailPct, stopLossPct);
     } catch (e) { return { code: h.code, name: h.name, error: String(e).slice(0, 60) }; }
   }));
-  const ORD = { SELL: 0, WATCH: 1, HOLD: 2 };
-  settled.sort((a, b) => ((ORD[a.verdict] ?? 3) - (ORD[b.verdict] ?? 3)) || ((b.score ?? -1) - (a.score ?? -1)));
+  const ORD = { SELL: 0, WATCH: 1, TRIM: 2, HOLD: 3 };
+  settled.sort((a, b) => ((ORD[a.verdict] ?? 4) - (ORD[b.verdict] ?? 4)) ||
+    ((b.score ?? -1) - (a.score ?? -1)) || ((b.trim_level ?? 0) - (a.trim_level ?? 0)));
   return settled;
 }
 
@@ -832,7 +853,7 @@ async function slTelegram(env, text) {
   return res.ok;
 }
 
-const SL_VLABEL = { SELL: "즉시 손절 후보", WATCH: "경고(감시)", HOLD: "유지" };
+const SL_VLABEL = { SELL: "즉시 손절 후보", WATCH: "경고(감시)", TRIM: "부분 익절 후보", HOLD: "유지" };
 
 // ── 자동 점검(크론·수동 refresh 공용): 상위 N 스캔 → KV 저장 → 신규 신호 알림 ──
 async function slRefresh(env, { notify = false, topN = SL.AUTO_TOP_N, trailPct = SL.TRAIL_PCT, session = "close" } = {}) {
@@ -907,6 +928,7 @@ async function handleStopLoss(req, url, env) {
         ok: true, updated: data.updated, market: data.market.overall,
         sell: data.results.filter(r => r.verdict === "SELL").length,
         watch: data.results.filter(r => r.verdict === "WATCH").length,
+        trim: data.results.filter(r => r.verdict === "TRIM").length,
         escalated,
       }), { headers: JSON_HEADERS });
     }
