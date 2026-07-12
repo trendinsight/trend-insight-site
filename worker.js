@@ -519,6 +519,227 @@ async function handleCockpit(req, url, ctx) {
 }
 
 
+/* ═══════════════ Entry Timer (/api/entry/*) ═══════════════
+   진입 타이밍 판정: 트렌드 템플릿(미너비니) → VCP → 다바스 박스 → 등급.
+   사이징(터틀 ATR)은 자본이 필요하므로 클라이언트(entry.html)에서 계산 —
+   API는 atr20을 내려준다. 로직은 entry-timer 스킬(파이썬)과 동일 기준. */
+
+const ET_BASE_WINDOW = 65;          // VCP·박스 탐색 구간 (거래일)
+const ET_SWING_WIN = 5;             // 스윙 고점 판정 좌우 봉 수
+const ET_MAX_FINAL_CONTRACTION = 10.0;
+const ET_VOL_DRYUP_RATIO = 0.65;
+const ET_BREAKOUT_VOL_RATIO = 1.5;
+const ET_CHASE_PCT = 5.0;           // 피벗 초과 추격 허용 %
+const ET_NEAR_PIVOT_PCT = 12.0;     // SETUP 인정: 피벗 아래 근접 %
+const ET_DARVAS_CONFIRM = 3;
+const ET_ATR_PERIOD = 20;
+
+function etSMAat(vals, n, i) {
+  if (i + 1 < n || i >= vals.length || i < 0) return null;
+  let s = 0;
+  for (let k = i - n + 1; k <= i; k++) s += vals[k];
+  return s / n;
+}
+
+function etATR20(rows) {
+  const trs = [];
+  for (let i = 1; i < rows.length; i++) {
+    trs.push(Math.max(
+      rows[i].high - rows[i].low,
+      Math.abs(rows[i].high - rows[i - 1].close),
+      Math.abs(rows[i].low - rows[i - 1].close),
+    ));
+  }
+  if (trs.length < ET_ATR_PERIOD) return null;
+  const w = trs.slice(-ET_ATR_PERIOD);
+  return w.reduce((a, b) => a + b, 0) / w.length;
+}
+
+function etTrendTemplate(rows) {
+  const closes = rows.map(r => r.close);
+  const i = closes.length - 1;
+  const c = closes[i];
+  const ma50 = etSMAat(closes, 50, i), ma150 = etSMAat(closes, 150, i), ma200 = etSMAat(closes, 200, i);
+  const ma200p = etSMAat(closes, 200, i - 21);
+  const t = rows.slice(-252);
+  const hi52 = Math.max(...t.map(r => r.high)), lo52 = Math.min(...t.map(r => r.low));
+  const checks = {
+    "종가>MA150·MA200": ma150 != null && ma200 != null && c > ma150 && c > ma200,
+    "MA150>MA200": ma150 != null && ma200 != null && ma150 > ma200,
+    "MA200 상승중(1개월)": ma200 != null && ma200p != null && ma200 > ma200p,
+    "MA50>MA150>MA200": ma50 != null && ma150 != null && ma200 != null && ma50 > ma150 && ma150 > ma200,
+    "종가>MA50": ma50 != null && c > ma50,
+    "52주 저가 대비 +30%↑": c >= lo52 * 1.30,
+    "52주 고가 -25% 이내": c >= hi52 * 0.75,
+  };
+  const passed = Object.values(checks).filter(Boolean).length;
+  return { checks, passed, total: 7, ok: passed >= 6,
+           ma50: ma50 && Math.round(ma50), ma150: ma150 && Math.round(ma150), ma200: ma200 && Math.round(ma200) };
+}
+
+function etSwingHighs(rows, win = ET_SWING_WIN) {
+  const out = [];
+  const h = rows.map(r => r.high);
+  for (let i = win; i < rows.length - win; i++) {
+    let isMax = true;
+    for (let k = i - win; k <= i + win; k++) if (h[k] > h[i]) { isMax = false; break; }
+    if (isMax) out.push([i, h[i]]);
+  }
+  return out;
+}
+
+function etDetectVCP(rows) {
+  const base = rows.slice(-ET_BASE_WINDOW);
+  const highs = etSwingHighs(base);
+  if (!highs.length) return { found: false, reason: "베이스 내 스윙 고점 없음" };
+
+  const contractions = [];
+  for (let k = 0; k < highs.length; k++) {
+    const [hiIdx, hiVal] = highs[k];
+    const endIdx = k + 1 < highs.length ? highs[k + 1][0] : base.length;
+    if (endIdx - hiIdx < 2) continue;
+    let lowVal = Infinity;
+    for (let j = hiIdx; j < endIdx; j++) lowVal = Math.min(lowVal, base[j].low);
+    const depth = (hiVal - lowVal) / hiVal * 100;
+    if (depth >= 1.0) contractions.push({ high: hiVal, low: lowVal, depth: Math.round(depth * 10) / 10 });
+  }
+  if (contractions.length < 2)
+    return { found: false, reason: `수축 ${contractions.length}회 (최소 2회 필요)` };
+
+  const depths = contractions.map(c => c.depth);
+  let tightening = true;
+  for (let i = 0; i < depths.length - 1; i++) if (depths[i + 1] > depths[i] * 1.1) { tightening = false; break; }
+  const finalOk = depths[depths.length - 1] <= ET_MAX_FINAL_CONTRACTION;
+
+  const vols = rows.map(r => r.volume);
+  const vol50 = etSMAat(vols, 50, vols.length - 1);
+  const vol5 = etSMAat(vols, 5, vols.length - 1);
+  const dryup = vol50 != null && vol5 != null && vol5 < vol50 * ET_VOL_DRYUP_RATIO;
+
+  const found = tightening && finalOk;
+  return {
+    found, n_contractions: contractions.length, depths,
+    tightening, final_contraction_ok: finalOk, volume_dryup: !!dryup,
+    pivot: contractions[contractions.length - 1].high,
+    reason: found ? null : (!tightening ? "수축폭이 줄어들지 않음"
+            : `마지막 수축 ${depths[depths.length - 1]}% > ${ET_MAX_FINAL_CONTRACTION}%`),
+  };
+}
+
+function etDetectDarvas(rows) {
+  const h = rows.map(r => r.high), l = rows.map(r => r.low);
+  const n = rows.length;
+  let topIdx = null;
+  const stop = Math.max(n - ET_BASE_WINDOW, 0);
+  for (let i = n - ET_DARVAS_CONFIRM - 1; i > stop; i--) {
+    let winMax = -Infinity;
+    for (let k = i; k < Math.min(i + ET_DARVAS_CONFIRM + 1, n); k++) winMax = Math.max(winMax, h[k]);
+    let prevMax = -Infinity;
+    for (let k = Math.max(0, i - 10); k <= i; k++) prevMax = Math.max(prevMax, h[k]);
+    if (h[i] === winMax && h[i] >= prevMax) { topIdx = i; break; }
+  }
+  if (topIdx == null) return { found: false, reason: "확정된 박스 상단 없음" };
+  const top = h[topIdx];
+
+  const segL = l.slice(topIdx);
+  let bottom = null, confirmedBottom = false;
+  for (let j = 1; j <= segL.length - ET_DARVAS_CONFIRM; j++) {
+    let cand = Infinity;
+    for (let k = j; k < j + ET_DARVAS_CONFIRM; k++) cand = Math.min(cand, segL[k]);
+    if (segL[j] === cand) {
+      let ok = true;
+      for (let k = 1; k < ET_DARVAS_CONFIRM; k++) if (segL[j + k] < cand) { ok = false; break; }
+      if (ok) { bottom = cand; confirmedBottom = true; break; }
+    }
+  }
+  if (bottom == null) bottom = Math.min(...segL);
+
+  return { found: true, top, bottom,
+           height_pct: Math.round((top - bottom) / top * 1000) / 10,
+           bottom_confirmed: confirmedBottom, days_in_box: n - topIdx };
+}
+
+function etVerdict(rows) {
+  const last = rows[rows.length - 1];
+  const close = last.close;
+  const tt = etTrendTemplate(rows);
+  const vcp = etDetectVCP(rows);
+  const box = etDetectDarvas(rows);
+
+  let pivot = null, pattern = null;
+  if (vcp.found) { pivot = vcp.pivot; pattern = "VCP"; }
+  else if (box.found) { pivot = box.top; pattern = "DARVAS"; }
+
+  const notes = [];
+  const vols = rows.map(r => r.volume);
+  const vol50 = etSMAat(vols, 50, vols.length - 1);
+  const breakoutVol = vol50 != null && last.volume >= vol50 * ET_BREAKOUT_VOL_RATIO;
+
+  if (!tt.ok) notes.push(`트렌드 템플릿 ${tt.passed}/${tt.total} — 추세 조건 미달`);
+
+  if (pattern === "DARVAS" && close < box.bottom) {
+    notes.push(`박스 하단(${Math.round(box.bottom).toLocaleString()}) 이탈 — 박스 무효, 재구축 대기`);
+    pivot = null; pattern = null;
+  }
+
+  let verdict = "NO_SETUP";
+  let extPct = null, distPct = null;
+  if (pivot != null) {
+    extPct = (close - pivot) / pivot * 100;
+    distPct = (pivot - close) / close * 100;
+    if (close > pivot) {
+      if (extPct <= ET_CHASE_PCT && tt.ok) {
+        verdict = breakoutVol ? "BUY_POINT" : "BUY_POINT_LOWVOL";
+        if (!breakoutVol) notes.push("돌파했으나 거래량 미충족(50일 평균 1.5배 미만) — 신뢰도 낮음");
+      } else {
+        verdict = "EXTENDED";
+        notes.push(`피벗 +${extPct.toFixed(1)}% — 추격 금지, 다음 베이스 대기`);
+      }
+    } else if (distPct <= ET_NEAR_PIVOT_PCT && tt.ok) {
+      verdict = "SETUP";
+    } else {
+      verdict = "NO_SETUP";
+      if (tt.ok) notes.push(`피벗까지 +${distPct.toFixed(1)}% — 베이스 하단, 셋업 미성숙`);
+    }
+  }
+
+  return {
+    date: last.date, close, verdict, pattern,
+    pivot: pivot != null ? Math.round(pivot) : null,
+    dist_to_pivot_pct: pivot != null ? Math.round(distPct * 10) / 10 : null,
+    ext_pct: extPct != null ? Math.round(extPct * 10) / 10 : null,
+    breakout_volume_ok: !!breakoutVol,
+    atr20: etATR20(rows),
+    trend_template: tt, vcp, darvas: box, notes,
+  };
+}
+
+async function etAnalyze(code) {
+  const rows = await ckOHLCV(code, 320);
+  if (rows.length < 120) throw new Error(`가격 데이터 부족 (${rows.length}일)`);
+  let name = null;
+  try {
+    const items = await ckSearch(code);
+    const hit = items.find(x => x.code === code) || items[0];
+    if (hit) name = hit.name;
+  } catch (e) { /* 이름 조회 실패 허용 */ }
+  return { code, name, ...etVerdict(rows) };
+}
+
+async function handleEntry(req, url, ctx) {
+  const p = url.pathname.slice("/api/entry/".length);
+  try {
+    if (p.startsWith("analyze/")) {
+      const code = p.slice(8).replace(/[^0-9A-Za-z]/g, "");
+      if (!code) return new Response(JSON.stringify({ ok: false, error: "code 필요" }), { status: 400, headers: JSON_HEADERS });
+      return await ckCached(req, 180, async () => ({ ok: true, data: await etAnalyze(code) }));
+    }
+    return new Response(JSON.stringify({ ok: false, error: "unknown endpoint" }), { status: 404, headers: JSON_HEADERS });
+  } catch (e) {
+    return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 502, headers: JSON_HEADERS });
+  }
+}
+
 /* ═══════════════ Risk Manager API (리스크 계기판) ═══════════════ */
 
 async function rkSha256(s) {
@@ -1109,6 +1330,10 @@ export default {
 
     if (url.pathname.startsWith("/api/cockpit/")) {
       return handleCockpit(req, url, ctx);
+    }
+
+    if (url.pathname.startsWith("/api/entry/")) {
+      return handleEntry(req, url, ctx);
     }
 
     if (url.pathname === "/api/refresh-gauge") {
