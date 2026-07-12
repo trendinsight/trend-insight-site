@@ -1,0 +1,17 @@
+{
+  "name": "trend-insight-site",
+  "main": "worker.js",
+  "compatibility_date": "2026-01-01",
+  "assets": {
+    "directory": ".",
+    "binding": "ASSETS",
+    "run_worker_first": ["/data/market-gauge.json", "/api/*"]
+  },
+  "kv_namespaces": [
+    { "binding": "GAUGE_KV", "id": "7e25f0908b2f4a08b715b8736f859ec8" }
+  ],
+  "triggers": {
+    // 매주 월~금 04:00·07:00 UTC = 13:00·16:00 KST
+    "crons": ["0 4,7 * * 1-5"]
+  }
+}
