@@ -584,11 +584,347 @@ async function handleRisk(req, url, env) {
   }
 }
 
+
+/* ═══════════════ Stop-Loss Radar (/api/stoploss/*) ═══════════════
+   5가지 매도 기준(50일선 붕괴·시장 천장·분산일·클라이맥스 탑·트레일링 스탑)
+   + 리스크 규정 손절선(매입가 대비 -stop_loss_pct%)으로 보유종목을
+   SELL/WATCH/HOLD 판정. 크론이 상위 N종목을 자동 점검해 KV에 저장하고
+   신규 SELL/WATCH 신호를 텔레그램으로 알린다. */
+
+const SL = {
+  BARS: 280,               // 조회 봉 수 (MA50·52주 고가·분산일 계산용)
+  DIST_WINDOW: 25,         // 분산일 카운트 윈도우 (거래일)
+  DIST_STOCK_TH: 5,        // 종목 분산일 경고 임계
+  DIST_MKT_TH: 5,          // 지수 분산일 시장 천장 임계
+  DIST_MKT_CAUTION: 3,     // 지수 분산일 주의 임계
+  VOL_SPIKE: 1.5,          // 50일 평균 대비 대량 거래 배수
+  TRAIL_PCT: 15,           // 트레일링 스탑 기본 %
+  CLIMAX_RUNUP: 25,        // 클라이맥스: 10거래일 상승률 임계 %
+  RSI_OVERHEAT: 80,
+  AUTO_TOP_N: 40,          // 크론 자동 점검: 평가금액 상위 N
+  SCAN_LIMIT: 20,          // /scan 청크 최대 종목 수 (서브리퀘스트 한도 보호)
+};
+
+// fchart — 지수·종목 공용 일봉 (거래량 포함, 요청 1회)
+async function slBars(symbol, count = SL.BARS) {
+  const url = `https://fchart.stock.naver.com/sise.nhn?symbol=${symbol}&timeframe=day&count=${count}&requestType=0`;
+  const res = await fetch(url, { headers: { "user-agent": "Mozilla/5.0" } });
+  if (!res.ok) throw new Error(`fchart ${symbol}: HTTP ${res.status}`);
+  const txt = new TextDecoder("utf-8", { fatal: false }).decode(await res.arrayBuffer());
+  const rows = [];
+  const re = /data="([0-9|.\-]+)"/g;
+  let m;
+  while ((m = re.exec(txt))) {
+    const f = m[1].split("|");
+    if (f.length >= 6)
+      rows.push({ date: f[0], open: +f[1], high: +f[2], low: +f[3], close: +f[4], volume: +f[5] });
+  }
+  if (rows.length < 60) throw new Error(`fchart ${symbol}: rows=${rows.length}`);
+  rows.sort((a, b) => (a.date < b.date ? -1 : 1));
+  return rows;
+}
+
+// 최근 window 거래일 중 분산일(하락 -0.2% 이상 + 거래량 전일 대비 증가) 수
+function slDistributionDays(rows, window = SL.DIST_WINDOW) {
+  let cnt = 0;
+  const n = rows.length;
+  for (let i = Math.max(1, n - window); i < n; i++) {
+    const chg = (rows[i].close / rows[i - 1].close - 1) * 100;
+    if (chg <= -0.2 && rows[i].volume > rows[i - 1].volume) cnt++;
+  }
+  return cnt;
+}
+
+function slMA(vals, p, idx) {
+  if (idx == null) idx = vals.length - 1;
+  if (idx + 1 < p) return null;
+  let s = 0;
+  for (let i = idx - p + 1; i <= idx; i++) s += vals[i];
+  return s / p;
+}
+
+// ── 시장 판정 (기준 2: 시장 천장) ──
+async function slMarket() {
+  const out = {};
+  for (const mkt of ["KOSPI", "KOSDAQ"]) {
+    try {
+      const rows = await slBars(mkt);
+      const closes = rows.map(r => r.close);
+      const ma50 = slMA(closes, 50);
+      const dist = slDistributionDays(rows);
+      const below = closes[closes.length - 1] < ma50;
+      const status = dist >= SL.DIST_MKT_TH || below ? "천장/조정 신호"
+        : dist >= SL.DIST_MKT_CAUTION ? "주의" : "정상";
+      out[mkt] = {
+        date: rows[rows.length - 1].date,
+        close: R2(closes[closes.length - 1]),
+        ma50: R2(ma50),
+        below_ma50: below,
+        distribution_days: dist,
+        status,
+      };
+    } catch (e) { out[mkt] = { status: "조회 실패", error: String(e).slice(0, 60) }; }
+  }
+  const st = [out.KOSPI?.status || "", out.KOSDAQ?.status || ""];
+  out.overall = st.some(s => s.includes("천장")) ? "RISK_OFF"
+    : st.some(s => s === "주의") ? "CAUTION" : "NORMAL";
+  return out;
+}
+
+// ── 종목 판정 (기준 1·3·4·5 + 규정 손절선) ──
+function slAnalyzeStock(rows, holding, marketOverall, trailPct, stopLossPct) {
+  const n = rows.length;
+  const closes = rows.map(r => r.close);
+  const vols = rows.map(r => r.volume);
+  const last = rows[n - 1], prev = rows[n - 2] || last;
+  const price = last.close;
+  const signals = [];
+  let score = 0;
+  const won = v => Math.round(v).toLocaleString("ko-KR");
+
+  // 1. 50일선 붕괴
+  const ma50 = slMA(closes, 50);
+  const vol50 = slMA(vols, 50);
+  if (ma50 != null) {
+    const below = price < ma50;
+    const volSpike = vol50 != null && last.volume >= vol50 * SL.VOL_SPIKE;
+    let daysBelow = 0;
+    for (let i = 1; i <= Math.min(n - 50, 15); i++) {
+      const m = slMA(closes, 50, n - i);
+      if (m != null && closes[n - i] < m) daysBelow++; else break;
+    }
+    if (below && (volSpike || daysBelow >= 2)) {
+      const tag = volSpike ? "대량 거래 동반" : `${daysBelow}일 연속`;
+      signals.push(["CRIT", "MA50_BREAK", `50일선 붕괴(${tag}) — 종가 ${won(price)} < MA50 ${won(ma50)}`]);
+      score += 40;
+    } else if (below) {
+      signals.push(["WARN", "MA50_BELOW", `50일선 이탈(첫날·거래량 미동반) — 종가 ${won(price)} < MA50 ${won(ma50)}`]);
+      score += 20;
+    }
+  }
+
+  // 3. 종목 분산일
+  const dist = slDistributionDays(rows);
+  if (dist >= SL.DIST_STOCK_TH) {
+    signals.push(["WARN", "DISTRIBUTION", `최근 ${SL.DIST_WINDOW}일 분산일 ${dist}회 — 기관 매도 흔적`]);
+    score += 15;
+  } else if (dist >= SL.DIST_STOCK_TH - 1) {
+    signals.push(["INFO", "DISTRIBUTION", `분산일 ${dist}회 — 임계 근접`]);
+    score += 5;
+  }
+
+  // 4. 클라이맥스 탑 / 과열
+  const tail250 = rows.slice(-250);
+  const high52 = Math.max(...tail250.map(r => r.high));
+  const nearHigh = price >= high52 * 0.9;
+  const runup10 = n > 11 ? (price / closes[n - 11] - 1) * 100 : 0;
+  const rsiArr = rsiSeries(closes);
+  const rsi14 = rsiArr[n - 1] != null ? rsiArr[n - 1] : 50;
+  const exhaustGap = last.open > prev.high && price < last.open && nearHigh;
+  if (nearHigh && runup10 >= SL.CLIMAX_RUNUP && rsi14 >= SL.RSI_OVERHEAT) {
+    signals.push(["CRIT", "CLIMAX", `클라이맥스 탑 의심 — 10일 +${R1(runup10)}%, RSI ${Math.round(rsi14)}, 고점권`]);
+    score += 30;
+  } else if (exhaustGap) {
+    signals.push(["WARN", "EXHAUST_GAP", "소진 갭 — 고점권 갭업 후 시가 아래 마감"]);
+    score += 15;
+  } else if (nearHigh && (runup10 >= SL.CLIMAX_RUNUP || rsi14 >= SL.RSI_OVERHEAT)) {
+    signals.push(["INFO", "OVERHEAT", `과열 주의 — 10일 +${R1(runup10)}%, RSI ${Math.round(rsi14)}`]);
+    score += 5;
+  }
+
+  // 5. 트레일링 스탑 (52주 최고 종가 기준)
+  const peak = Math.max(...tail250.map(r => r.close));
+  const drawdown = (1 - price / peak) * 100;
+  if (drawdown >= trailPct) {
+    signals.push(["CRIT", "TRAIL_STOP", `트레일링 스탑 — 고점 ${won(peak)} 대비 -${R1(drawdown)}% (임계 ${trailPct}%)`]);
+    score += 35;
+  } else if (drawdown >= trailPct * 0.8) {
+    signals.push(["WARN", "TRAIL_NEAR", `트레일링 근접 — 고점 대비 -${R1(drawdown)}%`]);
+    score += 15;
+  }
+
+  // 규정 손절선 (리스크 규정 §2.1: 매입가 대비 -stop_loss_pct%)
+  const buyPrice = holding.buy_price || null;
+  let pnl = null;
+  if (buyPrice) {
+    pnl = (price / buyPrice - 1) * 100;
+    if (stopLossPct && pnl <= -stopLossPct) {
+      signals.push(["CRIT", "STOP_PRICE", `규정 손절선 이탈 — 매입가 ${won(buyPrice)} 대비 ${R1(pnl)}% (규정 -${stopLossPct}%)`]);
+      score += 40;
+    }
+  }
+
+  // 시장 국면 반영 (기준 2)
+  let nCrit = signals.filter(s => s[0] === "CRIT").length;
+  const nWarn = signals.filter(s => s[0] === "WARN").length;
+  if (marketOverall === "RISK_OFF") {
+    score = Math.round(score * 1.25);
+    if (nCrit === 0 && nWarn >= 2) {
+      signals.push(["CRIT", "MARKET_TOP", "시장 천장 국면 — 복수 경고 신호로 손절 후보 승격"]);
+      nCrit++;
+    }
+  } else if (marketOverall === "CAUTION" && nWarn >= 1) {
+    signals.push(["INFO", "MARKET_CAUTION", "시장 주의 국면 — 경고 신호 주시"]);
+  }
+
+  const verdict = nCrit >= 1 ? "SELL" : nWarn >= 1 ? "WATCH" : "HOLD";
+  return {
+    code: holding.code,
+    name: holding.name || holding.code,
+    weight: holding.weight != null ? R2(holding.weight * 100) : null,
+    date: last.date,
+    price,
+    ma50: ma50 != null ? Math.round(ma50) : null,
+    pct_vs_ma50: ma50 != null ? R1((price / ma50 - 1) * 100) : null,
+    rsi14: R1(rsi14),
+    distribution_days: dist,
+    drawdown_from_peak: R1(drawdown),
+    pnl_pct: pnl != null ? R1(pnl) : null,
+    verdict, score,
+    signals: signals.map(([grade, code2, msg]) => ({ grade, code: code2, msg })),
+  };
+}
+
+async function slHoldings(env, offset = 0, limit = SL.AUTO_TOP_N) {
+  const q = await env.RISK_DB.prepare(
+    "SELECT code,name,qty,buy_amount,eval_amount,weight FROM holdings ORDER BY eval_amount DESC LIMIT ? OFFSET ?"
+  ).bind(limit, offset).all();
+  return q.results.map(h => ({
+    code: String(h.code).padStart(6, "0"),
+    name: h.name,
+    weight: h.weight,
+    buy_price: h.qty > 0 && h.buy_amount > 0 ? h.buy_amount / h.qty : null,
+  }));
+}
+
+async function slStopLossPct(env) {
+  try {
+    const r = await env.RISK_DB.prepare("SELECT value FROM rules WHERE key='stop_loss_pct'").first();
+    return r ? Number(r.value) : null;
+  } catch (e) { return null; }
+}
+
+async function slScanList(env, holdings, market, trailPct) {
+  const stopLossPct = await slStopLossPct(env);
+  const settled = await Promise.all(holdings.map(async h => {
+    try {
+      const rows = await slBars(h.code);
+      if (rows.length < 60) return { code: h.code, name: h.name, error: "60봉 미만(상장초기)" };
+      return slAnalyzeStock(rows, h, market.overall, trailPct, stopLossPct);
+    } catch (e) { return { code: h.code, name: h.name, error: String(e).slice(0, 60) }; }
+  }));
+  const ORD = { SELL: 0, WATCH: 1, HOLD: 2 };
+  settled.sort((a, b) => ((ORD[a.verdict] ?? 3) - (ORD[b.verdict] ?? 3)) || ((b.score ?? -1) - (a.score ?? -1)));
+  return settled;
+}
+
+// ── 텔레그램 알림 ──
+async function slTelegram(env, text) {
+  const rows = await env.RISK_DB.prepare("SELECT key,value FROM secrets WHERE key IN ('telegram_bot_token','telegram_chat_id')").all();
+  const cfg = {};
+  for (const r of rows.results) cfg[r.key] = r.value;
+  if (!cfg.telegram_bot_token || !cfg.telegram_chat_id) return false;
+  const res = await fetch(`https://api.telegram.org/bot${cfg.telegram_bot_token}/sendMessage`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ chat_id: cfg.telegram_chat_id, text, parse_mode: "HTML", disable_web_page_preview: true }),
+  });
+  return res.ok;
+}
+
+const SL_VLABEL = { SELL: "즉시 손절 후보", WATCH: "경고(감시)", HOLD: "유지" };
+
+// ── 자동 점검(크론·수동 refresh 공용): 상위 N 스캔 → KV 저장 → 신규 신호 알림 ──
+async function slRefresh(env, { notify = false, topN = SL.AUTO_TOP_N, trailPct = SL.TRAIL_PCT, session = "close" } = {}) {
+  const market = await slMarket();
+  const holdings = await slHoldings(env, 0, topN);
+  const results = await slScanList(env, holdings, market, trailPct);
+
+  // 이전 결과와 비교해 신규/승격 신호 검출
+  let prevMap = {};
+  try {
+    const prev = JSON.parse((await env.GAUGE_KV.get("stoploss-result")) || "null");
+    if (prev && Array.isArray(prev.results))
+      for (const r of prev.results) if (r.verdict) prevMap[r.code] = r.verdict;
+  } catch (e) { /* 무시 */ }
+  const RANK = { HOLD: 0, WATCH: 1, SELL: 2 };
+  const escalated = results.filter(r =>
+    r.verdict && (r.verdict === "SELL" || r.verdict === "WATCH") &&
+    (RANK[r.verdict] > (RANK[prevMap[r.code]] ?? 0)));
+
+  const data = {
+    updated: kstNow(),
+    session,                         // "intraday"(13시) | "close"(16시) | "manual"
+    as_of: market.KOSPI?.date || null,
+    trail_pct: trailPct,
+    scope: { top_n: topN, total: (await env.RISK_DB.prepare("SELECT COUNT(*) n FROM holdings").first()).n },
+    market,
+    results,
+  };
+  await env.GAUGE_KV.put("stoploss-result", JSON.stringify(data));
+
+  if (notify && escalated.length) {
+    const mkLine = r => {
+      const sigs = r.signals.filter(s => s.grade !== "INFO").map(s => "· " + s.msg).join("\n");
+      const icon = r.verdict === "SELL" ? "🔴" : "🟡";
+      return `${icon} <b>${r.name}</b>(${r.code}) — ${SL_VLABEL[r.verdict]}` +
+        (r.pnl_pct != null ? ` (손익 ${r.pnl_pct > 0 ? "+" : ""}${r.pnl_pct}%)` : "") + "\n" + sigs;
+    };
+    const head = session === "intraday" ? "📡 손절 레이더 (장중 참고)" : "📡 손절 레이더 (종가 확정)";
+    const mktLine = `시장: ${market.overall === "RISK_OFF" ? "⚠️ 시장 천장/조정 신호" : market.overall === "CAUTION" ? "주의" : "정상"}`;
+    const text = [head, mktLine, "", ...escalated.slice(0, 10).map(mkLine),
+      escalated.length > 10 ? `…외 ${escalated.length - 10}종목` : "",
+      "", "https://trend-insight-site.sungsangkyung77.workers.dev/stoploss.html"].filter(Boolean).join("\n");
+    try { await slTelegram(env, text); } catch (e) { /* 알림 실패는 무시 */ }
+  }
+  return { data, escalated: escalated.length };
+}
+
+async function handleStopLoss(req, url, env) {
+  const p = url.pathname.slice("/api/stoploss/".length);
+  try {
+    if (p === "market") {
+      return new Response(JSON.stringify({ ok: true, data: await slMarket() }), { headers: JSON_HEADERS });
+    }
+    if (p === "scan") {
+      const offset = Math.max(0, parseInt(url.searchParams.get("offset") || "0", 10) || 0);
+      const limit = Math.min(parseInt(url.searchParams.get("limit") || "20", 10) || 20, SL.SCAN_LIMIT);
+      const trailPct = Math.min(Math.max(parseFloat(url.searchParams.get("trail") || SL.TRAIL_PCT) || SL.TRAIL_PCT, 5), 40);
+      const overall = ["NORMAL", "CAUTION", "RISK_OFF"].includes(url.searchParams.get("regime"))
+        ? url.searchParams.get("regime") : null;
+      const market = overall ? { overall } : await slMarket();
+      const total = (await env.RISK_DB.prepare("SELECT COUNT(*) n FROM holdings").first()).n;
+      const holdings = await slHoldings(env, offset, limit);
+      const results = await slScanList(env, holdings, market, trailPct);
+      return new Response(JSON.stringify({ ok: true, data: { total, offset, count: holdings.length, market, results } }), { headers: JSON_HEADERS });
+    }
+    if (p === "refresh") {
+      const topN = Math.min(parseInt(url.searchParams.get("n") || SL.AUTO_TOP_N, 10) || SL.AUTO_TOP_N, SL.AUTO_TOP_N);
+      const trailPct = Math.min(Math.max(parseFloat(url.searchParams.get("trail") || SL.TRAIL_PCT) || SL.TRAIL_PCT, 5), 40);
+      const notify = url.searchParams.get("notify") === "1";
+      const { data, escalated } = await slRefresh(env, { notify, topN, trailPct, session: "manual" });
+      return new Response(JSON.stringify({
+        ok: true, updated: data.updated, market: data.market.overall,
+        sell: data.results.filter(r => r.verdict === "SELL").length,
+        watch: data.results.filter(r => r.verdict === "WATCH").length,
+        escalated,
+      }), { headers: JSON_HEADERS });
+    }
+    return new Response(JSON.stringify({ ok: false, error: "unknown endpoint" }), { status: 404, headers: JSON_HEADERS });
+  } catch (e) {
+    return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 502, headers: JSON_HEADERS });
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════════ */
 
 export default {
   async scheduled(event, env, ctx) {
+    // UTC 4시 = 13:00 KST(장중 참고) / UTC 7시 = 16:00 KST(종가 확정)
+    const utcH = new Date().getUTCHours();
+    const session = utcH < 6 ? "intraday" : "close";
     ctx.waitUntil(updateGauge(env));
+    ctx.waitUntil(slRefresh(env, { notify: true, session }));
   },
 
   async fetch(req, env, ctx) {
@@ -596,6 +932,16 @@ export default {
 
     if (url.pathname.startsWith("/api/risk/")) {
       return handleRisk(req, url, env);
+    }
+
+    if (url.pathname.startsWith("/api/stoploss/")) {
+      return handleStopLoss(req, url, env);
+    }
+
+    if (url.pathname === "/data/stoploss.json") {
+      const v = await env.GAUGE_KV.get("stoploss-result");
+      return new Response(v || JSON.stringify({ ok: false, error: "아직 점검 결과가 없습니다. 새로 점검을 실행하세요." }),
+        { headers: JSON_HEADERS });
     }
 
     if (url.pathname.startsWith("/api/cockpit/")) {
