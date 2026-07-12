@@ -164,6 +164,14 @@ footer{margin-top:26px;font-size:10.5px;color:var(--tx3);text-align:center;paddi
     <div class="card" id="statsbox"></div>
     <div class="card"><h2 style="margin-top:0">4분면 <span class="sub">과정 × 결과</span></h2><div class="quads" id="quadstat"></div></div>
     <div id="closedlist"></div>
+    <div class="card">
+      <h2 style="margin-top:0">원장 <span class="sub">trades 테이블 전체 (진행 중 + 청산)</span></h2>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-sm ghost" id="ledger-toggle">원장 보기</button>
+        <button class="btn btn-sm ghost" id="ledger-csv">CSV 다운로드</button>
+      </div>
+      <div id="ledger" style="display:none;overflow-x:auto;margin-top:10px"></div>
+    </div>
   </section>
 
   <!-- ═══ 교훈 탭 ═══ -->
@@ -501,6 +509,32 @@ $("#l-add").onclick=async()=>{
 window.delLesson=async id=>{
   if(!confirm("이 교훈을 목록에서 내릴까요?"))return;
   try{await post("lesson",{deactivate:id});toast("정리 완료");await load();}catch(e){toast("실패: "+e.message);}
+};
+
+/* ── 원장 (trades 테이블 전체) ── */
+const LCOLS=[["id","ID"],["status","상태"],["name","종목"],["code","코드"],["entry_date","진입일"],["entry_price","진입가"],["qty","수량"],["stop_price","손절가"],["target_price","목표가"],["exit_date","청산일"],["exit_price","청산가"],["pnl_pct","손익%"],["r_multiple","R"],["quad","4분면"],["exit_reason","사유"],["thesis","논거"],["lesson","교훈"]];
+const ledgerRows=()=>[...ST.open,...ST.closed].sort((a,b)=>b.id-a.id);
+$("#ledger-toggle").onclick=()=>{
+  const el=$("#ledger");
+  if(el.style.display==="none"){
+    const rows=ledgerRows();
+    el.innerHTML=rows.length?`<table style="border-collapse:collapse;font-size:11.5px;white-space:nowrap">
+      <tr>${LCOLS.map(c=>`<th style="padding:5px 8px;border-bottom:1px solid var(--line);color:var(--tx3);text-align:left">${c[1]}</th>`).join("")}</tr>
+      ${rows.map(t=>`<tr>${LCOLS.map(([k])=>`<td style="padding:5px 8px;border-bottom:1px solid rgba(31,39,56,.55)">${esc(t[k]??"")}</td>`).join("")}</tr>`).join("")}
+    </table>`:'<div class="empty">기록이 없습니다</div>';
+    el.style.display="";$("#ledger-toggle").textContent="원장 닫기";
+  }else{el.style.display="none";$("#ledger-toggle").textContent="원장 보기";}
+};
+$("#ledger-csv").onclick=()=>{
+  const rows=ledgerRows();
+  if(!rows.length){toast("기록이 없습니다");return;}
+  const csv=[LCOLS.map(c=>c[1]).join(",")].concat(rows.map(t=>LCOLS.map(([k])=>{
+    let v=t[k]==null?"":String(t[k]);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;
+  }).join(","))).join("\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv"}));
+  a.download="trades_"+new Date().toISOString().slice(0,10)+".csv";a.click();
+  toast("CSV 다운로드 시작");
 };
 
 load();loadMarket();
