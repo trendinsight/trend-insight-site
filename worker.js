@@ -941,6 +941,140 @@ async function handleStopLoss(req, url, env) {
   }
 }
 
+/* ═══════════════ Trade Journal (/api/journal/*) ═══════════════
+   매매 저널: 폰에서 매수/매도 기록·복기·교훈 관리 (D1 trades·lessons 테이블).
+   쓰기는 Bearer 토큰(meta.journal_token_hash) 필요, 기록 시 텔레그램 알림. */
+
+const TJ_SITE = "https://trend-insight-site.sungsangkyung77.workers.dev/journal.html";
+const tjJson = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: JSON_HEADERS });
+const tjWon = v => (v == null ? "—" : Math.round(v).toLocaleString("ko-KR"));
+
+async function tjAuth(req, env) {
+  const auth = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!auth) return false;
+  const row = await env.RISK_DB.prepare("SELECT value FROM meta WHERE key='journal_token_hash'").first();
+  return !!row && (await rkSha256(auth)) === row.value;
+}
+
+// R배수 = (청산가 − 진입가) ÷ (진입가 − 손절가)
+function tjRMult(entry, stop, exitP) {
+  if (!entry || !stop || exitP == null) return null;
+  const risk = entry - stop;
+  if (risk <= 0) return null;
+  return R2((exitP - entry) / risk);
+}
+
+async function handleJournal(req, url, env, ctx) {
+  const p = url.pathname.slice("/api/journal/".length);
+  try {
+    if (p === "state" && req.method === "GET") {
+      const [rules, meta, open, closed, lessons] = await Promise.all([
+        env.RISK_DB.prepare("SELECT key,value,label FROM rules").all(),
+        env.RISK_DB.prepare("SELECT key,value FROM meta WHERE key NOT LIKE '%token%'").all(),
+        env.RISK_DB.prepare("SELECT * FROM trades WHERE status='OPEN' ORDER BY entry_date DESC, id DESC").all(),
+        env.RISK_DB.prepare("SELECT * FROM trades WHERE status='CLOSED' ORDER BY exit_date DESC, id DESC LIMIT 200").all(),
+        env.RISK_DB.prepare("SELECT * FROM lessons WHERE active=1 ORDER BY id DESC LIMIT 100").all(),
+      ]);
+      const r = {}; for (const x of rules.results) r[x.key] = x.value;
+      const m = {}; for (const x of meta.results) m[x.key] = x.value;
+      return tjJson({ ok: true, data: { rules: r, meta: m, open: open.results, closed: closed.results, lessons: lessons.results } });
+    }
+
+    if (req.method !== "POST") return tjJson({ ok: false, error: "unknown endpoint" }, 404);
+    if (!(await tjAuth(req, env))) return tjJson({ ok: false, error: "unauthorized" }, 401);
+    const body = await req.json();
+    const now = kstNow();
+    const today = now.slice(0, 10);
+
+    // ── 매수 기록 ──
+    if (p === "entry") {
+      if (!body.code || !body.entry_price) return tjJson({ ok: false, error: "code/entry_price 필수" }, 400);
+      const ep = +body.entry_price;
+      const res = await env.RISK_DB.prepare(
+        "INSERT INTO trades(code,name,status,entry_date,entry_price,qty,stop_price,target_price,thesis,checklist,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)")
+        .bind(String(body.code), body.name ?? null, "OPEN", body.entry_date || today, ep,
+          body.qty ? +body.qty : null, body.stop_price ? +body.stop_price : null,
+          body.target_price ? +body.target_price : null, body.thesis ?? null,
+          body.checklist ? JSON.stringify(body.checklist) : null, now, now).run();
+      const stop = body.stop_price ? +body.stop_price : null;
+      const tgt = body.target_price ? +body.target_price : null;
+      const rr = stop && tgt && ep > stop ? R2((tgt - ep) / (ep - stop)) : null;
+      const text = [`📘 <b>매수 기록</b> — ${body.name || body.code}(${body.code})`,
+        `진입 ${tjWon(ep)}${body.qty ? ` × ${(+body.qty).toLocaleString("ko-KR")}주` : ""}`,
+        stop ? `손절 ${tjWon(stop)} (${R1((stop / ep - 1) * 100)}%)${tgt ? ` · 목표 ${tjWon(tgt)}` : ""}${rr ? ` · 손익비 ${rr}` : ""}` : "⚠️ 손절가 미설정 — 규정 위반",
+        body.thesis ? `논거: ${body.thesis}` : "⚠️ 논거 미작성",
+        TJ_SITE].join("\n");
+      ctx.waitUntil(slTelegram(env, text).catch(() => {}));
+      return tjJson({ ok: true, id: res.meta.last_row_id });
+    }
+
+    // ── 매도(청산) 기록 + 30초 복기 ──
+    if (p === "close") {
+      const tr = await env.RISK_DB.prepare("SELECT * FROM trades WHERE id=?").bind(+body.id).first();
+      if (!tr) return tjJson({ ok: false, error: "해당 매매 없음" }, 404);
+      if (!body.exit_price) return tjJson({ ok: false, error: "exit_price 필수" }, 400);
+      const exitP = +body.exit_price;
+      const pnl = tr.entry_price ? R2((exitP / tr.entry_price - 1) * 100) : null;
+      const rMult = tjRMult(tr.entry_price, tr.stop_price, exitP);
+      await env.RISK_DB.prepare(
+        "UPDATE trades SET status='CLOSED', exit_date=?, exit_price=?, exit_reason=?, pnl_pct=?, r_multiple=?, quad=?, proc_rule=?, proc_thesis=?, proc_plan=?, lesson=?, updated_at=? WHERE id=?")
+        .bind(body.exit_date || today, exitP, body.exit_reason ?? null, pnl, rMult,
+          body.quad ?? null, body.proc_rule ?? null, body.proc_thesis ?? null, body.proc_plan ?? null,
+          body.lesson ?? null, now, tr.id).run();
+      if (body.lesson)
+        await env.RISK_DB.prepare("INSERT INTO lessons(date,text,source,active) VALUES(?,?,?,1)")
+          .bind(today, body.lesson, `${tr.name || tr.code}(${tr.code})`).run();
+      const QUAD = { GG: "좋은 과정·좋은 결과 — 반복하라", GB: "좋은 과정·나쁜 결과 — 과정 유지", BG: "나쁜 과정·좋은 결과 — ⚠️ 가장 위험", BB: "나쁜 과정·나쁜 결과 — 교정" };
+      const icon = pnl != null && pnl >= 0 ? "🔴" : "🔵";
+      const text = [`📕 <b>매도 기록</b> — ${tr.name || tr.code}(${tr.code})`,
+        `청산 ${tjWon(exitP)} · 손익 ${pnl != null ? (pnl > 0 ? "+" : "") + pnl + "%" : "—"}${rMult != null ? ` (${rMult > 0 ? "+" : ""}${rMult}R)` : ""} ${icon}`,
+        body.exit_reason ? `사유: ${body.exit_reason}` : "",
+        body.quad && QUAD[body.quad] ? `복기: ${QUAD[body.quad]}` : "복기 미완 — 저널에서 복기하세요",
+        body.lesson ? `교훈: ${body.lesson}` : "",
+        TJ_SITE].filter(Boolean).join("\n");
+      ctx.waitUntil(slTelegram(env, text).catch(() => {}));
+      return tjJson({ ok: true, pnl_pct: pnl, r_multiple: rMult });
+    }
+
+    // ── 사후 복기 (청산 후 4분면·교훈 보완) / 손절·목표 수정 ──
+    if (p === "review") {
+      const tr = await env.RISK_DB.prepare("SELECT * FROM trades WHERE id=?").bind(+body.id).first();
+      if (!tr) return tjJson({ ok: false, error: "해당 매매 없음" }, 404);
+      await env.RISK_DB.prepare(
+        "UPDATE trades SET quad=COALESCE(?,quad), proc_rule=COALESCE(?,proc_rule), proc_thesis=COALESCE(?,proc_thesis), proc_plan=COALESCE(?,proc_plan), lesson=COALESCE(?,lesson), stop_price=COALESCE(?,stop_price), target_price=COALESCE(?,target_price), thesis=COALESCE(?,thesis), updated_at=? WHERE id=?")
+        .bind(body.quad ?? null, body.proc_rule ?? null, body.proc_thesis ?? null, body.proc_plan ?? null,
+          body.lesson ?? null, body.stop_price ? +body.stop_price : null, body.target_price ? +body.target_price : null,
+          body.thesis ?? null, now, tr.id).run();
+      if (body.lesson)
+        await env.RISK_DB.prepare("INSERT INTO lessons(date,text,source,active) VALUES(?,?,?,1)")
+          .bind(today, body.lesson, `${tr.name || tr.code}(${tr.code})`).run();
+      return tjJson({ ok: true });
+    }
+
+    // ── 교훈 추가/비활성 ──
+    if (p === "lesson") {
+      if (body.deactivate) {
+        await env.RISK_DB.prepare("UPDATE lessons SET active=0 WHERE id=?").bind(+body.deactivate).run();
+        return tjJson({ ok: true });
+      }
+      if (!body.text) return tjJson({ ok: false, error: "text 필수" }, 400);
+      const res = await env.RISK_DB.prepare("INSERT INTO lessons(date,text,source,active) VALUES(?,?,?,1)")
+        .bind(today, body.text, body.source ?? "직접 입력").run();
+      return tjJson({ ok: true, id: res.meta.last_row_id });
+    }
+
+    // ── 기록 삭제 (오입력 정정) ──
+    if (p === "delete") {
+      await env.RISK_DB.prepare("DELETE FROM trades WHERE id=?").bind(+body.id).run();
+      return tjJson({ ok: true });
+    }
+
+    return tjJson({ ok: false, error: "unknown endpoint" }, 404);
+  } catch (e) {
+    return tjJson({ ok: false, error: String(e) }, 500);
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════════ */
 
 export default {
@@ -961,6 +1095,10 @@ export default {
 
     if (url.pathname.startsWith("/api/stoploss/")) {
       return handleStopLoss(req, url, env);
+    }
+
+    if (url.pathname.startsWith("/api/journal/")) {
+      return handleJournal(req, url, env, ctx);
     }
 
     if (url.pathname === "/data/stoploss.json") {
