@@ -518,6 +518,72 @@ async function handleCockpit(req, url, ctx) {
   }
 }
 
+
+/* ═══════════════ Risk Manager API (리스크 계기판) ═══════════════ */
+
+async function rkSha256(s) {
+  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function rkState(env) {
+  const [rules, meta, holdings] = await Promise.all([
+    env.RISK_DB.prepare("SELECT key,value,label,updated_at FROM rules").all(),
+    env.RISK_DB.prepare("SELECT key,value FROM meta WHERE key!='sync_token_hash'").all(),
+    env.RISK_DB.prepare("SELECT code,name,accounts,qty,buy_amount,eval_amount,pl,ret,weight,updated_at FROM holdings ORDER BY eval_amount DESC").all(),
+  ]);
+  const r = {}; for (const x of rules.results) r[x.key] = { value: x.value, label: x.label, updated_at: x.updated_at };
+  const m = {}; for (const x of meta.results) m[x.key] = x.value;
+  return { rules: r, meta: m, holdings: holdings.results, count: holdings.results.length };
+}
+
+async function handleRisk(req, url, env) {
+  try {
+    const p = url.pathname.slice("/api/risk/".length);
+    if (p === "state" && req.method === "GET") {
+      return new Response(JSON.stringify({ ok: true, data: await rkState(env) }), { headers: JSON_HEADERS });
+    }
+    if (p === "quotes" && req.method === "GET") {
+      const codes = (url.searchParams.get("codes") || "").split(",")
+        .map((c) => c.replace(/[^0-9A-Za-z]/g, "")).filter(Boolean).slice(0, 40);
+      const out = {};
+      await Promise.all(codes.map(async (c) => {
+        try { const q = await ckQuote(c); out[c] = { price: q.price, change_rate: q.change_rate, name: q.name }; }
+        catch (e) { out[c] = null; }
+      }));
+      return new Response(JSON.stringify({ ok: true, data: out }), { headers: JSON_HEADERS });
+    }
+    if (p === "sync" && req.method === "POST") {
+      const auth = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+      const row = await env.RISK_DB.prepare("SELECT value FROM meta WHERE key='sync_token_hash'").first();
+      if (!row || !auth || (await rkSha256(auth)) !== row.value)
+        return new Response(JSON.stringify({ ok: false, error: "unauthorized" }), { status: 401, headers: JSON_HEADERS });
+      const body = await req.json();
+      const now = new Date(Date.now() + 9 * 36e5).toISOString().slice(0, 10);
+      const stmts = [];
+      if (Array.isArray(body.holdings)) {
+        stmts.push(env.RISK_DB.prepare("DELETE FROM holdings"));
+        for (const h of body.holdings)
+          stmts.push(env.RISK_DB.prepare("INSERT INTO holdings VALUES(?,?,?,?,?,?,?,?,?,?)")
+            .bind(String(h.code), h.name ?? null, h.accounts ?? null, h.qty ?? null, h.buy_amount ?? null,
+                  h.eval_amount ?? null, h.pl ?? null, h.ret ?? null, h.weight ?? null, now));
+      }
+      if (body.meta && typeof body.meta === "object")
+        for (const [k, v] of Object.entries(body.meta))
+          if (k !== "sync_token_hash")
+            stmts.push(env.RISK_DB.prepare("INSERT OR REPLACE INTO meta VALUES(?,?,?)").bind(k, String(v), now));
+      if (body.rules && typeof body.rules === "object")
+        for (const [k, v] of Object.entries(body.rules))
+          stmts.push(env.RISK_DB.prepare("UPDATE rules SET value=?, updated_at=? WHERE key=?").bind(Number(v), now, k));
+      if (stmts.length) await env.RISK_DB.batch(stmts);
+      return new Response(JSON.stringify({ ok: true, holdings: Array.isArray(body.holdings) ? body.holdings.length : 0 }), { headers: JSON_HEADERS });
+    }
+    return new Response(JSON.stringify({ ok: false, error: "unknown endpoint" }), { status: 404, headers: JSON_HEADERS });
+  } catch (e) {
+    return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════════ */
 
 export default {
@@ -527,6 +593,10 @@ export default {
 
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
+
+    if (url.pathname.startsWith("/api/risk/")) {
+      return handleRisk(req, url, env);
+    }
 
     if (url.pathname.startsWith("/api/cockpit/")) {
       return handleCockpit(req, url, ctx);
