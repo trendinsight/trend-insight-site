@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>코인 온도계 | Trend Insight</title>
+<meta name="description" content="BTC·ETH·XRP 과열도 게이지 + VCP·다바스 진입 판정 — 업비트 KRW 일봉 기준">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--navy:#0b1f3f;--navy2:#13294b;--accent:#2e6ff2;--red:#b22f2f;--orange:#e8830c;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg:#f5f7fb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{text-decoration:none;color:inherit}
+header{background:var(--navy);padding:16px 24px}
+header a{color:#fff;font-weight:800}
+.wrap{max-width:1080px;margin:0 auto;padding:34px 20px 60px}
+h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:.92rem;margin:6px 0 4px}
+.asof{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 16px;font-size:.88rem;font-weight:700;color:var(--navy);margin:10px 8px 26px 0}
+.asof span{color:var(--orange)}
+.datebox{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:.88rem;font-weight:600;color:var(--navy);margin:10px 0 26px}
+.datebox input{font-family:inherit;font-size:.88rem;font-weight:700;color:var(--navy);border:none;outline:none;background:transparent}
+.datebox button{font-family:inherit;font-size:.8rem;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:999px;padding:4px 12px;cursor:pointer}
+.datebox button.ghost{background:#eef2f8;color:#39506e}
+#datemsg{font-size:.8rem;color:var(--red);margin:-14px 0 20px;display:none}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+@media(max-width:960px){.grid{grid-template-columns:1fr}}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px 22px;box-shadow:0 1px 3px rgba(11,31,63,.05)}
+.card h2{font-size:1.1rem;color:var(--navy);display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:4px}
+.px{font-size:.9rem;font-weight:600}
+.up{color:#c62828}.down{color:#1565c0}
+.gaugebox{text-align:center;margin:6px 0 4px}
+.score{font-size:2rem;font-weight:800;color:var(--navy);line-height:1}
+.score small{font-size:1rem;color:var(--muted);font-weight:600}
+.zone{display:inline-block;margin-top:6px;padding:4px 14px;border-radius:999px;font-size:.85rem;font-weight:700}
+.z-ob{background:#fdecea;color:#c62828}.z-nob{background:#fff3e0;color:#e65100}
+.z-n{background:#eef2f8;color:#39506e}.z-nos{background:#e3f2fd;color:#1565c0}.z-os{background:#e8f5e9;color:#2e7d32}
+.verdict{display:block;text-align:center;margin:12px 0 4px;padding:8px 10px;border-radius:10px;font-size:.9rem;font-weight:800}
+.v-buy{background:#e8f5e9;color:#2e7d32}.v-lowvol{background:#fff8e1;color:#b26a00}
+.v-setup{background:#e3f2fd;color:#1565c0}.v-ext{background:#fdecea;color:#c62828}
+.v-no{background:#eef2f8;color:#5b6779}
+table{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:12px}
+th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600;font-size:.78rem}
+.bar{height:6px;border-radius:3px;background:linear-gradient(90deg,#2e7d32,#eef2f8 40%,#eef2f8 60%,#c62828);position:relative;margin-top:4px}
+.bar i{position:absolute;top:-3px;width:12px;height:12px;border-radius:50%;background:var(--navy);border:2px solid #fff;box-shadow:0 0 3px rgba(0,0,0,.4);transform:translateX(-50%)}
+.chart-card{grid-column:1/-1}
+.legend{font-size:.8rem;color:var(--muted);margin-top:8px}
+.legend b{font-weight:700}
+.note{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin-top:22px;font-size:.85rem;color:var(--muted)}
+.note h3{font-size:.95rem;color:var(--navy);margin-bottom:6px}
+.disclaimer{margin-top:26px;font-size:.76rem;color:#9aa6b6;border-top:1px solid var(--line);padding-top:14px}
+#err{display:none;background:#fdecea;color:#c62828;padding:14px 18px;border-radius:10px;margin:20px 0}
+</style>
+</head>
+<body>
+<header><a href="index.html">← Trend Insight</a></header>
+<div class="wrap">
+  <h1>코인 온도계 <span style="font-size:.9rem;color:var(--orange)">CRYPTO THERMOMETER</span></h1>
+  <p class="sub">BTC·ETH·XRP(업비트 KRW 일봉)의 MACD 오실레이터 · RSI(14) · 스토캐스틱 슬로우 · 투자심리도(10일)를 종합한 과열도(0~100%)와, 미너비니 VCP·다바스 박스 기반 진입 판정을 표시합니다. 24/7 시장 특성상 당일 값은 갱신 시점 기준입니다.</p>
+  <div class="asof">기준일 <span id="asof">—</span> · 갱신 <span id="updated">—</span></div>
+  <div class="datebox">조회 날짜 <input type="date" id="datepick"><button id="datego">조회</button><button class="ghost" id="datelatest">최신</button></div>
+  <div id="datemsg"></div>
+  <div id="err">데이터를 불러오지 못했습니다. 잠시 후 새로고침 해주세요.</div>
+  <div class="grid" id="grid"></div>
+  <div class="note">
+    <h3>판독 기준</h3>
+    <b>온도</b> — 75% 이상 과매수(비중 축소 고려) · 60~75% 과열 근접 · 40~60% 중립 · 25~40% 과매도 근접 · 25% 이하 과매도. 4개 지표의 단순 평균이며 MACD 오실레이터는 최근 1년 분포 내 백분위로 환산.<br>
+    <b>진입 판정</b> — 🟢 매수 신호(피벗 돌파+거래량) · 🟡 돌파·거래량 부족 · 🔵 셋업 완료·피벗 대기 · 🔴 추격 금지(피벗 +5% 초과) · ⚪ 셋업 없음. 미너비니 트렌드 템플릿(7개 조건) 통과가 전제.<br>
+    <b>김치프리미엄</b> — 업비트 KRW가 바이낸스 USDT×환율 대비 비싼 정도. +5% 이상이면 국내 과열 신호.
+  </div>
+  <p class="disclaimer">본 자료는 규칙 기반 참고 자료이며 특정 자산의 매수·매도를 권유하지 않습니다. 암호화폐는 원금 전액 손실이 가능한 자산군이며, 투자의 최종 판단과 책임은 투자자 본인에게 있습니다.</p>
+</div>
+<script>
+const ZC={"과매수":"z-ob","과열 근접":"z-nob","중립":"z-n","과매도 근접":"z-nos","과매도":"z-os"};
+const VC={"BUY_POINT":["v-buy","🟢 매수 신호 — 돌파 유효"],"BUY_POINT_LOWVOL":["v-lowvol","🟡 돌파 — 거래량 부족"],"SETUP":["v-setup","🔵 셋업 완료 — 피벗 대기"],"EXTENDED":["v-ext","🔴 추격 금지 — 피벗 +5% 초과"],"NO_SETUP":["v-no","⚪ 셋업 없음"]};
+const COINS=["BTC","ETH","XRP"];
+const fd=s=>s.slice(0,4)+"."+s.slice(4,6)+"."+s.slice(6,8);
+const iso=s=>s.slice(0,4)+"-"+s.slice(4,6)+"-"+s.slice(6,8);
+
+function gaugeSVG(score){
+  const a=Math.PI*(1-score/100), r=80, cx=100, cy=95;
+  const x=cx+r*Math.cos(a), y=cy-r*Math.sin(a);
+  const arc=(from,to,color)=>{const a1=Math.PI*(1-from/100),a2=Math.PI*(1-to/100);
+    return `<path d="M ${cx+r*Math.cos(a1)} ${cy-r*Math.sin(a1)} A ${r} ${r} 0 0 1 ${cx+r*Math.cos(a2)} ${cy-r*Math.sin(a2)}" stroke="${color}" stroke-width="14" fill="none" stroke-linecap="butt"/>`};
+  return `<svg viewBox="0 0 200 108" style="width:190px;max-width:100%">
+    ${arc(0,25,"#66bb6a")}${arc(25,40,"#90caf9")}${arc(40,60,"#cfd8e3")}${arc(60,75,"#ffb74d")}${arc(75,100,"#e57373")}
+    <line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#0b1f3f" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="${cx}" cy="${cy}" r="5" fill="#0b1f3f"/>
+    <text x="12" y="106" font-size="9" fill="#9aa6b6">0</text><text x="180" y="106" font-size="9" fill="#9aa6b6">100</text>
+  </svg>`;
+}
+function pos(v){return Math.max(1,Math.min(99,v))}
+const num=v=>v==null?"—":v.toLocaleString();
+
+function card(sym,d){
+  const ind=d.indicators, ch=d.change_pct, e=d.entry;
+  const rows=[
+    ["MACD 오실레이터",num(ind.macd_osc)+" <span style='color:#9aa6b6'>(백분위 "+ind.macd_score+")</span>",ind.macd_score],
+    ["RSI (14)",ind.rsi,ind.rsi],
+    ["스토캐스틱 %K/%D",ind.stoch_k+" / "+ind.stoch_d,ind.stoch_k],
+    ["투자심리도 (10일)",ind.psy+"%",ind.psy],
+  ].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td style="width:90px"><div class="bar"><i style="left:${pos(r[2])}%"></i></div></td></tr>`).join("");
+  let vHtml="", eRows="";
+  if(e){
+    const v=VC[e.verdict]||VC.NO_SETUP;
+    vHtml=`<span class="verdict ${v[0]}">${v[1]}</span>`;
+    eRows=`<tr><td>패턴 / 피벗</td><td colspan="2">${e.pattern||"—"}${e.pivot?" · "+num(e.pivot)+"원":""}</td></tr>`
+      +(e.pivot?`<tr><td>피벗까지</td><td colspan="2">${e.dist_to_pivot_pct>0?"+":""}${e.dist_to_pivot_pct}%</td></tr>`:"")
+      +(e.stop?`<tr><td>손절가 (2N)</td><td colspan="2">${num(e.stop)}원</td></tr>`:"")
+      +`<tr><td>트렌드 템플릿</td><td colspan="2">${e.tt_passed}/${e.tt_total}</td></tr>`;
+  }
+  const kimchi=d.kimchi_pct!=null?`<tr><td>김치프리미엄</td><td colspan="2">${d.kimchi_pct>0?"+":""}${d.kimchi_pct}%</td></tr>`:"";
+  return `<div class="card">
+    <h2>${sym} <span class="px ${ch>=0?'up':'down'}">${num(d.close)}원 (${ch>=0?'+':''}${ch}%)</span></h2>
+    <div class="gaugebox">${gaugeSVG(d.score)}
+      <div class="score">${d.score}<small>%</small></div>
+      <span class="zone ${ZC[d.zone]||'z-n'}">${d.zone}</span>
+    </div>
+    ${vHtml}
+    <table><tr><th>지표</th><th>값</th><th>위치</th></tr>${rows}${eRows}${kimchi}</table>
+  </div>`;
+}
+
+function trend(sym,hist,selIdx){
+  const W=980,H=190,P=34;
+  const xs=i=>P+(W-2*P)*i/Math.max(1,hist.length-1), ys=v=>H-P-(H-2*P)*v/100;
+  const line=hist.map((h,i)=>(i?"L":"M")+xs(i).toFixed(1)+" "+ys(h.score).toFixed(1)).join(" ");
+  const band=(a,b,c)=>`<rect x="${P}" y="${ys(b)}" width="${W-2*P}" height="${ys(a)-ys(b)}" fill="${c}"/>`;
+  const ticks=[0,25,50,75,100].map(v=>`<text x="${P-6}" y="${ys(v)+3}" font-size="9" fill="#9aa6b6" text-anchor="end">${v}</text><line x1="${P}" x2="${W-P}" y1="${ys(v)}" y2="${ys(v)}" stroke="#eef1f6"/>`).join("");
+  const n=hist.length,lbls=[0,Math.floor(n/2),n-1].map(i=>`<text x="${xs(i)}" y="${H-P+14}" font-size="9" fill="#9aa6b6" text-anchor="middle">${fd(hist[i].date)}</text>`).join("");
+  const s=hist[selIdx];
+  const anchor=selIdx>n*0.85?`text-anchor="end" x="${xs(selIdx)-7}"`:`text-anchor="start" x="${xs(selIdx)+7}"`;
+  return `<div class="card chart-card"><h2>${sym} 과열도 추이 <span style="font-size:.8rem;color:var(--muted)">최근 ${n}일</span></h2>
+  <svg viewBox="0 0 ${W} ${H}" style="width:100%">
+    ${band(75,100,"rgba(229,115,115,.12)")}${band(0,25,"rgba(102,187,106,.12)")}${ticks}
+    <path d="${line}" fill="none" stroke="#e8830c" stroke-width="2"/>
+    <line x1="${xs(selIdx)}" x2="${xs(selIdx)}" y1="${ys(100)}" y2="${ys(0)}" stroke="#b22f2f" stroke-width="1" stroke-dasharray="4 3"/>
+    <circle cx="${xs(selIdx)}" cy="${ys(s.score)}" r="4.5" fill="#b22f2f"/>
+    <text ${anchor} y="${ys(s.score)-8}" font-size="11" font-weight="700" fill="#0b1f3f">${fd(s.date)} · ${s.score}%</text>
+    ${lbls}
+  </svg>
+  <div class="legend"><b style="color:#c62828">붉은 영역</b> 과매수권(75%↑) · <b style="color:#2e7d32">초록 영역</b> 과매도권(25%↓) · <b style="color:#b22f2f">점선</b> 조회 날짜</div></div>`;
+}
+
+let DATA=null;
+function findIdx(hist,ymd){
+  let idx=-1;
+  for(let i=0;i<hist.length;i++){if(hist[i].date<=ymd)idx=i;else break;}
+  return idx;
+}
+
+function render(ymd){
+  const msg=document.getElementById("datemsg");
+  msg.style.display="none";
+  const syms=COINS.filter(s=>DATA.coins[s]&&DATA.coins[s].history.length);
+  if(!syms.length){document.getElementById("err").style.display="block";return;}
+  const sel={};
+  for(const s of syms){
+    const h=DATA.coins[s].history;
+    let i = ymd?findIdx(h,ymd):h.length-1;
+    if(i<0){msg.textContent="조회 가능 범위("+fd(h[0].date)+" ~ "+fd(h[h.length-1].date)+") 이전 날짜입니다.";msg.style.display="block";return;}
+    sel[s]=i;
+  }
+  const first=syms[0], fh=DATA.coins[first].history, fi=sel[first];
+  if(ymd&&fh[fi].date!==ymd){msg.textContent="선택일 데이터가 없어 직전 기록일("+fd(fh[fi].date)+") 기준으로 표시합니다.";msg.style.display="block";}
+  document.getElementById("asof").textContent=fd(fh[fi].date);
+  document.getElementById("datepick").value=iso(fh[fi].date);
+  document.getElementById("grid").innerHTML=
+    syms.map(s=>card(s,DATA.coins[s].history[sel[s]])).join("")+
+    syms.map(s=>trend(s,DATA.coins[s].history,sel[s])).join("");
+}
+
+fetch("data/crypto-gauge.json?t="+Date.now()).then(r=>r.json()).then(d=>{
+  DATA=d;
+  document.getElementById("updated").textContent=d.updated;
+  const h=(d.coins.BTC||d.coins[Object.keys(d.coins)[0]]).history,dp=document.getElementById("datepick");
+  dp.min=iso(h[0].date);dp.max=iso(h[h.length-1].date);
+  render(null);
+  const go=()=>{const v=dp.value;if(v)render(v.replaceAll("-",""))};
+  document.getElementById("datego").onclick=go;
+  dp.onchange=go;
+  document.getElementById("datelatest").onclick=()=>render(null);
+}).catch(()=>{document.getElementById("err").style.display="block"});
+</script>
+</body>
+</html>
