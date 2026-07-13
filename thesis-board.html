@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>논거 보드 | Trend Insight</title>
+<meta name="description" content="보유·관심 종목의 투자 논거 상태(INTACT/WEAKENED/BROKEN)와 entry-timer 진입 판정을 한 페이지에서 추적">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--navy:#0b1f3f;--navy2:#13294b;--accent:#2e6ff2;--red:#c62828;--amber:#b26a00;--green:#2e7d32;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg:#f5f7fb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{text-decoration:none;color:inherit}
+header{background:var(--navy);padding:16px 24px}
+header a{color:#fff;font-weight:800}
+.wrap{max-width:1080px;margin:0 auto;padding:34px 20px 60px}
+h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:.92rem;margin:6px 0 14px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 15px;font-size:.87rem;font-weight:700;color:var(--navy)}
+.chip b.b{color:var(--red)}.chip b.w{color:var(--amber)}.chip b.i{color:var(--green)}
+.chip span{color:var(--accent)}
+.search{display:flex;gap:8px;margin:6px 0 8px;flex-wrap:wrap}
+.search input{flex:1;min-width:220px;max-width:340px;font-family:inherit;font-size:.92rem;padding:9px 16px;border:1px solid var(--line);border-radius:999px;outline:none;background:#fff}
+.search input:focus{border-color:var(--accent)}
+.search button{font-family:inherit;font-size:.88rem;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:999px;padding:9px 20px;cursor:pointer}
+.hint{font-size:.8rem;color:var(--muted);margin:0 0 20px}
+.card.s-PENDING{border-left-color:#b39ddb;background:#fcfbff}
+.b-PENDING{background:#ede7f6;color:#5e35b1}
+.pmsg{font-size:.85rem;color:#3c4757;margin:10px 0 8px}
+.pbtns{display:flex;gap:8px;flex-wrap:wrap}
+.pbtns button{font-family:inherit;font-size:.8rem;font-weight:700;border:none;border-radius:8px;padding:7px 14px;cursor:pointer}
+.pbtns .copy{background:#ede7f6;color:#5e35b1}
+.pbtns .del{background:#eef2f8;color:#5b6779}
+#err{display:none;background:#fdecea;color:var(--red);padding:14px 18px;border-radius:10px;margin:20px 0}
+#empty{display:none;background:#fff;border:1px dashed var(--line);border-radius:14px;padding:34px;text-align:center;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+@media(max-width:840px){.grid{grid-template-columns:1fr}}
+.card{background:#fff;border:1px solid var(--line);border-left:5px solid var(--line);border-radius:14px;padding:20px 20px 16px;box-shadow:0 1px 3px rgba(11,31,63,.05)}
+.card.s-BROKEN{border-left-color:var(--red)}
+.card.s-WEAKENED{border-left-color:#ffa726}
+.card.s-INTACT{border-left-color:#66bb6a}
+.card h2{font-size:1.08rem;color:var(--navy);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.code{font-size:.78rem;color:var(--muted);font-weight:500}
+.badge{padding:3px 12px;border-radius:999px;font-size:.8rem;font-weight:800;white-space:nowrap}
+.b-BROKEN{background:#fdecea;color:var(--red)}
+.b-WEAKENED{background:#fff3e0;color:#e65100}
+.b-INTACT{background:#e8f5e9;color:var(--green)}
+.alertbar{margin:10px 0 2px;background:#fdecea;color:var(--red);border-radius:9px;padding:8px 12px;font-size:.85rem;font-weight:700}
+.idea{font-size:.88rem;color:#3c4757;margin:10px 0 4px}
+.sec{font-size:.78rem;font-weight:700;color:var(--muted);margin:12px 0 4px;letter-spacing:.02em}
+ul.assump{list-style:none;font-size:.86rem}
+ul.assump li{padding:3px 0;border-bottom:1px dashed #eef2f8}
+ul.assump li:last-child{border-bottom:none}
+.prices{display:flex;gap:0;margin-top:12px;border:1px solid var(--line);border-radius:10px;overflow:hidden;text-align:center}
+.prices div{flex:1;padding:8px 4px}
+.prices div+div{border-left:1px solid var(--line)}
+.prices .lb{font-size:.72rem;color:var(--muted)}
+.prices .vl{font-size:.95rem;font-weight:800;color:var(--navy)}
+.prices .vl.t{color:var(--green)}.prices .vl.s{color:var(--red)}
+.entry{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#f8faff}
+.entry .vh{font-size:.88rem;font-weight:800}
+.v-buy{color:var(--green)}.v-lowvol{color:var(--amber)}.v-setup{color:#1565c0}.v-ext{color:var(--red)}.v-no{color:var(--muted)}
+.entry .detail{font-size:.82rem;color:#3c4757;margin-top:4px}
+.tech{margin-top:10px;border-radius:9px;padding:8px 12px;font-size:.84rem}
+.tech.t-SELL{background:#fdecea;color:var(--red);font-weight:700}
+.tech.t-WATCH{background:#fff3e0;color:#e65100}
+.tech.t-HOLD{background:#eef2f8;color:#39506e}
+.tech .sig{display:block;font-weight:400;font-size:.79rem;margin-top:2px}
+.next{margin-top:10px;font-size:.84rem;background:#fff8e1;border-left:3px solid #ffc107;padding:7px 10px;border-radius:4px}
+details{margin-top:9px;font-size:.83rem}
+summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:.8rem}
+details ul{margin:6px 0 0 2px;list-style:none;color:#3c4757}
+details li{padding:2px 0}
+.hist-date{font-weight:700;color:var(--navy)}
+.note{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin-top:26px;font-size:.85rem;color:var(--muted)}
+.note h3{font-size:.95rem;color:var(--navy);margin:10px 0 6px}
+.note h3:first-child{margin-top:0}
+.note table{width:100%;border-collapse:collapse;font-size:.83rem;margin-top:6px}
+.note th,.note td{border:1px solid var(--line);padding:6px 9px;text-align:left}
+.note th{background:#f5f7fb;color:var(--navy)}
+.disclaimer{margin-top:26px;font-size:.76rem;color:#9aa6b6;border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<header><a href="index.html">← Trend Insight</a></header>
+<div class="wrap">
+  <h1>논거 보드 <span style="font-size:.9rem;color:var(--accent)">THESIS BOARD</span></h1>
+  <p class="sub">내가 등록한 종목의 투자 논거를 추적합니다. 핵심 가정의 유지(✅)/약화(⚠️)/훼손(❌) 상태, 목표가·손절가, entry-timer(VCP·다바스·터틀) 진입 판정을 한 화면에서 확인하세요. 훼손(BROKEN) 종목이 항상 맨 위에 옵니다.</p>
+  <div class="chips">
+    <span class="chip">갱신 <span id="updated">—</span></span>
+    <span class="chip">❌ 훼손 <b class="b" id="cB">0</b></span>
+    <span class="chip">⚠️ 약화 <b class="w" id="cW">0</b></span>
+    <span class="chip">✅ 유지 <b class="i" id="cI">0</b></span>
+  </div>
+  <div class="search"><input type="search" id="q" placeholder="종목명 입력 — 검색 또는 보드에 추가"><button id="addbtn">+ 보드에 추가</button></div>
+  <p class="hint">종목명을 적고 <b>+ 보드에 추가</b>(또는 Enter)를 누르면 등록 대기 칸이 생깁니다. 카드의 "등록 문구 복사"를 눌러 Claude에 붙여넣으면 논거가 완성됩니다.</p>
+  <div id="err">데이터를 불러오지 못했습니다. 잠시 후 새로고침 해주세요.</div>
+  <div id="empty">아직 등록된 논거가 없습니다. 위 칸에 종목명을 적어 <b>+ 보드에 추가</b>를 누르거나, Claude에게 “OO 논거 등록해줘”라고 말하세요.</div>
+  <div class="grid" id="grid"></div>
+  <div class="note">
+    <h3>판독 기준</h3>
+    <b>논거 상태</b> — ✅ INTACT: 모든 핵심 가정 유지 · ⚠️ WEAKENED: 일부 가정 약화(신규 매수·불타기 중단, 확인 시점 앞당김) · ❌ BROKEN: 핵심 가정 훼손 또는 훼손 조건 발동(규정상 재검토 대상). 판정에 주가 손익은 반영하지 않습니다.<br>
+    <b>진입 판정(entry-timer)</b> — 🟢 매수 신호(피벗 돌파+거래량 1.5배) · 🟡 돌파·거래량 부족 · 🔵 셋업 완료·피벗 대기 · 🔴 추격 금지(피벗 +5% 초과) · ⚪ 셋업 없음. 미너비니 트렌드 템플릿 통과가 전제이며, 수량은 터틀 ATR(2N 손절) 기준 1유닛입니다.<br>
+    <b>기술적 매도 신호(stop-loss-screener)</b> — 🛑 즉시 손절 후보(50일선 붕괴·분산일·클라이맥스 탑 등 치명 신호) · ⚠️ 경고(감시) · ✅ 유지. 논거 판정과 별개의 기술적 관점으로, 두 신호가 겹치면 우선순위가 가장 높습니다.
+    <h3>매도 프로토콜</h3>
+    <table>
+      <tr><th>상황</th><th>행동 규칙</th></tr>
+      <tr><td>❌ BROKEN</td><td>“왜 샀는가”가 사라짐 — 다음 거래일 안에 청산 여부 결정 (손익은 판단 근거에서 제외)</td></tr>
+      <tr><td>⚠️ WEAKENED</td><td>신규 매수·피라미딩 중단, 비중 축소 검토</td></tr>
+      <tr><td>🎯 목표가 도달</td><td>1/2 분할 익절 후 논거 재평가</td></tr>
+      <tr><td>🛑 손절가 터치 / 기술적 SELL</td><td>리스크 규정이 논거보다 우선 — 논거가 유효해도 손절. 기술 신호는 stop-loss-screener와 병행 점검</td></tr>
+      <tr><td>✂️ 매도 체결 후</td><td>trade-journal로 복기 (계획 vs 실제, R배수, 규정·논거 준수) — 논거 파일은 CLOSED 처리되어 보드에서 내려감</td></tr>
+    </table>
+  </div>
+  <p class="disclaimer">본 자료는 개인 투자 기록·규칙 기반 참고 자료이며 특정 종목의 매수·매도를 권유하지 않습니다. 투자의 최종 판단과 책임은 투자자 본인에게 있습니다.</p>
+</div>
+<script>
+const VC={"BUY_POINT":["v-buy","🟢 매수 신호 — 돌파 유효"],"BUY_POINT_LOWVOL":["v-lowvol","🟡 돌파 — 거래량 부족"],"SETUP":["v-setup","🔵 셋업 완료 — 피벗 대기"],"EXTENDED":["v-ext","🔴 추격 금지 — 피벗 +5% 초과"],"NO_SETUP":["v-no","⚪ 셋업 없음"]};
+const VM={"OK":"✅","WEAK":"⚠️","BROKEN":"❌","PENDING":"⬜"};
+const SB={"BROKEN":"❌ BROKEN","WEAKENED":"⚠️ WEAKENED","INTACT":"✅ INTACT","PENDING":"📝 등록 대기"};
+const PKEY="thesis-board-pending";
+function getPending(){try{return JSON.parse(localStorage.getItem(PKEY)||"[]")}catch(e){return[]}}
+function setPending(a){try{localStorage.setItem(PKEY,JSON.stringify(a))}catch(e){}}
+const num=v=>v==null?"—":Number(v).toLocaleString();
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let STOCKS=[];
+
+function entryHTML(e){
+  if(!e||!e.verdict)return"";
+  const[cls,label]=VC[e.verdict]||["v-no",e.verdict];
+  let d=[];
+  if(e.pivot)d.push("피벗 <b>"+num(e.pivot)+"</b>"+(e.dist_to_pivot_pct!=null?" (현재가 대비 "+(e.dist_to_pivot_pct>0?"+":"")+e.dist_to_pivot_pct+"%)":""));
+  if(e.close)d.push("현재가 "+num(e.close));
+  if(e.initial_stop)d.push("손절 <b>"+num(e.initial_stop)+"</b>"+(e.stop_pct?" (-"+e.stop_pct+"%)":""));
+  if(e.unit_shares)d.push("1유닛 <b>"+num(e.unit_shares)+"주</b> ≈ "+num(e.unit_cost)+"원");
+  let py="";
+  if(e.pyramids&&e.pyramids.length)py='<div class="detail">피라미딩: '+e.pyramids.map(p=>p.unit+"유닛 "+num(p.add_price)).join(" → ")+"</div>";
+  const notes=(e.notes||[]).map(n=>'<div class="detail">· '+esc(n)+"</div>").join("");
+  return '<div class="entry"><span class="vh '+cls+'">'+label+'</span>'
+    +' <span style="font-size:.74rem;color:var(--muted)">'+(e.pattern?esc(e.pattern)+" · ":"")+esc(e.date||"")+'</span>'
+    +'<div class="detail">'+d.join(" · ")+"</div>"+py+notes+"</div>";
+}
+
+const TL={"SELL":"🛑 즉시 손절 후보","WATCH":"⚠️ 경고(감시)","HOLD":"✅ 기술적 유지"};
+function techHTML(t){
+  if(!t||!t.verdict)return"";
+  const sig=(t.signals||[]).map(x=>'<span class="sig">· '+esc(x)+"</span>").join("");
+  const m=[];
+  if(t.pct_vs_ma50!=null)m.push("MA50 대비 "+(t.pct_vs_ma50>0?"+":"")+t.pct_vs_ma50+"%");
+  if(t.drawdown_from_peak!=null)m.push("고점 대비 "+t.drawdown_from_peak+"%");
+  if(t.rsi14!=null)m.push("RSI "+t.rsi14);
+  return '<div class="tech t-'+t.verdict+'">'+(TL[t.verdict]||t.verdict)
+    +' <span style="font-weight:400;font-size:.76rem">(stop-loss-screener · '+esc(t.date||"")+")</span>"
+    +(m.length?'<span class="sig">'+m.join(" · ")+"</span>":"")+sig
+    +(t.verdict==="SELL"?'<span class="sig">매도 체결 후에는 trade-journal 복기를 진행하세요.</span>':"")
+    +"</div>";
+}
+function pendingCard(name){
+  const phrase=name+" 논거 등록해줘";
+  return '<div class="card s-PENDING" data-k="'+esc(name)+'">'
+    +"<h2><span>"+esc(name)+'</span><span class="badge b-PENDING">📝 등록 대기</span></h2>'
+    +'<div class="pmsg">아직 논거가 작성되지 않았습니다. 아래 문구를 복사해 Claude에 붙여넣으면 인터뷰 후 이 칸이 완성됩니다.</div>'
+    +'<div class="pbtns"><button class="copy" data-copy="'+esc(phrase)+'">📋 등록 문구 복사</button>'
+    +'<button class="del" data-del="'+esc(name)+'">칸 제거</button></div></div>';
+}
+function card(s){
+  const alert=s.status==="BROKEN"?'<div class="alertbar">규정상 재검토 대상 — 다음 거래일 안에 청산 여부를 결정하세요.</div>':"";
+  const assump=(s.assumptions||[]).map(a=>"<li>"+(VM[a.verdict]||"⬜")+" "+esc(a.text)+"</li>").join("");
+  const breaks=(s.breaks||[]).length?'<details><summary>논거 훼손 조건 '+s.breaks.length+'개</summary><ul>'+s.breaks.map(b=>"<li>⛔ "+esc(b)+"</li>").join("")+"</ul></details>":"";
+  const sell=(s.sell_plan||[]).length?'<details><summary>매도 계획</summary><ul>'+s.sell_plan.map(b=>"<li>· "+esc(b)+"</li>").join("")+"</ul></details>":"";
+  const hist=(s.checks||[]).length?'<details><summary>점검 이력 '+s.checks.length+'회</summary><ul>'+s.checks.slice().reverse().map(c=>'<li><span class="hist-date">'+esc(c.date)+"</span> — "+(SB[c.status]||c.status)+(c.note?"<br><span style='color:var(--muted)'>"+esc(c.note)+"</span>":"")+"</li>").join("")+"</ul></details>":"";
+  const next=(s.next_check||[]).length?'<div class="next">⏰ 다음 확인: '+esc(s.next_check[0])+"</div>":"";
+  return '<div class="card s-'+s.status+'" data-k="'+esc(s.name)+' '+esc(s.code)+'">'
+    +"<h2><span>"+esc(s.name)+' <span class="code">'+esc(s.code)+"</span></span>"
+    +'<span class="badge b-'+s.status+'">'+(SB[s.status]||s.status)+"</span></h2>"
+    +alert
+    +(s.idea?'<div class="idea">'+esc(s.idea).slice(0,220)+"</div>":"")
+    +(assump?'<div class="sec">핵심 가정</div><ul class="assump">'+assump+"</ul>":"")
+    +'<div class="prices">'
+    +'<div><div class="lb">매수가</div><div class="vl">'+num(s.entry_price)+"</div></div>"
+    +'<div><div class="lb">목표가 🎯</div><div class="vl t">'+num(s.target)+"</div></div>"
+    +'<div><div class="lb">손절가 🛑</div><div class="vl s">'+num(s.stop)+"</div></div>"
+    +"</div>"
+    +entryHTML(s.entry)
+    +techHTML(s.tech)
+    +next+breaks+sell+hist
+    +(s.valuation?'<div style="margin-top:9px;font-size:.78rem;color:var(--muted)">밸류에이션: '+esc(s.valuation)+"</div>":"")
+    +"</div>";
+}
+
+function render(){
+  const q=(document.getElementById("q").value||"").trim().toLowerCase();
+  // 실제 논거가 게시된 종목은 대기 목록에서 자동 제거
+  const names=new Set(STOCKS.map(s=>s.name.replace(/\s/g,"")));
+  let pending=getPending().filter(n=>!names.has(n.replace(/\s/g,"")));
+  setPending(pending);
+  const list=STOCKS.filter(s=>!q||(s.name+" "+s.code).toLowerCase().includes(q));
+  const plist=pending.filter(n=>!q||n.toLowerCase().includes(q));
+  document.getElementById("grid").innerHTML=plist.map(pendingCard).join("")+list.map(card).join("");
+  document.getElementById("empty").style.display=(list.length||plist.length)?"none":"block";
+}
+function addStock(){
+  const el=document.getElementById("q");
+  const name=(el.value||"").trim();
+  if(!name)return;
+  if(/^[0-9]{1,6}$/.test(name)){alert("종목명(이름)으로 추가해 주세요. 코드는 논거 등록 시 자동으로 붙습니다.");return}
+  const names=new Set(STOCKS.map(s=>s.name.replace(/\s/g,"")));
+  if(names.has(name.replace(/\s/g,""))){el.value=name;render();return}
+  let pending=getPending();
+  if(!pending.some(n=>n.replace(/\s/g,"")===name.replace(/\s/g,"")))pending.unshift(name);
+  setPending(pending);
+  el.value="";
+  render();
+}
+document.getElementById("addbtn").addEventListener("click",addStock);
+document.getElementById("q").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();addStock()}});
+document.getElementById("grid").addEventListener("click",e=>{
+  const b=e.target.closest("button");
+  if(!b)return;
+  if(b.dataset.copy){
+    (navigator.clipboard?navigator.clipboard.writeText(b.dataset.copy):Promise.reject()).then(
+      ()=>{b.textContent="✅ 복사됨 — Claude에 붙여넣기";setTimeout(()=>b.textContent="📋 등록 문구 복사",2500)},
+      ()=>{prompt("아래 문구를 복사하세요:",b.dataset.copy)});
+  }
+  if(b.dataset.del){setPending(getPending().filter(n=>n!==b.dataset.del));render()}
+});
+
+fetch("data/thesis-board.json").then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{
+  STOCKS=d.stocks||[];
+  document.getElementById("updated").textContent=d.updated||"—";
+  const c=d.counts||{};
+  document.getElementById("cB").textContent=c.BROKEN||0;
+  document.getElementById("cW").textContent=c.WEAKENED||0;
+  document.getElementById("cI").textContent=c.INTACT||0;
+  render();
+}).catch(()=>{STOCKS=[];render()});
+document.getElementById("q").addEventListener("input",render);
+</script>
+</body>
+</html>
