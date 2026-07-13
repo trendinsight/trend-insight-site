@@ -32,6 +32,8 @@ h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
 .pbtns button{font-family:inherit;font-size:.8rem;font-weight:700;border:none;border-radius:8px;padding:7px 14px;cursor:pointer}
 .pbtns .copy{background:#ede7f6;color:#5e35b1}
 .pbtns .del{background:#eef2f8;color:#5b6779}
+.pbtns .chk{background:#e3f2fd;color:#1565c0}
+.checkall{font-family:inherit;font-size:.88rem;font-weight:700;color:#1565c0;background:#e3f2fd;border:none;border-radius:999px;padding:9px 20px;cursor:pointer}
 #err{display:none;background:#fdecea;color:var(--red);padding:14px 18px;border-radius:10px;margin:20px 0}
 #empty{display:none;background:#fff;border:1px dashed var(--line);border-radius:14px;padding:34px;text-align:center;color:var(--muted)}
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
@@ -93,8 +95,8 @@ details li{padding:2px 0}
     <span class="chip">⚠️ 약화 <b class="w" id="cW">0</b></span>
     <span class="chip">✅ 유지 <b class="i" id="cI">0</b></span>
   </div>
-  <div class="search"><input type="search" id="q" placeholder="종목명 입력 — 검색 또는 보드에 추가"><button id="addbtn">+ 보드에 추가</button></div>
-  <p class="hint">종목명을 적고 <b>+ 보드에 추가</b>(또는 Enter)를 누르면 등록 대기 칸이 생깁니다. 카드의 "등록 문구 복사"를 눌러 Claude에 붙여넣으면 논거가 완성됩니다.</p>
+  <div class="search"><input type="search" id="q" placeholder="종목명 입력 — 검색 또는 보드에 추가"><button id="addbtn">+ 보드에 추가</button><button class="checkall" data-copy="논거 전체 점검해줘">🔍 전체 점검 문구 복사</button></div>
+  <p class="hint">종목명을 적고 <b>+ 보드에 추가</b>(또는 Enter)를 누르면 등록 대기 칸이 생깁니다. 카드의 📋/🔍 버튼은 등록·점검 요청 문구를 복사해 줍니다 — Claude에 붙여넣기만 하면 실행되고, 점검 결과 훼손(BROKEN) 시 텔레그램 알림이 옵니다.</p>
   <div id="err">데이터를 불러오지 못했습니다. 잠시 후 새로고침 해주세요.</div>
   <div id="empty">아직 등록된 논거가 없습니다. 위 칸에 종목명을 적어 <b>+ 보드에 추가</b>를 누르거나, Claude에게 “OO 논거 등록해줘”라고 말하세요.</div>
   <div class="grid" id="grid"></div>
@@ -185,6 +187,7 @@ function card(s){
     +entryHTML(s.entry)
     +techHTML(s.tech)
     +next+breaks+sell+hist
+    +'<div class="pbtns" style="margin-top:10px"><button class="chk" data-copy="'+esc(s.name)+' 논거 점검해줘">🔍 점검 문구 복사</button></div>'
     +(s.valuation?'<div style="margin-top:9px;font-size:.78rem;color:var(--muted)">밸류에이션: '+esc(s.valuation)+"</div>":"")
     +"</div>";
 }
@@ -215,12 +218,12 @@ function addStock(){
 }
 document.getElementById("addbtn").addEventListener("click",addStock);
 document.getElementById("q").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();addStock()}});
-document.getElementById("grid").addEventListener("click",e=>{
+document.body.addEventListener("click",e=>{
   const b=e.target.closest("button");
   if(!b)return;
   if(b.dataset.copy){
     (navigator.clipboard?navigator.clipboard.writeText(b.dataset.copy):Promise.reject()).then(
-      ()=>{b.textContent="✅ 복사됨 — Claude에 붙여넣기";setTimeout(()=>b.textContent="📋 등록 문구 복사",2500)},
+      ()=>{const t=b.textContent;b.textContent="✅ 복사됨 — Claude에 붙여넣기";setTimeout(()=>b.textContent=t,2500)},
       ()=>{prompt("아래 문구를 복사하세요:",b.dataset.copy)});
   }
   if(b.dataset.del){setPending(getPending().filter(n=>n!==b.dataset.del));render()}
