@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>피라미드 매수 계산기 | Trend Insight</title>
+<meta name="description" content="전체 투자금액·1차 배분금·매수단가만 넣으면 1~5차 분할매수와 1~3차 분할매도가 자동 계산되는 피라미드 매수 계산기">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--navy:#0b1f3f;--navy2:#13294b;--accent:#2e6ff2;--red:#c62828;--blue:#1565c0;--green:#2e7d32;--orange:#e8830c;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg:#f5f7fb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{text-decoration:none;color:inherit}
+header{background:var(--navy);padding:16px 24px}
+header a{color:#fff;font-weight:800}
+.wrap{max-width:1080px;margin:0 auto;padding:34px 20px 60px}
+h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:.92rem;margin:6px 0 22px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 1px 3px rgba(11,31,63,.05);margin-bottom:22px}
+.card h2{font-size:1.05rem;color:var(--navy);margin-bottom:14px;display:flex;align-items:baseline;gap:8px}
+.card h2 small{font-size:.78rem;color:var(--orange);font-weight:700}
+.ingrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:860px){.ingrid{grid-template-columns:repeat(2,1fr)}}
+.field label{display:block;font-size:.8rem;font-weight:700;color:var(--muted);margin-bottom:5px}
+.field input,.pin,.sin{width:100%;font-family:inherit;font-size:1rem;font-weight:700;color:var(--navy);border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;outline:none;text-align:right;background:#fbfcfe}
+.field input:focus,.pin:focus,.sin:focus{border-color:var(--accent);background:#fff}
+.field input#stock{text-align:left}
+.field .unit{font-size:.74rem;color:#9aa6b6;font-weight:600}
+#warn{display:none;background:#fff3e0;color:#b26a00;padding:10px 16px;border-radius:10px;font-size:.85rem;font-weight:600;margin-bottom:18px}
+/* pyramid visual */
+.pyr{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 0 4px}
+.pyr .lv{display:flex;align-items:center;justify-content:center;height:40px;border-radius:8px;color:#fff;font-size:.82rem;font-weight:700;min-width:120px;transition:width .3s;white-space:nowrap;padding:0 10px}
+.pyr .lv span{opacity:.85;font-weight:600;margin-left:8px;font-size:.76rem}
+/* tables */
+table{width:100%;border-collapse:collapse;font-size:.87rem}
+th,td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600;font-size:.76rem;background:#fafbfd}
+td b{color:var(--navy)}
+.tscroll{overflow-x:auto}
+td .pin,td .sin{width:110px;padding:6px 9px;font-size:.9rem}
+tr.total td{background:#f2f6fd;font-weight:800;color:var(--navy);border-bottom:none}
+.badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.74rem;font-weight:800}
+.b1{background:#e8f0fe;color:#1a56c4}
+/* summary */
+.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:860px){.sgrid{grid-template-columns:repeat(2,1fr)}}
+.stat{background:#fbfcfe;border:1px solid var(--line);border-radius:12px;padding:14px 16px;text-align:center}
+.stat .k{font-size:.76rem;font-weight:700;color:var(--muted)}
+.stat .v{font-size:1.25rem;font-weight:800;color:var(--navy);margin-top:2px}
+.stat .v small{font-size:.8rem;font-weight:600;color:var(--muted)}
+.stat.hl{background:linear-gradient(135deg,#fff7ee,#fff);border-color:#f3ddc2}
+.stat.hl .v{color:var(--orange)}
+.pos{color:var(--red)!important}.neg{color:var(--blue)!important}
+.note{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 22px;font-size:.85rem;color:var(--muted)}
+.note h3{font-size:.95rem;color:var(--navy);margin-bottom:6px}
+.disclaimer{margin-top:26px;font-size:.76rem;color:#9aa6b6;border-top:1px solid var(--line);padding-top:14px}
+.avgline{font-size:.82rem;color:var(--muted);margin-top:10px}
+.avgline b{color:var(--orange)}
+</style>
+</head>
+<body>
+<header><a href="https://trend-insight-site.sungsangkyung77.workers.dev/index.html">← Trend Insight</a></header>
+<div class="wrap">
+  <h1>피라미드 매수 계산기 <span style="font-size:.9rem;color:var(--orange)">PYRAMID POSITION BUILDER</span></h1>
+  <p class="sub">전체 투자금액과 1차 배분금, 매수단가만 입력하면 <b>1~5차 분할매수</b>(갈수록 금액이 줄어드는 정통 피라미드)와 <b>1~3차 분할매도</b>가 자동 계산됩니다. 상승 추세가 확인될 때마다 추가 진입해 성공한 매수의 이익을 극대화하는 구조입니다.</p>
+
+  <div class="card">
+    <h2>① 기본 입력 <small>여기 4칸만 채우면 끝</small></h2>
+    <div class="ingrid">
+      <div class="field"><label>종목명 <span class="unit">(선택)</span></label><input type="text" id="stock" placeholder="예: 삼성전자"></div>
+      <div class="field"><label>전체 투자금액 <span class="unit">원</span></label><input type="text" id="total" inputmode="numeric" value="10,000,000"></div>
+      <div class="field"><label>1차 매수 배분금 <span class="unit">원</span></label><input type="text" id="first" inputmode="numeric" value="3,000,000"></div>
+      <div class="field"><label>1차 매수단가 <span class="unit">원</span></label><input type="text" id="p1" inputmode="numeric" value="50,000"></div>
+    </div>
+    <div class="ingrid" style="margin-top:14px">
+      <div class="field"><label>추가 매수 간격 <span class="unit">% (2~5차 단가 자동 제안)</span></label><input type="text" id="step" inputmode="decimal" value="5"></div>
+      <div class="field"><label>손절 기준 <span class="unit">% (1차 단가 기준)</span></label><input type="text" id="stopPct" inputmode="decimal" value="7"></div>
+    </div>
+  </div>
+
+  <div id="warn"></div>
+
+  <div class="card">
+    <h2>② 분할매수 계획 <small>단가는 칸에서 직접 수정 가능</small></h2>
+    <div class="pyr" id="pyr"></div>
+    <div class="tscroll">
+    <table id="buyTbl">
+      <thead><tr><th>차수</th><th>배분금액</th><th>매수단가</th><th>수량</th><th>실투입금</th><th>누적수량</th><th>누적 평균단가</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    </div>
+    <p class="avgline" id="avgline"></p>
+  </div>
+
+  <div class="card">
+    <h2>③ 분할매도 계획 <small>매도단가·비율 수정 가능</small></h2>
+    <div class="tscroll">
+    <table id="sellTbl">
+      <thead><tr><th>차수</th><th>매도 비율(%)</th><th>매도단가</th><th>매도수량</th><th>회수금액</th><th>실현손익</th><th>수익률</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>④ 종합 요약</h2>
+    <div class="sgrid">
+      <div class="stat"><div class="k">총 매수수량</div><div class="v" id="sQty">—</div></div>
+      <div class="stat"><div class="k">총 투입금액</div><div class="v" id="sInv">—</div></div>
+      <div class="stat hl"><div class="k">최종 평균단가</div><div class="v" id="sAvg">—</div></div>
+      <div class="stat"><div class="k">손절가 (1차 기준)</div><div class="v" id="sStop">—</div></div>
+      <div class="stat"><div class="k">총 실현손익 (전량 매도 시)</div><div class="v" id="sPnl">—</div></div>
+      <div class="stat"><div class="k">전체 수익률</div><div class="v" id="sRet">—</div></div>
+      <div class="stat"><div class="k">평균 매도단가</div><div class="v" id="sSell">—</div></div>
+      <div class="stat"><div class="k">잔여 수량 / 예비현금</div><div class="v" id="sRem">—</div></div>
+    </div>
+  </div>
+
+  <div class="note">
+    <h3>사용 기준</h3>
+    <b>피라미드 배분</b> — 1차 배분금이 가장 크고 2~5차로 갈수록 일정 비율(자동 산출)로 줄어듭니다. 1차 배분금은 전체의 <b>20%보다 크게</b> 잡아야 정통 피라미드(체감형)가 됩니다.<br>
+    <b>추가 진입 원칙</b> — 직전 차수가 수익 중일 때만(단가 상승 확인) 다음 차수를 진입합니다. 하락 시 물타기 용도가 아닙니다.<br>
+    <b>손절</b> — 1차 단가 대비 설정 % 이탈 시 전량 청산이 원칙입니다. 2차 이후 진입분은 평균단가가 올라가 있으므로 손절선 관리에 특히 유의하세요.<br>
+    <b>매도</b> — 기본 30/30/40% 3분할입니다. 실현손익은 최종 평균단가 기준으로 계산됩니다.
+  </div>
+  <p class="disclaimer">본 계산기는 참고용 도구이며 특정 종목의 매수·매도를 권유하지 않습니다. 투자의 최종 판단과 책임은 투자자 본인에게 있습니다.</p>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmt=n=>n==null||isNaN(n)?"—":Math.round(n).toLocaleString("ko-KR");
+const num=el=>{const v=parseFloat(String(el.value).replace(/[^\d.\-]/g,""));return isNaN(v)?0:v};
+const COLORS=["#0b1f3f","#1d3a66","#2e5590","#4a74b4","#7b9bcd"];
+
+let buyPrices=[0,0,0,0,0];   // user-editable per-tranche prices
+let priceTouched=[false,false,false,false,false];
+let sellPrices=[0,0,0]; let sellTouched=[false,false,false];
+let sellRatios=[30,30,40];
+
+function comma(el){
+  const raw=String(el.value).replace(/[^\d]/g,"");
+  if(raw==="")return;
+  el.value=Number(raw).toLocaleString("ko-KR");
+}
+
+// solve A(1+r+r^2+r^3+r^4)=T  for r>=0
+function solveRatio(T,A){
+  if(A<=0||T<=0)return null;
+  const target=T/A;
+  if(target<=1)return 0;
+  let lo=0,hi=10;
+  for(let i=0;i<80;i++){
+    const m=(lo+hi)/2;
+    const s=1+m+m*m+m**3+m**4;
+    if(s<target)lo=m;else hi=m;
+  }
+  return (lo+hi)/2;
+}
+
+function calc(){
+  const T=num($("total")), A=num($("first")), P1=num($("p1"));
+  const step=num($("step"))/100, stopPct=num($("stopPct"));
+  const warn=$("warn");
+  warn.style.display="none";
+
+  if(!(T>0&&A>0&&P1>0)){ render(null); return; }
+  let msgs=[];
+  if(A>T){ msgs.push("1차 배분금이 전체 투자금액보다 큽니다."); warn.textContent=msgs.join(" "); warn.style.display="block"; render(null); return; }
+  const r=solveRatio(T,A);
+  if(A<=T/5) msgs.push("⚠ 1차 배분금이 전체의 20% 이하라 뒤 차수 금액이 더 커집니다(역피라미드). 1차 배분금을 전체의 30~40% 수준으로 늘리는 것을 권장합니다.");
+
+  // amounts
+  const amts=[];
+  let acc=0;
+  for(let i=0;i<5;i++){ const a=Math.round(A*Math.pow(r,i)); amts.push(a); acc+=a; }
+  amts[4]+=T-acc; // exact fit
+  if(amts[4]<0){amts[4]=0}
+
+  // default prices: P1*(1+step)^i unless user edited
+  for(let i=0;i<5;i++){
+    if(!priceTouched[i]) buyPrices[i]=Math.round(P1*Math.pow(1+step,i));
+  }
+  buyPrices[0]=priceTouched[0]?buyPrices[0]:P1;
+
+  // buy rows
+  let cumQ=0,cumI=0;
+  const rows=amts.map((a,i)=>{
+    const p=buyPrices[i]||0;
+    const q=p>0?Math.floor(a/p):0;
+    const inv=q*p;
+    cumQ+=q; cumI+=inv;
+    return {n:i+1,amt:a,p,q,inv,cq:cumQ,avg:cumQ>0?cumI/cumQ:0};
+  });
+  const totQ=cumQ, totI=cumI, avg=totQ>0?totI/totQ:0;
+  const spare=T-totI;
+
+  // default sell prices: avg*1.10/1.20/1.30 unless edited
+  const defMul=[1.10,1.20,1.30];
+  for(let i=0;i<3;i++){ if(!sellTouched[i]) sellPrices[i]=Math.round(avg*defMul[i]); }
+
+  // sell rows
+  const rsum=sellRatios.reduce((a,b)=>a+b,0);
+  if(rsum>100) msgs.push("⚠ 매도 비율 합계가 100%를 초과합니다.");
+  let soldQ=0, proceeds=0, pnl=0;
+  const srows=sellRatios.map((pc,i)=>{
+    let q=Math.floor(totQ*pc/100);
+    if(i===2 && rsum===100) q=totQ-soldQ; // 마지막 차수는 잔량 전부
+    q=Math.max(0,Math.min(q,totQ-soldQ));
+    const sp=sellPrices[i]||0;
+    const amt=q*sp, pl=q*(sp-avg);
+    soldQ+=q; proceeds+=amt; pnl+=pl;
+    return {n:i+1,pc,sp,q,amt,pl,ret:avg>0?(sp/avg-1)*100:0};
+  });
+  const remQ=totQ-soldQ;
+  const avgSell=soldQ>0?proceeds/soldQ:0;
+
+  if(msgs.length){warn.textContent=msgs.join("  ");warn.style.display="block";}
+
+  render({rows,totQ,totI,avg,spare,srows,soldQ,proceeds,pnl,remQ,avgSell,P1,stopPct,T});
+}
+
+function render(d){
+  const bt=$("buyTbl").querySelector("tbody");
+  const st=$("sellTbl").querySelector("tbody");
+  const pyr=$("pyr");
+  if(!d){bt.innerHTML=st.innerHTML="";pyr.innerHTML="";["sQty","sInv","sAvg","sStop","sPnl","sRet","sSell","sRem"].forEach(i=>$(i).textContent="—");$("avgline").textContent="";return;}
+
+  // pyramid visual (5차 top → 1차 bottom)
+  const maxA=Math.max(...d.rows.map(r=>r.amt),1);
+  pyr.innerHTML=d.rows.slice().reverse().map(r=>{
+    const w=Math.max(18,r.amt/maxA*100);
+    return `<div class="lv" style="width:${w}%;background:${COLORS[r.n-1]}">${r.n}차 ${fmt(r.amt)}원<span>${fmt(r.p)}원 × ${fmt(r.q)}주</span></div>`;
+  }).join("");
+
+  bt.innerHTML=d.rows.map(r=>`<tr>
+    <td><span class="badge b1">${r.n}차</span></td>
+    <td>${fmt(r.amt)}</td>
+    <td><input class="pin" data-i="${r.n-1}" value="${fmt(r.p)}" inputmode="numeric"></td>
+    <td><b>${fmt(r.q)}</b></td>
+    <td>${fmt(r.inv)}</td>
+    <td>${fmt(r.cq)}</td>
+    <td><b>${fmt(r.avg)}</b></td>
+  </tr>`).join("")
+  +`<tr class="total"><td>합계</td><td>${fmt(d.rows.reduce((a,r)=>a+r.amt,0))}</td><td></td><td>${fmt(d.totQ)}</td><td>${fmt(d.totI)}</td><td></td><td>${fmt(d.avg)}</td></tr>`;
+
+  $("avgline").innerHTML=`5차까지 모두 진입 시 최종 평균단가 <b>${fmt(d.avg)}원</b> — 1차 단가 대비 +${d.P1>0?((d.avg/d.P1-1)*100).toFixed(1):0}% · 미체결 잔액(호가 절사) ${fmt(d.spare)}원`;
+
+  st.innerHTML=d.srows.map(r=>`<tr>
+    <td><span class="badge b1">${r.n}차</span></td>
+    <td><input class="sin ratio" data-i="${r.n-1}" value="${r.pc}" inputmode="numeric" style="width:70px"></td>
+    <td><input class="sin sprice" data-i="${r.n-1}" value="${fmt(r.sp)}" inputmode="numeric"></td>
+    <td>${fmt(r.q)}</td>
+    <td>${fmt(r.amt)}</td>
+    <td class="${r.pl>=0?'pos':'neg'}"><b>${r.pl>=0?"+":""}${fmt(r.pl)}</b></td>
+    <td class="${r.ret>=0?'pos':'neg'}">${r.ret>=0?"+":""}${r.ret.toFixed(1)}%</td>
+  </tr>`).join("")
+  +`<tr class="total"><td>합계</td><td>${d.srows.reduce((a,r)=>a+r.pc,0)}%</td><td></td><td>${fmt(d.soldQ)}</td><td>${fmt(d.proceeds)}</td><td class="${d.pnl>=0?'pos':'neg'}">${d.pnl>=0?"+":""}${fmt(d.pnl)}</td><td class="${d.pnl>=0?'pos':'neg'}">${d.totI>0?((d.pnl/d.totI)*100>=0?"+":"")+(d.pnl/d.totI*100).toFixed(1):0}%</td></tr>`;
+
+  const stop=d.P1*(1-d.stopPct/100);
+  $("sQty").innerHTML=fmt(d.totQ)+" <small>주</small>";
+  $("sInv").innerHTML=fmt(d.totI)+" <small>원</small>";
+  $("sAvg").innerHTML=fmt(d.avg)+" <small>원</small>";
+  $("sStop").innerHTML=fmt(stop)+" <small>원 (−"+d.stopPct+"%)</small>";
+  const pnlEl=$("sPnl"); pnlEl.innerHTML=(d.pnl>=0?"+":"")+fmt(d.pnl)+" <small>원</small>"; pnlEl.className="v "+(d.pnl>=0?"pos":"neg");
+  const retEl=$("sRet"); const ret=d.totI>0?d.pnl/d.totI*100:0; retEl.innerHTML=(ret>=0?"+":"")+ret.toFixed(1)+"%"; retEl.className="v "+(ret>=0?"pos":"neg");
+  $("sSell").innerHTML=fmt(d.avgSell)+" <small>원</small>";
+  $("sRem").innerHTML=fmt(d.remQ)+" <small>주</small> / "+fmt(d.spare)+" <small>원</small>";
+
+  bindDynamic();
+}
+
+function bindDynamic(){
+  document.querySelectorAll(".pin").forEach(el=>{
+    el.addEventListener("change",e=>{
+      const i=+e.target.dataset.i;
+      priceTouched[i]=true;
+      buyPrices[i]=parseFloat(String(e.target.value).replace(/[^\d.]/g,""))||0;
+      calc();
+    });
+  });
+  document.querySelectorAll(".sprice").forEach(el=>{
+    el.addEventListener("change",e=>{
+      const i=+e.target.dataset.i;
+      sellTouched[i]=true;
+      sellPrices[i]=parseFloat(String(e.target.value).replace(/[^\d.]/g,""))||0;
+      calc();
+    });
+  });
+  document.querySelectorAll(".ratio").forEach(el=>{
+    el.addEventListener("change",e=>{
+      const i=+e.target.dataset.i;
+      sellRatios[i]=Math.max(0,Math.min(100,parseFloat(e.target.value)||0));
+      calc();
+    });
+  });
+}
+
+["total","first","p1"].forEach(id=>{
+  $(id).addEventListener("input",e=>{comma(e.target);});
+  $(id).addEventListener("change",()=>{priceTouched=[false,false,false,false,false];sellTouched=[false,false,false];calc();});
+});
+["step","stopPct"].forEach(id=>$(id).addEventListener("change",()=>{priceTouched=[false,false,false,false,false];calc();}));
+$("stock").addEventListener("change",e=>{
+  const t=e.target.value.trim();
+  document.title=(t?t+" — ":"")+"피라미드 매수 계산기 | Trend Insight";
+});
+
+calc();
+</script>
+</body>
+</html>
