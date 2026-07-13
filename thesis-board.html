@@ -36,8 +36,22 @@ h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
 .checkall{font-family:inherit;font-size:.88rem;font-weight:700;color:#1565c0;background:#e3f2fd;border:none;border-radius:999px;padding:9px 20px;cursor:pointer}
 #err{display:none;background:#fdecea;color:var(--red);padding:14px 18px;border-radius:10px;margin:20px 0}
 #empty{display:none;background:#fff;border:1px dashed var(--line);border-radius:14px;padding:34px;text-align:center;color:var(--muted)}
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
-@media(max-width:840px){.grid{grid-template-columns:1fr}}
+.layout{display:grid;grid-template-columns:1fr;gap:24px;align-items:start}
+@media(min-width:961px){.layout{grid-template-columns:2fr 1fr}}
+.grid{display:grid;grid-template-columns:1fr;gap:20px}
+@media(min-width:1240px){.grid{grid-template-columns:repeat(2,1fr)}}
+.timer{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;position:sticky;top:16px}
+.timer h2{font-size:1.05rem;color:var(--navy)}
+.timer h2 span{font-size:.75rem;color:#2e7d32;font-weight:800}
+.timer .tsub{font-size:.78rem;color:var(--muted);margin:4px 0 12px}
+.ecard{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:12px;background:#fafcff}
+.ecard.e-buy{border-left-color:#2e7d32}.ecard.e-lowvol{border-left-color:#ffb74d}
+.ecard.e-setup{border-left-color:#1565c0}.ecard.e-ext{border-left-color:#c62828}.ecard.e-no{border-left-color:#b0bcc9}
+.ecard h3{font-size:.95rem;color:var(--navy);display:flex;justify-content:space-between;align-items:center;gap:6px}
+.ecard .vh{font-size:.85rem;font-weight:800;margin-top:3px;display:block}
+.ecard .detail{font-size:.8rem;color:#3c4757;margin-top:3px}
+.ecard .pbtns{margin-top:8px}
+.tlegend{font-size:.74rem;color:var(--muted);border-top:1px solid var(--line);padding-top:10px;margin-top:4px;line-height:1.7}
 .card{background:#fff;border:1px solid var(--line);border-left:5px solid var(--line);border-radius:14px;padding:20px 20px 16px;box-shadow:0 1px 3px rgba(11,31,63,.05)}
 .card.s-BROKEN{border-left-color:var(--red)}
 .card.s-WEAKENED{border-left-color:#ffa726}
@@ -99,7 +113,20 @@ details li{padding:2px 0}
   <p class="hint">종목명을 적고 <b>+ 보드에 추가</b>(또는 Enter)를 누르면 등록 대기 칸이 생깁니다. 카드의 📋/🔍 버튼은 등록·점검 요청 문구를 복사해 줍니다 — Claude에 붙여넣기만 하면 실행되고, 점검 결과 훼손(BROKEN) 시 텔레그램 알림이 옵니다.</p>
   <div id="err">데이터를 불러오지 못했습니다. 잠시 후 새로고침 해주세요.</div>
   <div id="empty">아직 등록된 논거가 없습니다. 위 칸에 종목명을 적어 <b>+ 보드에 추가</b>를 누르거나, Claude에게 “OO 논거 등록해줘”라고 말하세요.</div>
-  <div class="grid" id="grid"></div>
+  <div class="layout">
+    <div>
+      <div class="grid" id="grid"></div>
+    </div>
+    <aside class="timer">
+      <h2>진입 타이머 <span>ENTRY TIMER</span></h2>
+      <p class="tsub">VCP 피벗·다바스 박스·터틀 사이징(2N 손절) 기준 "지금이 살 자리인가" 판정. 돌파 전에 계획을 끝내고, 추격 매수는 등급으로 금지합니다.</p>
+      <div id="timerlist"></div>
+      <div class="tlegend">
+        🟢 매수 신호(피벗 돌파+거래량 1.5배) · 🟡 돌파·거래량 부족 · 🔵 셋업 완료·피벗 대기 · 🔴 추격 금지(피벗 +5% 초과) · ⚪ 셋업 없음<br>
+        매수 확정 전 risk-manager 사전점검 필수. 신호는 규칙 기반 참고 자료입니다.
+      </div>
+    </aside>
+  </div>
   <div class="note">
     <h3>판독 기준</h3>
     <b>논거 상태</b> — ✅ INTACT: 모든 핵심 가정 유지 · ⚠️ WEAKENED: 일부 가정 약화(신규 매수·불타기 중단, 확인 시점 앞당김) · ❌ BROKEN: 핵심 가정 훼손 또는 훼손 조건 발동(규정상 재검토 대상). 판정에 주가 손익은 반영하지 않습니다.<br>
@@ -184,7 +211,6 @@ function card(s){
     +'<div><div class="lb">목표가 🎯</div><div class="vl t">'+num(s.target)+"</div></div>"
     +'<div><div class="lb">손절가 🛑</div><div class="vl s">'+num(s.stop)+"</div></div>"
     +"</div>"
-    +entryHTML(s.entry)
     +techHTML(s.tech)
     +next+breaks+sell+hist
     +'<div class="pbtns" style="margin-top:10px"><button class="chk" data-copy="'+esc(s.name)+' 논거 점검해줘">🔍 점검 문구 복사</button></div>'
@@ -192,6 +218,37 @@ function card(s){
     +"</div>";
 }
 
+const EC={"BUY_POINT":"e-buy","BUY_POINT_LOWVOL":"e-lowvol","SETUP":"e-setup","EXTENDED":"e-ext","NO_SETUP":"e-no"};
+const EORDER={"BUY_POINT":0,"BUY_POINT_LOWVOL":1,"SETUP":2,"EXTENDED":3,"NO_SETUP":4};
+function timerCard(s){
+  const e=s.entry;
+  const askBtn='<div class="pbtns"><button class="chk" data-copy="'+esc(s.name)+' 진입 타이밍 판정해줘">🎯 판정 요청 문구 복사</button></div>';
+  if(!e||!e.verdict){
+    return '<div class="ecard e-no"><h3>'+esc(s.name)+'</h3><span class="vh v-no">판정 없음</span>'
+      +'<div class="detail">아직 진입 판정이 없습니다.</div>'+askBtn+"</div>";
+  }
+  const[cls,label]=VC[e.verdict]||["v-no",e.verdict];
+  let d=[];
+  if(e.pivot)d.push("피벗 <b>"+num(e.pivot)+"</b>"+(e.dist_to_pivot_pct!=null?" ("+(e.dist_to_pivot_pct>0?"+":"")+e.dist_to_pivot_pct+"%)":""));
+  if(e.close)d.push("현재가 "+num(e.close));
+  let d2=[];
+  if(e.initial_stop)d2.push("손절 <b>"+num(e.initial_stop)+"</b>"+(e.stop_pct?" (-"+e.stop_pct+"%)":""));
+  if(e.unit_shares)d2.push("1유닛 <b>"+num(e.unit_shares)+"주</b> ≈ "+num(e.unit_cost)+"원");
+  const py=(e.pyramids&&e.pyramids.length)?'<div class="detail">피라미딩: '+e.pyramids.map(x=>x.unit+"유닛 "+num(x.add_price)).join(" → ")+"</div>":"";
+  const notes=(e.notes||[]).map(n=>'<div class="detail">· '+esc(n)+"</div>").join("");
+  return '<div class="ecard '+(EC[e.verdict]||"e-no")+'">'
+    +"<h3>"+esc(s.name)+' <span style="font-size:.72rem;color:var(--muted);font-weight:500">'+(e.pattern?esc(e.pattern)+" · ":"")+esc(e.date||"")+"</span></h3>"
+    +'<span class="vh '+cls+'">'+label+"</span>"
+    +(d.length?'<div class="detail">'+d.join(" · ")+"</div>":"")
+    +(d2.length?'<div class="detail">'+d2.join(" · ")+"</div>":"")
+    +py+notes+askBtn+"</div>";
+}
+function renderTimer(){
+  const el=document.getElementById("timerlist");
+  if(!STOCKS.length){el.innerHTML='<div class="ecard e-no"><div class="detail">등록된 종목이 없습니다. 논거를 등록하면 여기에 진입 판정이 표시됩니다.</div></div>';return}
+  const sorted=STOCKS.slice().sort((a,b)=>(EORDER[(a.entry||{}).verdict]??9)-(EORDER[(b.entry||{}).verdict]??9));
+  el.innerHTML=sorted.map(timerCard).join("");
+}
 function render(){
   const q=(document.getElementById("q").value||"").trim().toLowerCase();
   // 실제 논거가 게시된 종목은 대기 목록에서 자동 제거
@@ -202,6 +259,7 @@ function render(){
   const plist=pending.filter(n=>!q||n.toLowerCase().includes(q));
   document.getElementById("grid").innerHTML=plist.map(pendingCard).join("")+list.map(card).join("");
   document.getElementById("empty").style.display=(list.length||plist.length)?"none":"block";
+  renderTimer();
 }
 function addStock(){
   const el=document.getElementById("q");
