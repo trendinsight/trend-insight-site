@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>우리 가족 앨범</title>
+<style>
+  :root { --bg:#faf9f5; --card:#fff; --line:#e8e5de; --text:#3d3a34; --sub:#8a857c; --accent:#c96442; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; }
+  header { padding:28px 20px 10px; text-align:center; }
+  header h1 { font-size:1.5rem; font-weight:700; letter-spacing:-0.5px; }
+  header p { color:var(--sub); font-size:0.85rem; margin-top:6px; }
+  nav { display:flex; justify-content:center; gap:8px; padding:16px 0 4px; }
+  nav button { border:1px solid var(--line); background:var(--card); color:var(--sub); padding:8px 22px; border-radius:20px; font-size:0.95rem; cursor:pointer; }
+  nav button.on { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+  main { max-width:1000px; margin:0 auto; padding:20px 16px 80px; }
+  .toolbar { display:flex; justify-content:space-between; align-items:center; margin:8px 0 16px; gap:10px; flex-wrap:wrap; }
+  .toolbar h2 { font-size:1.05rem; font-weight:700; }
+  .btn { background:var(--accent); color:#fff; border:none; border-radius:8px; padding:9px 16px; font-size:0.9rem; cursor:pointer; }
+  .btn.ghost { background:var(--card); color:var(--text); border:1px solid var(--line); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; }
+  .grid.albums { grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; cursor:pointer; }
+  .card .ph { aspect-ratio:1; background:#efece5; display:flex; align-items:center; justify-content:center; color:var(--sub); font-size:2rem; overflow:hidden; }
+  .card .ph img { width:100%; height:100%; object-fit:cover; display:block; }
+  .card .cap { padding:10px 12px; }
+  .card .cap b { font-size:0.95rem; }
+  .card .cap span { display:block; color:var(--sub); font-size:0.78rem; margin-top:2px; }
+  .photo { aspect-ratio:1; border-radius:10px; overflow:hidden; background:#efece5; cursor:pointer; position:relative; }
+  .photo img { width:100%; height:100%; object-fit:cover; display:block; }
+  .vid { background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .vid .thumbwrap { position:relative; cursor:pointer; aspect-ratio:16/9; background:#000; }
+  .vid .thumbwrap img { width:100%; height:100%; object-fit:cover; display:block; opacity:0.92; }
+  .vid .play { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:2.6rem; color:#fff; text-shadow:0 2px 10px rgba(0,0,0,.5); }
+  .vid .cap { padding:10px 12px; display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
+  .vid .cap b { font-size:0.92rem; }
+  .vid .cap span { color:var(--sub); font-size:0.75rem; white-space:nowrap; }
+  .vid iframe { width:100%; aspect-ratio:16/9; border:0; display:block; }
+  .grid.videos { grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
+  .empty { text-align:center; color:var(--sub); padding:60px 0; font-size:0.95rem; }
+  /* 라이트박스 */
+  #lb { position:fixed; inset:0; background:rgba(20,18,14,.95); display:none; z-index:50; flex-direction:column; }
+  #lb.on { display:flex; }
+  #lb .top { display:flex; justify-content:space-between; padding:14px 18px; color:#ddd; font-size:0.9rem; align-items:center; }
+  #lb .top .actions { display:flex; gap:14px; }
+  #lb .top a, #lb .top button { color:#ddd; background:none; border:none; font-size:0.9rem; cursor:pointer; text-decoration:none; }
+  #lb .body { flex:1; display:flex; align-items:center; justify-content:center; min-height:0; position:relative; }
+  #lb .body img { max-width:96%; max-height:96%; object-fit:contain; }
+  #lb .navbtn { position:absolute; top:50%; transform:translateY(-50%); background:rgba(255,255,255,.12); border:none; color:#fff; font-size:1.6rem; width:44px; height:60px; cursor:pointer; border-radius:8px; }
+  #lb .prev { left:10px; } #lb .next { right:10px; }
+  /* 모달 */
+  .modal { position:fixed; inset:0; background:rgba(20,18,14,.5); display:none; align-items:center; justify-content:center; z-index:60; padding:16px; }
+  .modal.on { display:flex; }
+  .modal .box { background:var(--card); border-radius:14px; padding:22px; width:100%; max-width:420px; }
+  .modal h3 { font-size:1.05rem; margin-bottom:14px; }
+  .modal label { display:block; font-size:0.82rem; color:var(--sub); margin:10px 0 4px; }
+  .modal input[type=text], .modal input[type=url], .modal select { width:100%; padding:10px; border:1px solid var(--line); border-radius:8px; font-size:0.95rem; background:var(--bg); }
+  .modal .row { display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
+  #prog { font-size:0.85rem; color:var(--accent); margin-top:10px; display:none; }
+  footer { text-align:center; color:var(--sub); font-size:0.75rem; padding:20px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>우리 가족 앨범</h1>
+  <p>사진과 영상으로 남기는 우리 가족 이야기</p>
+</header>
+<nav>
+  <button id="tabPhotos" class="on" onclick="showTab('photos')">사진</button>
+  <button id="tabVideos" onclick="showTab('videos')">영상</button>
+</nav>
+<main>
+  <!-- 사진: 앨범 목록 -->
+  <section id="secAlbums">
+    <div class="toolbar"><h2>앨범</h2><button class="btn" onclick="openUpload('')">＋ 사진 올리기</button></div>
+    <div id="albumGrid" class="grid albums"></div>
+    <div id="albumEmpty" class="empty" style="display:none">아직 앨범이 없습니다. ‘사진 올리기’로 첫 앨범을 만들어 보세요.</div>
+  </section>
+  <!-- 사진: 앨범 상세 -->
+  <section id="secPhotos" style="display:none">
+    <div class="toolbar">
+      <h2><button class="btn ghost" onclick="showAlbums()">← 앨범</button> &nbsp;<span id="albumTitle"></span></h2>
+      <button class="btn" onclick="openUpload(currentAlbum)">＋ 사진 올리기</button>
+    </div>
+    <div id="photoGrid" class="grid"></div>
+  </section>
+  <!-- 영상 -->
+  <section id="secVideos" style="display:none">
+    <div class="toolbar"><h2>가족 영상 (유튜브)</h2><button class="btn" onclick="modal('vidModal',true)">＋ 영상 추가</button></div>
+    <div id="videoGrid" class="grid videos"></div>
+    <div id="videoEmpty" class="empty" style="display:none">아직 등록된 영상이 없습니다. 유튜브 링크를 추가해 보세요.</div>
+  </section>
+</main>
+<footer>가족 전용 공간 · 소중한 순간을 함께</footer>
+
+<!-- 라이트박스 -->
+<div id="lb">
+  <div class="top">
+    <span id="lbName"></span>
+    <div class="actions">
+      <a id="lbDown" href="#" download>원본 저장</a>
+      <button onclick="delPhoto()">삭제</button>
+      <button onclick="lbClose()">✕ 닫기</button>
+    </div>
+  </div>
+  <div class="body">
+    <button class="navbtn prev" onclick="lbMove(-1)">‹</button>
+    <img id="lbImg" alt="">
+    <button class="navbtn next" onclick="lbMove(1)">›</button>
+  </div>
+</div>
+
+<!-- 업로드 모달 -->
+<div id="upModal" class="modal">
+  <div class="box">
+    <h3>사진 올리기</h3>
+    <label>앨범 선택</label>
+    <select id="upAlbumSel" onchange="document.getElementById('upAlbumNew').style.display=this.value==='__new__'?'block':'none'"></select>
+    <input type="text" id="upAlbumNew" placeholder="새 앨범 이름 (예: 2026 여름휴가)" style="display:none;margin-top:6px">
+    <label>사진 선택 (여러 장 가능)</label>
+    <input type="file" id="upFiles" multiple accept="image/*">
+    <div id="prog"></div>
+    <div class="row">
+      <button class="btn ghost" onclick="modal('upModal',false)">취소</button>
+      <button class="btn" id="upGo" onclick="doUpload()">올리기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 영상 추가 모달 -->
+<div id="vidModal" class="modal">
+  <div class="box">
+    <h3>유튜브 영상 추가</h3>
+    <label>제목</label>
+    <input type="text" id="vidTitle" placeholder="예: 2026 설날 모임">
+    <label>유튜브 링크</label>
+    <input type="url" id="vidUrl" placeholder="https://youtu.be/... 또는 https://www.youtube.com/watch?v=...">
+    <div class="row">
+      <button class="btn ghost" onclick="modal('vidModal',false)">취소</button>
+      <button class="btn" onclick="addVideo()">추가</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let albums = [], photos = [], videos = [], currentAlbum = '', lbIdx = 0;
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#x27;'}[c]));
+const modal = (id, on) => $(id).classList.toggle('on', on);
+
+function showTab(t) {
+  $('tabPhotos').classList.toggle('on', t==='photos');
+  $('tabVideos').classList.toggle('on', t==='videos');
+  $('secVideos').style.display = t==='videos' ? '' : 'none';
+  if (t==='videos') { $('secAlbums').style.display='none'; $('secPhotos').style.display='none'; loadVideos(); }
+  else showAlbums();
+}
+function showAlbums() {
+  $('secAlbums').style.display=''; $('secPhotos').style.display='none'; $('secVideos').style.display='none';
+  loadAlbums();
+}
+
+async function loadAlbums() {
+  albums = await (await fetch('/api/albums')).json();
+  $('albumEmpty').style.display = albums.length ? 'none' : '';
+  $('albumGrid').innerHTML = albums.map(a => `
+    <div class="card" onclick="openAlbum('${esc(a.name)}')">
+      <div class="ph">${a.cover ? `<img loading="lazy" src="/img/${encodeURIComponent(a.cover)}">` : '📷'}</div>
+      <div class="cap"><b>${esc(a.name)}</b><span>${a.count}장</span></div>
+    </div>`).join('');
+}
+async function openAlbum(name) {
+  currentAlbum = name;
+  $('albumTitle').textContent = name;
+  $('secAlbums').style.display='none'; $('secPhotos').style.display='';
+  photos = await (await fetch('/api/photos?album=' + encodeURIComponent(name))).json();
+  $('photoGrid').innerHTML = photos.map((p,i) => `
+    <div class="photo" onclick="lbOpen(${i})"><img loading="lazy" src="/img/${encodeURIComponent(p.thumb)}"></div>`).join('')
+    || '<div class="empty">사진이 없습니다.</div>';
+}
+
+// ---- 라이트박스 ----
+function lbOpen(i) { lbIdx = i; lbShow(); $('lb').classList.add('on'); }
+function lbShow() {
+  const p = photos[lbIdx];
+  $('lbImg').src = '/img/' + encodeURIComponent(p.orig);
+  $('lbName').textContent = `${p.name || ''}  (${lbIdx+1}/${photos.length})`;
+  $('lbDown').href = '/img/' + encodeURIComponent(p.orig);
+  $('lbDown').download = p.name || 'photo';
+}
+function lbMove(d) { lbIdx = (lbIdx + d + photos.length) % photos.length; lbShow(); }
+function lbClose() { $('lb').classList.remove('on'); }
+document.addEventListener('keydown', e => {
+  if (!$('lb').classList.contains('on')) return;
+  if (e.key==='Escape') lbClose();
+  if (e.key==='ArrowLeft') lbMove(-1);
+  if (e.key==='ArrowRight') lbMove(1);
+});
+async function delPhoto() {
+  if (!confirm('이 사진을 삭제할까요?')) return;
+  const p = photos[lbIdx];
+  await fetch(`/api/photo?thumb=${encodeURIComponent(p.thumb)}&orig=${encodeURIComponent(p.orig)}`, { method:'DELETE' });
+  lbClose(); openAlbum(currentAlbum);
+}
+
+// ---- 업로드 ----
+async function openUpload(album) {
+  if (!albums.length) try { albums = await (await fetch('/api/albums')).json(); } catch {}
+  $('upAlbumSel').innerHTML = albums.map(a =>
+    `<option ${a.name===album?'selected':''}>${esc(a.name)}</option>`).join('')
+    + '<option value="__new__">＋ 새 앨범 만들기…</option>';
+  if (!albums.length || album==='') {
+    if (!albums.length) { $('upAlbumSel').value='__new__'; $('upAlbumNew').style.display='block'; }
+  }
+  modal('upModal', true);
+}
+function makeThumb(file) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const u = URL.createObjectURL(file);
+    img.onload = () => {
+      // 최대 변 480px 썸네일
+      const scale = Math.min(1, 480 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width*scale); c.height = Math.round(img.height*scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(b => { URL.revokeObjectURL(u); resolve(b); }, 'image/webp', 0.8);
+    };
+    img.onerror = () => { URL.revokeObjectURL(u); resolve(null); };
+    img.src = u;
+  });
+}
+async function doUpload() {
+  let album = $('upAlbumSel').value;
+  if (album === '__new__') album = $('upAlbumNew').value.trim();
+  const files = $('upFiles').files;
+  if (!album) return alert('앨범 이름을 입력하세요.');
+  if (!files.length) return alert('사진을 선택하세요.');
+  $('upGo').disabled = true; $('prog').style.display='block';
+  let done = 0, fail = 0;
+  for (const f of files) {
+    $('prog').textContent = `올리는 중… ${done+1}/${files.length} (${f.name})`;
+    try {
+      const thumb = await makeThumb(f);
+      const fd = new FormData();
+      fd.append('album', album); fd.append('file', f);
+      if (thumb) fd.append('thumb', thumb, 'thumb.webp');
+      const r = await fetch('/api/upload', { method:'POST', body: fd });
+      if (!r.ok) fail++; else done++;
+    } catch { fail++; }
+  }
+  $('prog').textContent = `완료: ${done}장` + (fail ? `, 실패 ${fail}장` : '');
+  setTimeout(() => {
+    modal('upModal', false); $('upGo').disabled=false; $('prog').style.display='none';
+    $('upFiles').value=''; openAlbum(album);
+  }, 800);
+}
+
+// ---- 영상 ----
+async function loadVideos() {
+  videos = await (await fetch('/api/videos')).json();
+  $('videoEmpty').style.display = videos.length ? 'none' : '';
+  $('videoGrid').innerHTML = videos.map(v => `
+    <div class="vid" id="v${v.id}">
+      <div class="thumbwrap" onclick="playVideo('${v.id}','${v.vid}')">
+        <img loading="lazy" src="https://i.ytimg.com/vi/${v.vid}/hqdefault.jpg"><div class="play">▶</div>
+      </div>
+      <div class="cap"><b>${esc(v.title)}</b><span>${v.date} · <a href="#" onclick="delVideo('${v.id}');return false" style="color:inherit">삭제</a></span></div>
+    </div>`).join('');
+}
+function playVideo(id, vid) {
+  document.querySelector(`#v${id} .thumbwrap`).outerHTML =
+    `<iframe src="https://www.youtube.com/embed/${vid}?autoplay=1" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+}
+async function addVideo() {
+  const title = $('vidTitle').value.trim(), url = $('vidUrl').value.trim();
+  if (!url) return alert('유튜브 링크를 입력하세요.');
+  const r = await fetch('/api/videos', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ title, url }) });
+  if (!r.ok) return alert((await r.json()).error || '추가 실패');
+  $('vidTitle').value=''; $('vidUrl').value='';
+  modal('vidModal', false); loadVideos();
+}
+async function delVideo(id) {
+  if (!confirm('이 영상을 목록에서 삭제할까요? (유튜브 원본은 유지됩니다)')) return;
+  await fetch('/api/videos?id=' + id, { method:'DELETE' });
+  loadVideos();
+}
+
+showAlbums();
+</script>
+</body>
+</html>
