@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0c111c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>수급 콕핏 · Supply-Demand Cockpit</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+:root{
+  --bg:#0c111c; --panel:#141c2b; --panel2:#1a2336; --line:#26314a;
+  --ink:#e9eef7; --muted:#8896ae; --faint:#5d6b85;
+  --orange:#E8621B; --purple:#9d6bff; --up:#f0454e; --down:#3b82f6;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Pretendard',sans-serif;font-size:14px;line-height:1.45}
+.mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+.up{color:var(--up)} .down{color:var(--down)} .muted{color:var(--muted)}
+header{display:flex;align-items:center;gap:14px;padding:12px 18px;flex-wrap:wrap;
+  background:linear-gradient(180deg,#101827,#0c111c);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30}
+.brand{display:flex;align-items:baseline;gap:9px;white-space:nowrap}
+.brand .ti{font-family:'JetBrains Mono';font-weight:700;font-size:19px;color:var(--purple);
+  letter-spacing:1px;border:1.5px solid var(--purple);border-radius:6px;padding:1px 8px}
+.brand h1{font-size:15px;font-weight:700}
+.brand small{color:var(--faint);font-size:11px;letter-spacing:1.5px;text-transform:uppercase}
+.navlinks{margin-left:auto;display:flex;gap:12px;font-size:12px}
+.navlinks a{color:var(--muted);text-decoration:none}
+.navlinks a:hover{color:var(--ink)}
+.searchwrap{position:relative;width:100%;max-width:420px}
+#q{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:9px;
+  color:var(--ink);padding:10px 14px;font-size:14px;font-family:inherit;outline:none}
+#q:focus{border-color:var(--purple)}
+#qresults{position:absolute;top:calc(100% + 5px);left:0;right:0;background:var(--panel2);
+  border:1px solid var(--line);border-radius:9px;overflow:hidden;display:none;z-index:50;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#qresults .qi{display:flex;gap:10px;padding:10px 14px;cursor:pointer}
+#qresults .qi:hover,#qresults .qi.hl{background:#232d44}
+#qresults .qi .c{color:var(--faint);font-size:12px}
+main{max-width:1080px;margin:0 auto;padding:16px 14px 60px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0}
+.chip{background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:6px 14px;
+  cursor:pointer;font-size:13px;color:var(--muted);user-select:none}
+.chip.on{background:var(--purple);border-color:var(--purple);color:#fff;font-weight:600}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:12px 0}
+.stockhead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.stockhead h2{font-size:20px}
+.stockhead .code{color:var(--faint);font-size:13px}
+.stockhead .price{font-size:20px;font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:14px}
+.kpi{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px}
+.kpi .lab{font-size:11px;color:var(--muted);letter-spacing:.4px}
+.kpi .val{font-size:19px;font-weight:700;margin-top:3px}
+.kpi .sub{font-size:11px;color:var(--faint);margin-top:2px}
+.bar{height:8px;background:#232d44;border-radius:5px;overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,#5b8def,var(--purple))}
+#chart{height:380px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{color:var(--muted);font-weight:500;text-align:right;padding:8px 8px;border-bottom:1px solid var(--line);font-size:11.5px;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td{padding:8px;border-bottom:1px solid #1c2538;text-align:right;white-space:nowrap}
+tr.hi td{background:rgba(157,107,255,.07)}
+.tag{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600}
+.tag.acc{background:rgba(240,69,78,.15);color:var(--up)}
+.tag.dist{background:rgba(59,130,246,.15);color:var(--down)}
+.tag.neu{background:#232d44;color:var(--muted)}
+.dbar{display:inline-block;width:56px;height:7px;background:#232d44;border-radius:4px;overflow:hidden;vertical-align:middle;margin-right:6px}
+.dbar i{display:block;height:100%;background:var(--purple)}
+.note{color:var(--faint);font-size:12px;line-height:1.6;margin-top:10px}
+.warn{background:rgba(240,69,78,.1);border:1px solid rgba(240,69,78,.35);color:#f5a5aa;
+  border-radius:10px;padding:10px 14px;font-size:13px;margin:12px 0;display:none}
+#status{color:var(--muted);padding:40px 0;text-align:center;font-size:14px}
+.spin{display:inline-block;width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--purple);
+  border-radius:50%;animation:sp 0.8s linear infinite;vertical-align:-3px;margin-right:8px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media(max-width:640px){ #chart{height:300px} .kpi .val{font-size:16px} td,th{padding:6px 5px;font-size:12px} }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="ti">TI</span><h1>수급 콕핏</h1><small>Supply-Demand</small></div>
+  <div class="searchwrap">
+    <input id="q" placeholder="종목명 또는 코드 검색 (예: 이수화학)" autocomplete="off">
+    <div id="qresults"></div>
+  </div>
+  <nav class="navlinks">
+    <a href="cockpit.html">콕핏</a><a href="gauge.html">온도계</a><a href="thesis-board.html">논거</a><a href="index.html">홈</a>
+  </nav>
+</header>
+<main>
+  <div class="row" id="yearsRow">
+    <span class="muted" style="font-size:12px">분석 기간</span>
+    <span class="chip" data-y="1">1년</span>
+    <span class="chip on" data-y="3">3년</span>
+    <span class="chip" data-y="5">5년</span>
+    <span class="chip" data-y="10">10년</span>
+    <span class="chip" id="btnRefresh" title="캐시 무시 재조회">↻ 갱신</span>
+  </div>
+  <div class="warn" id="splitWarn"></div>
+  <div id="status">종목을 검색하면 투자자별 매집·분산 분석이 표시됩니다.<br>
+    <span style="font-size:12px;color:var(--faint)">영웅문4 수급분석툴 방법론 · 순매수 수량 누적 기반 추정</span></div>
+  <div id="content" style="display:none">
+    <div class="card">
+      <div class="stockhead">
+        <h2 id="sName"></h2><span class="code mono" id="sCode"></span>
+        <span class="price mono" id="sPrice"></span>
+        <span class="muted" id="sAsof" style="font-size:12px"></span>
+      </div>
+      <div class="grid">
+        <div class="kpi"><div class="lab">세력 분산비율 <span title="매집고점 대비 현재 보유">ⓘ</span></div>
+          <div class="val mono" id="kDisp">-</div><div class="bar"><i id="kDispBar"></i></div>
+          <div class="sub" id="kDispSub"></div></div>
+        <div class="kpi"><div class="lab">세력 매집수량 (추정 보유)</div><div class="val mono" id="kAcc">-</div>
+          <div class="sub" id="kAccSub"></div></div>
+        <div class="kpi"><div class="lab">세력 추가매수 여력</div><div class="val mono" id="kCap">-</div>
+          <div class="sub">매집고점 − 현재 보유</div></div>
+        <div class="kpi"><div class="lab">세력 트렌드</div><div class="val" id="kTrend">-</div>
+          <div class="sub" id="kTrendSub"></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row" style="margin:0 0 8px">
+        <span class="muted" style="font-size:12px">매집수량 추이</span>
+        <span class="chip on inv" data-i="세력합">세력합</span>
+        <span class="chip inv" data-i="개인">개인</span>
+        <span class="chip inv" data-i="외국인">외국인</span>
+        <span class="chip inv" data-i="기관계">기관계</span>
+        <span class="chip inv" data-i="연기금">연기금</span>
+        <span class="chip inv" data-i="사모펀드">사모펀드</span>
+        <span class="chip inv" data-i="금융투자">금융투자</span>
+        <span class="chip inv" data-i="투신">투신</span>
+      </div>
+      <div id="chart"></div>
+      <div class="note">주황 선 = 주가(우축) · 보라 영역 = 선택 주체 매집수량(좌축)</div>
+    </div>
+    <div class="card" style="overflow-x:auto">
+      <table>
+        <thead><tr><th>주체</th><th>매집수량</th><th>매집고점</th><th>분산비율</th><th>여력</th>
+          <th>보유비중</th><th>트렌드</th><th>5일</th><th>20일</th><th>60일</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="note">매집수량 = 기간 내 누적 순매수 − 역대 최저점(최대 분산 시점) = 현재 보유량 추정치.
+        분산비율 100% = 매집 물량 전량 보유(매도 가능 물량 최대), 0% = 전량 분산(매수 여력 최대).
+        기관 세부 주체 실제 보유량은 미공개이므로 순매수 수량 누적 기반 <b>추정</b>이며, 데이터 기간 이전 매집은 반영되지 않음.
+        장중에는 잠정치(외국인 위주)로 표시될 수 있음.</div>
+    </div>
+  </div>
+</main>
+<script>
+const API = "/api";
+let cur = { code: null, name: "", years: 3, data: null, inv: "세력합" };
+let chart, priceSeries, accSeries;
+const $ = id => document.getElementById(id);
+const fmt = n => n == null ? "-" : Math.round(n).toLocaleString("ko-KR");
+const pct = v => v == null ? "-" : (v * 100).toFixed(1) + "%";
+
+/* ── 검색 ── */
+let qTimer;
+$("q").addEventListener("input", e => {
+  clearTimeout(qTimer);
+  const q = e.target.value.trim();
+  if (!q) { $("qresults").style.display = "none"; return; }
+  qTimer = setTimeout(async () => {
+    try {
+      const r = await fetch(`${API}/cockpit/search?q=${encodeURIComponent(q)}`);
+      const j = await r.json();
+      const items = (j.data || []).filter(x => /^[0-9]{6}$/.test(x.code));
+      $("qresults").innerHTML = items.map(x =>
+        `<div class="qi" data-c="${x.code}" data-n="${x.name}"><b>${x.name}</b><span class="c mono">${x.code} · ${x.market || ""}</span></div>`).join("");
+      $("qresults").style.display = items.length ? "block" : "none";
+    } catch (_) {}
+  }, 250);
+});
+$("qresults").addEventListener("click", e => {
+  const el = e.target.closest(".qi");
+  if (!el) return;
+  $("qresults").style.display = "none";
+  $("q").value = el.dataset.n;
+  load(el.dataset.c, el.dataset.n);
+});
+document.addEventListener("click", e => { if (!e.target.closest(".searchwrap")) $("qresults").style.display = "none"; });
+
+/* ── 기간/갱신/주체 칩 ── */
+$("yearsRow").addEventListener("click", e => {
+  const chip = e.target.closest(".chip");
+  if (!chip) return;
+  if (chip.id === "btnRefresh") { if (cur.code) load(cur.code, cur.name, true); return; }
+  document.querySelectorAll("#yearsRow .chip[data-y]").forEach(c => c.classList.remove("on"));
+  chip.classList.add("on");
+  cur.years = +chip.dataset.y;
+  if (cur.code) load(cur.code, cur.name);
+});
+document.addEventListener("click", e => {
+  const chip = e.target.closest(".chip.inv");
+  if (!chip) return;
+  document.querySelectorAll(".chip.inv").forEach(c => c.classList.remove("on"));
+  chip.classList.add("on");
+  cur.inv = chip.dataset.i;
+  drawChart();
+});
+
+/* ── 로드 ── */
+async function load(code, name, refresh) {
+  cur.code = code; cur.name = name;
+  history.replaceState(null, "", `?code=${code}&name=${encodeURIComponent(name)}&years=${cur.years}`);
+  $("content").style.display = "none";
+  $("splitWarn").style.display = "none";
+  $("status").style.display = "block";
+  $("status").innerHTML = `<span class="spin"></span>${name} 수급 데이터 수집·분석 중… (첫 조회는 최대 20초)`;
+  try {
+    const r = await fetch(`${API}/supply/analyze/${code}?years=${cur.years}${refresh ? "&refresh=1" : ""}`);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || "분석 실패");
+    cur.data = j;
+    render();
+  } catch (e) {
+    $("status").innerHTML = `⚠️ ${e.message || e}`;
+  }
+}
+
+function render() {
+  const d = cur.data, f = d.categories["세력합"];
+  $("status").style.display = "none";
+  $("content").style.display = "block";
+  $("sName").textContent = cur.name || d.code;
+  $("sCode").textContent = d.code + " · " + d.years + "년";
+  $("sPrice").textContent = fmt(d.close) + "원";
+  $("sAsof").textContent = d.asof.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3") + (d.intraday ? " (장중 잠정)" : " 종가");
+  $("kDisp").textContent = pct(f.disp);
+  $("kDispBar").style.width = Math.min((f.disp || 0) * 100, 100) + "%";
+  $("kDispSub").textContent = `매집고점 ${fmt(f.peak)}주 중 보유`;
+  $("kAcc").textContent = fmt(f.acc) + "주";
+  $("kAccSub").textContent = `= 향후 매도 가능 물량`;
+  $("kCap").textContent = fmt(f.capacity) + "주";
+  $("kTrend").textContent = f.trend === "매집" ? "🔴 매집 진행" : f.trend === "분산" ? "🔵 분산 진행" : "⚪ 중립/혼조";
+  $("kTrendSub").textContent = `20일 순매수 ${f.n20 >= 0 ? "+" : ""}${fmt(f.n20)}주`;
+  if (d.splits && d.splits.length) {
+    $("splitWarn").style.display = "block";
+    $("splitWarn").textContent = `⚠️ 기간 내 액면분할/병합 의심일: ${d.splits.join(", ")} — 수량 누적이 왜곡될 수 있으니 분할 이후 기간(짧은 기간 선택)으로 보세요.`;
+  }
+  const order = ["개인", "세력합", "외국인", "기관계", "금융투자", "보험", "투신", "기타금융", "은행", "연기금", "사모펀드", "국가", "기타법인", "내외국인"];
+  $("tbody").innerHTML = order.map(c => {
+    const m = d.categories[c];
+    if (!m || (m.peak === 0 && m.acc === 0)) return "";
+    const tag = m.trend === "매집" ? '<span class="tag acc">매집</span>' : m.trend === "분산" ? '<span class="tag dist">분산</span>' : '<span class="tag neu">중립</span>';
+    const hl = (c === "세력합" || c === "개인") ? ' class="hi"' : "";
+    const sgn = v => (v > 0 ? '<span class="up">+' : v < 0 ? '<span class="down">' : "<span>") + fmt(v) + "</span>";
+    return `<tr${hl}><td><b>${c}</b></td><td class="mono">${fmt(m.acc)}</td><td class="mono">${fmt(m.peak)}</td>
+      <td><span class="dbar"><i style="width:${Math.min((m.disp || 0) * 100, 100)}%"></i></span><span class="mono">${pct(m.disp)}</span></td>
+      <td class="mono">${fmt(m.capacity)}</td><td class="mono">${m.holdShare != null ? pct(m.holdShare) : "-"}</td>
+      <td>${tag}</td><td class="mono">${sgn(m.n5)}</td><td class="mono">${sgn(m.n20)}</td><td class="mono">${sgn(m.n60)}</td></tr>`;
+  }).join("");
+  drawChart();
+}
+
+function drawChart() {
+  const d = cur.data;
+  if (!d) return;
+  if (chart) { chart.remove(); chart = null; }
+  chart = LightweightCharts.createChart($("chart"), {
+    layout: { background: { color: "transparent" }, textColor: "#8896ae", fontFamily: "'JetBrains Mono',monospace" },
+    grid: { vertLines: { color: "#1a2336" }, horzLines: { color: "#1a2336" } },
+    rightPriceScale: { borderColor: "#26314a" },
+    leftPriceScale: { visible: true, borderColor: "#26314a" },
+    timeScale: { borderColor: "#26314a" },
+    autoSize: true,
+  });
+  const t = d.series.dates.map(x => x.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3"));
+  accSeries = chart.addAreaSeries({ priceScaleId: "left", lineColor: "#9d6bff", topColor: "rgba(157,107,255,.35)", bottomColor: "rgba(157,107,255,.03)", lineWidth: 2, priceFormat: { type: "volume" } });
+  accSeries.setData(t.map((x, i) => ({ time: x, value: d.series[cur.inv][i] })));
+  priceSeries = chart.addLineSeries({ priceScaleId: "right", color: "#E8621B", lineWidth: 1.6, priceFormat: { type: "price", precision: 0, minMove: 1 } });
+  priceSeries.setData(t.map((x, i) => ({ time: x, value: d.series.close[i] })));
+  chart.timeScale().fitContent();
+}
+
+/* URL 파라미터 복원 */
+(function init() {
+  const p = new URLSearchParams(location.search);
+  const code = p.get("code"), name = p.get("name") || "";
+  const y = +(p.get("years") || 3);
+  if ([1, 3, 5, 10].includes(y)) {
+    cur.years = y;
+    document.querySelectorAll("#yearsRow .chip[data-y]").forEach(c => c.classList.toggle("on", +c.dataset.y === y));
+  }
+  if (code && /^[0-9]{6}$/.test(code)) { $("q").value = name; load(code, name); }
+})();
+</script>
+</body>
+</html>

@@ -1328,6 +1328,10 @@ export default {
         { headers: JSON_HEADERS });
     }
 
+    if (url.pathname.startsWith("/api/supply/")) {
+      return handleSupply(req, url, env, ctx);
+    }
+
     if (url.pathname.startsWith("/api/cockpit/")) {
       return handleCockpit(req, url, ctx);
     }
@@ -1357,3 +1361,148 @@ export default {
     return env.ASSETS.fetch(req);
   },
 };
+
+/* ═══════════════════ 수급 콕핏 (/api/supply/*) ═══════════════════
+   영웅문4 수급분석툴 방법론: 매집수량 = 누적순매수 - 역대최저점(최대분산),
+   매집고점 = max(매집수량, -최저점), 분산비율 = 매집수량/매집고점.
+   데이터: 키움 REST ka10059 (키는 D1 app_config, 토큰은 KV 캐시) */
+
+const SUP_CATS = ["개인","외국인","기관계","금융투자","보험","투신","기타금융","은행","연기금","사모펀드","국가","기타법인","내외국인"];
+const SUP_FIELDS = { 개인:"ind_invsr", 외국인:"frgnr_invsr", 기관계:"orgn", 금융투자:"fnnc_invt",
+  보험:"insrnc", 투신:"invtrt", 기타금융:"etc_fnnc", 은행:"bank", 연기금:"penfnd_etc",
+  사모펀드:"samo_fund", 국가:"natn", 기타법인:"etc_corp", 내외국인:"natfor" };
+const SUP_FORCE = ["외국인","금융투자","보험","투신","기타금융","은행","연기금","사모펀드","국가","기타법인"];
+
+function supNum(v) {
+  if (v == null) return 0;
+  const n = parseFloat(String(v).replace(/,/g, "").replace(/^\+/, ""));
+  return isNaN(n) ? 0 : n;
+}
+
+async function supToken(env) {
+  const cached = await env.GAUGE_KV.get("kiwoom-token");
+  if (cached) return cached;
+  const rs = await env.RISK_DB.prepare(
+    "SELECT k,v FROM app_config WHERE k IN ('kiwoom_app_key','kiwoom_secret_key')").all();
+  const kv = {};
+  for (const r of rs.results) kv[r.k] = r.v;
+  if (!kv.kiwoom_app_key || !kv.kiwoom_secret_key) throw new Error("키움 앱키 미설정 (D1 app_config)");
+  const r = await fetch("https://api.kiwoom.com/oauth2/token", {
+    method: "POST", headers: { "content-type": "application/json;charset=UTF-8" },
+    body: JSON.stringify({ grant_type: "client_credentials", appkey: kv.kiwoom_app_key, secretkey: kv.kiwoom_secret_key }),
+  });
+  const j = await r.json();
+  if (!j.token) throw new Error("키움 토큰 발급 실패: " + (j.return_msg || r.status));
+  await env.GAUGE_KV.put("kiwoom-token", j.token, { expirationTtl: 3600 * 20 });
+  return j.token;
+}
+
+async function supFetchFlows(code, fromYmd, env) {
+  const token = await supToken(env);
+  const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10).replace(/-/g, "");
+  const byDate = {};
+  let contYn = "N", nextKey = "", pages = 0;
+  while (pages < 30) {
+    const h = { "content-type": "application/json;charset=UTF-8", authorization: "Bearer " + token, "api-id": "ka10059" };
+    if (contYn === "Y") { h["cont-yn"] = "Y"; h["next-key"] = nextKey; }
+    const r = await fetch("https://api.kiwoom.com/api/dostk/stkinfo", {
+      method: "POST", headers: h,
+      body: JSON.stringify({ dt: today, stk_cd: code, amt_qty_tp: "2", trde_tp: "0", unit_tp: "1" }),
+    });
+    if (!r.ok) throw new Error("ka10059 HTTP " + r.status);
+    const j = await r.json();
+    const list = j.stk_invsr_orgn || [];
+    if (String(j.return_code ?? "0") !== "0" && !list.length) throw new Error("ka10059: " + (j.return_msg || "오류"));
+    let oldest = null;
+    for (const row of list) {
+      const d = String(row.dt || "").replace(/-/g, "").slice(0, 8);
+      if (d.length !== 8) continue;
+      oldest = d;
+      if (d < fromYmd || byDate[d]) continue;
+      const rec = { date: d, close: Math.abs(supNum(row.cur_prc)), volume: supNum(row.acc_trde_qty) };
+      for (const c of SUP_CATS) rec[c] = supNum(row[SUP_FIELDS[c]]);
+      byDate[d] = rec;
+    }
+    contYn = r.headers.get("cont-yn") || "N";
+    nextKey = r.headers.get("next-key") || "";
+    pages++;
+    if (contYn !== "Y" || !list.length || (oldest && oldest < fromYmd)) break;
+  }
+  return Object.keys(byDate).sort().map(k => byDate[k]);
+}
+
+function supMetrics(net) {
+  let s = 0;
+  const cum = net.map(v => (s += v));
+  let low = 0;
+  for (const c of cum) if (c < low) low = c;
+  const acc = cum.map(c => Math.round(c - low));
+  let peak = -low;
+  for (const a of acc) if (a > peak) peak = a;
+  const cur = acc.length ? acc[acc.length - 1] : 0;
+  const avg = (arr, n) => { const t = arr.slice(-n); return t.length ? t.reduce((x, y) => x + y, 0) / t.length : 0; };
+  const sum = (arr, n) => arr.slice(-n).reduce((x, y) => x + y, 0);
+  const a5 = avg(acc, 5), a20 = avg(acc, 20), a60 = avg(acc, 60), s20 = sum(net, 20);
+  const trend = (a5 >= a20 && a20 >= a60 && s20 > 0) ? "매집" : (a5 <= a20 && a20 <= a60 && s20 < 0) ? "분산" : "중립";
+  return { cum: Math.round(s), acc: cur, peak: Math.round(peak),
+    disp: peak > 0 ? +(cur / peak).toFixed(4) : null, capacity: Math.round(peak - cur),
+    n5: Math.round(sum(net, 5)), n20: Math.round(s20), n60: Math.round(sum(net, 60)), trend, _acc: acc };
+}
+
+async function handleSupply(req, url, env, ctx) {
+  try {
+    const m = url.pathname.match(/^\/api\/supply\/analyze\/([0-9A-Za-z]{6})$/);
+    if (!m) return new Response(JSON.stringify({ ok: false, error: "경로: /api/supply/analyze/{6자리코드}?years=3" }),
+      { status: 404, headers: JSON_HEADERS });
+    const code = m[1];
+    const years = Math.min(Math.max(parseInt(url.searchParams.get("years") || "3", 10) || 3, 1), 10);
+    const refresh = url.searchParams.get("refresh") === "1";
+    const kvKey = `supply:${code}:${years}`;
+    if (!refresh) {
+      const hit = await env.GAUGE_KV.get(kvKey);
+      if (hit) return new Response(hit, { headers: JSON_HEADERS });
+    }
+    const fromD = new Date(Date.now() + 9 * 3600e3);
+    fromD.setFullYear(fromD.getFullYear() - years);
+    const fromYmd = fromD.toISOString().slice(0, 10).replace(/-/g, "");
+    const rows = await supFetchFlows(code, fromYmd, env);
+    if (rows.length < 60) throw new Error(`데이터 부족 (${rows.length}일)`);
+    const nets = {};
+    for (const c of SUP_CATS) nets[c] = rows.map(r => r[c]);
+    nets["세력합"] = rows.map(r => SUP_FORCE.reduce((s, c) => s + r[c], 0));
+    const cats = {}, accSeries = {};
+    for (const [c, net] of Object.entries(nets)) {
+      const mt = supMetrics(net);
+      accSeries[c] = mt._acc;
+      delete mt._acc;
+      cats[c] = mt;
+    }
+    const share = SUP_CATS.filter(c => c !== "기관계");
+    const tp = share.reduce((s, c) => s + cats[c].peak, 0) || 1;
+    const tc = share.reduce((s, c) => s + cats[c].acc, 0) || 1;
+    for (const c of share) {
+      cats[c].leadShare = +(cats[c].peak / tp).toFixed(4);
+      cats[c].holdShare = +(cats[c].acc / tc).toFixed(4);
+    }
+    const splits = [];
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i].close / (rows[i - 1].close || 1);
+      if (rows[i - 1].close > 0 && (r < 0.55 || r > 1.45)) splits.push(rows[i].date);
+    }
+    const kstH = new Date(Date.now() + 9 * 3600e3).getUTCHours();
+    const intraday = kstH >= 9 && kstH < 16;
+    const out = JSON.stringify({
+      ok: true, code, years, asof: rows[rows.length - 1].date, close: rows[rows.length - 1].close,
+      days: rows.length, intraday, splits, categories: cats,
+      series: { dates: rows.map(r => r.date), close: rows.map(r => r.close),
+        개인: accSeries["개인"], 세력합: accSeries["세력합"], 외국인: accSeries["외국인"],
+        기관계: accSeries["기관계"], 연기금: accSeries["연기금"], 사모펀드: accSeries["사모펀드"],
+        금융투자: accSeries["금융투자"], 투신: accSeries["투신"] },
+    });
+    ctx.waitUntil(env.GAUGE_KV.put(kvKey, out, { expirationTtl: intraday ? 900 : 21600 }));
+    return new Response(out, { headers: JSON_HEADERS });
+  } catch (e) {
+    return new Response(JSON.stringify({ ok: false, error: String(e.message || e) }),
+      { status: 500, headers: JSON_HEADERS });
+  }
+}
