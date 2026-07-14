@@ -2,3 +2,4 @@ worker.js
 wrangler.jsonc
 .assetsignore
 README.md
+family-album/
