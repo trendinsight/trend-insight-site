@@ -65,7 +65,7 @@ footer{max-width:1080px;margin:0 auto;padding:0 20px 50px;font-size:.78rem;color
 <div class="chartbox sm"><canvas id="kosdaq-bar"></canvas></div>
 </div>
 <p class="legendnote">· 누적 순매수는 선택한 기간의 시작일부터 합산합니다. 기간을 바꾸면 누적 기준점도 함께 바뀝니다. 일별 막대 차트는 항상 최근 1개월(21거래일)만 표시합니다.<br>
-· [최신 데이터 갱신] 버튼은 키움 실시간 데이터로 차트를 즉시 갱신합니다(당일 장중/마감 잠정치 포함). 키움 지정단말기 인증이 켜져 있으면 실시간 호출이 제한되며, 이 경우 마지막 스킬 실행 시점의 스냅샷이 표시됩니다. 원천 엑셀(코스피_업종.xlsx/코스닥_업종.xlsx)과 구글 드라이브 반영은 Claude에서 "업종 수급 업데이트" 실행 시 이루어집니다.<br>
+· [최신 데이터 갱신] 버튼은 마지막 업데이트 실행 시점의 최신 데이터를 다시 불러옵니다. 데이터 원천 갱신(키움 조회·엑셀 반영)은 지정단말기(회원님 PC)의 Claude에서 "업종 수급 업데이트" 실행 시 이루어집니다. 원천 엑셀(코스피_업종.xlsx/코스닥_업종.xlsx)과 구글 드라이브 반영은 Claude에서 "업종 수급 업데이트" 실행 시 이루어집니다.<br>
 · 데이터: 키움증권 REST API (업종별 투자자 순매수, 금액 기준)</p>
 </div>
 <footer>본 페이지의 모든 정보는 투자 참고 자료이며, 특정 종목·자산의 매수·매도를 권유하지 않습니다.</footer>
@@ -172,15 +172,23 @@ window.addEventListener("DOMContentLoaded", async ()=>{
   const btn = document.getElementById("btn-refresh");
   btn.onclick = async ()=>{
     btn.disabled = true; btn.textContent = "갱신 중…";
+    let done = false;
     try{
+      // 1차: 실시간 호출 시도 (지정단말기 인증 환경에서는 키움이 차단)
       const since = DATA.kospi.dates[DATA.kospi.dates.length-1];
       const r = await fetch("/api/sector-flow/refresh?since="+since);
       const j = await r.json();
-      const ok = applyLive(j);
-      if(ok) btn.textContent = "✓ 갱신 완료";
-      else if(String(j.error||"").includes("8050")) btn.textContent = "키움 지정단말기 제한 — 최근 스킬 실행 데이터 표시 중";
-      else btn.textContent = "갱신 실패: "+(j.error||"").slice(0,40);
-    }catch(e){ btn.textContent = "갱신 실패 (네트워크)"; }
+      if(applyLive(j)){ btn.textContent = "✓ 갱신 완료 (실시간)"; done = true; }
+    }catch(e){}
+    if(!done){
+      // 2차: 마지막 업데이트 스냅샷 다시 불러오기
+      try{
+        const r2 = await fetch("/data/sector-flow-live.json", {cache:"no-store"});
+        const j2 = await r2.json();
+        if(applyLive(j2)){ btn.textContent = "✓ 마지막 업데이트 데이터 불러옴"; done = true; }
+      }catch(e){}
+    }
+    if(!done) btn.textContent = "갱신 실패 — Claude에서 '업종 수급 업데이트' 실행 필요";
     setTimeout(()=>{btn.disabled=false; btn.textContent="↻ 최신 데이터 갱신";}, 3000);
   };
 });
