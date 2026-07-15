@@ -1581,6 +1581,6 @@ async function sfHandle(req, url, env) {
     await env.GAUGE_KV.put("sector-flow-live", payload, { expirationTtl: 86400 * 5 });
     return new Response(payload, { headers: JSON_HEADERS });
   } catch (e) {
-    return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
+    return new Response(JSON.stringify({ ok: false, error: String(e && e.stack || e) }), { headers: JSON_HEADERS });
   }
 }
