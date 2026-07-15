@@ -40,7 +40,7 @@ footer{max-width:1080px;margin:0 auto;padding:0 20px 50px;font-size:.78rem;color
 <header><a href="index.html">T Trend Insight</a></header>
 <div class="wrap">
 <h1>업종 수급 — 투자자별 순매수 추이</h1>
-<p class="sub">코스피·코스닥 종합 기준 개인·외국인·기관 순매수(금액). 위: 기간 누적 순매수 + 지수, 아래: 일별 순매수. 키움 REST API로 자동 업데이트.</p>
+<p class="sub">코스피·코스닥 종합 기준 개인·외국인·기관 순매수(금액). 위: 기간 누적 순매수 + 지수(1M/3M/6M/1Y 선택), 아래: 최근 1개월 일별 순매수. 키움 REST API로 자동 업데이트.</p>
 <span class="asof">업데이트 <span>2026-07-15 20:40:56</span></span><span class="asof">단위 <span>조원</span></span>
 <div class="card">
 <h2>코스피 투자자 수급 <span class="px">KOSPI <b class="up">7,284.41</b> · 최근일 2026.07.15</span></h2>
@@ -60,7 +60,7 @@ footer{max-width:1080px;margin:0 auto;padding:0 20px 50px;font-size:.78rem;color
 <div class="chartbox"><canvas id="kosdaq-line"></canvas></div>
 <div class="chartbox sm"><canvas id="kosdaq-bar"></canvas></div>
 </div>
-<p class="legendnote">· 누적 순매수는 선택한 기간의 시작일부터 합산합니다. 기간을 바꾸면 누적 기준점도 함께 바뀝니다.<br>· 데이터: 키움증권 REST API (업종별 투자자 순매수, 금액 기준) · 원천 엑셀: 코스피_업종.xlsx / 코스닥_업종.xlsx</p>
+<p class="legendnote">· 누적 순매수는 선택한 기간의 시작일부터 합산합니다. 기간을 바꾸면 누적 기준점도 함께 바뀝니다. 일별 막대 차트는 기간 선택과 무관하게 항상 최근 1개월(21거래일)만 표시합니다.<br>· 데이터: 키움증권 REST API (업종별 투자자 순매수, 금액 기준) · 원천 엑셀: 코스피_업종.xlsx / 코스닥_업종.xlsx</p>
 </div>
 <footer>본 페이지의 모든 정보는 투자 참고 자료이며, 특정 종목·자산의 매수·매도를 권유하지 않습니다.</footer>
 <script>
@@ -77,23 +77,25 @@ function build(mkt, idxLabel){
   const lineCtx = document.getElementById(mkt+"-line").getContext("2d");
   const barCtx = document.getElementById(mkt+"-bar").getContext("2d");
   let lineChart=null, barChart=null;
-  function slice(){
-    const n = Math.min(RANGES[state.range], d.dates.length);
+  function slice(n){
+    n = Math.min(n, d.dates.length);
     const i0 = d.dates.length-n;
     return {dates:d.dates.slice(i0), ind:d.ind.slice(i0), frgnr:d.frgnr.slice(i0),
             orgn:d.orgn.slice(i0), index:d.index.slice(i0)};
   }
   function render(){
-    const s = slice();
+    const s = slice(RANGES[state.range]);
+    const sb = slice(RANGES["1M"]);
     const labels = s.dates.map(fmtD);
+    const barLabels = sb.dates.map(fmtD);
     const cumsets = ["ind","frgnr","orgn"].map(k=>({
       label:NAMES[k]+" 누적", data:cum(s[k]).map(toJo), borderColor:COLORS[k],
       backgroundColor:COLORS[k], borderWidth:2, pointRadius:0, tension:.15, yAxisID:"y"}));
     cumsets.push({label:idxLabel, data:s.index, borderColor:COLORS.idx, borderDash:[5,4],
       borderWidth:1.6, pointRadius:0, tension:.15, yAxisID:"y2"});
     const barsets = ["ind","frgnr","orgn"].map(k=>({
-      label:NAMES[k], data:s[k].map(toJo), backgroundColor:COLORS[k]+"cc",
-      borderWidth:0, barPercentage:.9, categoryPercentage:.85}));
+      label:NAMES[k], data:sb[k].map(toJo), backgroundColor:COLORS[k]+"cc",
+      borderWidth:0, barPercentage:.9, categoryPercentage:.8}));
     if(lineChart) lineChart.destroy();
     if(barChart) barChart.destroy();
     const common={responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
@@ -104,9 +106,9 @@ function build(mkt, idxLabel){
       options:{...common,scales:{...common.scales,
         y:{title:{display:true,text:"누적 순매수 (조원)"},grid:{color:"#eef1f6"}},
         y2:{position:"right",title:{display:true,text:idxLabel},grid:{drawOnChartArea:false}}}}});
-    barChart = new Chart(barCtx,{type:"bar",data:{labels,datasets:barsets},
-      options:{...common,scales:{...common.scales,
-        y:{title:{display:true,text:"일별 순매수 (조원)"},grid:{color:"#eef1f6"}}}}});
+    barChart = new Chart(barCtx,{type:"bar",data:{labels:barLabels,datasets:barsets},
+      options:{...common,scales:{x:{ticks:{maxTicksLimit:12,font:{size:11}},grid:{display:false}},
+        y:{title:{display:true,text:"일별 순매수 (조원) — 최근 1개월"},grid:{color:"#eef1f6"}}}}});
     // 기간 누적 chips
     const chipbox = document.getElementById(mkt+"-stats");
     chipbox.innerHTML = ["ind","frgnr","orgn"].map(k=>{
