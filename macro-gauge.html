@@ -201,8 +201,8 @@ function acard(sym,d){
   </div>`;
 }
 
-function combinedTrend(data,sel,ymd){
-  const syms=ASSETS.filter(s=>data.assets[s]&&data.assets[s].history.length>1);
+function combinedTrend(data,sel,ymd,group,title){
+  const syms=group.filter(s=>data.assets[s]&&data.assets[s].history.length>1);
   if(!syms.length)return"";
   const W=1000,H=250,P=38;
   let d0="99999999",d1="00000000";
@@ -221,7 +221,7 @@ function combinedTrend(data,sel,ymd){
   const selDate=ymd||d1;
   const lbls=[d0,d1].map(dd=>`<text x="${xs(toN(dd))}" y="${H-P+14}" font-size="9" fill="#9aa6b6" text-anchor="middle">${fd(dd)}</text>`).join("");
   const vline=`<line x1="${xs(toN(selDate))}" x2="${xs(toN(selDate))}" y1="${ys(100)}" y2="${ys(0)}" stroke="#b22f2f" stroke-width="1" stroke-dasharray="4 3"/>`;
-  return`<div class="card"><h2>거시 온도 추이 — 5개 시장 한 화면</h2>
+  return`<div class="card"><h2>${title}</h2>
   <svg viewBox="0 0 ${W} ${H}" style="width:100%">
     ${band(75,100,"rgba(102,187,106,.10)")}${band(0,25,"rgba(229,115,115,.10)")}${ticks}${lines}${vline}${dots}${lbls}
   </svg>
@@ -257,7 +257,10 @@ function render(ymd){
   const vymd=ymd||fh[fh.length-1].date;
   for(const h of vhist){if(h.date<=vymd)vs=h.vars;}
   document.getElementById("board").innerHTML=
-    tiles(sel)+heatmap(sel)+combinedTrend(DATA,selIdx,ymd?fh[fi].date:null)+varChips(vs)+
+    tiles(sel)+heatmap(sel)+
+    combinedTrend(DATA,selIdx,ymd?fh[fi].date:null,["KOSPI","KOSDAQ"],"거시 온도 추이 — 국내 (코스피·코스닥)")+
+    combinedTrend(DATA,selIdx,ymd?fh[fi].date:null,["DOW","NASDAQ","BTC"],"거시 온도 추이 — 해외 (다우·나스닥·비트코인)")+
+    varChips(vs)+
     `<div class="grid">${syms.map(s=>acard(s,sel[s])).join("")}</div>`;
 }
 
