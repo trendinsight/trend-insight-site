@@ -1328,6 +1328,10 @@ export default {
         { headers: JSON_HEADERS });
     }
 
+    if (url.pathname === "/api/sector-flow/token" && req.method === "POST") {
+      return sfPushToken(req, env);
+    }
+
     if (url.pathname.startsWith("/api/sector-flow/")) {
       return sfHandle(req, url, env);
     }
@@ -1401,7 +1405,18 @@ async function supToken(env) {
     body: JSON.stringify({ grant_type: "client_credentials", appkey: kv.kiwoom_app_key, secretkey: kv.kiwoom_secret_key }),
   });
   const j = await r.json();
-  if (!j.token) throw new Error("키움 토큰 발급 실패: " + (j.return_msg || r.status));
+  if (!j.token) {
+    // 지정단말기 인증 등으로 워커에서 발급 불가 → 로컬 스킬이 밀어넣은 토큰 폴백
+    const t = await env.RISK_DB.prepare("SELECT v FROM app_config WHERE k='kiwoom_token'").first();
+    const exp = await env.RISK_DB.prepare("SELECT v FROM app_config WHERE k='kiwoom_token_exp'").first();
+    if (t && t.v && exp && Number(exp.v) > Date.now() + 60e3) {
+      const ttl = Math.max(60, Math.min(3600 * 20, Math.floor((Number(exp.v) - Date.now()) / 1000)));
+      await env.GAUGE_KV.put("kiwoom-token", t.v, { expirationTtl: ttl });
+      return t.v;
+    }
+    throw new Error("키움 토큰 발급 실패: " + (j.return_msg || r.status) +
+      " — 로컬 저장 토큰도 없거나 만료. Claude에서 '업종 수급 업데이트'를 실행하면 토큰이 갱신됩니다.");
+  }
   await env.GAUGE_KV.put("kiwoom-token", j.token, { expirationTtl: 3600 * 20 });
   return j.token;
 }
@@ -1582,5 +1597,26 @@ async function sfHandle(req, url, env) {
     return new Response(payload, { headers: JSON_HEADERS });
   } catch (e) {
     return new Response(JSON.stringify({ ok: false, error: String(e && e.stack || e) }), { headers: JSON_HEADERS });
+  }
+}
+
+/* 로컬 스킬이 발급한 키움 토큰을 저장 (지정단말기 인증 우회용).
+   POST /api/sector-flow/token  {secret, token, expires_at(ms epoch)} */
+async function sfPushToken(req, env) {
+  try {
+    const b = await req.json();
+    const sec = await env.RISK_DB.prepare("SELECT v FROM app_config WHERE k='sf_push_secret'").first();
+    if (!sec || !b.secret || b.secret !== sec.v) {
+      return new Response(JSON.stringify({ ok: false, error: "인증 실패" }), { status: 403, headers: JSON_HEADERS });
+    }
+    if (!b.token) return new Response(JSON.stringify({ ok: false, error: "token 누락" }), { status: 400, headers: JSON_HEADERS });
+    const exp = Number(b.expires_at) || (Date.now() + 3600e3 * 20);
+    await env.RISK_DB.prepare("INSERT INTO app_config (k,v) VALUES ('kiwoom_token', ?1) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(String(b.token)).run();
+    await env.RISK_DB.prepare("INSERT INTO app_config (k,v) VALUES ('kiwoom_token_exp', ?1) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(String(exp)).run();
+    const ttl = Math.max(60, Math.min(3600 * 20, Math.floor((exp - Date.now()) / 1000)));
+    await env.GAUGE_KV.put("kiwoom-token", String(b.token), { expirationTtl: ttl });
+    return new Response(JSON.stringify({ ok: true, expires_at: exp }), { headers: JSON_HEADERS });
+  } catch (e) {
+    return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
   }
 }
