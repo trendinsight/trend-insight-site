@@ -88,9 +88,11 @@
   </section>
   <!-- 영상 -->
   <section id="secVideos" style="display:none">
-    <div class="toolbar"><h2>가족 영상 (유튜브)</h2><button class="btn" onclick="modal('vidModal',true)">＋ 영상 추가</button></div>
+    <div class="toolbar"><h2>가족 영상 (유튜브)</h2><div style="display:flex;gap:8px">
+      <a id="chLink" class="btn ghost" style="text-decoration:none" target="_blank" rel="noopener">▶ 유튜브 채널</a>
+      <button class="btn" onclick="modal('vidModal',true)">＋ 영상 추가</button></div></div>
     <div id="videoGrid" class="grid videos"></div>
-    <div id="videoEmpty" class="empty" style="display:none">아직 등록된 영상이 없습니다. 유튜브 링크를 추가해 보세요.</div>
+    <div id="videoEmpty" class="empty" style="display:none">아직 영상이 없습니다. 채널의 공개 영상은 자동으로 표시되고, 일부공개(unlisted) 영상은 ‘영상 추가’로 링크를 등록하면 됩니다.</div>
   </section>
 </main>
 <footer>가족 전용 공간 · 소중한 순간을 함께</footer>
@@ -260,14 +262,16 @@ async function doUpload() {
 
 // ---- 영상 ----
 async function loadVideos() {
-  videos = await (await fetch('/api/videos')).json();
+  const data = await (await fetch('/api/videos')).json();
+  videos = data.videos || [];
+  if (data.channel) $('chLink').href = data.channel.url;
   $('videoEmpty').style.display = videos.length ? 'none' : '';
   $('videoGrid').innerHTML = videos.map(v => `
     <div class="vid" id="v${v.id}">
       <div class="thumbwrap" onclick="playVideo('${v.id}','${v.vid}')">
         <img loading="lazy" src="https://i.ytimg.com/vi/${v.vid}/hqdefault.jpg"><div class="play">▶</div>
       </div>
-      <div class="cap"><b>${esc(v.title)}</b><span>${v.date} · <a href="#" onclick="delVideo('${v.id}');return false" style="color:inherit">삭제</a></span></div>
+      <div class="cap"><b>${esc(v.title)}</b><span>${v.date}${v.source==='manual' ? ` · <a href="#" onclick="delVideo('${v.id}');return false" style="color:inherit">삭제</a>` : ''}</span></div>
     </div>`).join('');
 }
 function playVideo(id, vid) {

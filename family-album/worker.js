@@ -4,6 +4,35 @@ const ok = (data) => new Response(JSON.stringify(data), { headers: JSON_HEADERS 
 const err = (msg, status = 400) => new Response(JSON.stringify({ error: msg }), { status, headers: JSON_HEADERS });
 
 const VIDEOS_KEY = 'meta/videos.json';
+const CHANNEL = {
+  name: "Sung's family",
+  handle: '@trend_insight_ssk',
+  id: 'UCpApyAWoU3zcjBBkMKrqLKQ',
+  url: 'https://www.youtube.com/@trend_insight_ssk',
+};
+
+// 채널 RSS에서 공개 영상 자동 수집 (최신 15개, 30분 캐시)
+async function getChannelVideos() {
+  try {
+    const r = await fetch(
+      `https://www.youtube.com/feeds/videos.xml?channel_id=${CHANNEL.id}`,
+      { cf: { cacheTtl: 1800, cacheEverything: true } }
+    );
+    if (!r.ok) return [];
+    const xml = await r.text();
+    const out = [];
+    const re = /<entry>[\s\S]*?<yt:videoId>([\w-]{11})<\/yt:videoId>[\s\S]*?<title>([\s\S]*?)<\/title>[\s\S]*?<published>([\d-]{10})/g;
+    let m;
+    while ((m = re.exec(xml))) {
+      out.push({
+        id: 'ch-' + m[1], vid: m[1],
+        title: m[2].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'"),
+        url: `https://youtu.be/${m[1]}`, date: m[3], source: 'channel',
+      });
+    }
+    return out;
+  } catch { return []; }
+}
 
 async function getVideos(env) {
   const obj = await env.PHOTOS.get(VIDEOS_KEY);
@@ -110,7 +139,14 @@ export default {
 
     // ---- 유튜브 영상 ----
     if (p === '/api/videos') {
-      if (request.method === 'GET') return ok(await getVideos(env));
+      if (request.method === 'GET') {
+        const [manual, channel] = await Promise.all([getVideos(env), getChannelVideos()]);
+        const seen = new Set(manual.map(v => v.vid));
+        const merged = manual.map(v => ({ ...v, source: v.source || 'manual' }))
+          .concat(channel.filter(v => !seen.has(v.vid)));
+        merged.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        return ok({ channel: CHANNEL, videos: merged });
+      }
       if (request.method === 'POST') {
         const body = await request.json();
         const { title, url: vurl } = body;
