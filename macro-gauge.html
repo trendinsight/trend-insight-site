@@ -28,11 +28,11 @@ h1{color:var(--navy);font-size:1.5rem;letter-spacing:-.02em}
 /* ── 요약 타일 ── */
 .tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:26px}
 @media(max-width:960px){.tiles{grid-template-columns:repeat(2,1fr)}}
-.tile{border-radius:16px;padding:16px 14px;color:#fff;text-align:center;box-shadow:0 2px 8px rgba(11,31,63,.12)}
-.tile .nm{font-size:.92rem;font-weight:700;opacity:.92}
-.tile .sc{font-size:2.5rem;font-weight:900;line-height:1.15;letter-spacing:-.02em}
-.tile .zn{display:inline-block;font-size:.78rem;font-weight:800;background:rgba(255,255,255,.22);border-radius:999px;padding:2px 12px;margin-top:2px}
-.tile .pr{font-size:.76rem;opacity:.85;margin-top:6px}
+.tile{border-radius:16px;padding:14px 12px;text-align:center;border:2px solid;box-shadow:0 2px 8px rgba(11,31,63,.08)}
+.tile .nm{font-size:.95rem;font-weight:800;color:#111}
+.tile .sc{font-size:2.6rem;font-weight:900;line-height:1.15;letter-spacing:-.02em}
+.tile .zn{display:inline-block;font-size:.78rem;font-weight:800;color:#fff;border-radius:999px;padding:2px 13px;margin-top:2px}
+.tile .pr{font-size:.78rem;color:#333;margin-top:6px;font-weight:600}
 /* ── 카드 공통 ── */
 .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:0 1px 3px rgba(11,31,63,.05);margin-bottom:22px}
 .card h2{font-size:1.05rem;color:var(--navy);margin-bottom:4px}
@@ -139,12 +139,13 @@ function gaugeSVG(score,col){
   </svg>`;
 }
 
+const ZSTYLE={"강한 순풍":["#1b7f3b","#dff0e2"],"순풍":["#558b2f","#eef6e3"],"중립":["#5b6779","#e9edf3"],"역풍":["#ef6c00","#fdeedd"],"강한 역풍":["#c62828","#fbe3e3"]};
 function tiles(sel){
   return`<div class="tiles">`+ASSETS.filter(s=>sel[s]).map(s=>{
-    const d=sel[s],c=scoreColor(d.score);
-    return`<div class="tile" style="background:linear-gradient(160deg,${c},${c}dd)">
-      <div class="nm">${ANAME[s]}</div><div class="sc">${Math.round(d.score)}</div>
-      <div class="zn">${d.zone}</div>
+    const d=sel[s],[main,bg]=ZSTYLE[d.zone]||ZSTYLE["중립"];
+    return`<div class="tile" style="background:${bg};border-color:${main}">
+      <div class="nm">${ANAME[s]}</div><div class="sc" style="color:${main}">${Math.round(d.score)}</div>
+      <div class="zn" style="background:${main}">${d.zone}</div>
       <div class="pr">${num(d.close)} (${d.change_pct>=0?"+":""}${d.change_pct}%)</div></div>`;
   }).join("")+`</div>`;
 }
