@@ -1332,6 +1332,10 @@ export default {
       return sfPushToken(req, env);
     }
 
+    if (url.pathname === "/api/sector-flow/push-data" && req.method === "POST") {
+      return sfPushData(req, env);
+    }
+
     if (url.pathname.startsWith("/api/sector-flow/")) {
       return sfHandle(req, url, env);
     }
@@ -1616,6 +1620,31 @@ async function sfPushToken(req, env) {
     const ttl = Math.max(60, Math.min(3600 * 20, Math.floor((exp - Date.now()) / 1000)));
     await env.GAUGE_KV.put("kiwoom-token", String(b.token), { expirationTtl: ttl });
     return new Response(JSON.stringify({ ok: true, expires_at: exp }), { headers: JSON_HEADERS });
+  } catch (e) {
+    return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
+  }
+}
+
+/* 로컬 스킬이 갱신한 수급 데이터 스냅샷 저장 — 페이지 로드 시 자동 병합됨.
+   POST /api/sector-flow/push-data  {secret, updated, markets:{kospi:[...],kosdaq:[...]}} */
+async function sfPushData(req, env) {
+  try {
+    const b = await req.json();
+    const sec = await env.RISK_DB.prepare("SELECT v FROM app_config WHERE k='sf_push_secret'").first();
+    if (!sec || !b.secret || b.secret !== sec.v) {
+      return new Response(JSON.stringify({ ok: false, error: "인증 실패" }), { status: 403, headers: JSON_HEADERS });
+    }
+    if (!b.markets || !b.markets.kospi || !b.markets.kosdaq) {
+      return new Response(JSON.stringify({ ok: false, error: "markets 누락" }), { status: 400, headers: JSON_HEADERS });
+    }
+    const payload = JSON.stringify({
+      ok: true,
+      updated: b.updated || new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16).replace("T", " "),
+      markets: { kospi: b.markets.kospi, kosdaq: b.markets.kosdaq },
+      source: "skill",
+    });
+    await env.GAUGE_KV.put("sector-flow-live", payload, { expirationTtl: 86400 * 7 });
+    return new Response(JSON.stringify({ ok: true }), { headers: JSON_HEADERS });
   } catch (e) {
     return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
   }
