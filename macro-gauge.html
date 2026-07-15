@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>거시 온도계 | Trend Insight</title>
+<meta name="description" content="금리·달러·환율·유가·VIX가 코스피·코스닥·다우·나스닥·BTC에 주는 순풍/역풍 대시보드">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--navy:#0b1f3f;--accent:#2e6ff2;--red:#b22f2f;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg:#f5f7fb;
+--g1:#1b7f3b;--g0:#7cb342;--n0:#8a97a8;--r0:#ef6c00;--r1:#c62828}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+a{text-decoration:none;color:inherit}
+header{background:var(--navy);padding:16px 24px}
+header a{color:#fff;font-weight:800}
+.wrap{max-width:1080px;margin:0 auto;padding:30px 20px 60px}
+h1{color:var(--navy);font-size:1.5rem;letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:.88rem;margin:4px 0 2px}
+.asof{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 16px;font-size:.86rem;font-weight:700;color:var(--navy);margin:10px 8px 18px 0}
+.asof span{color:var(--accent)}
+.datebox{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:.86rem;font-weight:600;color:var(--navy);margin:10px 0 18px}
+.datebox input{font-family:inherit;font-size:.86rem;font-weight:700;color:var(--navy);border:none;outline:none;background:transparent}
+.datebox button{font-family:inherit;font-size:.78rem;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:999px;padding:4px 12px;cursor:pointer}
+.datebox button.ghost{background:#eef2f8;color:#39506e}
+#datemsg{font-size:.8rem;color:var(--red);margin:-8px 0 14px;display:none}
+#err{display:none;background:#fdecea;color:#c62828;padding:14px 18px;border-radius:10px;margin:20px 0}
+/* ── 요약 타일 ── */
+.tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:26px}
+@media(max-width:960px){.tiles{grid-template-columns:repeat(2,1fr)}}
+.tile{border-radius:16px;padding:16px 14px;color:#fff;text-align:center;box-shadow:0 2px 8px rgba(11,31,63,.12)}
+.tile .nm{font-size:.92rem;font-weight:700;opacity:.92}
+.tile .sc{font-size:2.5rem;font-weight:900;line-height:1.15;letter-spacing:-.02em}
+.tile .zn{display:inline-block;font-size:.78rem;font-weight:800;background:rgba(255,255,255,.22);border-radius:999px;padding:2px 12px;margin-top:2px}
+.tile .pr{font-size:.76rem;opacity:.85;margin-top:6px}
+/* ── 카드 공통 ── */
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:0 1px 3px rgba(11,31,63,.05);margin-bottom:22px}
+.card h2{font-size:1.05rem;color:var(--navy);margin-bottom:4px}
+.card .hint{font-size:.78rem;color:var(--muted);margin-bottom:12px}
+/* ── 히트맵 ── */
+.hm{display:grid;gap:5px;align-items:stretch}
+.hm .hcell,.hm .hhead,.hm .hrow{border-radius:9px;display:flex;align-items:center;justify-content:center;min-height:44px;font-weight:700}
+.hm .hhead{background:none;color:var(--muted);font-size:.78rem;min-height:26px}
+.hm .hrow{background:#eef2f8;color:var(--navy);font-size:.85rem}
+.hm .hcell{color:#fff;font-size:.86rem;flex-direction:column;line-height:1.1}
+.hm .hcell small{font-size:.62rem;font-weight:600;opacity:.9}
+@media(max-width:720px){.hm .hcell{font-size:.72rem;min-height:38px}.hm .hrow{font-size:.72rem}.hm .hhead{font-size:.64rem}}
+/* ── 변수 칩 ── */
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chip{flex:1 1 150px;border-radius:12px;padding:10px 14px;background:#f2f5fa;border:1px solid var(--line)}
+.chip .cl{font-size:.78rem;color:var(--muted);font-weight:600}
+.chip .cv{font-size:1.15rem;font-weight:800;color:var(--navy)}
+.chip .cd{font-size:.8rem;font-weight:800}
+.cd.up{color:#c62828}.cd.dn{color:#1565c0}.cd.fl{color:#8a97a8}
+/* ── 자산 상세 ── */
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+@media(max-width:960px){.grid{grid-template-columns:1fr}}
+.acard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(11,31,63,.05)}
+.acard h3{font-size:1rem;color:var(--navy);display:flex;justify-content:space-between;align-items:baseline}
+.px{font-size:.82rem;font-weight:600}
+.up{color:#c62828}.down{color:#1565c0}
+.gaugebox{text-align:center;margin:4px 0 2px}
+.score{font-size:1.9rem;font-weight:900;line-height:1}
+.zone{display:inline-block;margin:4px 0 10px;padding:3px 14px;border-radius:999px;font-size:.8rem;font-weight:800;color:#fff}
+.dbars .db{display:grid;grid-template-columns:76px 1fr 44px;align-items:center;gap:8px;margin-top:6px;font-size:.78rem}
+.dbars .db .lb{color:var(--muted);font-weight:600;text-align:right}
+.dbars .db .vl{font-weight:800;text-align:right}
+.dtrack{position:relative;height:14px;background:#f0f3f8;border-radius:7px;overflow:hidden}
+.dtrack i{position:absolute;top:0;height:100%;border-radius:0}
+.dtrack .mid{position:absolute;left:calc(50% - .5px);width:1px;height:100%;background:#c3ccd9}
+.rules{margin-top:10px;font-size:.76rem}
+.rules li{list-style:none;background:#fff8e1;color:#8a5a00;border-radius:8px;padding:4px 10px;margin-top:4px;font-weight:600}
+/* ── 통합 추이 ── */
+.legend{font-size:.8rem;color:var(--muted);margin-top:8px}
+.legend b{font-weight:800}
+.lgd{display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-weight:700}
+.lgd i{width:14px;height:4px;border-radius:2px;display:inline-block}
+.note{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 20px;margin-top:22px;font-size:.82rem;color:var(--muted)}
+.note h3{font-size:.92rem;color:var(--navy);margin-bottom:6px}
+.disclaimer{margin-top:24px;font-size:.74rem;color:#9aa6b6;border-top:1px solid var(--line);padding-top:12px}
+</style>
+</head>
+<body>
+<header><a href="index.html">← Trend Insight</a></header>
+<div class="wrap">
+  <h1>거시 온도계 <span style="font-size:.85rem;color:var(--accent)">MACRO THERMOMETER</span></h1>
+  <p class="sub">금리·달러·환율·유가·VIX가 각 시장에 주는 <b>순풍(초록) / 역풍(빨강)</b> — 50 중립, 높을수록 우호적</p>
+  <div class="asof">기준일 <span id="asof">—</span> · 갱신 <span id="updated">—</span></div>
+  <div class="datebox">조회 날짜 <input type="date" id="datepick"><button id="datego">조회</button><button class="ghost" id="datelatest">최신</button></div>
+  <div id="datemsg"></div>
+  <div id="err">데이터를 불러오지 못했습니다. 잠시 후 새로고침 해주세요.</div>
+  <div id="board"></div>
+  <div class="note">
+    <h3>읽는 법 (30초)</h3>
+    ① 상단 타일 색 = 그 시장의 거시 환경 (초록 순풍 · 회색 중립 · 빨강 역풍)<br>
+    ② 히트맵 = 어떤 변수가 어떤 시장에 순풍(초록)/역풍(빨강)인지 한 판 — 색이 진할수록 영향 큼<br>
+    ③ 카드 막대 = 변수별 기여도 (오른쪽 초록 순풍 / 왼쪽 빨강 역풍) · ⚡줄 = 극단 국면 룰 발동<br>
+    산출 = 120일 롤링 상관 × 20일 모멘텀 z + 룰 오버레이. 상관은 인과가 아니며 국면 따라 바뀝니다. 한국 자산엔 미국 세션 변수 1일 시차.
+  </div>
+  <p class="disclaimer">본 자료는 규칙 기반 참고 자료이며 특정 자산의 매수·매도를 권유하지 않습니다. 투자의 최종 판단과 책임은 투자자 본인에게 있습니다.</p>
+</div>
+<script>
+const ASSETS=["KOSPI","KOSDAQ","DOW","NASDAQ","BTC"];
+const ANAME={KOSPI:"코스피",KOSDAQ:"코스닥",DOW:"다우존스",NASDAQ:"나스닥",BTC:"비트코인"};
+const VORDER=["US10Y","USSHORT","DXY","USDKRW","WTI","VIX"];
+const VNAME={US10Y:"미 10년물",USSHORT:"미 단기금리",DXY:"달러인덱스",USDKRW:"원/달러",WTI:"WTI",VIX:"VIX"};
+const VUNIT={US10Y:"%p",USSHORT:"%p",DXY:"%",USDKRW:"%",WTI:"%",VIX:"pt"};
+const LCOLOR={KOSPI:"#2e6ff2",KOSDAQ:"#8e24aa",DOW:"#00897b",NASDAQ:"#e8830c",BTC:"#f7931a"};
+const fd=s=>s.slice(0,4)+"."+s.slice(4,6)+"."+s.slice(6,8);
+const iso=s=>s.slice(0,4)+"-"+s.slice(4,6)+"-"+s.slice(6,8);
+const num=v=>v==null?"—":v.toLocaleString();
+
+// 온도 → 색 (빨강 25 — 회색 50 — 초록 75)
+function scoreColor(s){
+  const stops=[[0,198,40,40],[25,198,40,40],[40,239,108,0],[50,138,151,168],[60,124,179,66],[75,27,127,59],[100,27,127,59]];
+  for(let i=0;i<stops.length-1;i++){
+    const[a,r1,g1,b1]=stops[i],[b,r2,g2,b2]=stops[i+1];
+    if(s>=a&&s<=b){const t=b===a?0:(s-a)/(b-a);
+      return`rgb(${Math.round(r1+(r2-r1)*t)},${Math.round(g1+(g2-g1)*t)},${Math.round(b1+(b2-b1)*t)})`;}
+  }
+  return"#8a97a8";
+}
+// 기여도 → 히트맵 셀 색 (초록+/빨강-, 크기→진하기)
+function cellColor(c){
+  const m=Math.min(1,Math.abs(c)/30);
+  if(Math.abs(c)<3)return"#aeb8c6";
+  return c>0?`rgba(27,127,59,${.35+.65*m})`:`rgba(198,40,40,${.35+.65*m})`;
+}
+function gaugeSVG(score,col){
+  const a=Math.PI*(1-score/100),r=74,cx=95,cy=88;
+  const x=cx+r*Math.cos(a),y=cy-r*Math.sin(a);
+  const arc=(f,t,c)=>{const a1=Math.PI*(1-f/100),a2=Math.PI*(1-t/100);
+    return`<path d="M ${cx+r*Math.cos(a1)} ${cy-r*Math.sin(a1)} A ${r} ${r} 0 0 1 ${cx+r*Math.cos(a2)} ${cy-r*Math.sin(a2)}" stroke="${c}" stroke-width="13" fill="none"/>`};
+  return`<svg viewBox="0 0 190 100" style="width:170px;max-width:100%">
+    ${arc(0,25,"#e57373")}${arc(25,40,"#ffb74d")}${arc(40,60,"#cfd8e3")}${arc(60,75,"#aed581")}${arc(75,100,"#66bb6a")}
+    <line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#0b1f3f" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="${cx}" cy="${cy}" r="5" fill="#0b1f3f"/>
+    <text x="6" y="98" font-size="9" fill="#9aa6b6">역풍</text><text x="164" y="98" font-size="9" fill="#9aa6b6">순풍</text>
+  </svg>`;
+}
+
+function tiles(sel){
+  return`<div class="tiles">`+ASSETS.filter(s=>sel[s]).map(s=>{
+    const d=sel[s],c=scoreColor(d.score);
+    return`<div class="tile" style="background:linear-gradient(160deg,${c},${c}dd)">
+      <div class="nm">${ANAME[s]}</div><div class="sc">${Math.round(d.score)}</div>
+      <div class="zn">${d.zone}</div>
+      <div class="pr">${num(d.close)} (${d.change_pct>=0?"+":""}${d.change_pct}%)</div></div>`;
+  }).join("")+`</div>`;
+}
+
+function heatmap(sel){
+  const syms=ASSETS.filter(s=>sel[s]&&sel[s].contribs);
+  if(!syms.length)return"";
+  let cells=`<div class="hhead"></div>`+VORDER.map(v=>`<div class="hhead">${VNAME[v]}</div>`).join("");
+  for(const s of syms){
+    cells+=`<div class="hrow">${ANAME[s]}</div>`;
+    for(const v of VORDER){
+      const c=sel[s].contribs[v];
+      if(!c){cells+=`<div class="hcell" style="background:#dfe5ee;color:#9aa6b6">—</div>`;continue;}
+      const val=c.contrib;
+      cells+=`<div class="hcell" style="background:${cellColor(val)}">${val>0?"+":""}${Math.round(val)}<small>${Math.abs(val)<3?"중립":(val>0?"순풍":"역풍")}</small></div>`;
+    }
+  }
+  return`<div class="card"><h2>무엇이 순풍이고 무엇이 역풍인가</h2>
+  <div class="hint">셀 = 변수가 그 시장에 주는 기여도 · <b style="color:#1b7f3b">초록 순풍</b> · <b style="color:#c62828">빨강 역풍</b> · 진할수록 강함</div>
+  <div class="hm" style="grid-template-columns:86px repeat(${VORDER.length},1fr)">${cells}</div></div>`;
+}
+
+function varChips(vs){
+  if(!vs)return"";
+  return`<div class="card"><h2>핵심 변수</h2><div class="chips">`+VORDER.filter(v=>vs[v]).map(v=>{
+    const d=vs[v],u=VUNIT[v]||"";
+    const dir=d.chg20>0?["▲","up"]:(d.chg20<0?["▼","dn"]:["―","fl"]);
+    return`<div class="chip"><div class="cl">${VNAME[v]}</div><div class="cv">${num(d.value)}</div>
+    <div class="cd ${dir[1]}">${dir[0]} ${d.chg20>0?"+":""}${num(d.chg20)}${u} <span style="color:#9aa6b6;font-weight:600">/20일</span></div></div>`;
+  }).join("")+`</div></div>`;
+}
+
+function acard(sym,d){
+  const ch=d.change_pct,col=scoreColor(d.score);
+  let bars="";
+  if(d.contribs){
+    const ents=Object.entries(d.contribs).sort((a,b)=>Math.abs(b[1].contrib)-Math.abs(a[1].contrib));
+    bars=`<div class="dbars">`+ents.map(([v,c])=>{
+      const w=Math.min(48,Math.abs(c.contrib)/40*48),pos=c.contrib>=0;
+      return`<div class="db"><span class="lb">${VNAME[v]}</span>
+      <span class="dtrack"><i style="background:${pos?"#66bb6a":"#e57373"};${pos?"left:50%":"right:50%"};width:${w}%"></i><i class="mid"></i></span>
+      <span class="vl" style="color:${pos?"#1b7f3b":"#c62828"}">${c.contrib>0?"+":""}${Math.round(c.contrib)}</span></div>`;
+    }).join("")+`</div>`;
+  }
+  const rules=(d.rules&&d.rules.length)?`<ul class="rules">${d.rules.map(r=>`<li>⚡ ${r}</li>`).join("")}</ul>`:"";
+  return`<div class="acard">
+    <h3>${ANAME[sym]} <span class="px ${ch>=0?'up':'down'}">${num(d.close)} (${ch>=0?'+':''}${ch}%)</span></h3>
+    <div class="gaugebox">${gaugeSVG(d.score,col)}
+      <div class="score" style="color:${col}">${d.score}</div><br>
+      <span class="zone" style="background:${col}">${d.zone}</span>
+    </div>
+    ${bars}${rules}
+  </div>`;
+}
+
+function combinedTrend(data,sel,ymd){
+  const syms=ASSETS.filter(s=>data.assets[s]&&data.assets[s].history.length>1);
+  if(!syms.length)return"";
+  const W=1000,H=250,P=38;
+  let d0="99999999",d1="00000000";
+  for(const s of syms){const h=data.assets[s].history;
+    if(h[0].date<d0)d0=h[0].date; if(h[h.length-1].date>d1)d1=h[h.length-1].date;}
+  const toN=s=>new Date(iso(s)).getTime(),t0=toN(d0),t1=toN(d1);
+  const xs=t=>P+(W-2*P)*(t-t0)/Math.max(1,t1-t0),ys=v=>H-P-(H-2*P)*v/100;
+  const band=(a,b,c)=>`<rect x="${P}" y="${ys(b)}" width="${W-2*P}" height="${ys(a)-ys(b)}" fill="${c}"/>`;
+  const ticks=[0,25,50,75,100].map(v=>`<text x="${P-6}" y="${ys(v)+3}" font-size="9" fill="#9aa6b6" text-anchor="end">${v}</text><line x1="${P}" x2="${W-P}" y1="${ys(v)}" y2="${ys(v)}" stroke="#eef1f6"/>`).join("");
+  let lines="",dots="";
+  for(const s of syms){
+    const h=data.assets[s].history;
+    lines+=`<path d="${h.map((p,i)=>(i?"L":"M")+xs(toN(p.date)).toFixed(1)+" "+ys(p.score).toFixed(1)).join(" ")}" fill="none" stroke="${LCOLOR[s]}" stroke-width="2" opacity=".9"/>`;
+    const i=sel[s];if(i!=null){const p=h[i];dots+=`<circle cx="${xs(toN(p.date))}" cy="${ys(p.score)}" r="4" fill="${LCOLOR[s]}" stroke="#fff" stroke-width="1.5"/>`;}
+  }
+  const selDate=ymd||d1;
+  const lbls=[d0,d1].map(dd=>`<text x="${xs(toN(dd))}" y="${H-P+14}" font-size="9" fill="#9aa6b6" text-anchor="middle">${fd(dd)}</text>`).join("");
+  const vline=`<line x1="${xs(toN(selDate))}" x2="${xs(toN(selDate))}" y1="${ys(100)}" y2="${ys(0)}" stroke="#b22f2f" stroke-width="1" stroke-dasharray="4 3"/>`;
+  return`<div class="card"><h2>거시 온도 추이 — 5개 시장 한 화면</h2>
+  <svg viewBox="0 0 ${W} ${H}" style="width:100%">
+    ${band(75,100,"rgba(102,187,106,.10)")}${band(0,25,"rgba(229,115,115,.10)")}${ticks}${lines}${vline}${dots}${lbls}
+  </svg>
+  <div class="legend">${syms.map(s=>`<span class="lgd"><i style="background:${LCOLOR[s]}"></i>${ANAME[s]}</span>`).join("")}
+  · <b style="color:#1b7f3b">위 초록 영역</b> 강한 순풍 · <b style="color:#c62828">아래 붉은 영역</b> 강한 역풍 · <b style="color:#b22f2f">점선</b> 조회 날짜</div></div>`;
+}
+
+let DATA=null;
+function findIdx(hist,ymd){
+  let idx=-1;
+  for(let i=0;i<hist.length;i++){if(hist[i].date<=ymd)idx=i;else break;}
+  return idx;
+}
+
+function render(ymd){
+  const msg=document.getElementById("datemsg");
+  msg.style.display="none";
+  const syms=ASSETS.filter(s=>DATA.assets[s]&&DATA.assets[s].history.length);
+  if(!syms.length){document.getElementById("err").style.display="block";return;}
+  const selIdx={},sel={};
+  for(const s of syms){
+    const h=DATA.assets[s].history;
+    let i=ymd?findIdx(h,ymd):h.length-1;
+    if(i<0){msg.textContent="조회 가능 범위("+fd(h[0].date)+" ~ "+fd(h[h.length-1].date)+") 이전 날짜입니다.";msg.style.display="block";return;}
+    selIdx[s]=i;sel[s]=h[i];
+  }
+  const first=syms[0],fh=DATA.assets[first].history,fi=selIdx[first];
+  if(ymd&&fh[fi].date!==ymd){msg.textContent="선택일 데이터가 없어 직전 기록일("+fd(fh[fi].date)+") 기준으로 표시합니다.";msg.style.display="block";}
+  document.getElementById("asof").textContent=fd(fh[fi].date);
+  document.getElementById("datepick").value=iso(fh[fi].date);
+  let vs=null;
+  const vhist=(DATA.variables&&DATA.variables.history)||[];
+  const vymd=ymd||fh[fh.length-1].date;
+  for(const h of vhist){if(h.date<=vymd)vs=h.vars;}
+  document.getElementById("board").innerHTML=
+    tiles(sel)+heatmap(sel)+combinedTrend(DATA,selIdx,ymd?fh[fi].date:null)+varChips(vs)+
+    `<div class="grid">${syms.map(s=>acard(s,sel[s])).join("")}</div>`;
+}
+
+fetch("data/macro-gauge.json?t="+Date.now()).then(r=>r.json()).then(d=>{
+  DATA=d;
+  document.getElementById("updated").textContent=d.updated;
+  const h=(d.assets.KOSPI||d.assets[Object.keys(d.assets)[0]]).history,dp=document.getElementById("datepick");
+  dp.min=iso(h[0].date);dp.max=iso(h[h.length-1].date);
+  render(null);
+  const go=()=>{const v=dp.value;if(v)render(v.replaceAll("-",""))};
+  document.getElementById("datego").onclick=go;
+  dp.onchange=go;
+  document.getElementById("datelatest").onclick=()=>render(null);
+}).catch(()=>{document.getElementById("err").style.display="block"});
+</script>
+</body>
+</html>
