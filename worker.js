@@ -1328,6 +1328,15 @@ export default {
         { headers: JSON_HEADERS });
     }
 
+    if (url.pathname.startsWith("/api/sector-flow/")) {
+      return sfHandle(req, url, env);
+    }
+
+    if (url.pathname === "/data/sector-flow-live.json") {
+      const v = await env.GAUGE_KV.get("sector-flow-live");
+      return new Response(v || JSON.stringify({ ok: false, error: "라이브 스냅샷 없음" }), { headers: JSON_HEADERS });
+    }
+
     if (url.pathname.startsWith("/api/supply/")) {
       return handleSupply(req, url, env, ctx);
     }
@@ -1504,5 +1513,74 @@ async function handleSupply(req, url, env, ctx) {
   } catch (e) {
     return new Response(JSON.stringify({ ok: false, error: String(e.message || e) }),
       { status: 500, headers: JSON_HEADERS });
+  }
+}
+
+
+/* ═══════════════════ 업종 수급 (/api/sector-flow/*) ═══════════════════
+   sector-flow.html의 [최신 데이터 갱신] 버튼용.
+   ka20006(업종 일봉: 거래일 달력+지수) + ka10051(업종별 투자자 순매수, 억원)로
+   since 이후 거래일의 종합(KOSPI/KOSDAQ) 데이터를 반환하고 KV에 스냅샷 저장.
+   ※ 엑셀 파일 갱신은 로컬 sector-flow 스킬 담당 — 여기는 차트 라이브 갱신 전용. */
+
+const SF_MKTS = {
+  kospi: { mrkt_tp: "0", inds_cd: "001", total: "종합(KOSPI)" },
+  kosdaq: { mrkt_tp: "1", inds_cd: "101", total: "종합(KOSDAQ)" },
+};
+
+async function sfKiwoom(path, apiId, body, token) {
+  const r = await fetch("https://api.kiwoom.com" + path, {
+    method: "POST",
+    headers: { "content-type": "application/json;charset=UTF-8", authorization: "Bearer " + token, "api-id": apiId },
+    body: JSON.stringify(body),
+  });
+  const j = await r.json();
+  if (String(j.return_code) !== "0") throw new Error(apiId + " 오류: " + (j.return_msg || r.status));
+  return j;
+}
+
+async function sfHandle(req, url, env) {
+  if (!url.pathname.endsWith("/refresh")) {
+    return new Response(JSON.stringify({ ok: false, error: "unknown endpoint" }), { status: 404, headers: JSON_HEADERS });
+  }
+  try {
+    const token = await supToken(env);
+    const todayKst = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10).replace(/-/g, "");
+    const since = (url.searchParams.get("since") || "").replace(/[^0-9]/g, "");
+    const out = {};
+    for (const [key, mkt] of Object.entries(SF_MKTS)) {
+      const chart = await sfKiwoom("/api/dostk/chart", "ka20006", { inds_cd: mkt.inds_cd, base_dt: todayKst }, token);
+      const idx = {};
+      for (const b of chart.inds_dt_pole_qry || []) {
+        if (b.dt) idx[b.dt] = Math.abs(supNum(b.cur_prc)) / 100;
+      }
+      let days = Object.keys(idx).sort();
+      const s = since || days[days.length - 1];
+      days = days.filter(d => d >= s).slice(-15);
+      const rows = [];
+      for (const d of days) {
+        const j = await sfKiwoom("/api/dostk/sect", "ka10051",
+          { mrkt_tp: mkt.mrkt_tp, amt_qty_tp: "0", base_dt: d, stex_tp: "3" }, token);
+        const t = (j.inds_netprps || []).find(x => (x.inds_nm || "").trim() === mkt.total);
+        if (!t) continue;
+        rows.push({
+          dt: d,
+          ind: Math.round(supNum(t.ind_netprps)),
+          frgnr: Math.round(supNum(t.frgnr_netprps)),
+          orgn: Math.round(supNum(t.orgn_netprps)),
+          index: idx[d] || null,
+        });
+      }
+      out[key] = rows;
+    }
+    const payload = JSON.stringify({
+      ok: true,
+      updated: new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16).replace("T", " "),
+      markets: out,
+    });
+    await env.GAUGE_KV.put("sector-flow-live", payload, { expirationTtl: 86400 * 5 });
+    return new Response(payload, { headers: JSON_HEADERS });
+  } catch (e) {
+    return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
   }
 }

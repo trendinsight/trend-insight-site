@@ -17,8 +17,11 @@ header a{color:#fff;font-weight:800}
 .wrap{max-width:1080px;margin:0 auto;padding:34px 20px 60px}
 h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
 .sub{color:var(--muted);font-size:.92rem;margin:6px 0 4px}
-.asof{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 16px;font-size:.88rem;font-weight:700;color:var(--navy);margin:10px 8px 26px 0}
+.asof{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 16px;font-size:.88rem;font-weight:700;color:var(--navy);margin:10px 8px 8px 0}
 .asof span{color:var(--orange)}
+.refreshbtn{font-family:inherit;font-size:.88rem;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:999px;padding:7px 18px;cursor:pointer;margin:10px 8px 8px 0;vertical-align:middle}
+.refreshbtn:disabled{background:#9ab2e8;cursor:wait}
+.livenote{display:block;font-size:.8rem;color:var(--green);font-weight:600;margin:0 0 18px}
 .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 1px 3px rgba(11,31,63,.05);margin-bottom:26px}
 .card h2{font-size:1.15rem;color:var(--navy);display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px}
 .px{font-size:.9rem;font-weight:700}
@@ -40,10 +43,11 @@ footer{max-width:1080px;margin:0 auto;padding:0 20px 50px;font-size:.78rem;color
 <header><a href="index.html">T Trend Insight</a></header>
 <div class="wrap">
 <h1>업종 수급 — 투자자별 순매수 추이</h1>
-<p class="sub">코스피·코스닥 종합 기준 개인·외국인·기관 순매수(금액). 위: 기간 누적 순매수 + 지수(1M/3M/6M/1Y 선택), 아래: 최근 1개월 일별 순매수. 키움 REST API로 자동 업데이트.</p>
-<span class="asof">업데이트 <span>2026-07-15 20:40:56</span></span><span class="asof">단위 <span>조원</span></span>
+<p class="sub">코스피·코스닥 종합 기준 개인·외국인·기관 순매수(금액). 위: 기간 누적 순매수 + 지수(1M/3M/6M/1Y 선택), 아래: 최근 1개월 일별 순매수.</p>
+<span class="asof">업데이트 <span id="asof-label">2026-07-15 20:40:56</span></span><span class="asof">단위 <span>조원</span></span><button class="refreshbtn" id="btn-refresh">↻ 최신 데이터 갱신</button>
+<span class="livenote" id="live-status"></span>
 <div class="card">
-<h2>코스피 투자자 수급 <span class="px">KOSPI <b class="up">7,284.41</b> · 최근일 2026.07.15</span></h2>
+<h2>코스피 투자자 수급 <span class="px">KOSPI <b class="up" id="kospi-idxlast">7,284.41</b> · 최근일 <span id="kospi-lastdate">2026.07.15</span></span></h2>
 <div class="rangebar" id="kospi-range">
 <button data-r="1M">1M</button><button data-r="3M">3M</button><button data-r="6M">6M</button><button data-r="1Y" class="on">1Y</button>
 </div>
@@ -52,7 +56,7 @@ footer{max-width:1080px;margin:0 auto;padding:0 20px 50px;font-size:.78rem;color
 <div class="chartbox sm"><canvas id="kospi-bar"></canvas></div>
 </div>
 <div class="card">
-<h2>코스닥 투자자 수급 <span class="px">KOSDAQ <b class="up">829.43</b> · 최근일 2026.07.15</span></h2>
+<h2>코스닥 투자자 수급 <span class="px">KOSDAQ <b class="up" id="kosdaq-idxlast">829.43</b> · 최근일 <span id="kosdaq-lastdate">2026.07.15</span></span></h2>
 <div class="rangebar" id="kosdaq-range">
 <button data-r="1M">1M</button><button data-r="3M">3M</button><button data-r="6M">6M</button><button data-r="1Y" class="on">1Y</button>
 </div>
@@ -60,7 +64,9 @@ footer{max-width:1080px;margin:0 auto;padding:0 20px 50px;font-size:.78rem;color
 <div class="chartbox"><canvas id="kosdaq-line"></canvas></div>
 <div class="chartbox sm"><canvas id="kosdaq-bar"></canvas></div>
 </div>
-<p class="legendnote">· 누적 순매수는 선택한 기간의 시작일부터 합산합니다. 기간을 바꾸면 누적 기준점도 함께 바뀝니다. 일별 막대 차트는 기간 선택과 무관하게 항상 최근 1개월(21거래일)만 표시합니다.<br>· 데이터: 키움증권 REST API (업종별 투자자 순매수, 금액 기준) · 원천 엑셀: 코스피_업종.xlsx / 코스닥_업종.xlsx</p>
+<p class="legendnote">· 누적 순매수는 선택한 기간의 시작일부터 합산합니다. 기간을 바꾸면 누적 기준점도 함께 바뀝니다. 일별 막대 차트는 항상 최근 1개월(21거래일)만 표시합니다.<br>
+· [최신 데이터 갱신] 버튼은 키움 실시간 데이터로 차트를 즉시 갱신합니다(당일 장중/마감 잠정치 포함). 원천 엑셀(코스피_업종.xlsx/코스닥_업종.xlsx)과 구글 드라이브 반영은 Claude에서 "업종 수급 업데이트" 실행 시 이루어집니다.<br>
+· 데이터: 키움증권 REST API (업종별 투자자 순매수, 금액 기준)</p>
 </div>
 <footer>본 페이지의 모든 정보는 투자 참고 자료이며, 특정 종목·자산의 매수·매도를 권유하지 않습니다.</footer>
 <script>
@@ -68,6 +74,7 @@ const DATA = {"kospi": {"dates": ["20250417", "20250418", "20250421", "20250422"
 const RANGES = {"1M":21,"3M":63,"6M":126,"1Y":248};
 const COLORS = {ind:"#e8830c", frgnr:"#c62828", orgn:"#2e7d32", idx:"#8a94a6"};
 const NAMES = {ind:"개인", frgnr:"외국인", orgn:"기관계"};
+const charts = {};
 function fmtD(s){return s.slice(2,4)+"."+s.slice(4,6)+"."+s.slice(6,8);}
 function cum(arr){let s=0;return arr.map(v=>+(s+=v).toFixed(0));}
 function toJo(v){return +(v/10000).toFixed(3);}
@@ -109,23 +116,72 @@ function build(mkt, idxLabel){
     barChart = new Chart(barCtx,{type:"bar",data:{labels:barLabels,datasets:barsets},
       options:{...common,scales:{x:{ticks:{maxTicksLimit:12,font:{size:11}},grid:{display:false}},
         y:{title:{display:true,text:"일별 순매수 (조원) — 최근 1개월"},grid:{color:"#eef1f6"}}}}});
-    // 기간 누적 chips
     const chipbox = document.getElementById(mkt+"-stats");
     chipbox.innerHTML = ["ind","frgnr","orgn"].map(k=>{
       const tot = s[k].reduce((a,b)=>a+b,0)/10000;
       const cls = tot>=0?"up":"down";
       return `<span class="chip">${NAMES[k]} <b class="${cls}">${tot>=0?"+":""}${tot.toFixed(2)}조</b></span>`;
     }).join("")+`<span class="chip">기간 ${fmtD(s.dates[0])} ~ ${fmtD(s.dates[s.dates.length-1])}</span>`;
+    const idxEl = document.getElementById(mkt+"-idxlast");
+    const lastIdx = [...d.index].reverse().find(v=>v);
+    if(idxEl && lastIdx) idxEl.textContent = lastIdx.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+    const dEl = document.getElementById(mkt+"-lastdate");
+    if(dEl) dEl.textContent = d.dates[d.dates.length-1].replace(/(\d{4})(\d{2})(\d{2})/,"$1.$2.$3");
   }
   document.querySelectorAll("#"+mkt+"-range button").forEach(b=>{
     b.onclick=()=>{state.range=b.dataset.r;
       document.querySelectorAll("#"+mkt+"-range button").forEach(x=>x.classList.toggle("on",x===b));
       render();};
   });
+  charts[mkt] = {render};
   render();
 }
-build("kospi","KOSPI");
-build("kosdaq","KOSDAQ");
+function mergeDays(mkt, rows){
+  const d = DATA[mkt];
+  let changed = false;
+  for (const r of (rows||[])){
+    if(!r || !r.dt) continue;
+    const i = d.dates.indexOf(r.dt);
+    if (i >= 0){
+      if(d.ind[i]!==r.ind||d.frgnr[i]!==r.frgnr||d.orgn[i]!==r.orgn) changed=true;
+      d.ind[i]=r.ind; d.frgnr[i]=r.frgnr; d.orgn[i]=r.orgn;
+      if(r.index) d.index[i]=r.index;
+    } else if (r.dt > d.dates[d.dates.length-1]){
+      d.dates.push(r.dt); d.ind.push(r.ind); d.frgnr.push(r.frgnr);
+      d.orgn.push(r.orgn); d.index.push(r.index); changed=true;
+    }
+  }
+  return changed;
+}
+function applyLive(j){
+  if(!j || !j.ok || !j.markets) return false;
+  mergeDays("kospi", j.markets.kospi);
+  mergeDays("kosdaq", j.markets.kosdaq);
+  charts.kospi.render(); charts.kosdaq.render();
+  document.getElementById("live-status").textContent =
+    "라이브 데이터 반영: " + j.updated + " KST (키움 실시간 · 엑셀 파일 반영은 스킬 실행 시)";
+  return true;
+}
+window.addEventListener("DOMContentLoaded", async ()=>{
+  build("kospi","KOSPI");
+  build("kosdaq","KOSDAQ");
+  try{
+    const r = await fetch("/data/sector-flow-live.json");
+    if(r.ok) applyLive(await r.json());
+  }catch(e){}
+  const btn = document.getElementById("btn-refresh");
+  btn.onclick = async ()=>{
+    btn.disabled = true; btn.textContent = "갱신 중…";
+    try{
+      const since = DATA.kospi.dates[DATA.kospi.dates.length-1];
+      const r = await fetch("/api/sector-flow/refresh?since="+since);
+      const j = await r.json();
+      const ok = applyLive(j);
+      btn.textContent = ok ? "✓ 갱신 완료" : "갱신 실패: "+(j.error||"").slice(0,40);
+    }catch(e){ btn.textContent = "갱신 실패 (네트워크)"; }
+    setTimeout(()=>{btn.disabled=false; btn.textContent="↻ 최신 데이터 갱신";}, 3000);
+  };
+});
 </script>
 </body>
 </html>
