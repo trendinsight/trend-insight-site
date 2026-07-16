@@ -1497,6 +1497,31 @@ function supMetrics(net) {
 
 async function handleSupply(req, url, env, ctx) {
   try {
+    // ── 분석 요청 큐 ──
+    if (url.pathname === "/api/supply/requests") {
+      const v = await env.GAUGE_KV.get("supply-requests");
+      return new Response(v || "[]", { headers: JSON_HEADERS });
+    }
+    if (url.pathname === "/api/supply/request" && req.method === "POST") {
+      const b = await req.json().catch(() => ({}));
+      const code = String(b.code || "").replace(/[^0-9A-Za-z]/g, "");
+      const name = String(b.name || "").slice(0, 30);
+      if (code.length !== 6) return new Response(JSON.stringify({ ok: false, error: "코드 오류" }), { status: 400, headers: JSON_HEADERS });
+      let list = JSON.parse((await env.GAUGE_KV.get("supply-requests")) || "[]");
+      if (!list.some(x => x.code === code)) {
+        list.push({ code, name, ts: new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16) });
+        list = list.slice(-50);
+        await env.GAUGE_KV.put("supply-requests", JSON.stringify(list));
+      }
+      return new Response(JSON.stringify({ ok: true, queued: list.length }), { headers: JSON_HEADERS });
+    }
+    if (url.pathname === "/api/supply/request-done") {
+      const code = (url.searchParams.get("code") || "").replace(/[^0-9A-Za-z]/g, "");
+      let list = JSON.parse((await env.GAUGE_KV.get("supply-requests")) || "[]");
+      list = list.filter(x => x.code !== code);
+      await env.GAUGE_KV.put("supply-requests", JSON.stringify(list));
+      return new Response(JSON.stringify({ ok: true, remaining: list.length }), { headers: JSON_HEADERS });
+    }
     const m = url.pathname.match(/^\/api\/supply\/analyze\/([0-9A-Za-z]{6})$/);
     if (!m) return new Response(JSON.stringify({ ok: false, error: "경로: /api/supply/analyze/{6자리코드}?years=3" }),
       { status: 404, headers: JSON_HEADERS });

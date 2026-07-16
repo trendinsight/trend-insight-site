@@ -30,6 +30,21 @@ header{display:flex;align-items:center;gap:14px;padding:12px 18px;flex-wrap:wrap
 .navlinks{margin-left:auto;display:flex;gap:12px;font-size:12px}
 .navlinks a{color:var(--muted);text-decoration:none}
 .navlinks a:hover{color:var(--ink)}
+.searchwrap{position:relative;width:100%;max-width:420px}
+#q{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:9px;
+  color:var(--ink);padding:10px 14px;font-size:14px;font-family:inherit;outline:none}
+#q:focus{border-color:var(--purple)}
+#qresults{position:absolute;top:calc(100% + 5px);left:0;right:0;background:var(--panel2);
+  border:1px solid var(--line);border-radius:9px;overflow:hidden;display:none;z-index:50;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#qresults .qi{display:flex;gap:10px;padding:10px 14px;cursor:pointer;align-items:center}
+#qresults .qi:hover{background:#232d44}
+#qresults .qi .c{color:var(--faint);font-size:12px}
+#qresults .qi .badge{margin-left:auto;font-size:10.5px;padding:2px 8px;border-radius:9px}
+#qresults .qi .badge.in{background:rgba(157,107,255,.2);color:var(--purple)}
+#qresults .qi .badge.out{background:#232d44;color:var(--faint)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--panel2);
+  border:1px solid var(--purple);border-radius:12px;padding:12px 20px;font-size:13px;z-index:99;
+  box-shadow:0 10px 40px rgba(0,0,0,.6);display:none;max-width:90vw;text-align:center}
 main{max-width:1080px;margin:0 auto;padding:16px 14px 60px}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0}
 .chip{background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:6px 14px;
@@ -74,6 +89,10 @@ tr.hi td{background:rgba(157,107,255,.07)}
 <body>
 <header>
   <div class="brand"><span class="ti">TI</span><h1>수급 콕핏</h1><small>Supply-Demand</small></div>
+  <div class="searchwrap">
+    <input id="q" placeholder="종목명 검색 (예: 이수화학)" autocomplete="off">
+    <div id="qresults"></div>
+  </div>
   <nav class="navlinks">
     <a href="cockpit.html">콕핏</a><a href="gauge.html">온도계</a><a href="thesis-board.html">논거</a><a href="index.html">홈</a>
   </nav>
@@ -253,8 +272,53 @@ function drawChart() {
   chart.timeScale().fitContent();
 }
 
+/* ── 종목명 검색 (네이버 자동완성, 미게시 종목은 분석 요청 등록) ── */
+let qTimer;
+document.getElementById("q").addEventListener("input", e => {
+  clearTimeout(qTimer);
+  const q = e.target.value.trim();
+  const box = $("qresults");
+  if (!q) { box.style.display = "none"; return; }
+  qTimer = setTimeout(async () => {
+    try {
+      const r = await fetch(`/api/cockpit/search?q=${encodeURIComponent(q)}`);
+      const j = await r.json();
+      const items = (j.data || []).filter(x => /^[0-9]{6}$/.test(x.code)).slice(0, 6);
+      box.innerHTML = items.map(x => {
+        const has = DB && DB.stocks && DB.stocks[x.code];
+        return `<div class="qi" data-c="${x.code}" data-n="${x.name}" data-h="${has ? 1 : 0}">
+          <b>${x.name}</b><span class="c mono">${x.code} · ${x.market || ""}</span>
+          <span class="badge ${has ? "in" : "out"}">${has ? "게시됨" : "미게시"}</span></div>`;
+      }).join("");
+      box.style.display = items.length ? "block" : "none";
+    } catch (_) {}
+  }, 250);
+});
+$("qresults").addEventListener("click", async e => {
+  const el = e.target.closest(".qi");
+  if (!el) return;
+  $("qresults").style.display = "none";
+  $("q").value = "";
+  if (el.dataset.h === "1") { selectStock(el.dataset.c); return; }
+  // 미게시 → 분석 요청 등록
+  try {
+    const r = await fetch("/api/supply/request", { method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ code: el.dataset.c, name: el.dataset.n }) });
+    const j = await r.json();
+    toast(j.ok ? `📥 ${el.dataset.n} 분석 요청 등록 완료 — 다음 PC 수급 분석 실행 시 자동 처리됩니다 (대기 ${j.queued}건)`
+               : "요청 등록 실패: " + (j.error || ""));
+  } catch (_) { toast("요청 등록 실패 (네트워크)"); }
+});
+document.addEventListener("click", e => { if (!e.target.closest(".searchwrap")) $("qresults").style.display = "none"; });
+function toast(msg) {
+  let t = document.querySelector(".toast");
+  if (!t) { t = document.createElement("div"); t.className = "toast"; document.body.appendChild(t); }
+  t.textContent = msg; t.style.display = "block";
+  clearTimeout(t._h); t._h = setTimeout(() => t.style.display = "none", 5000);
+}
+
 init();
 </script>
 </body>
 </html>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
