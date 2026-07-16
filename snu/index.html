@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>오늘의 격언</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{ --ink:#111; --sub:#888; --accent:#0b5cd6; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    font-family:'Noto Sans KR',sans-serif;color:var(--ink);background:#fff;
+    height:100dvh;display:flex;flex-direction:column;
+  }
+
+  /* ── 오늘의 격언 (위쪽, 남는 공간 전부) ── */
+  .today{
+    flex:1 1 auto;min-height:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:16px 20px 12px;
+  }
+  .today .meta{
+    font-size:clamp(11px,2.8vw,13px);letter-spacing:.15em;color:var(--sub);
+    margin-bottom:4px;
+    opacity:0;animation:fadeUp .9s ease .1s forwards;
+  }
+  .today .tag{
+    display:inline-block;font-size:clamp(10px,2.5vw,12px);letter-spacing:.12em;
+    color:var(--accent);border:1px solid currentColor;border-radius:999px;
+    padding:2px 10px;margin-bottom:clamp(14px,3.5vh,32px);
+    opacity:0;animation:fadeUp .9s ease .25s forwards;
+  }
+  .today .quote{
+    font-family:'Noto Serif KR',serif;font-weight:700;
+    font-size:clamp(19px,5vw,38px);line-height:1.5;
+    max-width:19em;word-break:keep-all;
+    opacity:0;animation:fadeUp 1.3s ease .45s forwards;
+  }
+  .today .quote-en{
+    font-family:Georgia,'Times New Roman',serif;font-style:italic;
+    font-size:clamp(12.5px,3.3vw,18px);line-height:1.5;color:#9a9aa0;
+    max-width:32em;word-break:normal;margin-top:clamp(10px,2.2vh,20px);
+    opacity:0;animation:fadeUp 1.2s ease .85s forwards;
+  }
+  .today .author{
+    margin-top:clamp(12px,3vh,26px);font-size:clamp(12px,3.2vw,15px);
+    color:var(--sub);letter-spacing:.06em;
+    opacity:0;animation:fadeUp 1.1s ease 1.25s forwards;
+  }
+  .today .author::before,.today .author::after{content:"—";margin:0 .55em;color:#ccc}
+  @keyframes fadeUp{
+    from{opacity:0;transform:translateY(16px)}
+    to{opacity:1;transform:translateY(0)}
+  }
+
+  /* ── 지난 격언 (아래쪽, 컴팩트) ── */
+  .past{
+    flex:0 0 auto;background:#0d0d0f;color:#f2f2f2;
+    padding:clamp(12px,2.4vh,22px) 20px clamp(12px,2.6vh,24px);
+  }
+  .past .inner{max-width:720px;margin:0 auto}
+  .past h2{
+    font-size:clamp(9.5px,2.3vw,11px);font-weight:500;letter-spacing:.32em;
+    color:#6c6c74;text-align:center;margin-bottom:clamp(8px,1.6vh,14px);
+  }
+  .past .item{
+    padding:clamp(7px,1.4vh,12px) 2px;border-bottom:1px solid #232327;
+    opacity:0;animation:fadeUp .8s ease forwards;
+  }
+  .past .item:nth-child(1){animation-delay:1.2s}
+  .past .item:nth-child(2){animation-delay:1.35s}
+  .past .item:nth-child(3){animation-delay:1.5s}
+  .past .item:last-child{border-bottom:none;padding-bottom:2px}
+  .past .pdate{
+    font-size:clamp(10px,2.5vw,11.5px);color:#75757d;letter-spacing:.1em;
+    margin-bottom:3px;
+  }
+  .past .ptext{
+    font-family:'Noto Serif KR',serif;
+    font-size:clamp(12.5px,3.4vw,16px);line-height:1.55;
+    word-break:keep-all;color:#e6e6e9;
+  }
+  .past .pauthor{display:inline;color:#84848c;font-family:'Noto Sans KR',sans-serif;
+    font-size:clamp(10.5px,2.7vw,12.5px);margin-left:.6em;white-space:nowrap}
+  .past .pauthor::before{content:"—";margin-right:.4em;color:#44444a}
+
+  /* 낮은 화면(가로 모드 등)에서는 여백 최소화 */
+  @media (max-height:600px){
+    .today .tag{margin-bottom:10px}
+    .today .quote{font-size:clamp(16px,4vw,26px)}
+    .past .h2{margin-bottom:6px}
+  }
+</style>
+</head>
+<body>
+
+<section class="today">
+  <div class="meta" id="today-date"></div>
+  <div class="tag" id="today-tag"></div>
+  <div class="quote" id="today-quote"></div>
+  <div class="quote-en" id="today-en"></div>
+  <div class="author" id="today-author"></div>
+</section>
+
+<section class="past">
+  <div class="inner">
+    <h2>지 난 격 언</h2>
+    <div id="past-list"></div>
+  </div>
+</section>
+
+<script>
+/* 격언 DB — cat: exam(수험 실전) · sci(과학자·학자) · classic(고전·사자성어) · grit(끈기·노력) */
+const QUOTES = [
+  {t:"오늘 푼 문제 하나가 시험장의 나를 구한다.", e:"One problem solved today will save you in the exam hall.", a:"수험 격언", c:"exam"},
+  {t:"지금 잠을 자면 꿈을 꾸지만, 지금 공부하면 꿈을 이룬다.", e:"Sleep now and you will dream; study now and you will live your dream.", a:"수험 격언", c:"exam"},
+  {t:"공부는 시간이 하는 것이 아니라 집중이 하는 것이다.", e:"Studying is done not by hours, but by focus.", a:"수험 격언", c:"exam"},
+  {t:"어제의 나보다 한 문제 더.", e:"One more problem than yesterday's me.", a:"수험 격언", c:"exam"},
+  {t:"모르는 문제는 나를 떨어뜨리는 문제가 아니라, 나를 붙게 할 문제다.", e:"An unsolved problem is not what fails you — it is what will get you in.", a:"수험 격언", c:"exam"},
+  {t:"오답노트 한 페이지가 모의고사 한 등급을 만든다.", e:"One page of your mistake notebook raises your grade by one level.", a:"수험 격언", c:"exam"},
+  {t:"흔들리는 것은 당연하다. 그래도 펜은 놓지 않는다.", e:"It is natural to waver. Still, never put down your pen.", a:"수험 격언", c:"exam"},
+  {t:"남과 비교하지 마라. 어제의 나와 비교하라.", e:"Don't compare yourself with others; compare yourself with who you were yesterday.", a:"수험 격언", c:"exam"},
+  {t:"합격은 마지막까지 책상을 지킨 사람의 것이다.", e:"Success belongs to the one who stays at the desk until the very end.", a:"수험 격언", c:"exam"},
+  {t:"쉬운 문제는 완벽하게, 어려운 문제는 끝까지.", e:"Easy problems perfectly, hard problems to the very end.", a:"수험 격언", c:"exam"},
+  {t:"슬럼프는 성장 직전의 어둠이다.", e:"A slump is the darkness just before growth.", a:"수험 격언", c:"exam"},
+  {t:"기본 개념이 무너지면 응용은 없다. 오늘도 기본부터.", e:"Without solid basics there is no application. Today again, start from the basics.", a:"수험 격언", c:"exam"},
+  {t:"시험 날의 기적은 없다. 매일의 기적이 있을 뿐이다.", e:"There is no miracle on exam day — only the miracle of every day.", a:"수험 격언", c:"exam"},
+  {t:"포기하고 싶은 그 순간이, 실력이 쌓이는 순간이다.", e:"The moment you want to give up is the moment your ability is being built.", a:"수험 격언", c:"exam"},
+  {t:"1점을 우습게 보는 자, 1점에 운다.", e:"He who laughs at one point will cry over one point.", a:"수험 격언", c:"exam"},
+  {t:"집중한 한 시간이 산만한 하루를 이긴다.", e:"One focused hour beats a distracted day.", a:"수험 격언", c:"exam"},
+  {t:"실수도 실력이다. 실수를 줄이는 연습이 진짜 공부다.", e:"Mistakes are part of your skill; reducing them is the real study.", a:"수험 격언", c:"exam"},
+  {t:"긴 수험 생활, 페이스를 지키는 사람이 완주한다.", e:"In the long race of exams, the one who keeps the pace finishes.", a:"수험 격언", c:"exam"},
+  {t:"머리로 시작해서, 엉덩이로 합격한다.", e:"Start with your brain; succeed by staying in your seat.", a:"수험 격언", c:"exam"},
+  {t:"불안할 시간에 한 페이지를 더 넘겨라.", e:"Instead of worrying, turn one more page.", a:"수험 격언", c:"exam"},
+  {t:"나는 특별한 재능이 없다. 다만 열렬한 호기심이 있을 뿐이다.", e:"I have no special talent. I am only passionately curious.", a:"알베르트 아인슈타인", c:"sci"},
+  {t:"중요한 것은 질문을 멈추지 않는 것이다.", e:"The important thing is not to stop questioning.", a:"알베르트 아인슈타인", c:"sci"},
+  {t:"어제로부터 배우고, 오늘을 살며, 내일을 희망하라.", e:"Learn from yesterday, live for today, hope for tomorrow.", a:"알베르트 아인슈타인", c:"sci"},
+  {t:"성공한 사람이 되려 하기보다, 가치 있는 사람이 되려 하라.", e:"Try not to become a man of success, but rather a man of value.", a:"알베르트 아인슈타인", c:"sci"},
+  {t:"천재는 1%의 영감과 99%의 노력으로 만들어진다.", e:"Genius is one percent inspiration and ninety-nine percent perspiration.", a:"토머스 에디슨", c:"sci"},
+  {t:"나는 실패한 적이 없다. 통하지 않는 만 가지 방법을 발견했을 뿐이다.", e:"I have not failed. I've just found ten thousand ways that won't work.", a:"토머스 에디슨", c:"sci"},
+  {t:"성공하는 가장 확실한 방법은 언제나 한 번 더 시도해 보는 것이다.", e:"The most certain way to succeed is always to try just one more time.", a:"토머스 에디슨", c:"sci"},
+  {t:"내가 더 멀리 보았다면, 그것은 거인들의 어깨 위에 서 있었기 때문이다.", e:"If I have seen further, it is by standing on the shoulders of giants.", a:"아이작 뉴턴", c:"sci"},
+  {t:"내가 무언가를 발견했다면, 그것은 재능보다 끈질긴 주의 깊음 덕분이다.", e:"If I have made any discoveries, it was owing more to patient attention than to any other talent.", a:"아이작 뉴턴", c:"sci"},
+  {t:"인생에서 두려워할 것은 없다. 이해해야 할 것이 있을 뿐이다.", e:"Nothing in life is to be feared, it is only to be understood.", a:"마리 퀴리", c:"sci"},
+  {t:"우리는 인내와, 무엇보다 자신에 대한 확신을 가져야 한다.", e:"We must have perseverance and above all confidence in ourselves.", a:"마리 퀴리", c:"sci"},
+  {t:"관찰의 영역에서, 기회는 준비된 자에게만 온다.", e:"In the fields of observation, chance favors only the prepared mind.", a:"루이 파스퇴르", c:"sci"},
+  {t:"내가 만들 수 없는 것은, 내가 이해하지 못한 것이다.", e:"What I cannot create, I do not understand.", a:"리처드 파인만", c:"sci"},
+  {t:"제1원칙은 자신을 속이지 않는 것이다. 가장 속이기 쉬운 사람은 자기 자신이다.", e:"The first principle is that you must not fool yourself — and you are the easiest person to fool.", a:"리처드 파인만", c:"sci"},
+  {t:"좋은 아이디어를 얻는 최선의 방법은, 많은 아이디어를 내는 것이다.", e:"The best way to have a good idea is to have a lot of ideas.", a:"라이너스 폴링", c:"sci"},
+  {t:"마부위침(磨斧爲針) — 도끼를 갈아 바늘을 만든다.", e:"Grind an axe long enough, and it becomes a needle.", a:"사자성어", c:"classic"},
+  {t:"우공이산(愚公移山) — 쉬지 않고 옮기면 산도 옮길 수 있다.", e:"Keep moving earth without rest, and even a mountain will move.", a:"사자성어", c:"classic"},
+  {t:"절차탁마(切磋琢磨) — 자르고 갈고 쪼고 닦아야 옥이 빛난다.", e:"Only by cutting, filing, carving and polishing does jade shine.", a:"사자성어", c:"classic"},
+  {t:"형설지공(螢雪之功) — 반딧불과 눈빛으로 글을 읽어 이룬 공.", e:"Achievement earned by reading under fireflies and snowlight.", a:"사자성어", c:"classic"},
+  {t:"수적천석(水滴穿石) — 작은 물방울이 마침내 바위를 뚫는다.", e:"Dripping water pierces the stone at last.", a:"사자성어", c:"classic"},
+  {t:"대기만성(大器晩成) — 큰 그릇은 늦게 이루어진다.", e:"A great vessel takes long to complete.", a:"노자", c:"classic"},
+  {t:"불광불급(不狂不及) — 미치지 않으면 미치지 못한다.", e:"Unless you are mad about it, you will never reach it.", a:"사자성어", c:"classic"},
+  {t:"고진감래(苦盡甘來) — 쓴 것이 다하면 단 것이 온다.", e:"When the bitterness ends, sweetness comes.", a:"사자성어", c:"classic"},
+  {t:"주경야독(晝耕夜讀) — 낮에는 밭을 갈고 밤에는 글을 읽는다.", e:"Plow the fields by day, read the books by night.", a:"사자성어", c:"classic"},
+  {t:"유지경성(有志竟成) — 뜻이 있는 자는 마침내 이룬다.", e:"Where there is a will, it is finally accomplished.", a:"후한서", c:"classic"},
+  {t:"일신우일신(日新又日新) — 날마다 새롭고 또 날마다 새로워진다.", e:"Renew yourself each day, and again day after day.", a:"대학", c:"classic"},
+  {t:"진인사대천명(盡人事待天命) — 사람의 일을 다하고 하늘의 뜻을 기다린다.", e:"Do your utmost, then await the will of heaven.", a:"고전 격언", c:"classic"},
+  {t:"배우고 때로 익히면 또한 기쁘지 아니한가.", e:"To learn and to practice in due time — is that not a joy?", a:"논어", c:"classic"},
+  {t:"아는 자는 좋아하는 자만 못하고, 좋아하는 자는 즐기는 자만 못하다.", e:"Those who know are not equal to those who love it; those who love it are not equal to those who delight in it.", a:"논어", c:"classic"},
+  {t:"하늘이 큰 일을 맡기려 할 때는 반드시 먼저 그 마음과 뜻을 괴롭게 한다.", e:"When heaven is about to confer a great mission, it first tests one's mind and will with hardship.", a:"맹자", c:"classic"},
+  {t:"천 리 길도 발 아래 한 걸음에서 시작된다.", e:"A journey of a thousand miles begins with a single step.", a:"노자", c:"classic"},
+  {t:"반걸음이 쌓이지 않으면 천 리에 이르지 못한다.", e:"Without half-steps accumulating, you can never reach a thousand miles.", a:"순자", c:"classic"},
+  {t:"흙이 쌓여 산이 되면 바람과 비가 일어난다.", e:"When soil piles up into a mountain, wind and rain arise from it.", a:"순자", c:"classic"},
+  {t:"배움은 물을 거슬러 오르는 배와 같아, 나아가지 않으면 곧 밀려난다.", e:"Learning is like rowing upstream: not to advance is to drift back.", a:"고전 격언", c:"classic"},
+  {t:"가장 큰 영광은 한 번도 넘어지지 않는 것이 아니라, 넘어질 때마다 일어나는 데 있다.", e:"Our greatest glory is not in never falling, but in rising every time we fall.", a:"공자", c:"classic"},
+  {t:"멈추지 않는 한, 얼마나 천천히 가는지는 중요하지 않다.", e:"It does not matter how slowly you go, as long as you do not stop.", a:"공자", c:"classic"},
+  {t:"성공은 날마다 반복한 작은 노력들의 합이다.", e:"Success is the sum of small efforts, repeated day in and day out.", a:"로버트 콜리어", c:"grit"},
+  {t:"미래는 자기 꿈의 아름다움을 믿는 사람의 것이다.", e:"The future belongs to those who believe in the beauty of their dreams.", a:"엘리너 루스벨트", c:"grit"},
+  {t:"할 수 있다고 믿든 할 수 없다고 믿든, 당신이 옳다.", e:"Whether you think you can, or you think you can't — you're right.", a:"헨리 포드", c:"grit"},
+  {t:"노력은 배신하지 않는다.", e:"Hard work never betrays you.", a:"격언", c:"grit"},
+  {t:"천천히 가는 것을 두려워하지 말고, 멈추어 서는 것을 두려워하라.", e:"Be not afraid of going slowly; be afraid only of standing still.", a:"중국 속담", c:"grit"},
+  {t:"인내는 쓰다. 그러나 그 열매는 달다.", e:"Patience is bitter, but its fruit is sweet.", a:"격언", c:"grit"},
+  {t:"넘어진 횟수가 아니라, 일어난 횟수가 너를 만든다.", e:"You are made not by how many times you fall, but by how many times you rise.", a:"격언", c:"grit"},
+  {t:"매일의 '조금씩'이 어느 날의 '갑자기'를 만든다.", e:"A little every day becomes a breakthrough one day.", a:"격언", c:"grit"},
+  {t:"습관이 바뀌면 하루가 바뀌고, 하루가 바뀌면 운명이 바뀐다.", e:"Change your habits and your day changes; change your days and your destiny changes.", a:"격언", c:"grit"},
+  {t:"네가 헛되이 보낸 오늘은, 누군가 그토록 바라던 내일이다.", e:"The today you wasted is the tomorrow someone longed for.", a:"격언", c:"grit"},
+  {t:"재능은 시작하게 하고, 끈기는 완성하게 한다.", e:"Talent gets you started; persistence gets you finished.", a:"격언", c:"grit"},
+  {t:"산 정상에 오르는 사람은 빠른 사람이 아니라 계속 걷는 사람이다.", e:"The one who reaches the summit is not the fastest, but the one who keeps walking.", a:"격언", c:"grit"},
+  {t:"가장 좋은 시작 시점은 어제였고, 그 다음은 바로 지금이다.", e:"The best time to start was yesterday; the next best time is now.", a:"격언", c:"grit"},
+  {t:"길이 없으면 길을 만들며 간다.", e:"If there is no path, make one as you go.", a:"격언", c:"grit"},
+  {t:"뿌리 깊은 나무는 바람에 흔들리지 않는다.", e:"A deep-rooted tree does not sway in the wind.", a:"용비어천가", c:"grit"},
+];
+
+const CAT_LABEL = {exam:"수험 실전", sci:"과학자의 말", classic:"고전 · 사자성어", grit:"끈기 · 노력"};
+const N = QUOTES.length;
+/* N과 서로소인 보폭 → 매일 다른 격언, 카테고리가 자연스럽게 섞여 N일 주기로 전체 순환 */
+function stride(){ const cands=[37,41,43,47,53]; for(const s of cands){ if(N % s !== 0) return s; } return 1; }
+const S = stride();
+
+/* KST(UTC+9) 기준 날짜 계산 — 어디서 접속해도 한국 날짜 기준 */
+function kstDayIndex(offsetDays){ offsetDays = offsetDays||0;
+  return Math.floor((Date.now() + 9*3600*1000) / 86400000) - offsetDays;
+}
+function quoteFor(dayIdx){ return QUOTES[((dayIdx * S) % N + N) % N]; }
+function kstDateStr(offsetDays){ offsetDays = offsetDays||0;
+  const d = new Date(Date.now() + 9*3600*1000 - offsetDays*86400000);
+  const days = ["일","월","화","수","목","금","토"];
+  return d.getUTCFullYear()+"년 "+(d.getUTCMonth()+1)+"월 "+d.getUTCDate()+"일 ("+days[d.getUTCDay()]+")";
+}
+
+const today = quoteFor(kstDayIndex());
+document.getElementById("today-date").textContent = kstDateStr();
+document.getElementById("today-tag").textContent = CAT_LABEL[today.c];
+document.getElementById("today-quote").textContent = today.t;
+document.getElementById("today-en").textContent = today.e;
+document.getElementById("today-author").textContent = today.a;
+
+const list = document.getElementById("past-list");
+[1,2,3].forEach(function(off){
+  const q = quoteFor(kstDayIndex(off));
+  const div = document.createElement("div");
+  div.className = "item";
+  div.innerHTML = '<div class="pdate">'+kstDateStr(off)+' · '+CAT_LABEL[q.c]+'</div>'+
+    '<div class="ptext">'+q.t+'<span class="pauthor">'+q.a+'</span></div>';
+  list.appendChild(div);
+});
+</script>
+</body>
+</html>
