@@ -476,6 +476,19 @@ async function ckCached(req, ttl, fn) {
   return res;
 }
 
+// ── 종목 온도계 (/api/cockpit/thermo/{code}) — 시장 온도계 analyze() 재사용 ──
+async function ckThermo(code) {
+  const rows = await fetchIndex(code, 420); // fchart는 지수·종목 코드 모두 지원
+  let name = null, market = null;
+  try {
+    const items = await ckSearch(code);
+    const hit = items.find(x => x.code === code) || items[0];
+    if (hit) { name = hit.name; market = hit.market; }
+  } catch (e) { /* 이름 조회 실패 허용 */ }
+  const gauge = analyze(rows);
+  return { code, name, market, updated: kstNow(), gauge };
+}
+
 async function handleCockpit(req, url, ctx) {
   const p = url.pathname.slice("/api/cockpit/".length);
   const wrap = data => ({ ok: true, data });
@@ -511,6 +524,11 @@ async function handleCockpit(req, url, ctx) {
       const top = Math.min(parseInt(url.searchParams.get("top") || "10", 10) || 10, 20);
       const jby = url.searchParams.get("jby") === "1";
       return await ckCached(req, 120, async () => wrap(await ckScreen(market, top, jby)));
+    }
+    if (p.startsWith("thermo/")) {
+      // 종목 온도계: 시장 온도계와 동일한 4지표(MACD 백분위·RSI·스토캐스틱·투자심리도)를 개별 종목에 적용
+      const code = p.slice(7).replace(/[^0-9A-Za-z]/g, "");
+      return await ckCached(req, 180, async () => wrap(await ckThermo(code)));
     }
     return new Response(JSON.stringify({ ok: false, error: "unknown endpoint" }), { status: 404, headers: JSON_HEADERS });
   } catch (e) {
@@ -1631,21 +1649,4 @@ async function sfPushData(req, env) {
   try {
     const b = await req.json();
     const sec = await env.RISK_DB.prepare("SELECT v FROM app_config WHERE k='sf_push_secret'").first();
-    if (!sec || !b.secret || b.secret !== sec.v) {
-      return new Response(JSON.stringify({ ok: false, error: "인증 실패" }), { status: 403, headers: JSON_HEADERS });
-    }
-    if (!b.markets || !b.markets.kospi || !b.markets.kosdaq) {
-      return new Response(JSON.stringify({ ok: false, error: "markets 누락" }), { status: 400, headers: JSON_HEADERS });
-    }
-    const payload = JSON.stringify({
-      ok: true,
-      updated: b.updated || new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16).replace("T", " "),
-      markets: { kospi: b.markets.kospi, kosdaq: b.markets.kosdaq },
-      source: "skill",
-    });
-    await env.GAUGE_KV.put("sector-flow-live", payload, { expirationTtl: 86400 * 7 });
-    return new Response(JSON.stringify({ ok: true }), { headers: JSON_HEADERS });
-  } catch (e) {
-    return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
-  }
-}
+    if (!sec || !b.secret || b.secret
