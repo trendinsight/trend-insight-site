@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>크립토 리포트 | Trend Insight</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root { color-scheme: light; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Pretendard',sans-serif; background:#f5f7fb; color:#1c2533; line-height:1.7; }
+  header.site { background:#0b1f3f; padding:16px 24px; font-weight:800; }
+  header.site a { color:#fff; text-decoration:none; }
+  main { max-width:980px; margin:0 auto; padding:36px 18px 60px; }
+  .page-head { text-align:center; margin-bottom:10px; }
+  .page-head h1 { color:#0b1f3f; font-size:1.6rem; letter-spacing:-0.5px; }
+  .page-head h1 .accent { color:#2e6ff2; }
+  .page-head p { color:#5b6779; font-size:.88rem; margin-top:8px; }
+  .updated { text-align:center; font-size:.85rem; color:#5b6779; margin:14px 0 6px; }
+  .updated b { color:#0b1f3f; }
+  .howto { max-width:640px; margin:14px auto 0; background:#fff; border:1px solid #e4e9f1; border-radius:12px; padding:14px 18px; font-size:.85rem; color:#3c4757; }
+  .howto b { color:#0b1f3f; }
+  .empty { text-align:center; color:#9aa6b6; padding:60px 0; font-size:.95rem; }
+  section.coin { margin-top:34px; background:#fff; border:1px solid #e4e9f1; border-radius:14px; padding:22px 20px; }
+  .coin-head { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .badge { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800; color:#fff; flex:none; }
+  .btc .badge { background:#f7931a; } .eth .badge { background:#5b6ee1; } .xrp .badge { background:#0aa4a6; }
+  .coin-head h2 { font-size:1.15rem; color:#0b1f3f; }
+  .coin-head .sym { font-size:.8rem; color:#9aa6b6; font-weight:600; }
+  .conclusion { margin-top:10px; background:#f0f4fa; border-radius:10px; padding:12px 14px; font-size:.9rem; color:#3c4757; }
+  .actions { margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; }
+  .dl { display:inline-block; background:#2e6ff2; color:#fff; text-decoration:none; padding:10px 20px; border-radius:9px; font-weight:700; font-size:.9rem; }
+  .dl.ghost { background:#fff; color:#2e6ff2; border:1.5px solid #2e6ff2; }
+  .viewer { width:100%; height:72vh; border:1px solid #e4e9f1; border-radius:12px; background:#fff; margin-top:14px; }
+  .fallback { font-size:.8rem; color:#9aa6b6; margin-top:8px; }
+  .disclaimer { margin-top:40px; padding-top:16px; border-top:1px solid #e4e9f1; font-size:.78rem; color:#9aa6b6; text-align:center; }
+</style>
+</head>
+<body>
+<header class="site"><a href="index.html">← Trend Insight</a></header>
+<main>
+  <div class="page-head">
+    <h1>크립토 리포트 <span class="accent">— BTC · ETH · XRP</span></h1>
+    <p>crypto-analysis 요약형 종합분석 · 업비트 KRW 기준 · 김치프리미엄 · ETF/규제 · 거시 순풍/역풍</p>
+  </div>
+  <div class="updated" id="updated"></div>
+  <div class="howto">
+    <b>리포트 생성 방법</b> — Cowork의 "크립토 리포트" 패널에서 <b>전체 리포트 생성</b> 버튼을 누르거나,
+    채팅에서 "크립토 리포트 갱신해줘"라고 요청하세요. 완료되면 이 페이지의 리포트 3건이 최신본으로 교체됩니다 (반영 약 1분).
+  </div>
+  <div id="content"><div class="empty">불러오는 중…</div></div>
+  <p class="disclaimer">본 자료는 판단 재료이며 특정 자산의 매수·매도를 권유하지 않습니다. 암호화폐는 원금 전액 손실이 구조적으로 가능한 자산군입니다.<br>투자의 최종 판단과 책임은 투자자 본인에게 있습니다.</p>
+</main>
+<script>
+const COINS = [
+  { sym:'BTC', name:'비트코인', cls:'btc', icon:'₿' },
+  { sym:'ETH', name:'이더리움', cls:'eth', icon:'Ξ' },
+  { sym:'XRP', name:'리플',     cls:'xrp', icon:'✕' }
+];
+fetch('data/crypto-report.json?t=' + Date.now())
+  .then(r => r.json())
+  .then(d => {
+    const up = document.getElementById('updated');
+    const box = document.getElementById('content');
+    if (!d.updated) {
+      up.textContent = '';
+      box.innerHTML = '<div class="empty">아직 생성된 리포트가 없습니다.<br>Cowork에서 전체 리포트 생성 버튼을 눌러 첫 리포트를 만들어 보세요.</div>';
+      return;
+    }
+    up.innerHTML = '최근 생성: <b>' + d.updated + '</b>';
+    const v = encodeURIComponent(d.updated);
+    box.innerHTML = COINS.map(c => {
+      const m = (d.coins || {})[c.sym];
+      if (!m) return '';
+      const pdf = m.file + '?v=' + v;
+      return '<section class="coin ' + c.cls + '">' +
+        '<div class="coin-head"><div class="badge">' + c.icon + '</div>' +
+        '<h2>' + c.name + ' <span class="sym">KRW-' + c.sym + '</span></h2></div>' +
+        (m.conclusion ? '<div class="conclusion"><b>한 줄 결론</b> — ' + m.conclusion + '</div>' : '') +
+        '<div class="actions"><a class="dl" href="' + pdf + '" download="crypto-report-' + c.sym + '.pdf">PDF 다운로드</a>' +
+        '<a class="dl ghost" href="' + pdf + '" target="_blank">새 창에서 열기</a></div>' +
+        '<iframe class="viewer" src="' + pdf + '"></iframe>' +
+        '<p class="fallback">PDF가 보이지 않으면 다운로드 버튼을 이용하세요. (일부 모바일 브라우저는 내장 뷰어 미지원)</p>' +
+        '</section>';
+    }).join('');
+  })
+  .catch(() => {
+    document.getElementById('content').innerHTML = '<div class="empty">데이터를 불러오지 못했습니다. 잠시 후 새로고침해 주세요.</div>';
+  });
+</script>
+</body>
+</html>
