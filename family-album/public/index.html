@@ -122,7 +122,7 @@
     <select id="upAlbumSel" onchange="document.getElementById('upAlbumNew').style.display=this.value==='__new__'?'block':'none'"></select>
     <input type="text" id="upAlbumNew" placeholder="새 앨범 이름 (예: 2026 여름휴가)" style="display:none;margin-top:6px">
     <label>사진 선택 (여러 장 가능)</label>
-    <input type="file" id="upFiles" multiple accept="image/*">
+    <input type="file" id="upFiles" multiple accept="image/*,.heic,.heif">
     <div id="prog"></div>
     <div class="row">
       <button class="btn ghost" onclick="modal('upModal',false)">취소</button>
@@ -218,6 +218,30 @@ async function openUpload(album) {
   }
   modal('upModal', true);
 }
+// ---- HEIC 자동 변환 (아이폰 사진) ----
+let heicLibPromise = null;
+function ensureHeic2any() {
+  if (window.heic2any) return Promise.resolve();
+  if (!heicLibPromise) heicLibPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.0.4/heic2any.min.js';
+    s.onload = resolve; s.onerror = () => reject(new Error('heic2any load fail'));
+    document.head.appendChild(s);
+  });
+  return heicLibPromise;
+}
+function isHeic(file) {
+  const t = (file.type || '').toLowerCase(), n = (file.name || '').toLowerCase();
+  return t === 'image/heic' || t === 'image/heif' || n.endsWith('.heic') || n.endsWith('.heif');
+}
+async function convertIfHeic(file) {
+  if (!isHeic(file)) return file;
+  await ensureHeic2any();
+  let out = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+  if (Array.isArray(out)) out = out[0];
+  const name = (file.name || 'photo').replace(/\.(heic|heif)$/i, '') + '.jpg';
+  return new File([out], name, { type: 'image/jpeg', lastModified: file.lastModified || Date.now() });
+}
 function makeThumb(file) {
   return new Promise(resolve => {
     const img = new Image();
@@ -242,12 +266,16 @@ async function doUpload() {
   if (!files.length) return alert('사진을 선택하세요.');
   $('upGo').disabled = true; $('prog').style.display='block';
   let done = 0, fail = 0;
-  for (const f of files) {
+  for (let f of files) {
     $('prog').textContent = `올리는 중… ${done+1}/${files.length} (${f.name})`;
     try {
+      if (isHeic(f)) {
+        $('prog').textContent = `변환 중… ${done+1}/${files.length} (${f.name})`;
+        f = await convertIfHeic(f);
+      }
       const thumb = await makeThumb(f);
       const fd = new FormData();
-      fd.append('album', album); fd.append('file', f);
+      fd.append('album', album); fd.append('file', f, f.name);
       if (thumb) fd.append('thumb', thumb, 'thumb.webp');
       const r = await fetch('/api/upload', { method:'POST', body: fd });
       if (!r.ok) fail++; else done++;
@@ -269,30 +297,3 @@ async function loadVideos() {
   $('videoGrid').innerHTML = videos.map(v => `
     <div class="vid" id="v${v.id}">
       <div class="thumbwrap" onclick="playVideo('${v.id}','${v.vid}')">
-        <img loading="lazy" src="https://i.ytimg.com/vi/${v.vid}/hqdefault.jpg"><div class="play">▶</div>
-      </div>
-      <div class="cap"><b>${esc(v.title)}</b><span>${v.date}${v.source==='manual' ? ` · <a href="#" onclick="delVideo('${v.id}');return false" style="color:inherit">삭제</a>` : ''}</span></div>
-    </div>`).join('');
-}
-function playVideo(id, vid) {
-  document.querySelector(`#v${id} .thumbwrap`).outerHTML =
-    `<iframe src="https://www.youtube.com/embed/${vid}?autoplay=1" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
-}
-async function addVideo() {
-  const title = $('vidTitle').value.trim(), url = $('vidUrl').value.trim();
-  if (!url) return alert('유튜브 링크를 입력하세요.');
-  const r = await fetch('/api/videos', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ title, url }) });
-  if (!r.ok) return alert((await r.json()).error || '추가 실패');
-  $('vidTitle').value=''; $('vidUrl').value='';
-  modal('vidModal', false); loadVideos();
-}
-async function delVideo(id) {
-  if (!confirm('이 영상을 목록에서 삭제할까요? (유튜브 원본은 유지됩니다)')) return;
-  await fetch('/api/videos?id=' + id, { method:'DELETE' });
-  loadVideos();
-}
-
-showAlbums();
-</script>
-</body>
-</html>
