@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>리포트 요약 | Trend Insight</title>
+<meta name="description" content="종목명을 검색하면 최근 6개월 증권사 리포트를 모아 5장 이내 PDF로 요약해 제공합니다">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--navy:#0b1f3f;--navy2:#13294b;--accent:#2e6ff2;--red:#b22f2f;--teal:#0e7c86;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg:#f5f7fb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{text-decoration:none;color:inherit}
+header{background:var(--navy);padding:16px 24px}
+header a{color:#fff;font-weight:800}
+.wrap{max-width:1080px;margin:0 auto;padding:34px 20px 60px}
+h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
+h2{color:var(--navy);font-size:1.1rem;margin:34px 0 12px}
+.sub{color:var(--muted);font-size:.92rem;margin:6px 0 18px}
+.searchbox{position:relative;max-width:460px;margin-bottom:10px}
+.searchbox input{width:100%;font-family:inherit;font-size:1rem;font-weight:600;color:var(--navy);background:#fff;border:2px solid var(--teal);border-radius:12px;padding:12px 46px 12px 16px;outline:none}
+.searchbox input::placeholder{color:#9aa6b6;font-weight:500}
+.searchbox .sicon{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--teal);font-size:1.1rem;pointer-events:none}
+.sugg{position:absolute;top:calc(100% + 6px);left:0;right:0;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 24px rgba(11,31,63,.14);overflow:hidden;z-index:20;display:none}
+.sugg div{padding:10px 16px;font-size:.92rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.sugg div:hover,.sugg div.on{background:#eef2f8}
+.sugg b{color:var(--navy)}
+.sugg span{font-size:.78rem;color:var(--muted)}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin:10px 0}
+.card h3{color:var(--navy);font-size:1.02rem}
+.card .meta{font-size:.82rem;color:var(--muted);margin-top:4px}
+.card .sum{font-size:.9rem;margin-top:8px}
+.card .actions{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap}
+.btn{display:inline-block;font-family:inherit;font-size:.88rem;font-weight:700;color:#fff;background:var(--teal);border:none;border-radius:10px;padding:9px 18px;cursor:pointer}
+.btn.blue{background:var(--accent)}
+.btn.ghost{background:#fff;color:var(--teal);border:1px solid var(--teal)}
+.pill{display:inline-block;font-size:.76rem;font-weight:700;border-radius:999px;padding:2px 10px;margin-right:6px}
+.pill.done{background:#e5f3ee;color:#0d7a4f}
+.pill.wait{background:#fdf3e0;color:#b3730c}
+#reqmsg{display:none;background:#e5f3ee;color:#0d7a4f;padding:14px 18px;border-radius:10px;margin:14px 0;font-size:.92rem;font-weight:600}
+#err{display:none;background:#fdecea;color:#c62828;padding:14px 18px;border-radius:10px;margin:14px 0}
+#empty{background:#fff;border:1px dashed #c6d0de;border-radius:14px;padding:38px 22px;text-align:center;color:var(--muted);font-size:.92rem}
+.pending-list{display:flex;flex-wrap:wrap;gap:8px}
+.pending-list span{background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 16px;font-size:.85rem;font-weight:600;color:#39506e}
+.note{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin-top:26px;font-size:.85rem;color:var(--muted)}
+.note h3{font-size:.95rem;color:var(--navy);margin-bottom:6px}
+.disclaimer{margin-top:26px;font-size:.76rem;color:#9aa6b6;border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<header><a href="index.html">← Trend Insight</a></header>
+<div class="wrap">
+  <h1>리포트 요약 <span style="font-size:.9rem;color:var(--teal)">BROKER REPORT DIGEST</span></h1>
+  <p class="sub">종목명 또는 코드를 검색하세요. 최근 6개월간 발간된 증권사 리포트(네이버 리서치·한경컨센서스 등)를 모아
+  목표주가·투자의견·핵심 논거를 <b>5장 이내 PDF</b>로 요약해 제공합니다. 아직 요약이 없는 종목은 요청을 등록하면 자동으로 생성됩니다.</p>
+
+  <div class="searchbox">
+    <input type="text" id="q" placeholder="종목명 또는 코드 입력 (예: 월덱스, 101160)" autocomplete="off">
+    <span class="sicon">🔍</span>
+    <div class="sugg" id="sugg"></div>
+  </div>
+
+  <div id="reqmsg"></div>
+  <div id="err"></div>
+  <div id="result"></div>
+
+  <h2>처리 대기 중</h2>
+  <div class="pending-list" id="pending"><span style="border:none;background:none;color:var(--muted)">불러오는 중…</span></div>
+
+  <h2>요약 아카이브</h2>
+  <div id="archive"><div id="empty">아직 게시된 요약이 없습니다. 첫 종목을 검색해 요청해 보세요.</div></div>
+
+  <div class="note">
+    <h3>이용 안내</h3>
+    요청 등록 시 데스크탑의 정기 작업이 큐를 수거해 리포트 수집 → 요약 → PDF 게시를 자동 수행합니다(보통 수십 분~수 시간, 데스크탑 앱이 켜져 있을 때 처리).
+    완료되면 텔레그램으로 알림이 오고 이 페이지에서 바로 열람할 수 있습니다. 같은 종목은 마지막 요약 이후 새 리포트가 쌓이면 다시 요청해 갱신할 수 있습니다.
+  </div>
+  <p class="disclaimer">본 자료는 공개된 증권사 리포트를 요약한 투자 참고용 정보이며 특정 종목의 매수·매도를 권유하지 않습니다. 투자의 최종 판단과 책임은 투자자 본인에게 있습니다.</p>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+let MAN={items:[]}, PENDING=[];
+
+async function boot(){
+  try{
+    const [m,r]=await Promise.all([
+      fetch("data/report-summaries.json?t="+Date.now()).then(x=>x.json()).catch(()=>({items:[]})),
+      fetch("/api/reports/requests").then(x=>x.json()).catch(()=>({requests:[]})),
+    ]);
+    MAN=m&&m.items?m:{items:[]};
+    PENDING=(r&&r.requests)||[];
+    drawPending();drawArchive();
+    const code=new URLSearchParams(location.search).get("code");
+    if(code){const hit=MAN.items.find(x=>x.code===code);if(hit)showFound(hit);}
+  }catch(e){/* 무시 */}
+}
+function summaryCard(x,head){
+  return `<div class="card">${head||""}<h3>${x.title||x.name+" 증권사 리포트 요약"}</h3>
+  <div class="meta">${x.name} (${x.code}) · 게시 ${x.date}${x.brokers?` · 리포트 ${x.brokers}건`:""}${x.period?` · 대상기간 ${x.period}`:""}</div>
+  ${x.summary?`<div class="sum">${x.summary}</div>`:""}
+  <div class="actions"><a class="btn blue" href="posts/${x.slug}.html">요약 보기 (PDF)</a>
+  <button class="btn ghost" onclick="requestSummary('${x.code}','${x.name}','',true)">최신 리포트로 갱신 요청</button></div></div>`;
+}
+function drawArchive(){
+  const box=$("archive");
+  if(!MAN.items.length)return;
+  const items=[...MAN.items].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  box.innerHTML=items.map(x=>summaryCard(x)).join("");
+}
+function drawPending(){
+  const box=$("pending");
+  if(!PENDING.length){box.innerHTML='<span style="border:none;background:none;color:var(--muted)">대기 중인 요청이 없습니다.</span>';return;}
+  box.innerHTML=PENDING.map(x=>`<span>⏳ ${x.name} (${x.code}) · ${x.requested_at||""}</span>`).join("");
+}
+function showFound(hit){
+  $("result").innerHTML=summaryCard(hit,'<span class="pill done">요약 있음</span>');
+  $("result").scrollIntoView({behavior:"smooth",block:"center"});
+}
+function showMissing(code,name,market){
+  const waiting=PENDING.find(x=>x.code===code);
+  $("result").innerHTML=`<div class="card"><span class="pill wait">${waiting?"처리 대기 중":"요약 없음"}</span>
+  <h3>${name} (${code})</h3>
+  <div class="sum">${waiting?"이미 요청이 등록되어 처리를 기다리고 있습니다.":"아직 이 종목의 리포트 요약이 없습니다. 아래 버튼으로 요청을 등록하면 자동으로 생성됩니다."}</div>
+  ${waiting?"":`<div class="actions"><button class="btn" onclick="requestSummary('${code}','${name}','${market||""}')">요약 요청 등록</button></div>`}</div>`;
+}
+async function requestSummary(code,name,market,refresh){
+  $("err").style.display="none";$("reqmsg").style.display="none";
+  try{
+    const r=await fetch("/api/reports/request",{method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({code,name,market})});
+    const j=await r.json();
+    if(!j.ok)throw new Error(j.error||"요청 실패");
+    $("reqmsg").textContent=j.dup?`${name}(${code})은 이미 대기 중입니다. 완료되면 텔레그램으로 알려드립니다.`
+      :`${name}(${code}) ${refresh?"갱신":"요약"} 요청이 등록되었습니다. 완료되면 텔레그램 알림과 함께 이 페이지에 게시됩니다.`;
+    $("reqmsg").style.display="block";
+    PENDING.push({code,name,requested_at:""});drawPending();
+    if(!refresh)showMissing(code,name,market);
+  }catch(e){
+    $("err").textContent="요청 등록에 실패했습니다: "+e.message;
+    $("err").style.display="block";
+  }
+}
+function pick(code,name,market){
+  $("sugg").style.display="none";$("q").value=name;
+  history.replaceState(null,"","?code="+code);
+  const hit=MAN.items.find(x=>x.code===code);
+  if(hit)showFound(hit);else showMissing(code,name,market);
+}
+/* 자동완성 (cockpit search 재사용) */
+let tmr=null,items=[],sel=-1;
+$("q").addEventListener("input",e=>{
+  clearTimeout(tmr);
+  const v=e.target.value.trim();
+  if(!v){$("sugg").style.display="none";return;}
+  tmr=setTimeout(async()=>{
+    try{
+      const r=await fetch(`/api/cockpit/search?q=${encodeURIComponent(v)}`);
+      const j=await r.json();
+      items=j.data||[];sel=-1;
+      const box=$("sugg");
+      if(!items.length){box.style.display="none";return;}
+      box.innerHTML=items.map((x,i)=>`<div data-i="${i}"><b>${x.name}</b><span>${x.code} · ${x.market}</span></div>`).join("");
+      box.style.display="block";
+      [...box.children].forEach(el=>el.onclick=()=>{const x=items[+el.dataset.i];pick(x.code,x.name,x.market);});
+    }catch(e){/* 무시 */}
+  },250);
+});
+$("q").addEventListener("keydown",e=>{
+  const box=$("sugg");
+  if(e.key==="ArrowDown"||e.key==="ArrowUp"){
+    if(box.style.display!=="block")return;
+    e.preventDefault();
+    sel+=e.key==="ArrowDown"?1:-1;sel=(sel+items.length)%items.length;
+    [...box.children].forEach((el,i)=>el.classList.toggle("on",i===sel));
+  }else if(e.key==="Enter"){
+    e.preventDefault();
+    if(sel>=0&&items[sel]){const x=items[sel];pick(x.code,x.name,x.market);return;}
+    if(items.length){const x=items[0];pick(x.code,x.name,x.market);}
+  }else if(e.key==="Escape"){box.style.display="none";}
+});
+document.addEventListener("click",e=>{if(!e.target.closest(".searchbox"))$("sugg").style.display="none";});
+boot();
+</script>
+</body>
+</html>

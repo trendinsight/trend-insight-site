@@ -1393,6 +1393,10 @@ export default {
       if (v) return new Response(v, { headers: JSON_HEADERS });
     }
 
+    if (url.pathname.startsWith("/api/reports/")) {
+      return handleReports(req, url, env, ctx);
+    }
+
     return env.ASSETS.fetch(req);
   },
 };
@@ -1688,6 +1692,62 @@ async function sfPushData(req, env) {
     });
     await env.GAUGE_KV.put("sector-flow-live", payload, { expirationTtl: 86400 * 7 });
     return new Response(JSON.stringify({ ok: true }), { headers: JSON_HEADERS });
+  } catch (e) {
+    return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
+  }
+}
+
+/* ═══════════════ 증권사 리포트 요약 요청 큐 (/api/reports/*) ═══════════════
+   report-summary.html: 종목 검색 → 게시된 요약이 없으면 요청 등록(KV 큐).
+   로컬 Claude 정기 작업이 requests를 수거해 최근 6개월 증권사 리포트를
+   수집·요약(PDF 5장 이내)해 게시한 뒤 complete로 큐에서 제거한다. */
+
+const RQ_KEY = "report-requests";
+
+async function rqLoad(env) {
+  try { return JSON.parse((await env.GAUGE_KV.get(RQ_KEY)) || "[]"); } catch (e) { return []; }
+}
+
+async function handleReports(req, url, env, ctx) {
+  const p = url.pathname.slice("/api/reports/".length);
+  try {
+    if (p === "requests") {
+      const list = await rqLoad(env);
+      return new Response(JSON.stringify({ ok: true, requests: list }), { headers: JSON_HEADERS });
+    }
+    if (p === "request" && req.method === "POST") {
+      const b = await req.json();
+      const code = String(b.code || "").replace(/[^0-9A-Za-z]/g, "");
+      const name = String(b.name || "").trim().slice(0, 40);
+      if (!/^\d{6}$/.test(code) || !name) {
+        return new Response(JSON.stringify({ ok: false, error: "code(6자리)와 name이 필요합니다" }), { status: 400, headers: JSON_HEADERS });
+      }
+      const list = await rqLoad(env);
+      if (list.find(x => x.code === code)) {
+        return new Response(JSON.stringify({ ok: true, dup: true, message: "이미 대기 중인 요청입니다." }), { headers: JSON_HEADERS });
+      }
+      if (list.length >= 20) {
+        return new Response(JSON.stringify({ ok: false, error: "대기 요청이 가득 찼습니다(20건)." }), { status: 429, headers: JSON_HEADERS });
+      }
+      list.push({ code, name, market: String(b.market || "").slice(0, 12), requested_at: kstNow(), status: "pending" });
+      await env.GAUGE_KV.put(RQ_KEY, JSON.stringify(list));
+      ctx.waitUntil(slTelegram(env,
+        `📝 <b>리포트 요약 요청</b>\n${name}(${code})\n정기 작업이 자동 처리합니다. 바로 처리하려면 Cowork에서 "리포트 요약 큐 처리해줘"라고 말하세요.`));
+      return new Response(JSON.stringify({ ok: true }), { headers: JSON_HEADERS });
+    }
+    if (p === "complete" && req.method === "POST") {
+      const b = await req.json();
+      const sec = await env.RISK_DB.prepare("SELECT v FROM app_config WHERE k='report_secret'").first();
+      if (!sec || !b.secret || b.secret !== sec.v) {
+        return new Response(JSON.stringify({ ok: false, error: "인증 실패" }), { status: 403, headers: JSON_HEADERS });
+      }
+      const code = String(b.code || "");
+      const list = await rqLoad(env);
+      const next = list.filter(x => x.code !== code);
+      await env.GAUGE_KV.put(RQ_KEY, JSON.stringify(next));
+      return new Response(JSON.stringify({ ok: true, removed: list.length - next.length }), { headers: JSON_HEADERS });
+    }
+    return new Response(JSON.stringify({ ok: false, error: "unknown endpoint" }), { status: 404, headers: JSON_HEADERS });
   } catch (e) {
     return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
   }
