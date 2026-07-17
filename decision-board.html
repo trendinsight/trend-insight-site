@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="팀장 결재 보드 — 환경×논거×리스크 교차 점검 결재 기록, 5축 신호등과 1·3·6·9개월 플랜 타임라인">
+<title>결재 보드 | Trend Insight</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<style>
+  :root { --ink:#1a1a1a; --sub:#666; --line:#e5e5e5; --accent:#7c3aed;
+          --g:#22a352; --y:#e0a800; --r:#d64040; --o:#e0762e; --gr:#9aa0a6; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Malgun Gothic","Apple SD Gothic Neo",sans-serif; color:var(--ink); background:#fafafa; line-height:1.6; }
+  .wrap { max-width:900px; margin:0 auto; padding:24px 16px 80px; }
+  .back { color:var(--sub); text-decoration:none; font-size:.9rem; }
+  h1 { font-size:1.6rem; margin:16px 0 4px; }
+  h1 .en { font-size:.85rem; color:var(--accent); letter-spacing:.15em; font-weight:700; }
+  .desc { color:var(--sub); font-size:.92rem; margin-bottom:6px; }
+  .updated { color:var(--sub); font-size:.85rem; margin-bottom:18px; }
+  /* 요약 대시보드 */
+  .stats { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:22px; }
+  .statcard { background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px 20px; flex:1; min-width:230px; }
+  .statcard h3 { font-size:.85rem; color:var(--sub); font-weight:600; margin-bottom:10px; }
+  .donutrow { display:flex; align-items:center; gap:18px; }
+  .donut { width:96px; height:96px; border-radius:50%; position:relative; flex-shrink:0; }
+  .donut::after { content:attr(data-total); position:absolute; inset:14px; background:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.15rem; }
+  .legend { font-size:.85rem; }
+  .legend span { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; }
+  .bignum { font-size:1.9rem; font-weight:800; }
+  .statcard .hint { font-size:.8rem; color:var(--sub); }
+  /* 필터 */
+  .filters { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; align-items:center; }
+  .chip { border:1px solid var(--line); background:#fff; border-radius:999px; padding:5px 14px; font-size:.88rem; cursor:pointer; }
+  .chip.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+  select { border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:.9rem; background:#fff; }
+  /* 결재 카드 */
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; margin-bottom:14px; overflow:hidden; }
+  .card summary { list-style:none; padding:14px 16px; cursor:pointer; }
+  .card summary::-webkit-details-marker { display:none; }
+  .row1 { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .date { color:var(--sub); font-size:.85rem; }
+  .stock { font-weight:700; font-size:1.05rem; }
+  .badge { margin-left:auto; font-size:.82rem; font-weight:700; padding:3px 12px; border-radius:999px; }
+  .b-승인 { background:#e7f6ec; color:#187a3c; } .b-보류 { background:#fff6e0; color:#946200; }
+  .b-축소 { background:#ffeede; color:#b4530a; } .b-손절 { background:#fdeaea; color:#c22525; }
+  .summaryline { color:var(--sub); font-size:.88rem; margin-top:6px; }
+  .lights { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .light { display:flex; align-items:center; gap:5px; font-size:.78rem; color:var(--sub); background:#f7f7f9; border-radius:999px; padding:3px 10px; }
+  .dot { width:10px; height:10px; border-radius:50%; }
+  /* 펼친 상세 */
+  .bodybox { border-top:1px solid var(--line); padding:16px 20px 22px; }
+  .viz h4 { font-size:.9rem; color:var(--accent); margin:14px 0 8px; }
+  .siggrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
+  .sig { border:1px solid var(--line); border-radius:10px; padding:8px 10px; font-size:.83rem; }
+  .sig b { display:block; font-size:.78rem; color:var(--sub); font-weight:600; }
+  .sig .pill { display:inline-flex; align-items:center; gap:6px; font-weight:700; margin-top:3px; }
+  /* 타임라인 */
+  .timeline { position:relative; margin:14px 4px 6px; padding-left:2px; }
+  .tl-bar { position:absolute; top:9px; left:10px; right:10px; height:3px; background:var(--line); border-radius:2px; }
+  .tl-nodes { display:flex; justify-content:space-between; position:relative; }
+  .tl-node { flex:1; min-width:0; padding:0 6px; }
+  .tl-node .knob { width:18px; height:18px; border-radius:50%; background:#fff; border:3px solid var(--accent); margin-bottom:6px; }
+  .tl-node .span { font-weight:800; font-size:.85rem; }
+  .tl-node .ms { font-size:.78rem; color:var(--sub); word-break:keep-all; }
+  .planTable { border-collapse:collapse; width:100%; margin:10px 0; font-size:.85rem; }
+  .planTable th,.planTable td { border:1px solid var(--line); padding:6px 8px; text-align:left; vertical-align:top; }
+  .planTable th { background:#f6f4fb; }
+  .planTable td.base { border-left:3px solid var(--gr); } .planTable td.bull { border-left:3px solid var(--g); } .planTable td.bear { border-left:3px solid var(--r); }
+  /* 상세 마크다운 */
+  .mdbody { margin-top:18px; padding-top:14px; border-top:1px dashed var(--line); font-size:.93rem; }
+  .mdbody h2 { font-size:1rem; margin:16px 0 8px; color:#333; }
+  .mdbody table { border-collapse:collapse; width:100%; margin:8px 0; font-size:.87rem; }
+  .mdbody th,.mdbody td { border:1px solid var(--line); padding:6px 8px; text-align:left; }
+  .mdbody th { background:#f7f7f9; }
+  .mdbody blockquote { border-left:3px solid var(--line); padding-left:10px; color:var(--sub); margin:8px 0; }
+  .mdbody ul,.mdbody ol { padding-left:22px; }
+  .mdlabel { font-size:.8rem; color:var(--sub); letter-spacing:.08em; font-weight:700; }
+  .empty { text-align:center; color:var(--sub); padding:60px 0; }
+  .foot { color:var(--sub); font-size:.8rem; margin-top:40px; border-top:1px solid var(--line); padding-top:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">&larr; Trend Insight</a>
+  <h1>결재 보드 <span class="en">DECISION BOARD</span></h1>
+  <p class="desc">팀장이 환경(1단계) × 논거·진입·수급(2단계) × 리스크·교훈(3단계)을 교차 점검해 내린 결재 기록입니다. 카드의 신호등과 타임라인으로 한눈에 보고, 펼치면 반론(레드팀)까지 포함한 결재 전문을 볼 수 있습니다.</p>
+  <p class="updated" id="updated">불러오는 중…</p>
+
+  <div class="stats" id="stats" style="display:none">
+    <div class="statcard">
+      <h3>결재 분포</h3>
+      <div class="donutrow">
+        <div class="donut" id="donut" data-total="0"></div>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+    <div class="statcard">
+      <h3>최근 결재</h3>
+      <div class="bignum" id="lastVerdict">—</div>
+      <div class="hint" id="lastInfo"></div>
+    </div>
+    <div class="statcard">
+      <h3>다뤄진 종목</h3>
+      <div class="bignum" id="stockCount">0</div>
+      <div class="hint" id="stockNames"></div>
+    </div>
+  </div>
+
+  <div class="filters" id="filters" style="display:none">
+    <span class="chip on" data-v="전체">전체</span>
+    <span class="chip" data-v="승인">승인</span>
+    <span class="chip" data-v="보류">보류</span>
+    <span class="chip" data-v="축소">축소</span>
+    <span class="chip" data-v="손절">손절</span>
+    <select id="stockSel"><option value="전체">종목 전체</option></select>
+  </div>
+  <div id="list"></div>
+  <p class="foot">본 자료는 내부 의사결정 참고용 기록이며 특정 종목의 매수·매도를 권유하지 않습니다. 투자의 최종 판단과 책임은 투자자 본인에게 있습니다.</p>
+</div>
+<script>
+const VC = { "승인":"var(--g)", "보류":"var(--y)", "축소":"var(--o)", "손절":"var(--r)" };
+const GOOD = ["순풍","유효","BUY_POINT","매집","정상","HOLD","비해당"];
+const BAD  = ["역풍","훼손","NO_SETUP","분산","위반","SELL","해당","부재"];
+const MID  = ["중립","약화","SETUP","주의","WATCH","EXTENDED"];
+function judgeColor(j){
+  j = (j||"").toUpperCase();
+  if (BAD.some(k=>j.includes(k.toUpperCase())))  return "var(--r)";
+  if (GOOD.some(k=>j.includes(k.toUpperCase()))) return "var(--g)";
+  if (MID.some(k=>j.includes(k.toUpperCase())))  return "var(--y)";
+  return "var(--gr)";
+}
+function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
+let DATA=null, fv="전체", fs="전체";
+
+function lights(m){
+  if (!m || !m.length) return "";
+  return '<div class="lights">' + m.map(x =>
+    `<span class="light"><span class="dot" style="background:${judgeColor(x.judgment)}"></span>${esc(x.axis.replace(/\s*\(.*?\)/,""))}</span>`).join("") + '</div>';
+}
+function sigGrid(m){
+  if (!m || !m.length) return "";
+  return '<h4>교차 점검 신호등</h4><div class="siggrid">' + m.map(x =>
+    `<div class="sig"><b>${esc(x.axis)}</b><span class="pill"><span class="dot" style="background:${judgeColor(x.judgment)}"></span>${esc(x.judgment)||"—"}</span></div>`).join("") + '</div>';
+}
+function timeline(plan){
+  if (!plan || !plan.length) return "";
+  const nodes = plan.map(p =>
+    `<div class="tl-node"><div class="knob"></div><div class="span">${esc(p.span)}</div><div class="ms">${esc(p.milestone)}</div></div>`).join("");
+  const rows = plan.map(p =>
+    `<tr><th>${esc(p.span)}</th><td class="base">${esc(p.base)}</td><td class="bull">${esc(p.bull)}</td><td class="bear">${esc(p.bear)}</td></tr>`).join("");
+  return `<h4>플랜 타임라인 (조건 → 행동)</h4>
+    <div class="timeline"><div class="tl-bar"></div><div class="tl-nodes">${nodes}</div></div>
+    <table class="planTable"><tr><th>구간</th><td class="base"><b>Base</b></td><td class="bull"><b>Bull</b></td><td class="bear"><b>Bear</b></td></tr>${rows}</table>`;
+}
+function render(){
+  const list = document.getElementById("list");
+  if (!DATA || !DATA.decisions.length){ list.innerHTML='<p class="empty">아직 게시된 결재가 없습니다.<br>팀장 결재가 저장되면 이곳에 자동으로 쌓입니다.</p>'; return; }
+  const items = DATA.decisions.filter(d => (fv==="전체"||d.verdict===fv) && (fs==="전체"||d.stock===fs));
+  if (!items.length){ list.innerHTML='<p class="empty">조건에 맞는 결재가 없습니다.</p>'; return; }
+  list.innerHTML = items.map((d,i)=>`
+    <details class="card"${i===0?" open":""}>
+      <summary>
+        <div class="row1">
+          <span class="date">${esc(d.date)}</span>
+          <span class="stock">${esc(d.stock)}</span>
+          <span class="badge b-${esc(d.verdict)}">${esc(d.verdict)}</span>
+        </div>
+        ${d.summary?`<div class="summaryline">${esc(d.summary)}</div>`:""}
+        ${lights(d.matrix)}
+      </summary>
+      <div class="bodybox">
+        <div class="viz">${sigGrid(d.matrix)}${timeline(d.plan)}</div>
+        <div class="mdbody"><div class="mdlabel">결재 전문</div>${marked.parse(d.body_md||"")}</div>
+      </div>
+    </details>`).join("");
+}
+fetch("data/decision-board.json").then(r=>r.json()).then(j=>{
+  DATA=j;
+  document.getElementById("updated").textContent = "갱신 " + j.updated + " · 결재 " + j.decisions.length + "건";
+  const n=j.decisions.length;
+  if (n){
+    const counts={}; j.decisions.forEach(d=>counts[d.verdict]=(counts[d.verdict]||0)+1);
+    let acc=0; const segs=[];
+    for (const [v,c] of Object.entries(counts)){ const a1=acc/n*360, a2=(acc+c)/n*360; segs.push(`${VC[v]||"var(--gr)"} ${a1}deg ${a2}deg`); acc+=c; }
+    const donut=document.getElementById("donut");
+    donut.style.background=`conic-gradient(${segs.join(",")})`; donut.dataset.total=n;
+    document.getElementById("legend").innerHTML = Object.entries(counts).map(([v,c])=>`<div><span style="background:${VC[v]||"var(--gr)"}"></span>${v} ${c}건</div>`).join("");
+    const last=j.decisions[0];
+    document.getElementById("lastVerdict").textContent=last.verdict;
+    document.getElementById("lastVerdict").style.color=VC[last.verdict]||"inherit";
+    document.getElementById("lastInfo").textContent=`${last.date} · ${last.stock}`;
+    const stocks=[...new Set(j.decisions.map(d=>d.stock))];
+    document.getElementById("stockCount").textContent=stocks.length;
+    document.getElementById("stockNames").textContent=stocks.slice(0,6).join(" · ");
+    const sel=document.getElementById("stockSel");
+    stocks.forEach(s=>{const o=document.createElement("option");o.value=o.textContent=s;sel.appendChild(o);});
+    sel.addEventListener("change",()=>{fs=sel.value;render();});
+    document.getElementById("stats").style.display="flex";
+    document.getElementById("filters").style.display="flex";
+    document.querySelectorAll(".chip").forEach(c=>c.addEventListener("click",()=>{
+      document.querySelectorAll(".chip").forEach(x=>x.classList.remove("on"));
+      c.classList.add("on"); fv=c.dataset.v; render();
+    }));
+  }
+  render();
+}).catch(()=>{ document.getElementById("updated").textContent="데이터를 불러오지 못했습니다. 잠시 후 새로고침 해주세요."; });
+</script>
+</body>
+</html>
