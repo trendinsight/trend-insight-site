@@ -18,9 +18,18 @@
   .legend b{font-weight:400;}
   .dot{display:inline-block;width:11px;height:11px;border-radius:50%;vertical-align:-1px;margin-right:5px;}
   .stage{background:#1b1b1a;border:1px solid #2c2c2a;border-radius:14px;overflow:hidden;}
-  canvas{width:100%;height:520px;display:block;cursor:grab;}
-  #tip{min-height:22px;margin-top:12px;font-size:14px;color:#b9b9b4;}
-  #tip b{color:#fff;font-weight:600;}
+  canvas{width:100%;height:500px;display:block;cursor:grab;}
+  #hint{min-height:20px;margin-top:10px;font-size:13px;color:#8f8f8a;}
+  #detail{margin-top:12px;background:#1f1f1d;border:1px solid #33332f;border-radius:12px;padding:16px 18px;display:none;}
+  #detail.on{display:block;}
+  #detail h2{font-size:16px;font-weight:600;margin:0 0 10px;color:#fff;border-bottom:1px solid #33332f;padding-bottom:8px;}
+  #detail p{margin:8px 0;font-size:14px;line-height:1.7;color:#d4d4cf;}
+  #detail li{font-size:14px;line-height:1.7;color:#d4d4cf;margin:2px 0;}
+  #detail ul{margin:6px 0;padding-left:20px;}
+  #detail strong{color:#fff;font-weight:600;}
+  #detail table{border-collapse:collapse;width:100%;margin:8px 0;font-size:13px;}
+  #detail th,#detail td{border:1px solid #38383400;border-bottom:1px solid #33332f;padding:5px 8px;text-align:left;color:#cececa;}
+  #detail th{color:#fff;font-weight:600;}
   .foot{margin-top:18px;font-size:12px;color:#6f6f6b;}
 </style>
 </head>
@@ -32,7 +41,7 @@
     <select id="pick"></select>
     <span class="meta" id="meta"></span>
   </div>
-  <p class="sub">옵시디언 볼트의 종목별 노트 연결을 시각화합니다. 점을 드래그해 움직이고, 클릭하면 요약이 뜹니다.</p>
+  <p class="sub">옵시디언 볼트의 종목별 노트 연결을 시각화합니다. 점을 드래그해 움직이고, 클릭하면 그 노트 내용이 아래에 펼쳐집니다.</p>
   <div class="legend">
     <span><span class="dot" style="background:#e8e8e8"></span><b>허브·문서</b></span>
     <span><span class="dot" style="background:#3fb950"></span><b>논거 유효</b></span>
@@ -40,22 +49,48 @@
     <span><span class="dot" style="background:#8b8b86"></span><b>진입·환경·기타</b></span>
   </div>
   <div class="stage"><canvas id="g"></canvas></div>
-  <div id="tip"></div>
+  <div id="hint">점을 클릭하면 내용이 여기 아래에 나타납니다.</div>
+  <div id="detail"></div>
   <p class="foot" id="gen"></p>
 </div>
 <script>
 var COLORS={"hub":"#ffffff","thesis-valid":"#3fb950","thesis-weak":"#d29922","thesis-broken":"#f85149","entry-buy":"#3fb950","entry-setup":"#4a9eff","entry-nosetup":"#8b8b86","decision":"#a371f7","report-neutral":"#8b8b86","doc":"#dcdcd8","env":"#8b8b86"};
-var c=document.getElementById('g'),x=c.getContext('2d'),tip=document.getElementById('tip');
-var pick=document.getElementById('pick'),meta=document.getElementById('meta');
-var W,H,DPR=window.devicePixelRatio||1,DATA=null,N=[],L=[],map={},drag=null,mx=0,my=0;
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function md(t){
+  var lines=t.split('\n'),out=[],i=0,inUl=false,inTbl=false;
+  function closeUl(){if(inUl){out.push('</ul>');inUl=false;}}
+  function closeTbl(){if(inTbl){out.push('</table>');inTbl=false;}}
+  function inl(s){return esc(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');}
+  for(;i<lines.length;i++){
+    var ln=lines[i];
+    if(/^\s*$/.test(ln)){closeUl();closeTbl();continue;}
+    if(/^\|(.+)\|\s*$/.test(ln)){
+      var cells=ln.split('|').slice(1,-1).map(function(c){return c.trim();});
+      if(/^[\s:|-]+$/.test(ln)){continue;}
+      if(!inTbl){out.push('<table>');inTbl=true;var isH=(i+1<lines.length&&/^\|[\s:|-]+\|\s*$/.test(lines[i+1]));
+        out.push('<tr>'+cells.map(function(c){return (isH?'<th>':'<td>')+inl(c)+(isH?'</th>':'</td>');}).join('')+'</tr>');continue;}
+      out.push('<tr>'+cells.map(function(c){return '<td>'+inl(c)+'</td>';}).join('')+'</tr>');continue;
+    } else {closeTbl();}
+    var h=ln.match(/^(#{2,3})\s+(.*)/);
+    if(h){closeUl();out.push('<h2>'+inl(h[2])+'</h2>');continue;}
+    var b=ln.match(/^\s*[-*]\s+(.*)/);
+    if(b){if(!inUl){out.push('<ul>');inUl=true;}out.push('<li>'+inl(b[1])+'</li>');continue;}
+    closeUl();out.push('<p>'+inl(ln)+'</p>');
+  }
+  closeUl();closeTbl();return out.join('');
+}
+var c=document.getElementById('g'),x=c.getContext('2d');
+var pick=document.getElementById('pick'),meta=document.getElementById('meta'),hint=document.getElementById('hint'),detail=document.getElementById('detail');
+var W,H,DPR=window.devicePixelRatio||1,DATA=null,N=[],L=[],map={},drag=null,moved=false,mx=0,my=0;
 function size(){W=c.clientWidth;H=c.clientHeight;c.width=W*DPR;c.height=H*DPR;x.setTransform(DPR,0,0,DPR,0,0);}
 function load(stock){
-  N=stock.nodes.map(function(n){return {id:n.id,t:n.t,r:n.r||12,tip:n.tip||'',c:COLORS[n.t]||'#8b8b86',x:W/2+(Math.random()-.5)*260,y:H/2+(Math.random()-.5)*200,vx:0,vy:0};});
+  N=stock.nodes.map(function(n){return {id:n.id,t:n.t,r:n.r||12,tip:n.tip||'',body:n.body||'',c:COLORS[n.t]||'#8b8b86',x:W/2+(Math.random()-.5)*260,y:H/2+(Math.random()-.5)*200,vx:0,vy:0};});
   map={};N.forEach(function(n){map[n.id]=n;});
   L=stock.links.filter(function(l){return map[l[0]]&&map[l[1]];});
   meta.textContent=stock.code+' · '+stock.status;
-  tip.innerHTML='<b>'+stock.name+'</b> — '+(stock.note||'');
+  detail.className='';detail.innerHTML='';hint.textContent='점을 클릭하면 내용이 여기 아래에 나타납니다.';
 }
+function show(n){detail.innerHTML=md(n.body||('## '+n.id+'\n'+n.tip));detail.className='on';hint.textContent=n.id+' 노트';}
 function step(){
   for(var i=0;i<N.length;i++)for(var j=i+1;j<N.length;j++){
     var a=N[i],b=N[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.sqrt(dx*dx+dy*dy)||1,f=3200/(d*d),ux=dx/d,uy=dy/d;
@@ -78,12 +113,12 @@ function draw(){
 function loop(){if(N.length){step();draw();}requestAnimationFrame(loop);}
 function pos(e){var r=c.getBoundingClientRect();var p=e.touches?e.touches[0]:e;return{x:p.clientX-r.left,y:p.clientY-r.top};}
 function hit(p){for(var i=N.length-1;i>=0;i--){var n=N[i];if((p.x-n.x)*(p.x-n.x)+(p.y-n.y)*(p.y-n.y)<=(n.r+6)*(n.r+6))return n;}return null;}
-c.addEventListener('mousedown',function(e){var n=hit(pos(e));if(n){drag=n;var p=pos(e);mx=p.x;my=p.y;c.style.cursor='grabbing';tip.innerHTML='<b>'+n.id+'</b> — '+n.tip;}});
-window.addEventListener('mousemove',function(e){var p=pos(e);if(drag){mx=p.x;my=p.y;}else{c.style.cursor=hit(p)?'pointer':'grab';}});
-window.addEventListener('mouseup',function(){drag=null;c.style.cursor='grab';});
-c.addEventListener('touchstart',function(e){var n=hit(pos(e));if(n){drag=n;var p=pos(e);mx=p.x;my=p.y;tip.innerHTML='<b>'+n.id+'</b> — '+n.tip;e.preventDefault();}},{passive:false});
-c.addEventListener('touchmove',function(e){if(drag){var p=pos(e);mx=p.x;my=p.y;e.preventDefault();}},{passive:false});
-window.addEventListener('touchend',function(){drag=null;});
+c.addEventListener('mousedown',function(e){var n=hit(pos(e));if(n){drag=n;moved=false;var p=pos(e);mx=p.x;my=p.y;c.style.cursor='grabbing';}});
+window.addEventListener('mousemove',function(e){var p=pos(e);if(drag){if(Math.abs(p.x-mx)+Math.abs(p.y-my)>3)moved=true;mx=p.x;my=p.y;}else{c.style.cursor=hit(p)?'pointer':'grab';}});
+window.addEventListener('mouseup',function(){if(drag&&!moved)show(drag);drag=null;c.style.cursor='grab';});
+c.addEventListener('touchstart',function(e){var n=hit(pos(e));if(n){drag=n;moved=false;var p=pos(e);mx=p.x;my=p.y;}},{passive:true});
+c.addEventListener('touchmove',function(e){if(drag){var p=pos(e);if(Math.abs(p.x-mx)+Math.abs(p.y-my)>3)moved=true;mx=p.x;my=p.y;e.preventDefault();}},{passive:false});
+window.addEventListener('touchend',function(){if(drag&&!moved)show(drag);drag=null;});
 window.addEventListener('resize',size);
 pick.addEventListener('change',function(){load(DATA.stocks[+pick.value]);});
 size();
@@ -91,7 +126,7 @@ fetch('data/stock-graph.json?t='+Date.now()).then(function(r){return r.json();})
   DATA=d;document.getElementById('gen').textContent='생성: '+(d.generated||'')+' · 볼트 20-종목분석 기준';
   pick.innerHTML=d.stocks.map(function(s,i){return '<option value="'+i+'">'+s.name+' ('+s.status+')</option>';}).join('');
   load(d.stocks[0]);
-}).catch(function(e){tip.innerHTML='데이터를 불러오지 못했습니다: '+e;});
+}).catch(function(e){hint.textContent='데이터를 불러오지 못했습니다: '+e;});
 loop();
 </script>
 </body>
