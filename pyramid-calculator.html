@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>피라미드 매수 계산기 | Trend Insight</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1d212b; --line:#2a2f3a;
+    --txt:#e8eaed; --sub:#9aa2b1; --muted:#6b7280; --accent:#4f8cff; --danger:#ff6b6b; --ok:#37c98a;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--txt); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",sans-serif; line-height:1.6; -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:920px; margin:0 auto; padding:28px 18px 60px;}
+  .brand{font-size:12px; letter-spacing:.14em; color:var(--muted); text-transform:uppercase; margin-bottom:6px;}
+  h1{font-size:26px; font-weight:600; margin:0 0 4px;}
+  .desc{font-size:13px; color:var(--muted); margin:0 0 22px;}
+  .grid-in{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:18px;}
+  label{font-size:12px; color:var(--sub); display:block; margin-bottom:5px;}
+  input{width:100%; height:40px; background:var(--panel); border:1px solid var(--line); border-radius:9px; color:var(--txt); font-size:15px; padding:0 12px; outline:none;}
+  input:focus{border-color:var(--accent);}
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:20px;}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px;}
+  .card .k{font-size:12px; color:var(--sub); margin-bottom:6px;}
+  .card .v{font-size:18px; font-weight:600;}
+  .tbl-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:12px;}
+  table{width:100%; border-collapse:collapse; font-size:14px; min-width:640px;}
+  thead th{text-align:right; color:var(--sub); font-weight:500; padding:12px 12px; border-bottom:1px solid var(--line); background:var(--panel2);}
+  thead th:first-child{text-align:left;}
+  tbody td{text-align:right; padding:12px 12px; border-bottom:1px solid var(--line);}
+  tbody td:first-child{text-align:left; font-weight:600;}
+  tbody tr:last-child td{border-bottom:none;}
+  .dg{color:var(--danger);}
+  .warn{margin-top:16px;}
+  .warn div{font-size:13px; padding:10px 12px; border-radius:9px; margin-bottom:8px; background:var(--panel);}
+  .warn .alert{color:var(--danger); background:rgba(255,107,107,.1); border:1px solid rgba(255,107,107,.3);}
+  .foot{font-size:11px; color:var(--muted); margin-top:18px;}
+  .topbar{background:#0b1f3f; padding:14px 20px;}
+  .topbar a{color:#fff; text-decoration:none; font-weight:700; font-size:14px;}
+</style>
+</head>
+<body>
+<div class="topbar"><a href="index.html">← Trend Insight</a></div>
+<div class="wrap">
+  <div class="brand">Trend Insight</div>
+  <h1>피라미드 매수 계산기</h1>
+  <p class="desc">터틀 ATR 사이징 · 1유닛 = 자본×리스크% ÷ N · 손절 = 마지막 진입가 −2N · +0.5N 간격 최대 4유닛</p>
+
+  <div class="grid-in">
+    <div><label>종목명</label><input id="name" type="text" value="종목명" /></div>
+    <div><label>진입가 (원)</label><input id="entry" type="number" value="50000" /></div>
+    <div><label>N = ATR(20) (원)</label><input id="atr" type="number" value="1500" /></div>
+    <div><label>계좌자본 (원)</label><input id="capital" type="number" value="100000000" /></div>
+    <div><label>유닛당 리스크율 (%)</label><input id="risk" type="number" value="1" step="0.1" /></div>
+  </div>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>유닛</th><th>진입가</th><th>수량</th><th>누적수량</th>
+          <th>누적평단</th><th>손절가(전체)</th><th>손절 시 손실</th><th>자본대비</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="warn" id="warn"></div>
+  <p class="foot">계산 결과는 수량 계획이지 매수 권유가 아닙니다. N은 일봉 20일 ATR을 입력하세요. 호가는 한국 주식 호가단위로 반올림됩니다.</p>
+</div>
+
+<script>
+(function(){
+  var ids=['name','entry','atr','capital','risk'];
+  var W=ids.map(function(i){return document.getElementById(i);});
+  function tick(p){ if(p<2000)return 1; if(p<5000)return 5; if(p<20000)return 10; if(p<50000)return 50; if(p<200000)return 100; if(p<500000)return 500; return 1000; }
+  function rt(p){ var t=tick(p); return Math.round(p/t)*t; }
+  function won(n){ return Math.round(n).toLocaleString('ko-KR'); }
+  function pct(n){ return (Math.round(n*100)/100).toFixed(2); }
+
+  function calc(){
+    var entry=+W[1].value, N=+W[2].value, cap=+W[3].value, rk=(+W[4].value)/100;
+    var tbody=document.getElementById('tbody'), cards=document.getElementById('cards'), warn=document.getElementById('warn');
+    if(!(entry>0)||!(N>0)||!(cap>0)||!(rk>0)){ tbody.innerHTML=''; cards.innerHTML=''; warn.innerHTML='<div>모든 값을 0보다 크게 입력하세요.</div>'; return; }
+    var unitQty=Math.floor(cap*rk/N);
+    var rows=[], cumQty=0, cumCost=0, firstStop=0, pyr=[];
+    for(var i=0;i<4;i++){
+      var e=rt(entry+0.5*N*i); pyr.push(e);
+      cumQty+=unitQty; cumCost+=e*unitQty;
+      var avg=cumCost/cumQty, stop=rt(e-2*N);
+      if(i===0) firstStop=stop;
+      var loss=(avg-stop)*cumQty, lp=loss/cap*100;
+      rows.push({u:i+1,e:e,q:unitQty,cq:cumQty,avg:avg,stop:stop,loss:loss,lp:lp});
+    }
+    tbody.innerHTML=rows.map(function(r){
+      return '<tr><td>'+r.u+'유닛</td><td>'+won(r.e)+'</td><td>'+won(r.q)+'</td><td>'+won(r.cq)+'</td>'
+       +'<td>'+won(r.avg)+'</td><td class="dg">'+won(r.stop)+'</td><td class="dg">−'+won(r.loss)+'</td><td>−'+pct(r.lp)+'%</td></tr>';
+    }).join('');
+    var total4=cumCost, unit1Cost=pyr[0]*unitQty, unit1Ratio=unit1Cost/cap*100;
+    var maxLoss=rows[3].loss, maxLossP=rows[3].lp;
+    cards.innerHTML=[
+      ['N (ATR20)', won(N)+'원'],
+      ['1유닛 수량', won(unitQty)+'주'],
+      ['4유닛 투입금', won(total4)+'원'],
+      ['최대 리스크', '−'+won(maxLoss)+'원 ('+pct(maxLossP)+'%)'],
+      ['1유닛 손절가', won(firstStop)+'원']
+    ].map(function(c){ return '<div class="card"><div class="k">'+c[0]+'</div><div class="v">'+c[1]+'</div></div>'; }).join('');
+    var msgs=[];
+    if(unit1Ratio>20) msgs.push({t:'⚠ 1유닛 투입금이 자본의 '+pct(unit1Ratio)+'% — 20% 초과. N이 작은 저변동 구간일 수 있으니 수량 상한 검토 필요.',a:true});
+    msgs.push({t:'진입 무효화 조건: 1유닛 손절가 '+won(firstStop)+'원 이탈 시 계획 폐기.',a:false});
+    warn.innerHTML=msgs.map(function(m){ return '<div'+(m.a?' class="alert"':'')+'>'+m.t+'</div>'; }).join('');
+  }
+  W.forEach(function(el){ el.addEventListener('input', calc); });
+  calc();
+})();
+</script>
+</body>
+</html>
