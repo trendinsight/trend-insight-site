@@ -1397,7 +1397,15 @@ export default {
       return handleReports(req, url, env, ctx);
     }
 
-    return env.ASSETS.fetch(req);
+    const assetRes = await env.ASSETS.fetch(req);
+    if ((assetRes.headers.get("content-type") || "").includes("text/html")) {
+      return new HTMLRewriter().on("head", {
+        element(el) {
+          el.append(`<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "33e842c948b94e4787347cd2487af700"}'></script>`, { html: true });
+        }
+      }).transform(assetRes);
+    }
+    return assetRes;
   },
 };
 
