@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#11131a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>고양이 울음소리 아카이브</title>
+<style>
+  :root{
+    --bg:#11131a; --card:#191c25; --card2:#212533; --line:#2a2e3a;
+    --tx:#e8e8ea; --tx2:#9aa0b0; --accent:#4cc9f0; --ok:#7CFFB2; --warn:#ffb703; --bad:#ff6b6b;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  body{margin:0; background:var(--bg); color:var(--tx);
+       font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+       padding-bottom:env(safe-area-inset-bottom)}
+  header{position:sticky; top:0; z-index:20; background:rgba(17,19,26,.94);
+         backdrop-filter:blur(10px); border-bottom:1px solid var(--line); padding:14px 16px}
+  h1{margin:0; font-size:17px; letter-spacing:-.2px}
+  h1 span{color:var(--tx2); font-weight:400; font-size:13px; margin-left:6px}
+  main{padding:14px 16px 60px; max-width:680px; margin:0 auto}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:14px}
+  .card h2{margin:0 0 10px; font-size:14px; color:var(--tx2); font-weight:600}
+  input[type=text], textarea{width:100%; background:var(--card2); color:var(--tx); border:1px solid var(--line);
+    border-radius:10px; padding:11px 12px; font-size:15px; font-family:inherit}
+  textarea{resize:vertical; min-height:60px}
+  .chips{display:flex; flex-wrap:wrap; gap:7px; margin:10px 0 4px}
+  .chip{background:var(--card2); border:1px solid var(--line); color:var(--tx2);
+        padding:6px 11px; border-radius:999px; font-size:13px; cursor:pointer}
+  .chip:active{background:var(--accent); color:#062; border-color:var(--accent)}
+  .btn{display:block; width:100%; padding:13px; border-radius:11px; border:none; font-size:15px;
+       font-weight:600; cursor:pointer; margin-top:10px; font-family:inherit}
+  .btn-main{background:var(--accent); color:#06202a}
+  .btn-main:disabled{opacity:.45}
+  .btn-sub{background:var(--card2); color:var(--tx); border:1px solid var(--line)}
+  .filelabel{display:flex; align-items:center; justify-content:center; gap:8px; padding:22px;
+    border:1.5px dashed var(--line); border-radius:12px; color:var(--tx2); font-size:15px; cursor:pointer}
+  .filelabel.has{border-color:var(--accent); color:var(--accent)}
+  input[type=file]{display:none}
+  .bar{height:5px; background:var(--card2); border-radius:99px; overflow:hidden; margin-top:10px; display:none}
+  .bar i{display:block; height:100%; width:0; background:var(--accent); transition:width .2s}
+  .tabs{display:flex; gap:8px; margin:4px 0 14px}
+  .tab{flex:1; text-align:center; padding:9px; border-radius:10px; background:var(--card);
+       border:1px solid var(--line); color:var(--tx2); font-size:13px; cursor:pointer}
+  .tab.on{background:var(--accent); color:#06202a; border-color:var(--accent); font-weight:600}
+  .clip{display:flex; gap:12px; background:var(--card); border:1px solid var(--line);
+        border-radius:13px; padding:11px; margin-bottom:10px; cursor:pointer; align-items:center}
+  .clip img,.clip .ph{width:74px; height:74px; border-radius:9px; object-fit:cover; background:var(--card2); flex:none}
+  .clip .ph{display:flex; align-items:center; justify-content:center; font-size:26px}
+  .clip .meta{min-width:0; flex:1}
+  .clip .ctx{font-size:14px; margin:0 0 4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .clip .sub{font-size:12px; color:var(--tx2)}
+  .badge{display:inline-block; font-size:11px; padding:2px 8px; border-radius:99px; margin-top:6px}
+  .b-wait{background:#2a2e3a; color:var(--tx2)}
+  .b-done{background:rgba(124,255,178,.15); color:var(--ok)}
+  .b-flag{background:rgba(255,107,107,.15); color:var(--bad); margin-left:4px}
+  .empty{text-align:center; color:var(--tx2); padding:44px 10px; font-size:14px; line-height:1.7}
+  dialog{border:none; background:var(--bg); color:var(--tx); width:100%; max-width:680px;
+         border-radius:16px; padding:0; margin:auto}
+  dialog::backdrop{background:rgba(0,0,0,.75)}
+  .dlg{padding:16px}
+  .dlg video{width:100%; border-radius:11px; background:#000; margin-bottom:12px}
+  .dlg img.spec{width:100%; border-radius:11px; margin:10px 0}
+  .kv{display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px}
+  .kv b{font-weight:600}
+  .kv span{color:var(--tx2)}
+  .type{font-size:17px; font-weight:700; color:var(--ok); margin:2px 0 8px}
+  .flag{background:rgba(255,107,107,.1); border:1px solid rgba(255,107,107,.3); color:#ffb0b0;
+        border-radius:10px; padding:10px 12px; font-size:13px; margin-top:8px; line-height:1.55}
+  .note{font-size:12px; color:var(--tx2); line-height:1.6; margin-top:12px}
+  .toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%); background:var(--card2);
+    border:1px solid var(--line); color:var(--tx); padding:11px 18px; border-radius:99px; font-size:14px;
+    opacity:0; transition:opacity .25s; pointer-events:none; z-index:99}
+  .toast.on{opacity:1}
+</style>
+</head>
+<body>
+<header><h1>🐱 울음소리 아카이브<span id="cnt"></span></h1></header>
+
+<main>
+  <div class="card">
+    <h2>새 영상 올리기</h2>
+    <label class="filelabel" id="flabel" for="file">＋ 영상 촬영 / 갤러리에서 선택</label>
+    <input type="file" id="file" accept="video/*,audio/*" capture="environment">
+    <div class="chips" id="chips"></div>
+    <input type="text" id="ctx" placeholder="상황 메모 (예: 밥그릇 앞에서, 새벽 3시)">
+    <div class="bar" id="bar"><i></i></div>
+    <button class="btn btn-main" id="up" disabled>올리기</button>
+  </div>
+
+  <div class="tabs">
+    <div class="tab on" data-f="all">전체</div>
+    <div class="tab" data-f="wait">분석 대기</div>
+    <div class="tab" data-f="done">분석 완료</div>
+  </div>
+  <div id="list"><div class="empty">불러오는 중…</div></div>
+</main>
+
+<dialog id="dlg"><div class="dlg" id="dlgbody"></div></dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+const TAGS = ["밥 달라고","문 앞에서","놀아달라고","인사","화장실","안아달라고","밤중에","아파 보임","낯선 소리"];
+const $ = s => document.querySelector(s);
+let items = [], filter = "all", picked = null, thumbBlob = null;
+
+function toast(t){ const el=$("#toast"); el.textContent=t; el.classList.add("on"); setTimeout(()=>el.classList.remove("on"),2200); }
+function fmtDate(iso){ if(!iso) return ""; const d=new Date(iso);
+  return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
+function fmtSize(b){ return b>1048576 ? (b/1048576).toFixed(1)+"MB" : Math.round(b/1024)+"KB"; }
+
+// 태그 칩
+$("#chips").innerHTML = TAGS.map(t=>`<div class="chip">${t}</div>`).join("");
+$("#chips").onclick = e => { if(!e.target.classList.contains("chip")) return;
+  const box=$("#ctx"); box.value = box.value ? box.value+", "+e.target.textContent : e.target.textContent; };
+
+// 파일 선택 → 포스터 프레임 생성
+$("#file").onchange = async e => {
+  const f = e.target.files[0]; if(!f) return;
+  picked = f; thumbBlob = null;
+  $("#flabel").textContent = `${f.name} (${fmtSize(f.size)})`;
+  $("#flabel").classList.add("has");
+  $("#up").disabled = false;
+  if (f.size > 95*1024*1024) toast("100MB 넘으면 업로드가 실패할 수 있어요");
+  if (f.type.startsWith("video/")) { try { thumbBlob = await makeThumb(f); } catch(err){} }
+};
+
+function makeThumb(file){
+  return new Promise((res,rej)=>{
+    const v=document.createElement("video");
+    v.preload="metadata"; v.muted=true; v.playsInline=true;
+    v.src=URL.createObjectURL(file);
+    v.onloadedmetadata=()=>{ v.currentTime=Math.min(1, (v.duration||2)/2); };
+    v.onseeked=()=>{
+      const s=Math.min(320/Math.max(v.videoWidth,1), 320/Math.max(v.videoHeight,1), 1);
+      const c=document.createElement("canvas");
+      c.width=Math.round(v.videoWidth*s); c.height=Math.round(v.videoHeight*s);
+      c.getContext("2d").drawImage(v,0,0,c.width,c.height);
+      c.toBlob(b=>{ URL.revokeObjectURL(v.src); b?res(b):rej(); }, "image/webp", .75);
+    };
+    v.onerror=rej;
+    setTimeout(rej, 8000);
+  });
+}
+
+// 업로드
+$("#up").onclick = () => {
+  if(!picked) return;
+  const fd=new FormData();
+  fd.append("file", picked, picked.name);
+  if(thumbBlob) fd.append("thumb", thumbBlob, "t.webp");
+  fd.append("context", $("#ctx").value);
+  fd.append("recorded_at", picked.lastModified ? new Date(picked.lastModified).toISOString() : "");
+
+  const xhr=new XMLHttpRequest();
+  xhr.open("POST","/api/upload");
+  $("#bar").style.display="block"; $("#up").disabled=true; $("#up").textContent="올리는 중…";
+  xhr.upload.onprogress = e => { if(e.lengthComputable) $("#bar i").style.width=(e.loaded/e.total*100)+"%"; };
+  xhr.onload = () => {
+    $("#bar").style.display="none"; $("#bar i").style.width="0";
+    $("#up").textContent="올리기";
+    if(xhr.status===200){
+      picked=null; thumbBlob=null; $("#file").value=""; $("#ctx").value="";
+      $("#flabel").textContent="＋ 영상 촬영 / 갤러리에서 선택"; $("#flabel").classList.remove("has");
+      toast("업로드 완료 — 이제 클로드에 분석을 요청하세요");
+      load();
+    } else { $("#up").disabled=false; toast("업로드 실패 ("+xhr.status+")"); }
+  };
+  xhr.onerror = () => { $("#bar").style.display="none"; $("#up").disabled=false;
+    $("#up").textContent="올리기"; toast("네트워크 오류"); };
+  xhr.send(fd);
+};
+
+// 탭
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));
+  t.classList.add("on"); filter=t.dataset.f; render();
+});
+
+async function load(){
+  try{
+    const r = await fetch("/api/clips");
+    const d = await r.json();
+    items = d.items || [];
+    $("#cnt").textContent = `· ${items.length}개`;
+  }catch(e){ items=[]; }
+  render();
+}
+
+function render(){
+  const f = items.filter(i => filter==="all" ? true : filter==="done" ? i.analyzed : !i.analyzed);
+  if(!f.length){
+    $("#list").innerHTML = `<div class="empty">${filter==="all"
+      ? "아직 올린 영상이 없습니다.<br>고양이가 울 때 찍어서 올려보세요." : "해당하는 영상이 없습니다."}</div>`;
+    return;
+  }
+  $("#list").innerHTML = f.map(i=>`
+    <div class="clip" data-id="${i.id}">
+      ${i.ext && !["mp3","wav","m4a","aac"].includes(i.ext)
+        ? `<img src="/img/${i.id}.webp" loading="lazy" onerror="this.outerHTML='<div class=ph>🎬</div>'">`
+        : `<div class="ph">🎵</div>`}
+      <div class="meta">
+        <p class="ctx">${i.context ? esc(i.context) : "<span style='color:#9aa0b0'>메모 없음</span>"}</p>
+        <div class="sub">${fmtDate(i.uploaded_at)} · ${fmtSize(i.size||0)}</div>
+        <span class="badge ${i.analyzed?"b-done":"b-wait"}">${i.analyzed ? (i.top_type||"분석 완료") : "분석 대기"}</span>
+        ${i.has_flag ? '<span class="badge b-flag">⚠ 확인 필요</span>' : ""}
+      </div>
+    </div>`).join("");
+  document.querySelectorAll(".clip").forEach(c=>c.onclick=()=>openClip(c.dataset.id));
+}
+
+function esc(s){ return String(s).replace(/[<>&]/g, m=>({"<":"&lt;",">":"&gt;","&":"&amp;"}[m])); }
+
+async function openClip(id){
+  const it = items.find(x=>x.id===id); if(!it) return;
+  let a = null;
+  if(it.analyzed){ try{ a = await (await fetch("/api/analysis?id="+id)).json(); }catch(e){} }
+
+  const askText = `고양이 울음소리 분석해줘. 클립 ID: ${id}${it.context?` / 상황: ${it.context}`:""}`;
+  let html = `
+    <video controls playsinline preload="metadata" src="/media/${it.clip_key}"></video>
+    <div class="kv"><span>올린 시각</span><b>${fmtDate(it.uploaded_at)}</b></div>
+    <div class="kv"><span>상황 메모</span><b>${it.context?esc(it.context):"—"}</b></div>
+    <div class="kv"><span>클립 ID</span><b style="font-size:12px">${id}</b></div>`;
+
+  if(a && a.segments){
+    html += `<img class="spec" src="/spec/${id}.png" onerror="this.style.display='none'">`;
+    if(a.summary) html += `<p style="font-size:14px;line-height:1.7;margin:12px 0 4px">${esc(a.summary)}</p>`;
+    a.segments.forEach(s=>{
+      const c=(s.candidates||[])[0]||{};
+      const m=s.metrics||{};
+      html += `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+        <div style="font-size:12px;color:var(--tx2)">구간 #${s.segment} · ${m.start_s}~${m.end_s}초</div>
+        <div class="type">${esc(c.type||"—")}</div>
+        <div class="kv"><span>길이</span><b>${m.duration_s}초</b></div>
+        <div class="kv"><span>평균 음높이</span><b>${m.f0_mean_hz??"—"} Hz</b></div>
+        <div class="kv"><span>음높이 곡선</span><b>${m.contour??"—"}</b></div>
+        <div class="kv"><span>음역 폭</span><b>${m.f0_range_semitones??"—"} 반음</b></div>
+        ${(s.health_flags||[]).map(fl=>`<div class="flag"><b>⚠ ${esc(fl.flag)}</b><br>${esc(fl.detail)}</div>`).join("")}
+      </div>`;
+    });
+    html += `<p class="note">건강 관련 표시는 진단이 아니라 음향 특징에 근거한 참고 정보입니다.
+             걱정되는 신호가 반복되면 수의사 진료를 받으세요.</p>`;
+  } else {
+    html += `<button class="btn btn-main" id="cp">분석 요청 문구 복사</button>
+             <p class="note">복사한 문구를 클로드 대화에 붙여넣으면 이 영상을 받아
+             울음 구간을 찾고, 스펙트로그램과 해석을 여기에 올려줍니다.</p>`;
+  }
+  html += `<button class="btn btn-sub" id="del">삭제</button>
+           <button class="btn btn-sub" onclick="document.getElementById('dlg').close()">닫기</button>`;
+
+  $("#dlgbody").innerHTML = html;
+  $("#dlg").showModal();
+
+  const cp=$("#cp");
+  if(cp) cp.onclick=async()=>{ try{ await navigator.clipboard.writeText(askText); toast("복사됨 — 클로드에 붙여넣으세요"); }
+    catch(e){ window.prompt("아래 문구를 복사하세요", askText); } };
+  $("#del").onclick=async()=>{
+    if(!confirm("이 영상을 삭제할까요?")) return;
+    await fetch("/api/clip?id="+id,{method:"DELETE"});
+    $("#dlg").close(); toast("삭제됨"); load();
+  };
+}
+$("#dlg").onclick = e => { if(e.target.id==="dlg") $("#dlg").close(); };
+
+load();
+</script>
+</body>
+</html>
