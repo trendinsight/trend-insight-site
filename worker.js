@@ -1437,10 +1437,13 @@ export default {
     if (url.pathname === "/api/refresh-gauge") {
       try {
         const d = await updateGauge(env);
+        const summary = {};
+        for (const ix of GAUGE_INDICES) {
+          if (d[ix.key]) summary[ix.key] = { date: d[ix.key].date, score: d[ix.key].score, zone: d[ix.key].zone };
+        }
         return new Response(JSON.stringify({
-          ok: true, updated: d.updated, as_of: d.kospi.date,
-          kospi: { score: d.kospi.score, zone: d.kospi.zone },
-          kosdaq: { score: d.kosdaq.score, zone: d.kosdaq.zone },
+          ok: true, updated: d.updated, as_of: d.kospi?.date ?? null,
+          indices: summary, warnings: d.warnings ?? null,
         }), { headers: JSON_HEADERS });
       } catch (e) {
         return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
