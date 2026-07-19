@@ -1,5 +1,6 @@
 // Trend Insight — Cloudflare Worker
-// 1) 시장 온도계: cron(매 거래일 13:00·16:00 KST)마다 코스피/코스닥 지표를 KV에 저장,
+// 1) 시장 온도계: cron(매 거래일 13:00·16:00 KST)마다 코스피/코스닥 + 다우/나스닥/S&P500
+//    지표를 KV에 저장,
 //    /data/market-gauge.json 제공, /api/refresh-gauge 수동 갱신.
 // 2) Stock Cockpit(/api/cockpit/*): 종목검색·시세·일봉분석·거래량상위·정배열 스크리너.
 //    PC가 꺼져 있어도 폰에서 /cockpit 접속으로 종목 분석 가능.
@@ -20,6 +21,29 @@ async function fetchIndex(symbol, count = 420) {
     if (f.length >= 5) rows.push({ date: f[0], open: +f[1], high: +f[2], low: +f[3], close: +f[4] });
   }
   if (rows.length < 100) throw new Error(`fetch ${symbol}: rows=${rows.length}`);
+  rows.sort((a, b) => (a.date < b.date ? -1 : 1));
+  return rows;
+}
+
+// 미국 지수용 — 네이버 fchart는 해외지수를 제공하지 않아 야후 파이낸스 사용.
+// 반환 형식은 fetchIndex와 동일(date/open/high/low/close, 날짜 오름차순).
+// 야후 일봉 타임스탬프는 현지 장 시작 시각이라 KST로 변환해도 미국 현지 거래일과 같은 날짜가 된다.
+async function fetchIndexYahoo(symbol) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=2y&interval=1d`;
+  const res = await fetch(url, { headers: { "user-agent": "Mozilla/5.0" } });
+  if (!res.ok) throw new Error(`yahoo ${symbol}: HTTP ${res.status}`);
+  const j = await res.json();
+  const r = j?.chart?.result?.[0];
+  const q = r?.indicators?.quote?.[0];
+  if (!r || !q) throw new Error(`yahoo ${symbol}: bad payload`);
+  const rows = [];
+  for (let i = 0; i < r.timestamp.length; i++) {
+    const c = q.close[i];
+    if (c === null || c === undefined) continue;
+    const date = new Date(r.timestamp[i] * 1000 + 9 * 3600e3).toISOString().slice(0, 10).replace(/-/g, "");
+    rows.push({ date, open: q.open[i] ?? c, high: q.high[i] ?? c, low: q.low[i] ?? c, close: c });
+  }
+  if (rows.length < 100) throw new Error(`yahoo ${symbol}: rows=${rows.length}`);
   rows.sort((a, b) => (a.date < b.date ? -1 : 1));
   return rows;
 }
@@ -142,9 +166,44 @@ function kstNow() {
   return new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16).replace("T", " ") + " KST";
 }
 
+// 지수 정의 — 국내는 네이버, 미국은 야후. 게시 순서 = 페이지 표시 순서.
+const GAUGE_INDICES = [
+  { key: "kospi",  src: "naver", sym: "KOSPI" },
+  { key: "kosdaq", src: "naver", sym: "KOSDAQ" },
+  { key: "dow",    src: "yahoo", sym: "%5EDJI" },
+  { key: "nasdaq", src: "yahoo", sym: "%5EIXIC" },
+  { key: "sp500",  src: "yahoo", sym: "%5EGSPC" },
+];
+
 async function updateGauge(env) {
-  const [kospi, kosdaq] = await Promise.all([fetchIndex("KOSPI"), fetchIndex("KOSDAQ")]);
-  const data = { updated: kstNow(), kospi: analyze(kospi), kosdaq: analyze(kosdaq) };
+  const settled = await Promise.allSettled(
+    GAUGE_INDICES.map(ix => (ix.src === "naver" ? fetchIndex(ix.sym) : fetchIndexYahoo(ix.sym)))
+  );
+
+  // 한 지수 실패가 나머지 갱신을 막지 않도록 이전 KV 값을 남겨둔다
+  let prev = null;
+  try { prev = JSON.parse((await env.GAUGE_KV.get("market-gauge")) || "null"); } catch (e) { prev = null; }
+
+  const data = { updated: kstNow() };
+  const failed = [];
+  GAUGE_INDICES.forEach((ix, i) => {
+    const s = settled[i];
+    if (s.status === "fulfilled") {
+      try {
+        data[ix.key] = analyze(s.value);
+        return;
+      } catch (e) {
+        failed.push(`${ix.key}: ${String(e)}`);
+      }
+    } else {
+      failed.push(`${ix.key}: ${String(s.reason)}`);
+    }
+    if (prev && prev[ix.key]) data[ix.key] = prev[ix.key]; // 직전 값 유지
+  });
+
+  if (!GAUGE_INDICES.some(ix => data[ix.key])) throw new Error(`updateGauge 전부 실패: ${failed.join(" | ")}`);
+  if (failed.length) data.warnings = failed;
+
   await env.GAUGE_KV.put("market-gauge", JSON.stringify(data));
   return data;
 }
