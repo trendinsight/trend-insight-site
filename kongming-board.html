@@ -89,6 +89,17 @@
   .mdlabel { font-size:.8rem; color:var(--sub); letter-spacing:.08em; font-weight:700; }
   .empty { text-align:center; color:var(--sub); padding:60px 0; }
   .foot { color:var(--sub); font-size:.8rem; margin-top:40px; border-top:1px solid var(--line); padding-top:14px; }
+  /* 책략 요청 박스 */
+  .askbox { background:linear-gradient(135deg,#0e7c66,#0a5c4c); border-radius:14px; padding:16px 20px; margin-bottom:22px; color:#fff; }
+  .askbox h3 { font-size:.95rem; margin-bottom:4px; }
+  .askbox .hint2 { font-size:.8rem; color:#cfe8e0; margin-bottom:10px; }
+  .askrow { display:flex; gap:8px; flex-wrap:wrap; }
+  .askrow input { flex:1; min-width:180px; border:none; border-radius:10px; padding:10px 14px; font-size:.95rem; }
+  .askrow input:focus { outline:2px solid #7fd4c2; }
+  .askbtn { border:none; border-radius:10px; padding:10px 18px; font-size:.9rem; font-weight:700; cursor:pointer; background:#fff; color:var(--accent); }
+  .askbtn:active { transform:scale(.97); }
+  .copied { font-size:.82rem; color:#aef0dd; margin-top:8px; min-height:1.2em; }
+  .copied code { background:rgba(255,255,255,.15); border-radius:6px; padding:2px 8px; word-break:break-all; }
 </style>
 </head>
 <body>
@@ -98,6 +109,16 @@
   <p class="desc">군사(軍師) 공명이 팀장 결재의 <b>8대 사각지대</b>(금리 레짐·컨센서스·기회비용·촉매·유동성·시간축·후보군·기저율)를 점검한 독립 의견입니다. 팔진도 레이더로 순풍·역풍을 한눈에 보고, 팀장 결재와 대조하며, 상·중·하 3책 중 고를 수 있습니다.</p>
   <p class="updated" id="updated">불러오는 중…</p>
   <div class="demo" id="demoBanner">⚠ 데모 데이터입니다 — 실제 책략이 게시되면 자동으로 교체됩니다.</div>
+
+  <div class="askbox">
+    <h3>🪶 공명에게 책략 요청</h3>
+    <div class="hint2">종목명을 입력하면 아래 목록이 검색되고, 버튼을 누르면 클로드에 붙여넣을 요청 문구가 복사됩니다.</div>
+    <div class="askrow">
+      <input id="askStock" type="text" placeholder="종목명 입력 (예: 삼성전자)" autocomplete="off">
+      <button class="askbtn" id="askCopy">책략 요청 문구 복사</button>
+    </div>
+    <div class="copied" id="askMsg"></div>
+  </div>
 
   <div class="stats" id="stats" style="display:none">
     <div class="statcard">
@@ -312,13 +333,33 @@ function render(data, isDemo) {
   [...new Set(ds.map(d=>d.stock))].forEach(s => { const o=document.createElement("option"); o.textContent=o.value=s; sel.appendChild(o); });
   function apply() {
     const op = document.querySelector(".chip.on").dataset.v, st = sel.value;
+    const q = document.getElementById("askStock").value.trim();
     document.querySelectorAll("#list .card").forEach(c => {
-      c.style.display = (op==="전체"||c.dataset.op===op) && (st==="전체"||c.dataset.stock===st) ? "" : "none"; });
+      c.style.display = (op==="전체"||c.dataset.op===op) && (st==="전체"||c.dataset.stock===st)
+        && (!q || c.dataset.stock.includes(q)) ? "" : "none"; });
   }
   document.querySelectorAll(".chip").forEach(ch => ch.onclick = () => {
     document.querySelectorAll(".chip").forEach(c=>c.classList.remove("on")); ch.classList.add("on"); apply(); });
   sel.onchange = apply;
+  document.getElementById("askStock").addEventListener("input", apply);
 }
+
+// 책략 요청 문구 복사 (목록이 비어 있어도 동작)
+document.getElementById("askCopy").addEventListener("click", () => {
+  const s = document.getElementById("askStock").value.trim();
+  const msg = document.getElementById("askMsg");
+  if (!s) { msg.textContent = "종목명을 먼저 입력해 주세요."; return; }
+  const text = `「${s}」 공명 책략 점검해줘 — 팀장 결재가 있으면 감사 모드, 없으면 정찰 모드로 8대 사각지대를 점검하고 공명 보드에 게시해줘`;
+  const done = ok => { msg.innerHTML = ok
+    ? `✅ 복사됨 — 클로드에 붙여넣으세요: <code>${text.replace(/</g,"&lt;")}</code>`
+    : `⚠ 자동 복사 실패 — 아래 문구를 직접 복사하세요: <code>${text.replace(/</g,"&lt;")}</code>`; };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(()=>done(true), ()=>done(false));
+  } else { done(false); }
+});
+document.getElementById("askStock").addEventListener("keydown", e => {
+  if (e.key === "Enter") document.getElementById("askCopy").click();
+});
 
 fetch("data/kongming-board.json", {cache:"no-store"})
   .then(r => { if (!r.ok) throw 0; return r.json(); })
