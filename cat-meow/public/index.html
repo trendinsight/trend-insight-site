@@ -6,6 +6,12 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#11131a">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="냥울음">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" href="/icon-192.png">
 <title>고양이 울음소리 아카이브</title>
 <style>
   :root{
@@ -17,7 +23,20 @@
        font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
        padding-bottom:env(safe-area-inset-bottom)}
   header{position:sticky; top:0; z-index:20; background:rgba(17,19,26,.94);
-         backdrop-filter:blur(10px); border-bottom:1px solid var(--line); padding:14px 16px}
+         backdrop-filter:blur(10px); border-bottom:1px solid var(--line);
+         padding:calc(14px + env(safe-area-inset-top)) 16px 14px;
+         display:flex; align-items:center; justify-content:space-between; gap:10px}
+  .icobtn{background:var(--card2); border:1px solid var(--line); color:var(--tx2);
+          width:34px; height:34px; border-radius:10px; font-size:16px; cursor:pointer; flex:none}
+  .icobtn:active{background:var(--accent); color:#06202a}
+  .install{display:none; background:linear-gradient(135deg,#1b3a45,#191c25);
+    border:1px solid var(--accent); border-radius:14px; padding:14px; margin-bottom:14px}
+  .install b{display:block; font-size:14px; margin-bottom:6px}
+  .install p{margin:0; font-size:13px; color:var(--tx2); line-height:1.65}
+  .install .row{display:flex; gap:8px; margin-top:10px}
+  .install .row button{flex:1; margin:0}
+  .spin{animation:sp 1s linear infinite; display:inline-block}
+  @keyframes sp{to{transform:rotate(360deg)}}
   h1{margin:0; font-size:17px; letter-spacing:-.2px}
   h1 span{color:var(--tx2); font-weight:400; font-size:13px; margin-left:6px}
   main{padding:14px 16px 60px; max-width:680px; margin:0 auto}
@@ -77,9 +96,21 @@
 </style>
 </head>
 <body>
-<header><h1>🐱 울음소리 아카이브<span id="cnt"></span></h1></header>
+<header>
+  <h1>🐱 울음소리 아카이브<span id="cnt"></span></h1>
+  <button class="icobtn" id="refresh" title="새로고침">⟳</button>
+</header>
 
 <main>
+  <div class="install" id="install">
+    <b>📱 홈 화면에 추가하면 앱처럼 쓸 수 있어요</b>
+    <p id="installtxt"></p>
+    <div class="row">
+      <button class="btn btn-main" id="doinstall" style="display:none">추가하기</button>
+      <button class="btn btn-sub" id="hideinstall">나중에</button>
+    </div>
+  </div>
+
   <div class="card">
     <h2>새 영상 올리기</h2>
     <label class="filelabel" id="flabel" for="file">＋ 영상 촬영 / 갤러리에서 선택</label>
@@ -264,6 +295,61 @@ async function openClip(id){
   };
 }
 $("#dlg").onclick = e => { if(e.target.id==="dlg") $("#dlg").close(); };
+
+// ---------------------------------------------------------------- 새로고침
+$("#refresh").onclick = async () => {
+  const b=$("#refresh"); b.innerHTML='<span class="spin">⟳</span>';
+  await load(); setTimeout(()=>b.textContent="⟳", 300);
+};
+
+// ---------------------------------------------------------------- 서비스 워커
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(()=>{}));
+}
+
+// ---------------------------------------------------------------- 홈 화면 추가 안내
+const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+let deferredPrompt = null;
+
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault(); deferredPrompt = e;
+  showInstall("아래 ‘추가하기’를 누르면 홈 화면에 앱으로 설치됩니다.", true);
+});
+
+function showInstall(text, canPrompt){
+  if (standalone || localStorage.getItem("installHidden") === "1") return;
+  $("#installtxt").textContent = text;
+  $("#doinstall").style.display = canPrompt ? "block" : "none";
+  $("#install").style.display = "block";
+}
+
+if (isIOS && !standalone) {
+  showInstall("사파리 하단 공유 버튼 → ‘홈 화면에 추가’를 누르면 앱 아이콘이 생깁니다.", false);
+}
+
+$("#doinstall").onclick = async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  $("#install").style.display = "none";
+};
+$("#hideinstall").onclick = () => {
+  localStorage.setItem("installHidden", "1");
+  $("#install").style.display = "none";
+};
+
+// ---------------------------------------------------------------- 앱 바로가기 파라미터
+const params = new URLSearchParams(location.search);
+if (params.get("tab") === "wait") {
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on", t.dataset.f==="wait"));
+  filter = "wait";
+}
+if (params.get("action") === "capture") setTimeout(()=>$("#file").click(), 400);
+
+// 앱으로 돌아왔을 때 목록 갱신
+document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
 
 load();
 </script>
