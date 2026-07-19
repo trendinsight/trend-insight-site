@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>시장 온도계 | Trend Insight</title>
-<meta name="description" content="코스피·코스닥 MACD·RSI·스토캐스틱·투자심리도 기반 과열도 게이지 — 매 거래일 갱신">
+<meta name="description" content="코스피·코스닥·다우존스·나스닥·S&amp;P500 MACD·RSI·스토캐스틱·투자심리도 기반 과열도 게이지 — 매 거래일 갱신">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
 :root{--navy:#0b1f3f;--navy2:#13294b;--accent:#2e6ff2;--red:#b22f2f;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg:#f5f7fb}
@@ -23,8 +23,14 @@ h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
 .datebox button{font-family:inherit;font-size:.8rem;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:999px;padding:4px 12px;cursor:pointer}
 .datebox button.ghost{background:#eef2f8;color:#39506e}
 #datemsg{font-size:.8rem;color:var(--red);margin:-14px 0 20px;display:none}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
-@media(max-width:860px){.grid{grid-template-columns:1fr}}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:26px}
+.grid.three{grid-template-columns:repeat(3,1fr)}
+@media(max-width:980px){.grid.three{grid-template-columns:1fr 1fr}}
+@media(max-width:860px){.grid,.grid.three{grid-template-columns:1fr}}
+.sechead{grid-column:1/-1;display:flex;align-items:baseline;gap:10px;margin:4px 0 -6px}
+.sechead h2{font-size:1.05rem;color:var(--navy);letter-spacing:-.01em}
+.sechead span{font-size:.8rem;color:var(--muted)}
+.sechead:before{content:"";width:4px;height:16px;border-radius:2px;background:var(--red);align-self:center}
 .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:24px 26px;box-shadow:0 1px 3px rgba(11,31,63,.05)}
 .card h2{font-size:1.15rem;color:var(--navy);display:flex;justify-content:space-between;align-items:baseline}
 .px{font-size:.95rem;font-weight:600}
@@ -54,17 +60,20 @@ th{color:var(--muted);font-weight:600;font-size:.8rem}
 <header><a href="index.html">← Trend Insight</a></header>
 <div class="wrap">
   <h1>시장 온도계 <span style="font-size:.9rem;color:var(--red)">MARKET THERMOMETER</span></h1>
-  <p class="sub">코스피·코스닥의 MACD 오실레이터 · RSI(14) · 스토캐스틱 슬로우 · 투자심리도(10일)를 종합해 현재 장세의 과열도를 0~100%로 표시합니다. 매 거래일 마감 데이터 기준으로 갱신됩니다.</p>
-  <div class="asof">기준일 <span id="asof">—</span> · 갱신 <span id="updated">—</span></div>
+  <p class="sub">코스피·코스닥과 다우존스·나스닥·S&amp;P500의 MACD 오실레이터 · RSI(14) · 스토캐스틱 슬로우 · 투자심리도(10일)를 종합해 현재 장세의 과열도를 0~100%로 표시합니다. 매 거래일 마감 데이터 기준으로 갱신되며, 미국 지수는 현지 마감(한국시간 익일 새벽) 기준이라 국내 지수보다 기준일이 하루 앞설 수 있습니다.</p>
+  <div class="asof">국내 기준일 <span id="asof">—</span> · 갱신 <span id="updated">—</span></div>
   <div class="datebox">조회 날짜 <input type="date" id="datepick"><button id="datego">조회</button><button class="ghost" id="datelatest">최신</button></div>
   <div id="datemsg"></div>
   <div id="err">데이터를 불러오지 못했습니다. 잠시 후 새로고침 해주세요.</div>
-  <div class="grid" id="grid"></div>
+  <div class="grid" id="grid-kr"></div>
+  <div class="grid three" id="grid-us"></div>
   <div class="note">
     <h3>판독 기준</h3>
     <b>75% 이상</b> 과매수(비중 축소·이익 실현 고려) · <b>60~75%</b> 과열 근접 · <b>40~60%</b> 중립 ·
     <b>25~40%</b> 과매도 근접 · <b>25% 이하</b> 과매도(분할 매수 관심). 종합 점수는 4개 지표의 단순 평균이며,
     MACD 오실레이터는 최근 1년 분포 내 백분위로 환산합니다.
+    미국 지수(다우존스·나스닥·S&amp;P500)는 현지 거래일 마감 기준이므로 국내 지수와 기준일이 하루 다를 수 있으며,
+    선택일이 해당 시장 휴장일이면 직전 거래일 값으로 표시합니다.
   </div>
   <p class="disclaimer">본 자료는 투자 참고용이며 특정 종목의 매수·매도를 권유하지 않습니다. 투자의 최종 판단과 책임은 투자자 본인에게 있습니다.</p>
 </div>
@@ -96,7 +105,7 @@ function card(name,d){
     ["투자심리도 (10일)",ind.psy+"%",ind.psy],
   ].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td style="width:110px"><div class="bar"><i style="left:${pos(r[2])}%"></i></div></td></tr>`).join("");
   return `<div class="card">
-    <h2>${name} <span class="px ${ch>=0?'up':'down'}">${d.close.toLocaleString()} (${ch>=0?'+':''}${ch}%)</span></h2>
+    <h2><span>${name} <small style="font-weight:600;font-size:.72rem;color:var(--muted)">${fd(d.date)}</small></span> <span class="px ${ch>=0?'up':'down'}">${d.close.toLocaleString()} (${ch>=0?'+':''}${ch}%)</span></h2>
     <div class="gaugebox">${gaugeSVG(d.score)}
       <div class="score">${d.score}<small>%</small></div>
       <span class="zone ${ZC[d.zone]||'z-n'}">${d.zone}</span>
@@ -126,7 +135,14 @@ function trend(name,hist,selIdx){
   <div class="legend"><b style="color:#c62828">붉은 영역</b> 과매수권(75%↑) · <b style="color:#2e7d32">초록 영역</b> 과매도권(25%↓) · <b style="color:#b22f2f">점선</b> 조회 날짜</div></div>`;
 }
 
-let DATA=null;
+const INDICES=[
+  {key:"kospi", label:"KOSPI",   region:"kr"},
+  {key:"kosdaq",label:"KOSDAQ",  region:"kr"},
+  {key:"dow",   label:"다우존스", region:"us"},
+  {key:"nasdaq",label:"나스닥",   region:"us"},
+  {key:"sp500", label:"S&P500",  region:"us"},
+];
+let DATA=null,AVAIL=[];
 const iso=s=>s.slice(0,4)+"-"+s.slice(4,6)+"-"+s.slice(6,8);
 
 function findIdx(hist,ymd){ // ymd: "YYYYMMDD" → 해당일 또는 직전 거래일 인덱스
@@ -135,29 +151,52 @@ function findIdx(hist,ymd){ // ymd: "YYYYMMDD" → 해당일 또는 직전 거�
   return idx;
 }
 
+function section(region,title,hint,ymd,msgs){
+  const list=AVAIL.filter(x=>x.region===region);
+  if(!list.length)return "";
+  let cards="",trends="";
+  for(const ix of list){
+    const h=DATA[ix.key].history;
+    const i=ymd?findIdx(h,ymd):h.length-1;
+    if(i<0)continue; // 선택일이 이 지수 이력 시작 이전
+    if(ymd&&h[i].date!==ymd)msgs.add(ix.label+" "+fd(h[i].date));
+    cards+=card(ix.label,h[i]);
+    trends+=trend(ix.label,h,i);
+  }
+  if(!cards)return "";
+  return `<div class="sechead"><h2>${title}</h2><span>${hint}</span></div>`+cards+trends;
+}
+
 function render(ymd){ // ymd null → 최신
   const msg=document.getElementById("datemsg");
   msg.style.display="none";
-  let ki,qi;
-  const kh=DATA.kospi.history,qh=DATA.kosdaq.history;
-  if(!ymd){ki=kh.length-1;qi=qh.length-1;}
-  else{
-    ki=findIdx(kh,ymd);qi=findIdx(qh,ymd);
-    if(ki<0||qi<0){msg.textContent="조회 가능 범위("+fd(kh[0].date)+" ~ "+fd(kh[kh.length-1].date)+") 이전 날짜입니다.";msg.style.display="block";return;}
-    if(kh[ki].date!==ymd){msg.textContent="선택일은 휴장일이라 직전 거래일("+fd(kh[ki].date)+") 기준으로 표시합니다.";msg.style.display="block";}
+  // 기준일 = 국내 지수(코스피) 기준, 없으면 사용 가능한 첫 지수
+  const base=DATA[(AVAIL.find(x=>x.key==="kospi")||AVAIL[0]).key].history;
+  let bi=ymd?findIdx(base,ymd):base.length-1;
+  if(bi<0){
+    msg.textContent="조회 가능 범위("+fd(base[0].date)+" ~ "+fd(base[base.length-1].date)+") 이전 날짜입니다.";
+    msg.style.display="block";return;
   }
-  const k=kh[ki],q=qh[qi];
-  document.getElementById("asof").textContent=fd(k.date);
-  document.getElementById("datepick").value=iso(k.date);
-  document.getElementById("grid").innerHTML=
-    card("KOSPI",k)+card("KOSDAQ",q)+trend("KOSPI",kh,ki)+trend("KOSDAQ",qh,qi);
+  const msgs=new Set();
+  document.getElementById("grid-kr").innerHTML=section("kr","국내 지수","KOSPI · KOSDAQ",ymd,msgs);
+  document.getElementById("grid-us").innerHTML=section("us","미국 지수","다우존스 · 나스닥 · S&P500 (현지 마감 기준)",ymd,msgs);
+  document.getElementById("asof").textContent=fd(base[bi].date);
+  document.getElementById("datepick").value=iso(base[bi].date);
+  if(ymd&&msgs.size){
+    msg.textContent="선택일에 거래가 없어 직전 거래일 기준으로 표시합니다 — "+[...msgs].join(" · ");
+    msg.style.display="block";
+  }
 }
 
 fetch("data/market-gauge.json?t="+Date.now()).then(r=>r.json()).then(d=>{
   DATA=d;
+  AVAIL=INDICES.filter(x=>d[x.key]&&Array.isArray(d[x.key].history)&&d[x.key].history.length);
+  if(!AVAIL.length)throw new Error("no index data");
   document.getElementById("updated").textContent=d.updated;
-  const h=d.kospi.history,dp=document.getElementById("datepick");
-  dp.min=iso(h[0].date);dp.max=iso(h[h.length-1].date);
+  // 날짜 선택 범위 = 전 지수 이력의 합집합
+  const all=AVAIL.flatMap(x=>d[x.key].history.map(h=>h.date)).sort();
+  const dp=document.getElementById("datepick");
+  dp.min=iso(all[0]);dp.max=iso(all[all.length-1]);
   render(null);
   const go=()=>{const v=dp.value;if(v)render(v.replaceAll("-",""))};
   document.getElementById("datego").onclick=go;
