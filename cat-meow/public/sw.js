@@ -1,7 +1,7 @@
 // 고양이 울음소리 아카이브 — 서비스 워커
 // 앱 껍데기는 캐시에서 즉시 띄우고, 데이터(API·미디어)는 항상 네트워크 우선.
 
-const VERSION = "v3";
+const VERSION = "v4";
 const SHELL = `shell-${VERSION}`;
 const SHELL_FILES = [
   "/",
