@@ -1,0 +1,22 @@
+{
+  "name": "고양이 울음소리 아카이브",
+  "short_name": "냥울음",
+  "description": "고양이 울음 영상을 올리고 음향 분석 결과를 확인하는 앱",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#11131a",
+  "theme_color": "#11131a",
+  "lang": "ko",
+  "categories": ["utilities", "lifestyle"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "바로 촬영", "short_name": "촬영", "url": "/?action=capture" },
+    { "name": "분석 대기 목록", "short_name": "대기", "url": "/?tab=wait" }
+  ]
+}
