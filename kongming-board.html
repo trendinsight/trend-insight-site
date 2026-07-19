@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="공명 책략 보드 — 팀장 결재의 8대 사각지대를 점검하는 군사(軍師)의 독립 의견. 팔진도 레이더, 2인 결재 대조, 3책(策)">
+<title>공명 책략 | Trend Insight</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<style>
+  :root { --ink:#1a1a1a; --sub:#666; --line:#e5e5e5; --accent:#0e7c66; --gold:#b8860b;
+          --g:#22a352; --y:#8f9bb3; --r:#d64040; --gr:#b9bec7; --leader:#7c3aed; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Malgun Gothic","Apple SD Gothic Neo",sans-serif; color:var(--ink); background:#fafafa; line-height:1.6; }
+  .wrap { max-width:940px; margin:0 auto; padding:24px 16px 80px; }
+  .back { color:var(--sub); text-decoration:none; font-size:.9rem; }
+  h1 { font-size:1.6rem; margin:16px 0 4px; }
+  h1 .en { font-size:.85rem; color:var(--accent); letter-spacing:.15em; font-weight:700; }
+  .desc { color:var(--sub); font-size:.92rem; margin-bottom:6px; }
+  .updated { color:var(--sub); font-size:.85rem; margin-bottom:18px; }
+  .demo { background:#fff8e6; border:1px solid #eedca8; color:#7a5b00; border-radius:10px; padding:8px 14px; font-size:.85rem; margin-bottom:16px; display:none; }
+  /* 요약 대시보드 */
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; margin-bottom:22px; }
+  .statcard { background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px 20px; }
+  .statcard h3 { font-size:.85rem; color:var(--sub); font-weight:600; margin-bottom:10px; }
+  .donutrow { display:flex; align-items:center; gap:18px; }
+  .donut { width:96px; height:96px; border-radius:50%; position:relative; flex-shrink:0; }
+  .donut::after { content:attr(data-total); position:absolute; inset:14px; background:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.1rem; }
+  .legend { font-size:.83rem; }
+  .legend span { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; }
+  .hbar { margin:5px 0; }
+  .hbar .lbl { display:flex; justify-content:space-between; font-size:.78rem; color:var(--sub); }
+  .hbar .track { background:#f1f2f4; border-radius:4px; height:8px; overflow:hidden; }
+  .hbar .fill { height:100%; background:linear-gradient(90deg,#e8836a,var(--r)); border-radius:4px; }
+  .conflictItem { font-size:.85rem; padding:5px 0; border-bottom:1px dashed var(--line); }
+  .conflictItem:last-child { border-bottom:none; }
+  .conflictItem b { color:var(--r); }
+  .okmsg { color:var(--g); font-weight:700; font-size:.95rem; }
+  /* 필터 */
+  .filters { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; align-items:center; }
+  .chip { border:1px solid var(--line); background:#fff; border-radius:999px; padding:5px 14px; font-size:.88rem; cursor:pointer; }
+  .chip.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+  select { border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:.9rem; background:#fff; }
+  /* 책략 카드 */
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; margin-bottom:16px; overflow:hidden; }
+  .card.conflict { border-color:#eab6b6; box-shadow:0 0 0 3px #fdeaea; }
+  .card summary { list-style:none; padding:14px 16px; cursor:pointer; }
+  .card summary::-webkit-details-marker { display:none; }
+  .row1 { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .date { color:var(--sub); font-size:.85rem; }
+  .stock { font-weight:700; font-size:1.05rem; }
+  .duel { margin-left:auto; display:flex; align-items:center; gap:6px; font-size:.8rem; }
+  .vbadge { font-weight:700; padding:3px 11px; border-radius:999px; font-size:.8rem; display:inline-block; }
+  .who { font-size:.72rem; color:var(--sub); display:block; text-align:center; margin-bottom:1px; }
+  .b-승인 { background:#e7f6ec; color:#187a3c; } .b-보류 { background:#fff6e0; color:#946200; }
+  .b-축소 { background:#ffeede; color:#b4530a; } .b-손절 { background:#fdeaea; color:#c22525; }
+  .b-관심등록 { background:#eaf1fd; color:#1e5bb8; } .b-미결재 { background:#f1f2f4; color:#777; }
+  .swords { font-size:1rem; }
+  .opTag { font-size:.76rem; font-weight:700; border-radius:999px; padding:2px 10px; }
+  .op-동의 { background:#e7f6ec; color:#187a3c; } .op-조건부동의 { background:#fff6e0; color:#946200; }
+  .op-이견 { background:#fdeaea; color:#c22525; }
+  .summaryline { color:var(--sub); font-size:.88rem; margin-top:6px; }
+  /* 펼친 상세 */
+  .bodybox { border-top:1px solid var(--line); padding:16px 20px 22px; }
+  .vizgrid { display:flex; gap:22px; flex-wrap:wrap; align-items:center; }
+  .radarbox { flex:0 0 250px; }
+  .axlist { flex:1; min-width:260px; display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .ax { border:1px solid var(--line); border-radius:10px; padding:7px 10px; font-size:.8rem; }
+  .ax.hw { border-color:#eab6b6; background:#fff7f7; }
+  .ax b { display:block; font-size:.78rem; }
+  .ax .sub2 { color:var(--sub); font-size:.72rem; }
+  .ax .pill { display:inline-flex; align-items:center; gap:5px; font-weight:700; margin-top:2px; }
+  .dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
+  .viz h4 { font-size:.9rem; color:var(--accent); margin:18px 0 8px; }
+  /* 3책 */
+  .plans { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px; }
+  .plan { border-radius:12px; padding:12px 14px; font-size:.85rem; border:1px solid var(--line); background:#fbfbfc; }
+  .plan.상책 { border-top:4px solid var(--gold); } .plan.중책 { border-top:4px solid var(--accent); } .plan.하책 { border-top:4px solid var(--gr); }
+  .plan b { font-size:.9rem; }
+  .invbox { background:#fdf6f6; border:1px solid #f0d4d4; border-radius:10px; padding:10px 14px; font-size:.85rem; }
+  .scoutbox { background:#f4faf8; border:1px solid #cfe8e0; border-radius:10px; padding:10px 14px; font-size:.85rem; }
+  .counterList { font-size:.86rem; padding-left:20px; }
+  .mdbody { margin-top:18px; padding-top:14px; border-top:1px dashed var(--line); font-size:.93rem; }
+  .mdbody h2 { font-size:1rem; margin:16px 0 8px; color:#333; }
+  .mdbody table { border-collapse:collapse; width:100%; margin:8px 0; font-size:.87rem; }
+  .mdbody th,.mdbody td { border:1px solid var(--line); padding:6px 8px; text-align:left; }
+  .mdbody th { background:#f4f8f7; }
+  .mdbody blockquote { border-left:3px solid var(--line); padding-left:10px; color:var(--sub); margin:8px 0; }
+  .mdbody ul,.mdbody ol { padding-left:22px; }
+  .mdlabel { font-size:.8rem; color:var(--sub); letter-spacing:.08em; font-weight:700; }
+  .empty { text-align:center; color:var(--sub); padding:60px 0; }
+  .foot { color:var(--sub); font-size:.8rem; margin-top:40px; border-top:1px solid var(--line); padding-top:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">&larr; Trend Insight</a>
+  <h1>공명 책략 <span class="en">KONGMING COUNSEL</span></h1>
+  <p class="desc">군사(軍師) 공명이 팀장 결재의 <b>8대 사각지대</b>(금리 레짐·컨센서스·기회비용·촉매·유동성·시간축·후보군·기저율)를 점검한 독립 의견입니다. 팔진도 레이더로 순풍·역풍을 한눈에 보고, 팀장 결재와 대조하며, 상·중·하 3책 중 고를 수 있습니다.</p>
+  <p class="updated" id="updated">불러오는 중…</p>
+  <div class="demo" id="demoBanner">⚠ 데모 데이터입니다 — 실제 책략이 게시되면 자동으로 교체됩니다.</div>
+
+  <div class="stats" id="stats" style="display:none">
+    <div class="statcard">
+      <h3>2인 결재 — 공명의 입장 분포</h3>
+      <div class="donutrow">
+        <div class="donut" id="donut" data-total="0"></div>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+    <div class="statcard">
+      <h3>축별 역풍 빈도 — 어느 사각지대가 자주 무는가</h3>
+      <div id="hwBars"></div>
+    </div>
+    <div class="statcard">
+      <h3>⚔️ 미해결 이견 (대표 중재 필요)</h3>
+      <div id="conflicts"></div>
+    </div>
+  </div>
+
+  <div class="filters" id="filters" style="display:none">
+    <span class="chip on" data-v="전체">전체</span>
+    <span class="chip" data-v="동의">동의</span>
+    <span class="chip" data-v="조건부동의">조건부동의</span>
+    <span class="chip" data-v="이견">이견</span>
+    <select id="stockSel"><option value="전체">종목 전체</option></select>
+  </div>
+  <div id="list"></div>
+  <p class="foot">본 자료는 내부 의사결정 참고용 기록이며 특정 종목의 매수·매도를 권유하지 않습니다. 투자의 최종 판단과 책임은 투자자 본인에게 있습니다.</p>
+</div>
+
+<script>
+const JC = { "순풍":"#22a352", "중립":"#8f9bb3", "역풍":"#d64040", "데이터없음":"#b9bec7" };
+const JS_ = { "순풍":1.0, "중립":0.62, "역풍":0.28, "데이터없음":0.12 };
+const OPC = { "동의":"#22a352", "조건부동의":"#e0a800", "이견":"#d64040", "미기재":"#b9bec7" };
+
+const DEMO = {
+  updated: "데모",
+  axis_headwind_freq: [
+    {axis:"초선차전",label:"금리·거시 레짐",count:1},{axis:"공성계",label:"컨센서스 쏠림",count:2},
+    {axis:"팔진도",label:"기회비용·상관",count:0},{axis:"동남풍",label:"촉매·오버행",count:2},
+    {axis:"목우유마",label:"유동성·체결성",count:0},{axis:"칠종칠금",label:"시간축 정합",count:1},
+    {axis:"융중대",label:"후보군 비교",count:0},{axis:"계륵",label:"기저율·이력",count:1}],
+  opinion_dist: {"동의":1,"조건부동의":1,"이견":1},
+  decisions: [
+    { date:"2026-07-17", stock:"삼성전자", verdict:"축소", opinion:"조건부동의", leader_verdict:"승인", conflict:true,
+      headwinds:["공성계","동남풍"], nodata:0, file:"demo1",
+      summary:"컨센서스 기대치 포화 + 5거래일 내 실적 — 스타터 1/3로 축소, 실적 확인 후 잔여 집행",
+      axes:[
+        {axis:"초선차전",label:"금리·거시 레짐",judgment:"중립",reason:"rate-forecast base 동결, 논거는 금리 비의존"},
+        {axis:"공성계",label:"컨센서스 쏠림",judgment:"역풍",reason:"3개월 내 목표가 7건 상향 — 기대치 포화"},
+        {axis:"팔진도",label:"기회비용·상관",judgment:"순풍",reason:"기존 보유와 상관 낮음, 현금 여력 충분"},
+        {axis:"동남풍",label:"촉매·오버행",judgment:"역풍",reason:"실적발표 D-4 — 결재 연기 사유"},
+        {axis:"목우유마",label:"유동성·체결성",judgment:"순풍",reason:"포지션/거래대금 0.1%"},
+        {axis:"칠종칠금",label:"시간축 정합",judgment:"중립",reason:"논거 1년 vs 진입 수주 — 트랜치 분리 권고"},
+        {axis:"융중대",label:"후보군 비교",judgment:"순풍",reason:"CANSLIM 상위 3위, 업종 수급 유입"},
+        {axis:"계륵",label:"기저율·이력",judgment:"중립",reason:"유사 안건 2건 — 표본부족"}],
+      plans:[
+        {grade:"상책",desc:"실적 확인 후 어닝 서프라이즈 + 피벗 재돌파 시 정량 진입 / 손절 2N"},
+        {grade:"중책",desc:"지금 스타터 1/3 (팀장 정량의 1/3) / 잔여는 실적 통과 조건부 / 손절 50일선"},
+        {grade:"하책",desc:"관심등록 — 실적 발표일 재결재, 목표가 하향 리포트 2건 이상 나오면 철회"}],
+      counter:["실적 서프라이즈 시 갭 상승으로 진입가 상실 — 그러나 갭 추격은 교훈 노트의 반복 실수 유형","기대치 포화는 이미 주가에 반영 — 반영됐다면 실적 미스 시 하방이 더 크다"],
+      invalidation:"3분기 영업이익률 12% 미만이면 중책 잔여 집행 철회. 이 조건의 사후 완화 금지.",
+      next_scout:"실적 발표 익일 broker-report-digest 재실행 — 목표가 반응 확인",
+      body_md:"" },
+    { date:"2026-07-15", stock:"에코프로비엠", verdict:"관심등록", opinion:"이견", leader_verdict:"승인", conflict:true,
+      headwinds:["초선차전","공성계","동남풍"], nodata:1, file:"demo2",
+      summary:"결정축은 동남풍 — CB 오버행 미해소. 팀장 승인에 이견, 관심등록 후 전환물량 소화 확인",
+      axes:[
+        {axis:"초선차전",label:"금리·거시 레짐",judgment:"역풍",reason:"성장주 논거 vs 동결 장기화 base"},
+        {axis:"공성계",label:"컨센서스 쏠림",judgment:"역풍",reason:"내 논거가 리포트 투자포인트와 전부 중복"},
+        {axis:"팔진도",label:"기회비용·상관",judgment:"중립",reason:"기존 2차전지 보유와 합산 비중 한도 근접"},
+        {axis:"동남풍",label:"촉매·오버행",judgment:"역풍",reason:"CB 전환가 도달 — 유통주식 4% 대기물량"},
+        {axis:"목우유마",label:"유동성·체결성",judgment:"순풍",reason:"거래대금 충분"},
+        {axis:"칠종칠금",label:"시간축 정합",judgment:"중립",reason:"논거·진입 모두 중기"},
+        {axis:"융중대",label:"후보군 비교",judgment:"데이터없음",reason:"스크리너 최신 실행 없음"},
+        {axis:"계륵",label:"기저율·이력",judgment:"중립",reason:"유사 안건 4건 승률 50%"}],
+      plans:[
+        {grade:"상책",desc:"CB 물량 소화(거래량 수반 횡보 4주+) 후 재돌파 시 진입"},
+        {grade:"중책",desc:"전환물량 공시 확인 후 스타터 1/4"},
+        {grade:"하책",desc:"관심등록 — 오버행 해소 + 금리 인하 시그널 동시 충족 시 재결재"}],
+      counter:["업황 회복이 오버행을 압도할 수 있음 — 그러나 과거 동일 패턴 2건 모두 전환물량에 상단 눌림"],
+      invalidation:"CB 전환 공시 이후 5일 누적 거래량이 전환물량의 3배를 넘으면 오버행 우려 철회.",
+      next_scout:"DART 전환청구 공시 주간 모니터링",
+      body_md:"" },
+    { date:"2026-07-10", stock:"현대로템", verdict:"승인", opinion:"동의", leader_verdict:"승인", conflict:false,
+      headwinds:["계륵"], nodata:0, file:"demo3",
+      summary:"반대 논리 3개 모두 데이터로 기각 — 팀장 승인에 동의. 단 기저율 축 주의로 사이징 1/2 조건",
+      axes:[
+        {axis:"초선차전",label:"금리·거시 레짐",judgment:"순풍",reason:"수주 논거는 금리 비민감"},
+        {axis:"공성계",label:"컨센서스 쏠림",judgment:"중립",reason:"목표가 상향 진행 중이나 수주 백로그는 미반영"},
+        {axis:"팔진도",label:"기회비용·상관",judgment:"순풍",reason:"보유 확신 1위 종목 대비 R 우위"},
+        {axis:"동남풍",label:"촉매·오버행",judgment:"순풍",reason:"60일 내 수주 발표 2건 예정, 오버행 없음"},
+        {axis:"목우유마",label:"유동성·체결성",judgment:"순풍",reason:"거래대금 대비 0.3%"},
+        {axis:"칠종칠금",label:"시간축 정합",judgment:"순풍",reason:"논거·플랜 모두 6~12개월 정합"},
+        {axis:"융중대",label:"후보군 비교",judgment:"순풍",reason:"방산 업종 수급 유입 1위"},
+        {axis:"계륵",label:"기저율·이력",judgment:"역풍",reason:"추격매수 유형 승률 38% — 사이징 1/2 상한"}],
+      plans:[
+        {grade:"상책",desc:"피벗 유지 시 정량의 1/2 진입 (기저율 조건) / 2N 손절"},
+        {grade:"중책",desc:"눌림 대기 — 10주선 접근 시 분할 진입"},
+        {grade:"하책",desc:"미보유 유지 — 수주 공시 실체 확인 후 재결재"}],
+      counter:["이미 상승률 큼 — 그러나 트렌드 템플릿 전 조건 충족, 신고가는 기각 사유 아님"],
+      invalidation:"수주 공시가 8월 말까지 없으면 상책·중책 폐기.",
+      next_scout:"market-calendar-sync 수주 발표 일정 등록 확인",
+      body_md:"" }
+  ]
+};
+
+function radarSVG(axes) {
+  const C = 125, R = 88, N = 8;
+  const pt = (i, r) => { const a = -Math.PI/2 + i*2*Math.PI/N; return [C + r*Math.cos(a), C + r*Math.sin(a)]; };
+  let grid = "";
+  for (const f of [0.33, 0.66, 1.0]) {
+    const pts = Array.from({length:N}, (_,i) => pt(i, R*f).map(v=>v.toFixed(1)).join(",")).join(" ");
+    grid += `<polygon points="${pts}" fill="none" stroke="#e8e8ec" stroke-width="1"/>`;
+  }
+  let spokes = "", labels = "";
+  axes.forEach((ax, i) => {
+    const [x, y] = pt(i, R);
+    spokes += `<line x1="${C}" y1="${C}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#eeeef2" stroke-width="1"/>`;
+    const [lx, ly] = pt(i, R + 21);
+    labels += `<text x="${lx.toFixed(1)}" y="${(ly+4).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="700" fill="${ax.judgment==='역풍' ? '#d64040' : '#555'}">${ax.axis}</text>`;
+  });
+  const poly = axes.map((ax,i) => pt(i, R*JS_[ax.judgment]).map(v=>v.toFixed(1)).join(",")).join(" ");
+  let dots = "";
+  axes.forEach((ax,i) => {
+    const [x,y] = pt(i, R*JS_[ax.judgment]);
+    dots += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="${JC[ax.judgment]}"><title>${ax.axis} ${ax.judgment}${ax.reason ? " — "+ax.reason : ""}</title></circle>`;
+  });
+  return `<svg viewBox="0 0 250 250" width="250" height="250" role="img" aria-label="8축 팔진도 레이더">
+    ${grid}${spokes}
+    <polygon points="${poly}" fill="rgba(14,124,102,.14)" stroke="#0e7c66" stroke-width="2" stroke-linejoin="round"/>
+    ${dots}${labels}</svg>`;
+}
+
+function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function vb(v){ return `<span class="vbadge b-${esc(v)||'미결재'}">${esc(v)||'—'}</span>`; }
+
+function card(d) {
+  const axHtml = d.axes.map(a => `
+    <div class="ax ${a.judgment==='역풍'?'hw':''}" title="${esc(a.reason)}">
+      <b>${a.axis} <span class="sub2">${a.label}</span></b>
+      <span class="pill" style="color:${JC[a.judgment]}"><span class="dot" style="background:${JC[a.judgment]}"></span>${a.judgment}</span>
+      ${a.reason ? `<div class="sub2">${esc(a.reason)}</div>` : ""}
+    </div>`).join("");
+  const plansHtml = d.plans.length ? `<h4>三策 — 상·중·하 계책</h4><div class="plans">` +
+    d.plans.map(p => `<div class="plan ${p.grade}"><b>${p.grade === "상책" ? "上 상책" : p.grade === "중책" ? "中 중책" : "下 하책"}</b><div>${esc(p.desc)}</div></div>`).join("") + `</div>` : "";
+  const counterHtml = d.counter && d.counter.length ? `<h4>반대편 논리 검증</h4><ul class="counterList">` +
+    d.counter.map(c => `<li>${esc(c)}</li>`).join("") + `</ul>` : "";
+  const invHtml = d.invalidation ? `<h4>무효화 조건 (읍참마속 — 사후 완화 금지)</h4><div class="invbox">${esc(d.invalidation)}</div>` : "";
+  const scoutHtml = d.next_scout ? `<h4>다음 정찰</h4><div class="scoutbox">${esc(d.next_scout)}</div>` : "";
+  const mdHtml = d.body_md ? `<div class="mdbody"><div class="mdlabel">책략 전문</div>${marked.parse(d.body_md)}</div>` : "";
+  return `<details class="card ${d.conflict?'conflict':''}" data-op="${esc(d.opinion)||'미기재'}" data-stock="${esc(d.stock)}">
+    <summary>
+      <div class="row1">
+        <span class="date">${esc(d.date)}</span>
+        <span class="stock">${esc(d.stock)}</span>
+        ${d.opinion ? `<span class="opTag op-${esc(d.opinion)}">${esc(d.opinion)}</span>` : ""}
+        <span class="duel">
+          <span><span class="who">팀장</span>${vb(d.leader_verdict)}</span>
+          <span class="swords">${d.conflict ? "⚔️" : "🤝"}</span>
+          <span><span class="who">공명</span>${vb(d.verdict)}</span>
+        </span>
+      </div>
+      ${d.summary ? `<div class="summaryline">${esc(d.summary)}</div>` : ""}
+    </summary>
+    <div class="bodybox viz">
+      <div class="vizgrid">
+        <div class="radarbox">${radarSVG(d.axes)}</div>
+        <div class="axlist">${axHtml}</div>
+      </div>
+      ${plansHtml}${counterHtml}${invHtml}${scoutHtml}${mdHtml}
+    </div>
+  </details>`;
+}
+
+function donut(dist) {
+  const order = ["동의","조건부동의","이견","미기재"];
+  const total = Object.values(dist).reduce((a,b)=>a+b,0) || 1;
+  let acc = 0, segs = [];
+  for (const k of order) {
+    const v = dist[k]||0; if (!v) continue;
+    const from = acc/total*360, to = (acc+v)/total*360;
+    segs.push(`${OPC[k]} ${from}deg ${to}deg`); acc += v;
+  }
+  const el = document.getElementById("donut");
+  el.style.background = segs.length ? `conic-gradient(${segs.join(",")})` : "#f1f2f4";
+  el.dataset.total = acc;
+  document.getElementById("legend").innerHTML = order.filter(k=>dist[k])
+    .map(k=>`<div><span style="background:${OPC[k]}"></span>${k} ${dist[k]}건</div>`).join("");
+}
+
+function render(data, isDemo) {
+  document.getElementById("updated").textContent = "갱신: " + data.updated;
+  if (isDemo) document.getElementById("demoBanner").style.display = "block";
+  const ds = data.decisions || [];
+  if (!ds.length) { document.getElementById("list").innerHTML = `<p class="empty">아직 게시된 책략이 없습니다. 공명 스킬 실행 시 이곳에 쌓입니다.</p>`; return; }
+  document.getElementById("stats").style.display = "";
+  document.getElementById("filters").style.display = "";
+  donut(data.opinion_dist || {});
+  const freq = data.axis_headwind_freq || [];
+  const mx = Math.max(1, ...freq.map(f=>f.count));
+  document.getElementById("hwBars").innerHTML = freq.map(f => `
+    <div class="hbar"><div class="lbl"><span>${f.axis} <span style="color:#aaa">${f.label}</span></span><b>${f.count}</b></div>
+    <div class="track"><div class="fill" style="width:${f.count/mx*100}%"></div></div></div>`).join("");
+  const seen = new Set(), open_ = [];
+  for (const d of ds) { if (!seen.has(d.stock)) { seen.add(d.stock); if (d.conflict) open_.push(d); } }
+  document.getElementById("conflicts").innerHTML = open_.length
+    ? open_.map(d=>`<div class="conflictItem">${esc(d.stock)} — 팀장 <b>${esc(d.leader_verdict)}</b> vs 공명 <b>${esc(d.verdict)}</b> <span style="color:#999">(${esc(d.date)})</span></div>`).join("")
+    : `<div class="okmsg">🤝 현재 이견 없음 — 2인 결재 정렬 상태</div>`;
+  document.getElementById("list").innerHTML = ds.map(card).join("");
+  const sel = document.getElementById("stockSel");
+  [...new Set(ds.map(d=>d.stock))].forEach(s => { const o=document.createElement("option"); o.textContent=o.value=s; sel.appendChild(o); });
+  function apply() {
+    const op = document.querySelector(".chip.on").dataset.v, st = sel.value;
+    document.querySelectorAll("#list .card").forEach(c => {
+      c.style.display = (op==="전체"||c.dataset.op===op) && (st==="전체"||c.dataset.stock===st) ? "" : "none"; });
+  }
+  document.querySelectorAll(".chip").forEach(ch => ch.onclick = () => {
+    document.querySelectorAll(".chip").forEach(c=>c.classList.remove("on")); ch.classList.add("on"); apply(); });
+  sel.onchange = apply;
+}
+
+fetch("data/kongming-board.json", {cache:"no-store"})
+  .then(r => { if (!r.ok) throw 0; return r.json(); })
+  .then(d => render(d, false))
+  .catch(() => render(DEMO, true));
+</script>
+</body>
+</html>
