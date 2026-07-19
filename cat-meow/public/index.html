@@ -54,9 +54,15 @@
   .btn-main{background:var(--accent); color:#06202a}
   .btn-main:disabled{opacity:.45}
   .btn-sub{background:var(--card2); color:var(--tx); border:1px solid var(--line)}
-  .filelabel{display:flex; align-items:center; justify-content:center; gap:8px; padding:22px;
-    border:1.5px dashed var(--line); border-radius:12px; color:var(--tx2); font-size:15px; cursor:pointer}
-  .filelabel.has{border-color:var(--accent); color:var(--accent)}
+  .pickrow{display:flex; gap:10px}
+  .filelabel{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+    padding:20px 10px; border:1.5px dashed var(--line); border-radius:12px; color:var(--tx2);
+    font-size:14px; cursor:pointer}
+  .filelabel span{font-size:24px; line-height:1}
+  .filelabel:active{border-color:var(--accent); color:var(--accent)}
+  .picked{display:none; margin-top:10px; padding:10px 12px; background:var(--card2);
+    border:1px solid var(--accent); border-radius:10px; font-size:13px; color:var(--accent);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   input[type=file]{display:none}
   .bar{height:5px; background:var(--card2); border-radius:99px; overflow:hidden; margin-top:10px; display:none}
   .bar i{display:block; height:100%; width:0; background:var(--accent); transition:width .2s}
@@ -113,8 +119,13 @@
 
   <div class="card">
     <h2>새 영상 올리기</h2>
-    <label class="filelabel" id="flabel" for="file">＋ 영상 촬영 / 갤러리에서 선택</label>
-    <input type="file" id="file" accept="video/*,audio/*" capture="environment">
+    <div class="pickrow">
+      <label class="filelabel" for="filecam"><span>📹</span>촬영하기</label>
+      <label class="filelabel" for="file"><span>🖼️</span>갤러리</label>
+    </div>
+    <input type="file" id="file" accept="video/*,audio/*">
+    <input type="file" id="filecam" accept="video/*" capture="environment">
+    <div class="picked" id="picked"></div>
     <div class="chips" id="chips"></div>
     <input type="text" id="ctx" placeholder="상황 메모 (예: 밥그릇 앞에서, 새벽 3시)">
     <div class="bar" id="bar"><i></i></div>
@@ -148,15 +159,18 @@ $("#chips").onclick = e => { if(!e.target.classList.contains("chip")) return;
   const box=$("#ctx"); box.value = box.value ? box.value+", "+e.target.textContent : e.target.textContent; };
 
 // 파일 선택 → 포스터 프레임 생성
-$("#file").onchange = async e => {
+async function onPick(e){
   const f = e.target.files[0]; if(!f) return;
   picked = f; thumbBlob = null;
-  $("#flabel").textContent = `${f.name} (${fmtSize(f.size)})`;
-  $("#flabel").classList.add("has");
+  const p = $("#picked");
+  p.textContent = `${f.name} · ${fmtSize(f.size)}`;
+  p.style.display = "block";
   $("#up").disabled = false;
   if (f.size > 95*1024*1024) toast("100MB 넘으면 업로드가 실패할 수 있어요");
   if (f.type.startsWith("video/")) { try { thumbBlob = await makeThumb(f); } catch(err){} }
-};
+}
+$("#file").onchange = onPick;
+$("#filecam").onchange = onPick;
 
 function makeThumb(file){
   return new Promise((res,rej)=>{
@@ -193,8 +207,8 @@ $("#up").onclick = () => {
     $("#bar").style.display="none"; $("#bar i").style.width="0";
     $("#up").textContent="올리기";
     if(xhr.status===200){
-      picked=null; thumbBlob=null; $("#file").value=""; $("#ctx").value="";
-      $("#flabel").textContent="＋ 영상 촬영 / 갤러리에서 선택"; $("#flabel").classList.remove("has");
+      picked=null; thumbBlob=null; $("#file").value=""; $("#filecam").value=""; $("#ctx").value="";
+      $("#picked").style.display="none"; $("#picked").textContent="";
       toast("업로드 완료 — 이제 클로드에 분석을 요청하세요");
       load();
     } else { $("#up").disabled=false; toast("업로드 실패 ("+xhr.status+")"); }
@@ -346,7 +360,7 @@ if (params.get("tab") === "wait") {
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on", t.dataset.f==="wait"));
   filter = "wait";
 }
-if (params.get("action") === "capture") setTimeout(()=>$("#file").click(), 400);
+if (params.get("action") === "capture") setTimeout(()=>$("#filecam").click(), 400);
 
 // 앱으로 돌아왔을 때 목록 갱신
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
