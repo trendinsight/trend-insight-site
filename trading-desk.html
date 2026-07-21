@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="트레이딩 데스크 — 1인 자산운용사의 하루 운용 파이프라인 콕핏. 모닝·종목·마감·풀 데스크를 단계별로 실행하고, 하단에서 팀장×공명 2인 결재 의견을 취합한다.">
+<title>트레이딩 데스크 | Trend Insight</title>
+<style>
+  :root { --ink:#1a1a1a; --sub:#666; --line:#e5e5e5; --accent:#d4380d; --deep:#8c2408;
+          --g:#22a352; --y:#c99700; --r:#d64040; --gr:#b9bec7;
+          --leader:#7c3aed; --kong:#0e7c66; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Malgun Gothic","Apple SD Gothic Neo",sans-serif; color:var(--ink); background:#fafafa; line-height:1.6; }
+  .wrap { max-width:940px; margin:0 auto; padding:24px 16px 80px; }
+  .back { color:var(--sub); text-decoration:none; font-size:.9rem; }
+  h1 { font-size:1.6rem; margin:16px 0 4px; }
+  h1 .en { font-size:.85rem; color:var(--accent); letter-spacing:.15em; font-weight:700; }
+  .desc { color:var(--sub); font-size:.92rem; margin-bottom:6px; }
+  .updated { color:var(--sub); font-size:.85rem; margin-bottom:14px; }
+
+  /* 철학 배너 */
+  .creed { background:linear-gradient(135deg,#fff6f2,#fff); border:1px solid #f2d8cc; border-radius:14px; padding:14px 18px; margin-bottom:20px; font-size:.9rem; }
+  .creed b { color:var(--deep); }
+  .creed .rule { color:var(--sub); font-size:.83rem; margin-top:4px; }
+
+  /* 파이프라인 오버뷰 */
+  .pipebox { background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:26px; }
+  .pipebox h3 { font-size:.9rem; color:var(--sub); font-weight:600; margin-bottom:12px; }
+  .pipe { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .pnode { border:1px solid var(--line); background:#fbfbfc; border-radius:10px; padding:5px 10px; font-size:.78rem; font-weight:600; white-space:nowrap; }
+  .pnode small { display:block; font-weight:400; color:var(--sub); font-size:.68rem; line-height:1.2; }
+  .pnode.risk { border-color:#eab6b6; background:#fff7f7; }
+  .pnode.appr { border-color:#d9c8f5; background:#faf7ff; }
+  .parrow { color:#c9ccd3; font-size:.85rem; }
+  .gatechip { border-radius:999px; padding:3px 10px; font-size:.72rem; font-weight:700; background:#fff6e0; color:#946200; border:1px dashed #e3c76a; white-space:nowrap; }
+  .pipenote { font-size:.78rem; color:var(--sub); margin-top:10px; }
+
+  /* 데스크 카드 */
+  .stagehead { font-size:1.15rem; margin:8px 0 14px; }
+  .stagehead .en { font-size:.78rem; color:var(--accent); letter-spacing:.12em; font-weight:700; margin-left:6px; }
+  .desk { background:#fff; border:1px solid var(--line); border-radius:16px; margin-bottom:18px; overflow:hidden; border-left:6px solid var(--accent); }
+  .desk.d1 { border-left-color:#e8830c; } .desk.d2 { border-left-color:#2e6ff2; }
+  .desk.d3 { border-left-color:#5b6472; } .desk.d4 { border-left-color:var(--accent); }
+  .deskhead { display:flex; align-items:center; gap:12px; padding:14px 18px 4px; flex-wrap:wrap; }
+  .stepno { font-size:.72rem; font-weight:800; letter-spacing:.08em; color:#fff; border-radius:8px; padding:3px 9px; }
+  .d1 .stepno { background:#e8830c; } .d2 .stepno { background:#2e6ff2; }
+  .d3 .stepno { background:#5b6472; } .d4 .stepno { background:var(--accent); }
+  .deskname { font-weight:800; font-size:1.08rem; }
+  .desktag { font-size:.78rem; color:var(--sub); }
+  .deskbody { padding:6px 18px 16px; }
+  .flow { display:flex; flex-wrap:wrap; gap:5px; align-items:center; margin:8px 0 10px; }
+  .fchip { border-radius:8px; padding:3px 9px; font-size:.76rem; font-weight:600; background:#f4f5f7; border:1px solid var(--line); white-space:nowrap; }
+  .fchip.sell { background:#fff7f7; border-color:#eab6b6; color:#a52a2a; }
+  .fchip.two { background:#faf7ff; border-color:#d9c8f5; color:#5b21b6; }
+  .fchip.dim { opacity:.38; }
+  .farrow { color:#c9ccd3; font-size:.8rem; }
+  .deskdesc { font-size:.85rem; color:var(--sub); margin-bottom:10px; }
+  .deskdesc b { color:var(--ink); }
+  .runrow { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .runbtn { border:none; border-radius:10px; padding:9px 16px; font-size:.9rem; font-weight:700; color:#fff; cursor:pointer; display:inline-flex; align-items:center; gap:7px; }
+  .d1 .runbtn { background:#e8830c; } .d2 .runbtn { background:#2e6ff2; }
+  .d3 .runbtn { background:#5b6472; } .d4 .runbtn { background:var(--accent); }
+  .runbtn:active { transform:translateY(1px); }
+  .stockinput { border:1px solid var(--line); border-radius:10px; padding:8px 12px; font-size:.9rem; width:170px; }
+  .phrase { font-size:.78rem; color:var(--sub); background:#f4f5f7; border-radius:8px; padding:4px 10px; font-family:ui-monospace,Consolas,monospace; }
+  .esttime { font-size:.75rem; color:var(--sub); margin-left:auto; }
+
+  /* 토스트 */
+  #toast { position:fixed; left:50%; bottom:34px; transform:translateX(-50%) translateY(20px); background:#1a1a1a; color:#fff; border-radius:999px; padding:10px 20px; font-size:.88rem; opacity:0; transition:.25s; pointer-events:none; z-index:50; max-width:88vw; text-align:center; }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* 2인 결재 취합 */
+  .duelhead { display:flex; align-items:center; gap:10px; margin:34px 0 4px; flex-wrap:wrap; }
+  .duelhead h2 { font-size:1.15rem; }
+  .duelhead .en { font-size:.78rem; letter-spacing:.12em; font-weight:700; color:var(--leader); }
+  .duelsub { font-size:.85rem; color:var(--sub); margin-bottom:14px; }
+  .duelsub a { color:var(--kong); font-weight:700; text-decoration:none; }
+  .duelsub a.ld { color:var(--leader); }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:14px; }
+  .stat { background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px 14px; }
+  .stat .k { font-size:.74rem; color:var(--sub); }
+  .stat .v { font-size:1.15rem; font-weight:800; }
+  .stat .v small { font-size:.75rem; color:var(--sub); font-weight:600; }
+  .duelrows { background:#fff; border:1px solid var(--line); border-radius:14px; overflow:hidden; margin-bottom:12px; }
+  .drow { display:flex; align-items:center; gap:10px; padding:11px 16px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .drow:last-child { border-bottom:none; }
+  .drow.conflict { background:#fffafa; }
+  .drow .date { color:var(--sub); font-size:.8rem; width:84px; }
+  .drow .stock { font-weight:700; min-width:110px; }
+  .vs { display:flex; align-items:center; gap:6px; margin-left:auto; }
+  .who { font-size:.68rem; color:var(--sub); display:block; text-align:center; }
+  .vbadge { font-weight:700; padding:2px 10px; border-radius:999px; font-size:.78rem; display:inline-block; }
+  .b-승인 { background:#e7f6ec; color:#187a3c; } .b-보류 { background:#fff6e0; color:#946200; }
+  .b-축소 { background:#ffeede; color:#b4530a; } .b-손절 { background:#fdeaea; color:#c22525; }
+  .b-관심등록 { background:#eaf1fd; color:#1e5bb8; } .b-미결재, .b-미기재 { background:#f1f2f4; color:#777; }
+  .adopt { font-size:.72rem; font-weight:800; color:#fff; border-radius:8px; padding:2px 8px; background:var(--deep); }
+  .swords { font-size:.9rem; }
+  .dsum { flex-basis:100%; font-size:.8rem; color:var(--sub); padding-left:94px; }
+  .loadmsg { padding:16px; font-size:.85rem; color:var(--sub); text-align:center; }
+  .duelbtns { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
+  .obtn { border-radius:10px; padding:8px 14px; font-size:.85rem; font-weight:700; cursor:pointer; border:1.5px solid; background:#fff; display:inline-flex; gap:6px; align-items:center; }
+  .obtn.ld { color:var(--leader); border-color:var(--leader); }
+  .obtn.kg { color:var(--kong); border-color:var(--kong); }
+  .obtn.duo { color:#fff; background:linear-gradient(90deg,var(--leader),var(--kong)); border-color:transparent; }
+  .duelnote { font-size:.78rem; color:var(--sub); }
+
+  .foot { margin-top:30px; font-size:.76rem; color:var(--sub); border-top:1px solid var(--line); padding-top:12px; }
+  @media (max-width:560px){ .dsum{padding-left:0;} .drow .date{width:auto;} .esttime{flex-basis:100%; margin-left:0;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">&larr; Trend Insight</a>
+  <h1>트레이딩 데스크 <span class="en">TRADING DESK</span></h1>
+  <p class="desc">하루 운용 파이프라인 콕핏 — 원하는 데스크의 버튼을 누르면 실행 문구가 복사됩니다. Claude 채팅(모바일 포함)에 붙여넣기만 하면 스킬을 따로 부르지 않아도 해당 데스크가 바로 실행됩니다.</p>
+  <p class="updated" id="today"></p>
+
+  <div class="creed">
+    <b>Mission</b> 모든 이해관계자의 행복을 위해 자본을 지킨다 &nbsp;·&nbsp; <b>Vision</b> 신뢰받는 리스크 관리 투자 조직
+    <div class="rule">리스크 점검(매도·경고)이 항상 신규 매수보다 먼저다. 시장 게이트가 <b style="color:#c22525">RED</b>면 종목 발굴을 건너뛰는 것이 정상 동작이다.</div>
+  </div>
+
+  <div class="pipebox">
+    <h3>전체 파이프라인 (풀 데스크 기준 8단계)</h3>
+    <div class="pipe">
+      <span class="pnode">① 아침 브리핑<small>daily-briefing</small></span><span class="parrow">→</span>
+      <span class="pnode">② 장세 온도<small>시장·거시 온도계</small></span><span class="parrow">→</span>
+      <span class="gatechip">GATE G/Y/R</span><span class="parrow">→</span>
+      <span class="pnode risk">③ 보유 매도 점검<small>stop-loss</small></span><span class="parrow">→</span>
+      <span class="pnode">④ 후보 발굴<small>screener</small></span><span class="parrow">→</span>
+      <span class="pnode">⑤ 풀분석<small>stock-analysis</small></span><span class="parrow">→</span>
+      <span class="pnode">⑥ 진입 계획<small>entry·pyramid</small></span><span class="parrow">→</span>
+      <span class="pnode appr">⑦ 2인 결재<small>팀장 × 공명</small></span><span class="parrow">→</span>
+      <span class="pnode">⑧ 기록·게시<small>논거·저널·게시</small></span>
+    </div>
+    <p class="pipenote">게이트 RED → ④~⑥ 생략. ③에서 SELL 발생 시 신규 매수보다 먼저 ⑦ 결재에 상정. 아래 각 데스크는 이 파이프라인의 부분 실행이다.</p>
+  </div>
+
+  <h2 class="stagehead">데스크 실행 <span class="en">RUN A DESK</span></h2>
+
+  <!-- 1단계 모닝 데스크 -->
+  <div class="desk d1">
+    <div class="deskhead">
+      <span class="stepno">1단계</span><span class="deskname">모닝 데스크</span>
+      <span class="desktag">아침 루틴 — 브리핑 · 온도 · 매도 점검</span>
+    </div>
+    <div class="deskbody">
+      <div class="flow">
+        <span class="fchip">① 아침 브리핑</span><span class="farrow">→</span>
+        <span class="fchip">② 장세 온도</span><span class="farrow">→</span>
+        <span class="fchip sell">③ 보유 매도 점검</span><span class="farrow">→</span>
+        <span class="fchip dim">발굴·결재 없음</span>
+      </div>
+      <p class="deskdesc">장 시작 전 <b>환경 파악과 보유 리스크 점검</b>까지만. 오늘의 스탠스(공격/중립/방어)와 시장 게이트를 확정한다.</p>
+      <div class="runrow">
+        <button class="runbtn" onclick="copyRun('모닝 데스크 돌려줘','모닝 데스크')">▶ 모닝 데스크 실행 문구 복사</button>
+        <span class="phrase">"모닝 데스크 돌려줘"</span>
+        <span class="esttime">예상 소요 짧음</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2단계 종목 데스크 -->
+  <div class="desk d2">
+    <div class="deskhead">
+      <span class="stepno">2단계</span><span class="deskname">종목 데스크</span>
+      <span class="desktag">지정 종목 — 온도 · 풀분석 · 진입 · 결재</span>
+    </div>
+    <div class="deskbody">
+      <div class="flow">
+        <span class="fchip">② 장세 온도</span><span class="farrow">→</span>
+        <span class="fchip">⑤ 지정 종목 풀분석</span><span class="farrow">→</span>
+        <span class="fchip">⑥ 진입 계획</span><span class="farrow">→</span>
+        <span class="fchip two">⑦ 2인 결재</span><span class="farrow">→</span>
+        <span class="fchip">⑧ 기록·게시</span>
+      </div>
+      <p class="deskdesc">눈여겨본 <b>한 종목을 아침부터 결재까지</b> 몰아서 본다. 종목명을 넣고 버튼을 누르면 해당 종목이 들어간 실행 문구가 복사된다.</p>
+      <div class="runrow">
+        <input class="stockinput" id="stockName" type="text" placeholder="종목명 입력 (예: 삼성전자)">
+        <button class="runbtn" onclick="copyStock()">▶ 종목 데스크 실행 문구 복사</button>
+        <span class="phrase">"○○ 종목 데스크 돌려줘"</span>
+        <span class="esttime">예상 소요 중간</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3단계 마감 데스크 -->
+  <div class="desk d3">
+    <div class="deskhead">
+      <span class="stepno">3단계</span><span class="deskname">마감 데스크</span>
+      <span class="desktag">장 마감 정리 — 매도 점검 · 복기 · 기록</span>
+    </div>
+    <div class="deskbody">
+      <div class="flow">
+        <span class="fchip sell">③ 보유 매도 점검</span><span class="farrow">→</span>
+        <span class="fchip">체결 있으면 매매 복기</span><span class="farrow">→</span>
+        <span class="fchip">⑧ 기록·게시</span>
+      </div>
+      <p class="deskdesc">장 마감 후 <b>보유종목 SELL/WATCH 재판정과 당일 체결 복기</b>. 오늘 매매가 있었다면 "오늘 ○○ 팔았어"를 붙여넣은 문구 뒤에 덧붙이면 저널 복기까지 이어진다.</p>
+      <div class="runrow">
+        <button class="runbtn" onclick="copyRun('마감 데스크 돌려줘','마감 데스크')">▶ 마감 데스크 실행 문구 복사</button>
+        <span class="phrase">"마감 데스크 돌려줘"</span>
+        <span class="esttime">예상 소요 짧음</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4단계 풀 데스크 -->
+  <div class="desk d4">
+    <div class="deskhead">
+      <span class="stepno">4단계</span><span class="deskname">풀 데스크</span>
+      <span class="desktag">전체 스택 — ①~⑧ 하루 운용 사이클 전부</span>
+    </div>
+    <div class="deskbody">
+      <div class="flow">
+        <span class="fchip">① 브리핑</span><span class="farrow">→</span>
+        <span class="fchip">② 온도</span><span class="farrow">→</span>
+        <span class="fchip sell">③ 매도 점검</span><span class="farrow">→</span>
+        <span class="fchip">④ 발굴</span><span class="farrow">→</span>
+        <span class="fchip">⑤ 풀분석</span><span class="farrow">→</span>
+        <span class="fchip">⑥ 진입</span><span class="farrow">→</span>
+        <span class="fchip two">⑦ 2인 결재</span><span class="farrow">→</span>
+        <span class="fchip">⑧ 기록·게시</span>
+      </div>
+      <p class="deskdesc"><b>아침 브리핑부터 결재·게시까지 전부.</b> 게이트가 RED면 발굴~진입은 자동 생략된다(정상 동작). 웹검색·스크립트가 많아 실행 시간이 가장 길다 — 급하면 모닝 데스크로 축소.</p>
+      <div class="runrow">
+        <button class="runbtn" onclick="copyRun('풀 데스크 돌려줘','풀 데스크')">▶ 풀 데스크 실행 문구 복사</button>
+        <span class="phrase">"풀 데스크 돌려줘"</span>
+        <span class="esttime">예상 소요 김 (수십 분)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2인 결재 의견 취합 -->
+  <div class="duelhead">
+    <h2>2인 결재 의견 취합</h2>
+    <span class="en">TEAM LEADER &times; KONGMING</span>
+  </div>
+  <p class="duelsub">
+    <a class="ld" href="decision-board.html">팀장(결재 보드)</a>의 5축 결재와
+    <a href="kongming-board.html">공명(책략 보드)</a>의 사각지대 독립 verdict를 종목별로 대조한다.
+    두 의견이 엇갈리면 <b>보수적인 쪽을 채택</b>한다.
+  </p>
+
+  <div class="stats" id="duelStats"></div>
+  <div class="duelrows" id="duelRows"><div class="loadmsg">결재 데이터 불러오는 중…</div></div>
+
+  <div class="duelbtns">
+    <button class="obtn ld" onclick="copyRun('팀장 결재 올려줘','팀장 결재 요청')">👔 팀장 결재 요청 문구 복사</button>
+    <button class="obtn kg" onclick="copyRun('공명 불러서 사각지대 점검해줘','공명 의견 요청')">🪶 공명 의견 요청 문구 복사</button>
+    <button class="obtn duo" onclick="copyDuo()">⚔ 종목 2인 결재 문구 복사</button>
+  </div>
+  <p class="duelnote">2인 결재 버튼은 위 종목 데스크 입력칸의 종목명을 사용한다 — "○○ 2인 결재 올려줘". 비워두면 종목명 자리만 남긴 문구가 복사된다.</p>
+
+  <p class="foot">본 페이지의 모든 산출물은 내부 의사결정 참고용이며 투자 권유가 아니다. 최종 판단과 책임은 대표 본인에게 있다. 시세·온도·결재 데이터는 각 보드의 마지막 갱신 시점 기준이다.</p>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ---------- 공통 ----------
+const $ = s => document.querySelector(s);
+$('#today').textContent = '오늘: ' + new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric',weekday:'long'});
+
+let toastTimer;
+function toast(msg){
+  const t = $('#toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+function copyText(text, label){
+  const done = ()=>toast('복사 완료 — Claude 채팅에 붙여넣으면 ' + label + '가 실행됩니다');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text, done));
+  } else fallbackCopy(text, done);
+}
+function fallbackCopy(text, done){
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch(e){ prompt('아래 문구를 복사하세요', text); }
+  document.body.removeChild(ta);
+}
+function copyRun(phrase, label){ copyText(phrase, label); }
+function copyStock(){
+  const name = $('#stockName').value.trim();
+  if (!name) { toast('종목명을 먼저 입력해 주세요'); $('#stockName').focus(); return; }
+  copyText(name + ' 종목 데스크 돌려줘', '종목 데스크');
+}
+function copyDuo(){
+  const name = $('#stockName').value.trim();
+  copyText((name || '(종목명)') + ' 2인 결재 올려줘', '2인 결재');
+}
+
+// ---------- 2인 결재 취합 ----------
+const RANK = { '손절':5, '축소':4, '보류':3, '관심등록':2, '승인':1 };
+function known(v){ return RANK[v] !== undefined; }
+function conservative(a, b){
+  if (known(a) && known(b)) return RANK[a] >= RANK[b] ? a : b;
+  return known(a) ? a : (known(b) ? b : null);
+}
+function badge(v, who){
+  const val = v && v.trim() ? v : (who==='팀장' ? '미결재' : '미기재');
+  const cls = 'b-' + (known(val) ? val : (who==='팀장' ? '미결재' : '미기재'));
+  return '<span><span class="who">' + who + '</span><span class="vbadge ' + cls + '">' + val + '</span></span>';
+}
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+Promise.allSettled([
+  fetch('data/decision-board.json', {cache:'no-store'}).then(r=>r.ok?r.json():null),
+  fetch('data/kongming-board.json', {cache:'no-store'}).then(r=>r.ok?r.json():null)
+]).then(([ld, kg])=>{
+  const leader = (ld.status==='fulfilled' && ld.value) ? ld.value : {decisions:[]};
+  const kong   = (kg.status==='fulfilled' && kg.value) ? kg.value : {decisions:[]};
+  const map = new Map();
+  (leader.decisions||[]).forEach(d=>{
+    map.set(d.date + '|' + d.stock, {date:d.date, stock:d.stock, leader:d.verdict||'', kong:'', summary:d.summary||''});
+  });
+  (kong.decisions||[]).forEach(d=>{
+    const k = d.date + '|' + d.stock;
+    const e = map.get(k) || {date:d.date, stock:d.stock, leader:d.leader_verdict||'', kong:'', summary:''};
+    e.kong = d.verdict || '';
+    if (!e.leader && d.leader_verdict) e.leader = d.leader_verdict;
+    if (!e.summary) e.summary = d.summary || '';
+    map.set(k, e);
+  });
+  const rows = [...map.values()].sort((a,b)=> b.date.localeCompare(a.date)).slice(0, 8);
+
+  // 통계 타일
+  let agree=0, clash=0, solo=0;
+  rows.forEach(r=>{
+    if (known(r.leader) && known(r.kong)) { (r.leader===r.kong) ? agree++ : clash++; }
+    else if (known(r.leader) || known(r.kong)) solo++;
+  });
+  const upd = [leader.updated, kong.updated].filter(Boolean).sort().slice(-1)[0] || '-';
+  $('#duelStats').innerHTML =
+    '<div class="stat"><div class="k">최근 안건</div><div class="v">' + rows.length + '<small> 건</small></div></div>' +
+    '<div class="stat"><div class="k">의견 일치</div><div class="v" style="color:var(--g)">' + agree + '<small> 건</small></div></div>' +
+    '<div class="stat"><div class="k">의견 엇갈림 → 보수 채택</div><div class="v" style="color:var(--r)">' + clash + '<small> 건</small></div></div>' +
+    '<div class="stat"><div class="k">단독 의견</div><div class="v">' + solo + '<small> 건</small></div></div>' +
+    '<div class="stat"><div class="k">보드 갱신</div><div class="v" style="font-size:.86rem;line-height:2">' + esc(upd) + '</div></div>';
+
+  // 대조 행
+  if (!rows.length) {
+    $('#duelRows').innerHTML = '<div class="loadmsg">아직 결재·책략 데이터가 없습니다. 데스크 실행 후 이곳에 팀장×공명 의견이 취합됩니다.</div>';
+    return;
+  }
+  $('#duelRows').innerHTML = rows.map(r=>{
+    const isClash = known(r.leader) && known(r.kong) && r.leader !== r.kong;
+    const adopted = conservative(r.leader, r.kong);
+    const sum = (r.summary||'').replace(/\*\*/g,'').slice(0, 110);
+    return '<div class="drow' + (isClash ? ' conflict':'') + '">' +
+      '<span class="date">' + esc(r.date) + '</span>' +
+      '<span class="stock">' + esc(r.stock) + '</span>' +
+      '<span class="vs">' + badge(r.leader,'팀장') +
+        '<span class="swords">' + (isClash ? '⚔' : '·') + '</span>' +
+        badge(r.kong,'공명') +
+        (adopted ? '<span><span class="who">채택(보수)</span><span class="adopt">' + adopted + '</span></span>' : '') +
+      '</span>' +
+      (sum ? '<span class="dsum">' + esc(sum) + '…</span>' : '') +
+    '</div>';
+  }).join('');
+}).catch(()=>{
+  $('#duelRows').innerHTML = '<div class="loadmsg">결재 데이터를 불러오지 못했습니다. 결재 보드 / 공명 책략 페이지에서 직접 확인해 주세요.</div>';
+});
+</script>
+</body>
+</html>
