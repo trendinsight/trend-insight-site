@@ -23,7 +23,7 @@
   .zone{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;color:#0b0d10}
   .bars{margin-top:12px}
   .bar{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:12px}
-  .bar .lbl{width:88px;color:var(--sub);flex:none}
+  .bar .lbl{width:104px;color:var(--sub);flex:none}
   .bar .track{flex:1;height:8px;background:#0c0e12;border-radius:6px;overflow:hidden}
   .bar .fill{height:100%;border-radius:6px}
   .bar .val{width:34px;text-align:right;color:var(--txt)}
@@ -42,26 +42,34 @@
 <body>
 <header>
   <h1>🌡️ 군중심리 온도계</h1>
-  <div class="sub">가격이 아니라 <b>군중의 행동 흔적</b>(빚·돈·말·관심·공매도)으로 심리 과열/공포를 잰다.
-  극단(85↑ 광기 / 15↓ 투매)에서만 역발상 신호 — 중간 구간에서 군중은 대체로 옳다.</div>
+  <div class="sub">주가가 아니라 <b>사람들이 남긴 흔적</b>(빚·돈·말·검색·공매도)으로 <b>지금 다들 얼마나 몰려 있는지</b>를 0~100 점수로 잰다.
+  점수가 높으면 사람이 몰린 것, 낮으면 다들 떠난 것이다. <b>85점 위(너무 뜨거움)와 15점 아래(너무 차가움)에서만 신호로 쓰고</b>,
+  그 사이(보통)에서는 다수가 대체로 맞으니 심리로 판단을 바꾸지 않는다.</div>
   <div class="ctrl">기준일 <select id="datesel"></select></div>
 </header>
 <div class="wrap">
   <div class="row" id="market"></div>
   <div class="stocks">
-    <h2 style="font-size:15px;margin:22px 0 6px">글로벌 자산 심리 <span style="color:var(--sub);font-weight:400;font-size:12px">다우 · 나스닥 · 금 · 암호화폐 · WTI · 미국채3년 · 한국국채3년</span></h2>
+    <h2 style="font-size:15px;margin:22px 0 6px">해외 자산 — 사람들이 몰린 정도 <span style="color:var(--sub);font-weight:400;font-size:12px">다우 · 나스닥 · 금 · 암호화폐 · WTI · 미국채3년 · 한국국채3년</span></h2>
     <div class="row" id="global"></div>
   </div>
   <div class="stocks">
-    <h2 style="font-size:15px;margin:18px 0 2px">종목 심리 + 공매도 스퀴즈</h2>
+    <h2 style="font-size:15px;margin:18px 0 2px">내 종목 — 사람들이 몰린 정도 + 공매도 상태</h2>
     <div id="stocks"></div>
   </div>
   <div class="doc" id="doc"></div>
 </div>
 <script>
+const LBL={'레버리지 수위':'빚 규모','레버리지 모멘텀':'빚 늘어나는 속도','개인 매수 강도':'개인이 사는 힘',
+ '거래 열기':'거래 활발함','검색 관심도':'검색 관심','종토방 버즈':'게시판 수다','개인 쏠림':'개인 몰림',
+ '포지션 쏠림':'큰손 베팅 몰림','변동성 안도감':'시장 안심도','공포·탐욕':'공포/탐욕','펀딩비 쏠림':'선물 롱 몰림'};
+const MEAN={dow:'미국 대표 대기업 주식이 오른다는 쪽에 몰린 정도',nasdaq:'미국 기술주가 오른다는 쪽에 몰린 정도',
+ gold:'금값이 오른다는 쪽에 몰린 정도',crypto:'비트코인이 오른다는 쪽에 몰린 정도',wti:'기름값이 오른다는 쪽에 몰린 정도',
+ ust3y:'미국 국채값이 오른다(=미국 금리가 내린다)는 쪽에 몰린 정도',
+ ktb3y:'한국 국채값이 오른다(=한국 금리가 내린다)는 쪽에 몰린 정도'};
 const ZC={FRENZY:'var(--frenzy)',HOT:'var(--hot)',NEUTRAL:'var(--neutral)',COLD:'var(--cold)',CAPITULATION:'var(--cap)'};
-const ZK={FRENZY:'광기',HOT:'과열',NEUTRAL:'중립',COLD:'냉각',CAPITULATION:'공포·투매'};
-const SQK={SQUEEZE_WATCH:['숏스퀴즈 경계','var(--frenzy)'],HEAVY_SHORT:['숏 과밀','var(--hot)'],LIGHT_SHORT:['숏 경미','var(--cold)']};
+const ZK={FRENZY:'너무 뜨거움',HOT:'뜨거움',NEUTRAL:'보통',COLD:'차가움',CAPITULATION:'너무 차가움'};
+const SQK={SQUEEZE_WATCH:['공매도 되사기 주의','var(--frenzy)'],HEAVY_SHORT:['공매도 많음','var(--hot)'],LIGHT_SHORT:['공매도 적음','var(--cold)']};
 let DATA=null;
 
 function gauge(t){ // 반원 게이지 SVG
@@ -85,7 +93,7 @@ function renderMarket(date){
     const col=ZC[rec.zone]||ZC.NEUTRAL;
     let bars='';
     for(const[k,v]of Object.entries(rec.components||{})){
-      bars+=`<div class="bar"><span class="lbl">${k}</span><span class="track"><span class="fill" style="width:${v}%;background:${barColor(v)}"></span></span><span class="val">${Math.round(v)}</span></div>`;
+      bars+=`<div class="bar"><span class="lbl">${LBL[k]||k}</span><span class="track"><span class="fill" style="width:${v}%;background:${barColor(v)}"></span></span><span class="val">${Math.round(v)}</span></div>`;
     }
     const flags=(rec.flags||[]).map(f=>`⚠ ${f}`).join('<br>');
     host.innerHTML+=`<div class="card"><h2>${rec.name||key.toUpperCase()}</h2>
@@ -108,7 +116,7 @@ function renderGlobal(date){
     const col=ZC[rec.zone]||ZC.NEUTRAL;
     let bars='';
     for(const[k,v]of Object.entries(rec.components||{})){
-      bars+=`<div class="bar"><span class="lbl">${k}</span><span class="track"><span class="fill" style="width:${v}%;background:${barColor(v)}"></span></span><span class="val">${Math.round(v)}</span></div>`;
+      bars+=`<div class="bar"><span class="lbl">${LBL[k]||k}</span><span class="track"><span class="fill" style="width:${v}%;background:${barColor(v)}"></span></span><span class="val">${Math.round(v)}</span></div>`;
     }
     const cx=rec.context||{};
     const lines=['cot','volume','vol_idx','trends','fng','funding','indi'].filter(k=>cx[k]).map(k=>`· ${cx[k]}`).join('<br>');
@@ -116,7 +124,7 @@ function renderGlobal(date){
       <div class="meta">기준일 ${rec.date}${cx.last!=null?` · 최근 ${(+cx.last).toLocaleString()}`:''}</div>
       <div class="gauge">${gauge(rec.temp)}<div class="temp"><b style="color:${col}">${rec.temp}</b>
       <span class="zone" style="background:${col}">${ZK[rec.zone]||rec.zone}</span></div></div>
-      <div class="sub" style="font-size:11.5px;margin-top:6px">↑ 높을수록 ${rec.meaning||'강세 쏠림'}</div>
+      <div class="sub" style="font-size:11.5px;margin-top:6px">점수가 높을수록 → ${MEAN[key]||rec.meaning||'오른다는 쪽에 몰린 정도'}</div>
       <div class="bars">${bars}</div>
       ${lines?`<div class="sub" style="font-size:11px;margin-top:8px;line-height:1.6">${lines}</div>`:''}</div>`;
   }
@@ -148,11 +156,24 @@ function rebuildDates(){
   return dates[0];
 }
 document.getElementById('doc').innerHTML=
- `<b>읽는 법</b> — 온도는 심리 과열도(0~100)다. 시장은 5지표(레버리지 수위·모멘텀·개인 매수강도·거래 열기·검색 관심도),
-  종목은 4지표(거래 열기·개인 쏠림·종토방 버즈·검색 관심도), <b>글로벌 자산</b>은 4지표(CFTC 투기 순포지션 3년 백분위·거래 열기·변동성 안도감·검색 관심도,
-  크립토는 공포탐욕·펀딩비 추가) 백분위 평균. 글로벌 온도는 <b>해당 자산 롱(강세) 쏠림</b>을 뜻하며 국채 온도가 높으면 금리 하락 베팅에 몰려 있다는 뜻이다.
-  포지션 지표는 주간(화요일 기준·금요일 공표)이라 며칠 시차가 있다. 공매도는 온도와 별개 블록 —
-  '숏 과밀' 상태에서 개미·버즈가 몰리면 <b>숏스퀴즈 경계</b>(역발상 상방 요인). 심리는 단독 매매 신호가 아니라 가격 온도계와 교차해 읽는다.`;
+ `<b>읽는 법 — 점수의 뜻</b><br>
+  모든 점수는 <b>0~100점</b>이고, 값 자체가 아니라 <b>지난 1년(큰손 베팅은 3년) 중 어디쯤인지</b>를 나타낸다.
+  100에 가까우면 1년 중 가장 몰린 상태, 0에 가까우면 1년 중 가장 비어 있는 상태다. 온도는 이 점수들의 평균이다.<br><br>
+  <b>용어 풀이</b><br>
+  · <b>빚 규모</b> — 사람들이 빚내서 산 돈(신용융자)이 예탁금 대비 얼마나 쌓였나<br>
+  · <b>빚 늘어나는 속도</b> — 그 빚이 최근 한 달 새 늘고 있나 줄고 있나 (낮으면 빚을 갚는 중)<br>
+  · <b>개인이 사는 힘 / 개인 몰림</b> — 개인 투자자가 최근 얼마나 순매수했나<br>
+  · <b>거래 활발함</b> — 거래량이 평소보다 많은가 적은가<br>
+  · <b>게시판 수다</b> — 종목토론방 글이 평소보다 얼마나 늘었나 (좋은 말·나쁜 말 구분 없음)<br>
+  · <b>검색 관심</b> — 구글에서 얼마나 많이 검색되나<br>
+  · <b>큰손 베팅 몰림</b> — 해외 선물시장에서 전문 투자자금이 사자 쪽에 얼마나 몰렸나 (주 1회 집계라 며칠 늦다)<br>
+  · <b>시장 안심도</b> — 불안지수(VIX 등)를 뒤집은 값. 높으면 마음 놓은 상태, 낮으면 불안해하는 중<br>
+  · <b>공포/탐욕</b> — 코인 시장 심리 지수. 0은 공포, 100은 탐욕<br>
+  · <b>선물 롱 몰림</b> — 코인 선물에서 오른다에 건 쪽이 무는 수수료. 마이너스면 내린다에 건 쪽이 더 많다는 뜻<br>
+  · <b>공매도 되사기 주의</b> — 빌려서 판 물량(공매도)이 많이 쌓였는데 개인·관심까지 몰린 상태.
+    주가가 오르면 빌린 쪽이 급히 되사면서 더 오를 수 있다<br><br>
+  <b>주의</b> — 국채 카드는 점수가 높을수록 "금리가 내린다"에 건 사람이 많다는 뜻이다.
+  이 점수는 참고용이며 이것만 보고 사고팔지 않는다. 가격이 비싼지 싼지는 <a href="gauge.html">시장 온도계</a>와 함께 봐야 한다.`;
 fetch('./data/crowd-gauge.json?cb='+Date.now()).then(r=>r.json()).then(d=>{
   DATA=d; const last=rebuildDates(); renderMarket(last); renderGlobal(last); renderStocks(last);
 }).catch(e=>{document.getElementById('market').innerHTML='<div class="sub">데이터를 불러오지 못했습니다.</div>';});
