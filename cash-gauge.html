@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>예수금 온도계 — Trend Insight</title>
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--line:#252a34;--txt:#e6e9ef;--sub:#9aa4b2;
+        --atk:#12b886;--act:#3e8ef7;--neu:#7c8598;--warn:#f5a524;--def:#e5484d;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+  header{padding:22px 18px 8px;max-width:1040px;margin:0 auto}
+  h1{font-size:21px;margin:0 0 4px}
+  .sub{color:var(--sub);font-size:13px;line-height:1.5}
+  .wrap{max-width:1040px;margin:0 auto;padding:12px 18px 60px}
+  .row{display:flex;gap:14px;flex-wrap:wrap}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;flex:1;min-width:300px}
+  .card h2{font-size:15px;margin:0 0 2px}
+  .meta{color:var(--sub);font-size:12px;margin-bottom:10px}
+  .gauge{position:relative;width:240px;height:132px;margin:6px auto 2px}
+  .temp{position:absolute;bottom:0;left:0;right:0;text-align:center}
+  .temp b{font-size:34px}
+  .temp .band{font-size:12px;color:var(--sub);display:block;margin-top:2px}
+  .zone{display:inline-block;padding:3px 12px;border-radius:999px;font-size:12px;font-weight:700;color:#0b0d10;margin-top:4px}
+  .bars{margin-top:14px}
+  .bar{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12px}
+  .bar .lbl{width:150px;color:var(--sub);flex:none}
+  .bar .track{flex:1;height:8px;background:#0c0e12;border-radius:6px;overflow:hidden}
+  .bar .fill{height:100%;border-radius:6px}
+  .bar .val{width:36px;text-align:right;color:var(--txt)}
+  .flags{margin-top:10px;font-size:12px;color:var(--warn);line-height:1.6}
+  .ctrl{margin:6px 0 2px;font-size:13px;color:var(--sub)}
+  select{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px}
+  .trend{margin-top:8px}
+  .doc{margin-top:26px;color:var(--sub);font-size:12px;line-height:1.7;border-top:1px solid var(--line);padding-top:14px}
+  a{color:var(--act)}
+</style>
+</head>
+<body>
+<header>
+  <h1>💰 예수금 온도계</h1>
+  <div class="sub">시장(가격 과열)·거시(환경 우호도)·군중심리(심리 과열) 세 온도계를 <b>가중 결합(50:30:20)</b>해
+  지금 계좌에서 <b>예수금(현금)을 몇 % 들고 있을지</b> 권고한다. 시장이 좋을수록 예수금↓, 리스크가 커질수록 예수금↑ (밴드 10~80%).</div>
+  <div class="ctrl">기준일 <select id="datesel"></select></div>
+</header>
+<div class="wrap">
+  <div class="row">
+    <div class="card" id="main"></div>
+    <div class="card" id="inputs"></div>
+  </div>
+  <div class="card trend" id="trendcard" style="margin-top:14px">
+    <h2>권장 예수금 추이</h2>
+    <div class="meta">일별 권장 예수금 %(밴드 음영). 리스크가 커질수록 선이 올라간다.</div>
+    <div id="trend"></div>
+  </div>
+  <div class="doc" id="doc"></div>
+</div>
+<script>
+const SC={'공격':'var(--atk)','적극':'var(--act)','중립':'var(--neu)','경계':'var(--warn)','방어':'var(--def)'};
+const RISK_LBL={market:'시장 리스크 (가중 50%)',macro:'거시 리스크 (가중 30%)',crowd:'심리 리스크 (가중 20%)'};
+const TEMP_LBL={market:'시장온도',macro:'거시온도',crowd:'심리온도'};
+let DATA=null;
+
+function gauge(v,col){
+  const r=100, cx=120, cy=120;
+  const a=Math.PI*(1-v/100);
+  const x=cx+r*Math.cos(a), y=cy-r*Math.sin(a);
+  return `<svg width="240" height="132" viewBox="0 0 240 132">
+    <path d="M20 120 A100 100 0 0 1 220 120" fill="none" stroke="#0c0e12" stroke-width="15" stroke-linecap="round"/>
+    <path d="M20 120 A100 100 0 0 1 220 120" fill="none" stroke="${col}" stroke-width="15" stroke-linecap="round"
+      stroke-dasharray="${Math.PI*100}" stroke-dashoffset="${Math.PI*100*(1-v/100)}"/>
+    <circle cx="${x}" cy="${y}" r="7" fill="${col}"/>
+    <text x="20" y="131" fill="#5b6470" font-size="10">0%</text>
+    <text x="206" y="131" fill="#5b6470" font-size="10">100%</text></svg>`;
+}
+function riskColor(v){return v>=75?'var(--def)':v>=60?'var(--warn)':v>=45?'var(--neu)':v>=25?'var(--act)':'var(--atk)';}
+
+function render(date){
+  const hist=DATA.history||[];
+  const rec=hist.find(r=>r.date===date)||hist[hist.length-1];
+  if(!rec)return;
+  const col=SC[rec.stance]||'var(--neu)';
+  document.getElementById('main').innerHTML=
+    `<h2>권장 예수금 비율</h2>
+     <div class="meta">기준일 ${rec.date} · 종합 리스크 R ${rec.risk}</div>
+     <div class="gauge">${gauge(rec.cash_pct,col)}
+       <div class="temp"><b style="color:${col}">${rec.cash_pct}%</b>
+       <span class="band">허용 밴드 ${rec.band[0]}~${rec.band[1]}%</span>
+       <span class="zone" style="background:${col}">${rec.stance}</span></div></div>
+     ${(rec.flags&&rec.flags.length)?`<div class="flags">${rec.flags.map(f=>'⚠ '+f).join('<br>')}</div>`:''}`;
+  let bars='';
+  for(const k of ['market','macro','crowd']){
+    const inp=(rec.inputs||{})[k]||{};
+    const rv=inp.risk??0;
+    bars+=`<div class="bar"><span class="lbl">${RISK_LBL[k]}</span>
+      <span class="track"><span class="fill" style="width:${rv}%;background:${riskColor(rv)}"></span></span>
+      <span class="val">${Math.round(rv)}</span></div>
+      <div class="meta" style="margin:-2px 0 6px 0">${TEMP_LBL[k]} ${inp.temp??'-'} (코스피 ${inp.kospi??'-'} · 코스닥 ${inp.kosdaq??'-'} · 기준일 ${inp.date??'-'})</div>`;
+  }
+  document.getElementById('inputs').innerHTML=`<h2>리스크 분해</h2>
+    <div class="meta">리스크 = 시장온도 그대로 · (100−거시온도) · 심리온도 그대로</div><div class="bars">${bars}</div>`;
+}
+
+function renderTrend(){
+  const hist=DATA.history||[];
+  if(hist.length<2){document.getElementById('trend').innerHTML='<div class="sub">이력이 2일 이상 쌓이면 추이가 표시됩니다.</div>';return;}
+  const W=980,H=180,P=28;
+  const xs=i=>P+(W-2*P)*i/(hist.length-1);
+  const ys=v=>H-P-(H-2*P)*(v-0)/100;
+  let line='',lo='',hi='';
+  hist.forEach((r,i)=>{line+=`${i?'L':'M'}${xs(i).toFixed(1)} ${ys(r.cash_pct).toFixed(1)} `;});
+  hist.forEach((r,i)=>{hi+=`${i?'L':'M'}${xs(i).toFixed(1)} ${ys(r.band[1]).toFixed(1)} `;});
+  for(let i=hist.length-1;i>=0;i--){lo+=`L${xs(i).toFixed(1)} ${ys(hist[i].band[0]).toFixed(1)} `;}
+  const last=hist[hist.length-1];
+  const labels=[0,Math.floor((hist.length-1)/2),hist.length-1].map(i=>
+    `<text x="${xs(i)}" y="${H-6}" fill="#5b6470" font-size="10" text-anchor="middle">${hist[i].date}</text>`).join('');
+  document.getElementById('trend').innerHTML=
+    `<svg width="100%" viewBox="0 0 ${W} ${H}">
+      ${[10,40,80].map(v=>`<line x1="${P}" x2="${W-P}" y1="${ys(v)}" y2="${ys(v)}" stroke="#1c2028"/><text x="4" y="${ys(v)+3}" fill="#5b6470" font-size="10">${v}%</text>`).join('')}
+      <path d="${hi}${lo}Z" fill="rgba(245,165,36,.12)"/>
+      <path d="${line}" fill="none" stroke="var(--warn)" stroke-width="2.5"/>
+      <circle cx="${xs(hist.length-1)}" cy="${ys(last.cash_pct)}" r="4" fill="var(--warn)"/>
+      ${labels}</svg>`;
+}
+
+function rebuildDates(){
+  const dates=(DATA.history||[]).map(r=>r.date).sort().reverse();
+  const sel=document.getElementById('datesel'); sel.innerHTML='';
+  dates.forEach(d=>{const o=document.createElement('option');o.value=d;o.textContent=d;sel.appendChild(o);});
+  sel.onchange=()=>render(sel.value);
+  return dates[0];
+}
+document.getElementById('doc').innerHTML=
+ `<b>읽는 법</b> — 종합 리스크 R = 0.5×시장온도 + 0.3×(100−거시온도) + 0.2×심리온도.
+  권장 예수금 = 10% + 0.7×R (10~80% 밴드, ±5%p 허용). 스탠스: R 25↓ <b style="color:var(--atk)">공격</b> /
+  25~45 <b style="color:var(--act)">적극</b> / 45~60 <b style="color:var(--neu)">중립</b> /
+  60~75 <b style="color:var(--warn)">경계</b> / 75↑ <b style="color:var(--def)">방어</b>.
+  단, 시장온도 과매도(25↓)는 하락추세의 결과일 수 있고, 군중심리는 극단(85↑/15↓)에서 역발상 신호이므로
+  ⚠ 플래그가 있으면 기계적으로 따르지 말 것. 권고는 참고치이며 단독 매매 신호가 아니다.
+  원천: <a href="gauge.html">시장 온도계</a> · <a href="macro-gauge.html">거시 온도계</a> · <a href="crowd-gauge.html">군중심리 온도계</a>`;
+fetch('./data/cash-gauge.json?cb='+Date.now()).then(r=>r.json()).then(d=>{
+  DATA=d; const last=rebuildDates(); render(last); renderTrend();
+}).catch(e=>{document.getElementById('main').innerHTML='<div class="sub">데이터를 불러오지 못했습니다.</div>';});
+</script>
+</body>
+</html>
