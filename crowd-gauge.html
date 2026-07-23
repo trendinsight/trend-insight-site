@@ -49,6 +49,10 @@
 <div class="wrap">
   <div class="row" id="market"></div>
   <div class="stocks">
+    <h2 style="font-size:15px;margin:22px 0 6px">글로벌 자산 심리 <span style="color:var(--sub);font-weight:400;font-size:12px">다우 · 나스닥 · 금 · 암호화폐 · WTI · 미국채3년 · 한국국채3년</span></h2>
+    <div class="row" id="global"></div>
+  </div>
+  <div class="stocks">
     <h2 style="font-size:15px;margin:18px 0 2px">종목 심리 + 공매도 스퀴즈</h2>
     <div id="stocks"></div>
   </div>
@@ -91,6 +95,32 @@ function renderMarket(date){
       <div class="bars">${bars}</div>${flags?`<div class="flags">${flags}</div>`:''}</div>`;
   }
 }
+const GORDER=['dow','nasdaq','gold','crypto','wti','ust3y','ktb3y'];
+function renderGlobal(date){
+  const host=document.getElementById('global'); host.innerHTML='';
+  const g=DATA.global||{};
+  const keys=GORDER.filter(k=>g[k]).concat(Object.keys(g).filter(k=>!GORDER.includes(k)));
+  if(!keys.length){host.innerHTML='<div class="sub">글로벌 자산 데이터 없음 — crowd_global.py 실행 시 누적됩니다.</div>';return;}
+  for(const key of keys){
+    const hist=g[key]||[];
+    const rec=hist.find(r=>r.date===date)||hist[hist.length-1];
+    if(!rec)continue;
+    const col=ZC[rec.zone]||ZC.NEUTRAL;
+    let bars='';
+    for(const[k,v]of Object.entries(rec.components||{})){
+      bars+=`<div class="bar"><span class="lbl">${k}</span><span class="track"><span class="fill" style="width:${v}%;background:${barColor(v)}"></span></span><span class="val">${Math.round(v)}</span></div>`;
+    }
+    const cx=rec.context||{};
+    const lines=['cot','volume','vol_idx','trends','fng','funding','indi'].filter(k=>cx[k]).map(k=>`· ${cx[k]}`).join('<br>');
+    host.innerHTML+=`<div class="card"><h2>${rec.name||key}</h2>
+      <div class="meta">기준일 ${rec.date}${cx.last!=null?` · 최근 ${(+cx.last).toLocaleString()}`:''}</div>
+      <div class="gauge">${gauge(rec.temp)}<div class="temp"><b style="color:${col}">${rec.temp}</b>
+      <span class="zone" style="background:${col}">${ZK[rec.zone]||rec.zone}</span></div></div>
+      <div class="sub" style="font-size:11.5px;margin-top:6px">↑ 높을수록 ${rec.meaning||'강세 쏠림'}</div>
+      <div class="bars">${bars}</div>
+      ${lines?`<div class="sub" style="font-size:11px;margin-top:8px;line-height:1.6">${lines}</div>`:''}</div>`;
+  }
+}
 function renderStocks(date){
   const host=document.getElementById('stocks'); host.innerHTML='';
   const st=DATA.stocks||{};
@@ -109,19 +139,22 @@ function renderStocks(date){
 function rebuildDates(){
   const set=new Set();
   for(const k of ['kospi','kosdaq'])((DATA.market&&DATA.market[k])||[]).forEach(r=>set.add(r.date));
+  Object.values(DATA.global||{}).forEach(h=>(h||[]).forEach(r=>set.add(r.date)));
   Object.values(DATA.stocks||{}).forEach(o=>(o.history||[]).forEach(r=>set.add(r.date)));
   const dates=[...set].sort().reverse();
   const sel=document.getElementById('datesel'); sel.innerHTML='';
   dates.forEach(d=>{const o=document.createElement('option');o.value=d;o.textContent=d;sel.appendChild(o);});
-  sel.onchange=()=>{renderMarket(sel.value);renderStocks(sel.value);};
+  sel.onchange=()=>{renderMarket(sel.value);renderGlobal(sel.value);renderStocks(sel.value);};
   return dates[0];
 }
 document.getElementById('doc').innerHTML=
  `<b>읽는 법</b> — 온도는 심리 과열도(0~100)다. 시장은 5지표(레버리지 수위·모멘텀·개인 매수강도·거래 열기·검색 관심도),
-  종목은 4지표(거래 열기·개인 쏠림·종토방 버즈·검색 관심도) 백분위 평균. 공매도는 온도와 별개 블록 —
+  종목은 4지표(거래 열기·개인 쏠림·종토방 버즈·검색 관심도), <b>글로벌 자산</b>은 4지표(CFTC 투기 순포지션 3년 백분위·거래 열기·변동성 안도감·검색 관심도,
+  크립토는 공포탐욕·펀딩비 추가) 백분위 평균. 글로벌 온도는 <b>해당 자산 롱(강세) 쏠림</b>을 뜻하며 국채 온도가 높으면 금리 하락 베팅에 몰려 있다는 뜻이다.
+  포지션 지표는 주간(화요일 기준·금요일 공표)이라 며칠 시차가 있다. 공매도는 온도와 별개 블록 —
   '숏 과밀' 상태에서 개미·버즈가 몰리면 <b>숏스퀴즈 경계</b>(역발상 상방 요인). 심리는 단독 매매 신호가 아니라 가격 온도계와 교차해 읽는다.`;
 fetch('./data/crowd-gauge.json?cb='+Date.now()).then(r=>r.json()).then(d=>{
-  DATA=d; const last=rebuildDates(); renderMarket(last); renderStocks(last);
+  DATA=d; const last=rebuildDates(); renderMarket(last); renderGlobal(last); renderStocks(last);
 }).catch(e=>{document.getElementById('market').innerHTML='<div class="sub">데이터를 불러오지 못했습니다.</div>';});
 </script>
 </body>
