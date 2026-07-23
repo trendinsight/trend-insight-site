@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>군중심리 온도계 — Trend Insight</title>
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--line:#252a34;--txt:#e6e9ef;--sub:#9aa4b2;
+        --frenzy:#e5484d;--hot:#f5a524;--neutral:#3e8ef7;--cold:#7c8598;--cap:#12b886;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+  header{padding:22px 18px 8px;max-width:1040px;margin:0 auto}
+  h1{font-size:21px;margin:0 0 4px}
+  .sub{color:var(--sub);font-size:13px;line-height:1.5}
+  .wrap{max-width:1040px;margin:0 auto;padding:12px 18px 60px}
+  .row{display:flex;gap:14px;flex-wrap:wrap}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;flex:1;min-width:280px}
+  .card h2{font-size:15px;margin:0 0 2px}
+  .meta{color:var(--sub);font-size:12px;margin-bottom:10px}
+  .gauge{position:relative;width:220px;height:120px;margin:6px auto 2px}
+  .temp{position:absolute;bottom:2px;left:0;right:0;text-align:center}
+  .temp b{font-size:30px}.temp span{font-size:12px;color:var(--sub);display:block}
+  .zone{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;color:#0b0d10}
+  .bars{margin-top:12px}
+  .bar{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:12px}
+  .bar .lbl{width:88px;color:var(--sub);flex:none}
+  .bar .track{flex:1;height:8px;background:#0c0e12;border-radius:6px;overflow:hidden}
+  .bar .fill{height:100%;border-radius:6px}
+  .bar .val{width:34px;text-align:right;color:var(--txt)}
+  .flags{margin-top:10px;font-size:12px;color:var(--hot);line-height:1.5}
+  .stocks{margin-top:20px}
+  .schip{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);
+          border-radius:10px;padding:10px 12px;margin:6px 8px 0 0;font-size:13px}
+  .dot{width:10px;height:10px;border-radius:50%}
+  .sq{font-size:11px;padding:2px 6px;border-radius:6px;font-weight:700}
+  .ctrl{margin:6px 0 2px;font-size:13px;color:var(--sub)}
+  select{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px}
+  .doc{margin-top:26px;color:var(--sub);font-size:12px;line-height:1.7;border-top:1px solid var(--line);padding-top:14px}
+  a{color:var(--neutral)}
+</style>
+</head>
+<body>
+<header>
+  <h1>🌡️ 군중심리 온도계</h1>
+  <div class="sub">가격이 아니라 <b>군중의 행동 흔적</b>(빚·돈·말·관심·공매도)으로 심리 과열/공포를 잰다.
+  극단(85↑ 광기 / 15↓ 투매)에서만 역발상 신호 — 중간 구간에서 군중은 대체로 옳다.</div>
+  <div class="ctrl">기준일 <select id="datesel"></select></div>
+</header>
+<div class="wrap">
+  <div class="row" id="market"></div>
+  <div class="stocks">
+    <h2 style="font-size:15px;margin:18px 0 2px">종목 심리 + 공매도 스퀴즈</h2>
+    <div id="stocks"></div>
+  </div>
+  <div class="doc" id="doc"></div>
+</div>
+<script>
+const ZC={FRENZY:'var(--frenzy)',HOT:'var(--hot)',NEUTRAL:'var(--neutral)',COLD:'var(--cold)',CAPITULATION:'var(--cap)'};
+const ZK={FRENZY:'광기',HOT:'과열',NEUTRAL:'중립',COLD:'냉각',CAPITULATION:'공포·투매'};
+const SQK={SQUEEZE_WATCH:['숏스퀴즈 경계','var(--frenzy)'],HEAVY_SHORT:['숏 과밀','var(--hot)'],LIGHT_SHORT:['숏 경미','var(--cold)']};
+let DATA=null;
+
+function gauge(t){ // 반원 게이지 SVG
+  const a=Math.PI*(1-t/100), cx=110,cy=110,r=92;
+  const x=cx+r*Math.cos(a), y=cy-r*Math.sin(a);
+  const col=t>=85?ZC.FRENZY:t>=70?ZC.HOT:t>30?ZC.NEUTRAL:t>15?ZC.COLD:ZC.CAPITULATION;
+  return `<svg width="220" height="120" viewBox="0 0 220 120">
+    <path d="M18 110 A92 92 0 0 1 202 110" fill="none" stroke="#0c0e12" stroke-width="14" stroke-linecap="round"/>
+    <path d="M18 110 A92 92 0 0 1 202 110" fill="none" stroke="${col}" stroke-width="14" stroke-linecap="round"
+      stroke-dasharray="${Math.PI*92}" stroke-dashoffset="${Math.PI*92*(1-t/100)}"/>
+    <circle cx="${x}" cy="${y}" r="7" fill="${col}"/></svg>`;
+}
+function barColor(v){return v>=85?ZC.FRENZY:v>=70?ZC.HOT:v>30?ZC.NEUTRAL:v>15?ZC.COLD:ZC.CAPITULATION;}
+
+function renderMarket(date){
+  const host=document.getElementById('market'); host.innerHTML='';
+  for(const key of ['kospi','kosdaq']){
+    const hist=(DATA.market&&DATA.market[key])||[];
+    const rec=hist.find(r=>r.date===date)||hist[hist.length-1];
+    if(!rec){continue;}
+    const col=ZC[rec.zone]||ZC.NEUTRAL;
+    let bars='';
+    for(const[k,v]of Object.entries(rec.components||{})){
+      bars+=`<div class="bar"><span class="lbl">${k}</span><span class="track"><span class="fill" style="width:${v}%;background:${barColor(v)}"></span></span><span class="val">${Math.round(v)}</span></div>`;
+    }
+    const flags=(rec.flags||[]).map(f=>`⚠ ${f}`).join('<br>');
+    host.innerHTML+=`<div class="card"><h2>${rec.name||key.toUpperCase()}</h2>
+      <div class="meta">기준일 ${rec.date} · 신용융자 ${rec.loan??'-'}조 · 예탁금 ${rec.deposit??'-'}조</div>
+      <div class="gauge">${gauge(rec.temp)}<div class="temp"><b style="color:${col}">${rec.temp}</b>
+      <span class="zone" style="background:${col}">${ZK[rec.zone]||rec.zone}</span></div></div>
+      <div class="bars">${bars}</div>${flags?`<div class="flags">${flags}</div>`:''}</div>`;
+  }
+}
+function renderStocks(date){
+  const host=document.getElementById('stocks'); host.innerHTML='';
+  const st=DATA.stocks||{};
+  const keys=Object.keys(st);
+  if(!keys.length){host.innerHTML='<div class="sub" style="margin-top:8px">등록된 종목 없음 — 스킬 실행 시 누적됩니다.</div>';return;}
+  for(const code of keys){
+    const o=st[code], rec=(o.history||[]).find(r=>r.date===date)||o.history[o.history.length-1];
+    if(!rec)continue;
+    const col=ZC[rec.zone]||ZC.NEUTRAL;
+    let sq='';
+    if(rec.squeeze&&SQK[rec.squeeze]){sq=`<span class="sq" style="background:${SQK[rec.squeeze][1]};color:#0b0d10">${SQK[rec.squeeze][0]}</span>`;}
+    host.innerHTML+=`<span class="schip"><span class="dot" style="background:${col}"></span>
+      <b>${o.name||code}</b> ${rec.temp} <span style="color:var(--sub)">${ZK[rec.zone]||rec.zone}</span> ${sq}</span>`;
+  }
+}
+function rebuildDates(){
+  const set=new Set();
+  for(const k of ['kospi','kosdaq'])((DATA.market&&DATA.market[k])||[]).forEach(r=>set.add(r.date));
+  Object.values(DATA.stocks||{}).forEach(o=>(o.history||[]).forEach(r=>set.add(r.date)));
+  const dates=[...set].sort().reverse();
+  const sel=document.getElementById('datesel'); sel.innerHTML='';
+  dates.forEach(d=>{const o=document.createElement('option');o.value=d;o.textContent=d;sel.appendChild(o);});
+  sel.onchange=()=>{renderMarket(sel.value);renderStocks(sel.value);};
+  return dates[0];
+}
+document.getElementById('doc').innerHTML=
+ `<b>읽는 법</b> — 온도는 심리 과열도(0~100)다. 시장은 5지표(레버리지 수위·모멘텀·개인 매수강도·거래 열기·검색 관심도),
+  종목은 4지표(거래 열기·개인 쏠림·종토방 버즈·검색 관심도) 백분위 평균. 공매도는 온도와 별개 블록 —
+  '숏 과밀' 상태에서 개미·버즈가 몰리면 <b>숏스퀴즈 경계</b>(역발상 상방 요인). 심리는 단독 매매 신호가 아니라 가격 온도계와 교차해 읽는다.`;
+fetch('./data/crowd-gauge.json?cb='+Date.now()).then(r=>r.json()).then(d=>{
+  DATA=d; const last=rebuildDates(); renderMarket(last); renderStocks(last);
+}).catch(e=>{document.getElementById('market').innerHTML='<div class="sub">데이터를 불러오지 못했습니다.</div>';});
+</script>
+</body>
+</html>
