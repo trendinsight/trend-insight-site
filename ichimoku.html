@@ -164,9 +164,9 @@ function hhll(h,l,i,n){if(i+1<n)return null;
   for(let j=i-n+1;j<=i;j++){if(h[j]>hh)hh=h[j];if(l[j]<ll)ll=l[j];}
   return (hh+ll)/2;}
 function nextBizDays(last,cnt){
-  const out=[];let d=new Date(last+'T00:00:00');
-  while(out.length<cnt){d.setDate(d.getDate()+1);
-    const w=d.getDay();if(w===0||w===6)continue;
+  const out=[];let d=new Date(last+'T00:00:00Z');
+  while(out.length<cnt){d.setUTCDate(d.getUTCDate()+1);
+    const w=d.getUTCDay();if(w===0||w===6)continue;
     out.push(d.toISOString().slice(0,10));}
   return out;}
 function computeIchimoku(c){
