@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0c111c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>일목균형표 · Ichimoku Cloud</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+:root{
+  --bg:#0c111c; --panel:#141c2b; --panel2:#1a2336; --line:#26314a;
+  --ink:#e9eef7; --muted:#8896ae; --faint:#5d6b85;
+  --navy:#1B3A6B; --navy-bright:#3a72d6; --orange:#E8621B; --orange-soft:#f08a4f;
+  --up:#f0454e; --down:#3b82f6;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Pretendard',sans-serif;
+  font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+.up{color:var(--up)} .down{color:var(--down)}
+header{display:flex;align-items:center;gap:14px;padding:12px 18px;flex-wrap:wrap;
+  background:linear-gradient(180deg,#101827,#0c111c);border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:30}
+.brand{display:flex;align-items:baseline;gap:9px;white-space:nowrap}
+.brand .ti{font-family:'JetBrains Mono';font-weight:700;font-size:20px;color:var(--orange);
+  letter-spacing:1px;border:1.5px solid var(--orange);border-radius:6px;padding:1px 8px}
+.brand h1{font-size:15px;font-weight:700}
+.brand small{color:var(--faint);font-size:11px;letter-spacing:1.5px;text-transform:uppercase}
+.searchwrap{position:relative;flex:1;min-width:220px;max-width:420px}
+#q{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:9px;
+  color:var(--ink);padding:10px 14px;font-size:14px;font-family:inherit;outline:none}
+#q:focus{border-color:var(--orange)} #q::placeholder{color:var(--faint)}
+#qresults{position:absolute;top:calc(100% + 5px);left:0;right:0;background:var(--panel2);
+  border:1px solid var(--line);border-radius:9px;overflow:hidden;display:none;z-index:50;
+  box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#qresults .qi{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer}
+#qresults .qi:hover,#qresults .qi.hl{background:#232d44}
+#qresults .qi .nm{font-weight:600;font-size:13.5px}
+#qresults .qi .cd{font-family:'JetBrains Mono';font-size:11px;color:var(--faint);margin-left:auto}
+#qresults .qi .mk{font-size:10px;color:var(--orange-soft);border:1px solid rgba(232,98,27,.4);
+  border-radius:4px;padding:1px 5px}
+.idxbtns{display:flex;gap:8px}
+.idxbtns button{background:var(--panel2);border:1px solid var(--line);color:var(--muted);
+  border-radius:8px;padding:9px 14px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
+.idxbtns button:hover{border-color:var(--navy-bright);color:var(--ink)}
+.idxbtns button.on{border-color:var(--orange);color:var(--orange)}
+main{max-width:1240px;margin:0 auto;padding:18px 22px 40px}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:55vh;
+  color:var(--faint);text-align:center;gap:10px;padding:20px}
+.empty .big{font-size:46px;opacity:.3}
+.dhead{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.dhead .nm{font-size:24px;font-weight:800;letter-spacing:-.4px}
+.dhead .cd{font-size:13px;color:var(--faint);font-family:'JetBrains Mono';margin-bottom:3px}
+.dhead .px{font-size:26px;font-weight:700;margin-left:auto}
+.dhead .px small{font-size:14px;font-weight:600;margin-left:8px}
+.grid2{display:grid;grid-template-columns:1fr 320px;gap:18px}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.box h3{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);
+  margin-bottom:12px;font-weight:700}
+#cloud-chart{height:420px;width:100%}
+.legend{display:flex;gap:13px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
+.sig{display:flex;align-items:center;justify-content:space-between;padding:9px 0;
+  border-bottom:1px solid var(--line)}
+.sig:last-child{border-bottom:0}
+.sig .k{font-size:13px;color:var(--muted)}
+.sig .v{font-size:12.5px;font-weight:700}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.dot.y{background:var(--orange)} .dot.n{background:var(--faint)}
+.verdict{text-align:center;padding:10px 0 4px}
+.verdict .score{font-size:44px;font-weight:800;font-family:'JetBrains Mono';line-height:1}
+.verdict .lab{font-size:12.5px;color:var(--muted);margin-top:5px;letter-spacing:1px;font-weight:700}
+.sanyaku{display:inline-block;margin-top:8px;font-size:11.5px;font-weight:800;border-radius:20px;
+  padding:3px 12px;letter-spacing:.5px}
+.sy-bull{background:rgba(232,98,27,.16);color:var(--orange-soft);border:1px solid rgba(232,98,27,.5)}
+.sy-bear{background:rgba(59,130,246,.15);color:var(--down);border:1px solid rgba(59,130,246,.5)}
+.scen{margin-top:4px}
+.scen .row{display:flex;align-items:center;gap:9px;font-size:12px;margin:7px 0}
+.scen .tag{width:34px;color:var(--muted);font-weight:700}
+.scen .bar{flex:1;height:10px;border-radius:3px;background:#222c42;overflow:hidden}
+.scen .bar b{display:block;height:100%;border-radius:3px}
+.scen .pc{width:40px;text-align:right;font-family:'JetBrains Mono';font-size:12px}
+.lvl{width:100%;border-collapse:collapse;font-size:12.5px}
+.lvl td{padding:6px 0;border-bottom:1px solid var(--line)}
+.lvl tr:last-child td{border-bottom:0}
+.lvl td:last-child{text-align:right;font-family:'JetBrains Mono'}
+.note{font-size:12px;color:var(--muted);line-height:1.65;margin-top:4px}
+.note b{color:var(--ink)}
+.spin{border:2px solid var(--line);border-top-color:var(--orange);border-radius:50%;
+  width:22px;height:22px;animation:sp .7s linear infinite;margin:60px auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:8px} ::-webkit-scrollbar-thumb{background:#243047;border-radius:4px}
+@media(max-width:980px){.grid2{grid-template-columns:1fr} #cloud-chart{height:320px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="ti">TI</span><h1>일목균형표</h1><small>Ichimoku Cloud</small></div>
+  <div class="searchwrap">
+    <input id="q" placeholder="종목명 또는 코드 검색 (예: 삼성전자)" autocomplete="off">
+    <div id="qresults"></div>
+  </div>
+  <div class="idxbtns">
+    <button data-idx="KOSPI">코스피</button>
+    <button data-idx="KOSDAQ">코스닥</button>
+  </div>
+</header>
+<main>
+  <div id="detail">
+    <div class="empty"><div class="big">☁️</div>
+      <div>종목을 검색하거나 코스피·코스닥 버튼을 눌러<br>일목균형표 분석을 시작하세요</div></div>
+  </div>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const API='/api/cockpit';
+const fmt=(n,d)=>n==null||isNaN(n)?'—':Number(n).toLocaleString('ko-KR',{minimumFractionDigits:d??0,maximumFractionDigits:d??2});
+const cls=v=>v>0?'up':(v<0?'down':'');
+const sign=v=>v>0?'▲':(v<0?'▼':'');
+const T=9,K=26,SB=52,SH=26;
+
+/* ── 검색 ── */
+let qTimer=null,qItems=[],qHl=-1;
+const qBox=$('#qresults'),qIn=$('#q');
+function hideQ(){qBox.style.display='none';qHl=-1;}
+function renderQ(){
+  if(!qItems.length){hideQ();return;}
+  qBox.innerHTML=qItems.map((x,i)=>`<div class="qi ${i===qHl?'hl':''}" data-i="${i}">
+    <span class="nm">${x.name}</span><span class="mk">${x.market||''}</span><span class="cd">${x.code}</span></div>`).join('');
+  qBox.style.display='block';
+  qBox.querySelectorAll('.qi').forEach(el=>el.onclick=()=>pickQ(+el.dataset.i));
+}
+function pickQ(i){const x=qItems[i];if(!x)return;hideQ();qIn.value=x.name;qIn.blur();analyze(x.code,x.name);}
+qIn.addEventListener('input',()=>{
+  clearTimeout(qTimer);
+  const q=qIn.value.trim();
+  if(q.length<1){hideQ();return;}
+  qTimer=setTimeout(async()=>{
+    try{const r=await(await fetch(`${API}/search?q=${encodeURIComponent(q)}`)).json();
+      qItems=r.data||[];qHl=qItems.length?0:-1;renderQ();}catch(e){hideQ();}
+  },250);
+});
+qIn.addEventListener('keydown',e=>{
+  if(qBox.style.display!=='block')return;
+  if(e.key==='ArrowDown'){e.preventDefault();qHl=Math.min(qHl+1,qItems.length-1);renderQ();}
+  else if(e.key==='ArrowUp'){e.preventDefault();qHl=Math.max(qHl-1,0);renderQ();}
+  else if(e.key==='Enter'){e.preventDefault();pickQ(qHl>=0?qHl:0);}
+  else if(e.key==='Escape'){hideQ();}
+});
+document.addEventListener('click',e=>{if(!e.target.closest('.searchwrap'))hideQ();});
+document.querySelectorAll('.idxbtns button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.idxbtns button').forEach(x=>x.classList.toggle('on',x===b));
+  analyze(b.dataset.idx,b.dataset.idx==='KOSPI'?'코스피 지수':'코스닥 지수');
+});
+
+/* ── 일목 계산 ── */
+function hhll(h,l,i,n){if(i+1<n)return null;
+  let hh=-Infinity,ll=Infinity;
+  for(let j=i-n+1;j<=i;j++){if(h[j]>hh)hh=h[j];if(l[j]<ll)ll=l[j];}
+  return (hh+ll)/2;}
+function nextBizDays(last,cnt){
+  const out=[];let d=new Date(last+'T00:00:00');
+  while(out.length<cnt){d.setDate(d.getDate()+1);
+    const w=d.getDay();if(w===0||w===6)continue;
+    out.push(d.toISOString().slice(0,10));}
+  return out;}
+function computeIchimoku(c){
+  const h=c.high,l=c.low,cl=c.close,n=cl.length;
+  const tenkan=[],kijun=[],sbRaw=[],saRaw=[];
+  for(let i=0;i<n;i++){
+    tenkan.push(hhll(h,l,i,T));kijun.push(hhll(h,l,i,K));sbRaw.push(hhll(h,l,i,SB));
+    saRaw.push(tenkan[i]!=null&&kijun[i]!=null?(tenkan[i]+kijun[i])/2:null);}
+  const i=n-1,price=cl[i];
+  const saAt=j=>j-SH>=0?saRaw[j-SH]:null, sbAt=j=>j-SH>=0?sbRaw[j-SH]:null;
+  const ct=Math.max(saAt(i),sbAt(i)),cb=Math.min(saAt(i),sbAt(i));
+  const pos=price>ct?'위':(price<cb?'아래':'내부');
+  const tk=tenkan[i]>kijun[i];
+  let cross=null;
+  for(let j=i;j>Math.max(i-10,K);j--){
+    const a0=tenkan[j-1],b0=kijun[j-1],a1=tenkan[j],b1=kijun[j];
+    if(a0==null||b0==null||a1==null||b1==null)continue;
+    if(a0<=b0&&a1>b1){cross={type:'호전(골든)',date:c.date[j]};break;}
+    if(a0>=b0&&a1<b1){cross={type:'역전(데드)',date:c.date[j]};break;}}
+  const chikouOk=price>cl[i-SH], chikouGap=(price/cl[i-SH]-1)*100;
+  const futBull=saRaw[i]>sbRaw[i];
+  let twist=null;
+  for(let j=i-SH+1;j<=i;j++){
+    if(saRaw[j-1]==null||sbRaw[j-1]==null||saRaw[j]==null||sbRaw[j]==null)continue;
+    const s0=saRaw[j-1]-sbRaw[j-1],s1=saRaw[j]-sbRaw[j];
+    if(s0===0||(s0>0)!==(s1>0))twist={in_days:j-(i-SH),dir:s1>0?'상향':'하향'};}
+  const kjS=kijun[i-5]!=null?kijun[i]-kijun[i-5]:0;
+  const tkS=tenkan[i-5]!=null?tenkan[i]-tenkan[i-5]:0;
+  const thick=Math.abs(saAt(i)-sbAt(i))/price*100;
+  const sc={cloud:pos==='위'?30:(pos==='내부'?15:0), tk:tk?20:0, chikou:chikouOk?20:0,
+    fut:futBull?15:0, kj:kjS>0?10:(kjS===0?5:0), tks:tkS>0?5:0};
+  const score=sc.cloud+sc.tk+sc.chikou+sc.fut+sc.kj+sc.tks;
+  const sanyaku=(pos==='위'&&tk&&chikouOk)?'삼역호전':((pos==='아래'&&!tk&&!chikouOk)?'삼역역전':null);
+  const zone=score>=80?'강한 상승':score>=60?'상승 우위':score>=40?'중립·전환 대기':score>=20?'하락 우위':'강한 하락';
+  let up=15+score*.55, dn=15+(100-score)*.55, nb=0;
+  if(twist&&twist.in_days<=10){nb+=10;if(twist.dir==='하향')up-=5;else dn-=5;}
+  if(pos==='내부')nb+=8;
+  let neu=Math.max(100-up-dn,5)+nb;const tot=up+dn+neu;
+  up=Math.round(up/tot*100);dn=Math.round(dn/tot*100);neu=100-up-dn;
+  return {i,n,price,tenkan,kijun,saRaw,sbRaw,saAt,sbAt,ct,cb,pos,tk,cross,chikouOk,chikouGap,
+    futBull,twist,kjS,tkS,thick,sc,score,sanyaku,zone,up,dn,neu};
+}
+
+/* ── 해석 문장 생성 ── */
+function narrate(r,name){
+  const s=[];
+  s.push(`<b>${name}</b>은(는) 현재 구름대 <b>${r.pos}</b>에 위치하며, ${r.tk?'전환선이 기준선 위에 있어 단기 모멘텀은 살아있는':'기준선이 전환선 위에 있어 단기 모멘텀이 꺾인'} 상태입니다.`);
+  s.push(`후행스팬은 26일 전 가격을 ${r.chikouOk?'상회(호전)':'하회(역전)'} — 추세 ${r.chikouOk?'지지':'부담'} 요인입니다.`);
+  if(r.twist)s.push(`선행 구름은 <b>${r.twist.in_days}거래일 내 ${r.twist.dir} 꼬임</b>이 예정되어 변곡 가능성에 유의해야 합니다.`);
+  else s.push(`선행 구름은 ${r.futBull?'양운(상승 우호)':'음운(하락 우호)'}이 유지됩니다.`);
+  if(r.sanyaku)s.push(`⚑ <b>${r.sanyaku}</b> 상태 — ${r.sanyaku==='삼역호전'?'세 요소가 모두 강세로 정렬된 교과서적 매수 국면':'세 요소가 모두 약세로 정렬된 전형적 하락 국면'}입니다.`);
+  return s.join(' ');
+}
+
+/* ── 분석 & 렌더 ── */
+let chart=null;
+async function analyze(code,name){
+  $('#detail').innerHTML='<div class="spin"></div>';
+  try{
+    const r=await(await fetch(`${API}/analyze/${code}`)).json();
+    if(!r.ok){$('#detail').innerHTML=`<div class="empty"><div class="big">⚠️</div><div>${r.error||'분석 불가'}</div></div>`;return;}
+    render(r.data,name);
+  }catch(e){$('#detail').innerHTML='<div class="empty"><div class="big">⚠️</div><div>연결 실패 · 잠시 후 다시 시도하세요</div></div>';}
+}
+function sigRow(k,ok,val){return `<div class="sig"><span class="k"><span class="dot ${ok?'y':'n'}"></span>${k}</span><span class="v" style="color:${ok?'var(--orange-soft)':'var(--down)'}">${val}</span></div>`;}
+function render(d,fallbackName){
+  const c=d.chart,q=d.quote||{},r=computeIchimoku(c);
+  const name=d.name||fallbackName||d.code;
+  const price=q.price??r.price, rate=q.change_rate||0, chg=q.change||0;
+  const scColor=r.score>=60?'var(--orange)':r.score>=40?'var(--muted)':'var(--down)';
+  $('#detail').innerHTML=`
+  <div class="dhead">
+    <div class="nm">${name}</div><div class="cd">${d.code} · ${c.date[r.i]}</div>
+    <div class="px mono ${cls(rate)}">${fmt(price)}<small>${sign(rate)} ${fmt(Math.abs(chg))} (${fmt(Math.abs(rate),2)}%)</small></div>
+  </div>
+  <div class="grid2">
+    <div>
+      <div class="box">
+        <h3>일목균형표 차트 (구름 26일 선행 투영)</h3>
+        <div id="cloud-chart"></div>
+        <div class="legend">
+          <span><i style="background:#e9eef7"></i>캔들</span>
+          <span><i style="background:#f0454e"></i>전환선(9)</span>
+          <span><i style="background:#E8621B"></i>기준선(26)</span>
+          <span><i style="background:#9aa7c0"></i>후행스팬</span>
+          <span><i style="background:rgba(232,98,27,.55)"></i>선행A</span>
+          <span><i style="background:rgba(58,114,214,.55)"></i>선행B</span>
+        </div>
+      </div>
+      <div class="box" style="margin-top:16px">
+        <h3>해석</h3>
+        <div class="note" id="narr"></div>
+      </div>
+    </div>
+    <div>
+      <div class="box">
+        <h3>일목 종합 점수</h3>
+        <div class="verdict">
+          <div class="score" style="color:${scColor}">${r.score}<span style="font-size:18px;color:var(--faint)">/100</span></div>
+          <div class="lab">${r.zone}</div>
+          ${r.sanyaku?`<div class="sanyaku ${r.sanyaku==='삼역호전'?'sy-bull':'sy-bear'}">★ ${r.sanyaku}</div>`:''}
+        </div>
+        ${sigRow('① 가격 vs 구름',r.pos==='위',`구름 ${r.pos}`)}
+        ${sigRow('② 전환선 > 기준선',r.tk,r.cross?`${r.cross.type} ${r.cross.date.slice(5)}`:(r.tk?'전환 우위':'기준 우위'))}
+        ${sigRow('③ 후행스팬',r.chikouOk,`${r.chikouOk?'호전':'역전'} ${r.chikouGap>=0?'+':''}${r.chikouGap.toFixed(1)}%`)}
+        ${sigRow('④ 미래 구름',r.futBull,r.twist?`${r.twist.in_days}일 내 ${r.twist.dir} 꼬임`:(r.futBull?'양운':'음운'))}
+        ${sigRow('⑤ 기준선 기울기',r.kjS>0,r.kjS>0?'상승':(r.kjS<0?'하락':'횡보'))}
+      </div>
+      <div class="box" style="margin-top:16px">
+        <h3>향후 방향성 시나리오</h3>
+        <div class="scen">
+          <div class="row"><span class="tag up">상승</span><span class="bar"><b style="width:${r.up}%;background:linear-gradient(90deg,#c93a42,#f0454e)"></b></span><span class="pc up">${r.up}%</span></div>
+          <div class="row"><span class="tag" style="color:var(--muted)">횡보</span><span class="bar"><b style="width:${r.neu}%;background:#4a5772"></b></span><span class="pc" style="color:var(--muted)">${r.neu}%</span></div>
+          <div class="row"><span class="tag down">하락</span><span class="bar"><b style="width:${r.dn}%;background:linear-gradient(90deg,#2b5fb8,#3b82f6)"></b></span><span class="pc down">${r.dn}%</span></div>
+        </div>
+        <div class="note" style="margin-top:10px">일목 시그널 기반 규칙형 추정치입니다. 매매 판단의 보조 지표로만 활용하세요.</div>
+      </div>
+      <div class="box" style="margin-top:16px">
+        <h3>핵심 레벨</h3>
+        <table class="lvl">
+          <tr><td>1차 지지/저항 · 전환선</td><td>${fmt(r.tenkan[r.i])}</td></tr>
+          <tr><td>2차 지지/저항 · 기준선</td><td>${fmt(r.kijun[r.i])}</td></tr>
+          <tr><td>구름 상단</td><td>${fmt(r.ct)}</td></tr>
+          <tr><td>구름 하단</td><td>${fmt(r.cb)}</td></tr>
+          <tr><td>구름 두께</td><td>${r.thick.toFixed(1)}%</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>`;
+  $('#narr').innerHTML=narrate(r,name);
+  drawChart(c,r);
+}
+
+/* ── 차트 ── */
+function drawChart(c,r){
+  const P=$('#cloud-chart');P.innerHTML='';
+  const isM=window.innerWidth<=980;
+  chart=LightweightCharts.createChart(P,{
+    layout:{background:{color:'transparent'},textColor:'#8896ae'},
+    grid:{vertLines:{visible:false},horzLines:{color:'#161f31'}},
+    rightPriceScale:{borderColor:'#26314a'},timeScale:{borderColor:'#26314a',rightOffset:4},
+    crosshair:{mode:0},height:isM?320:420,width:P.clientWidth});
+  const n=r.n, dates=c.date, fut=nextBizDays(dates[n-1],SH);
+  const axis=dates.concat(fut);
+  // 구름: 시점 j의 raw가 axis[j+26]에 투영
+  const bull=[],bear=[],eraseLo=[];
+  for(let j=0;j<n;j++){
+    const t=axis[j+SH];if(!t)break;
+    const a=r.saRaw[j],b=r.sbRaw[j];
+    if(a==null||b==null)continue;
+    const hi=Math.max(a,b),lo=Math.min(a,b);
+    if(a>=b){bull.push({time:t,value:hi});bear.push({time:t});}
+    else{bear.push({time:t,value:hi});bull.push({time:t});}
+    eraseLo.push({time:t,value:lo});
+  }
+  const areaOpt={priceLineVisible:false,lastValueVisible:false,lineWidth:1,crosshairMarkerVisible:false};
+  const aBull=chart.addAreaSeries({...areaOpt,lineColor:'rgba(232,98,27,.55)',topColor:'rgba(232,98,27,.16)',bottomColor:'rgba(232,98,27,.16)'});
+  aBull.setData(bull);
+  const aBear=chart.addAreaSeries({...areaOpt,lineColor:'rgba(58,114,214,.55)',topColor:'rgba(59,130,246,.14)',bottomColor:'rgba(59,130,246,.14)'});
+  aBear.setData(bear);
+  const aErase=chart.addAreaSeries({...areaOpt,lineColor:'rgba(93,107,133,.4)',topColor:'#0c111c',bottomColor:'#0c111c'});
+  aErase.setData(eraseLo);
+  const candle=chart.addCandlestickSeries({upColor:'#f0454e',downColor:'#3b82f6',
+    wickUpColor:'#f0454e',wickDownColor:'#3b82f6',borderVisible:false});
+  candle.setData(dates.map((t,i)=>({time:t,open:c.open[i],high:c.high[i],low:c.low[i],close:c.close[i]})).filter(x=>x.close!=null));
+  const line=(data,color,w,dash)=>{const ls=chart.addLineSeries({color,lineWidth:w||1.4,
+    priceLineVisible:false,lastValueVisible:false,lineStyle:dash?LightweightCharts.LineStyle.Dotted:0});
+    ls.setData(data.filter(x=>x.value!=null));};
+  line(dates.map((t,i)=>({time:t,value:r.tenkan[i]})),'#f0454e',1.3);
+  line(dates.map((t,i)=>({time:t,value:r.kijun[i]})),'#E8621B',1.6);
+  // 후행스팬: close[i] → axis[i-26]
+  line(c.close.map((v,i)=>i>=SH?{time:dates[i-SH],value:v}:{time:dates[0]}).filter(x=>x.value!=null),'#9aa7c0',1.2,true);
+  chart.timeScale().fitContent();
+}
+window.addEventListener('resize',()=>{if(chart){const P=$('#cloud-chart');
+  if(P)chart.resize(P.clientWidth,window.innerWidth<=980?320:420);}});
+
+/* URL 파라미터 ?code=005930 지원 */
+const usp=new URLSearchParams(location.search);
+if(usp.get('code'))analyze(usp.get('code'),usp.get('name')||usp.get('code'));
+</script>
+</body>
+</html>
