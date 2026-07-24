@@ -1441,18 +1441,12 @@ async function dartCorpMap(env) {
   if (!key) return null;
   const r = await fetch(`${DART_BASE}/corpCode.xml?crtfc_key=${key}`, { headers: DART_HEADERS, redirect: "manual" });
   if (r.status !== 200) throw new Error("DART_CORPCODE_HTTP_" + r.status);
-  const buf = new Uint8Array(await r.arrayBuffer());
-  const xml = await dartUnzipFirst(buf);
+  const xml = await dartUnzipFirst(new Uint8Array(await r.arrayBuffer()));
   const map = {};
-  const parts = xml.split("<list>");
-  for (let i = 1; i < parts.length; i++) {
-    const seg = parts[i];
-    const sc = dartXField(seg, "stock_code");
-    if (!sc || !/^[0-9A-Za-z]{6}$/.test(sc)) continue;
-    const cc = dartXField(seg, "corp_code");
-    if (!cc) continue;
-    map[sc] = { corp_code: cc, corp_name: dartXField(seg, "corp_name") || "" };
-  }
+  // 상장사(6자리 stock_code)만 선형 추출. <list> 순서: corp_code, corp_name, corp_eng_name, stock_code, modify_date
+  const re = /<corp_code>(\d+)<\/corp_code>\s*<corp_name>([^<]*)<\/corp_name>\s*<corp_eng_name>[^<]*<\/corp_eng_name>\s*<stock_code>(\d{6})<\/stock_code>/g;
+  let m;
+  while ((m = re.exec(xml))) map[m[3]] = { corp_code: m[1], corp_name: m[2].trim() };
   await env.GAUGE_KV.put("dart-corpmap", JSON.stringify(map), { expirationTtl: 86400 });
   return map;
 }
@@ -1516,25 +1510,10 @@ async function handleForensic(req, url, env) {
     }
     if (p === "rebuild") {
       await env.GAUGE_KV.delete("dart-corpmap");
-      const key = await getDartKey(env);
-      if (!key) return FJ({ ok: false, error: "no key" });
-      const r = await fetch(`${DART_BASE}/corpCode.xml?crtfc_key=${key}`, { headers: DART_HEADERS, redirect: "manual" });
-      const buf = new Uint8Array(await r.arrayBuffer());
-      let xml = ""; let uerr = null;
-      try { xml = await dartUnzipFirst(buf); } catch (e) { uerr = String((e && e.message) || e).slice(0, 120); }
-      const parts = xml.split("<list>");
-      const map = {}; let has = false; const samples = [];
-      for (let i = 1; i < parts.length; i++) {
-        const sc = dartXField(parts[i], "stock_code");
-        if (!sc || !/^[0-9A-Za-z]{6}$/.test(sc)) continue;
-        const cc = dartXField(parts[i], "corp_code"); if (!cc) continue;
-        map[sc] = { corp_code: cc, corp_name: dartXField(parts[i], "corp_name") || "" };
-        if (sc === "005930") has = true;
-        if (samples.length < 5) samples.push(sc + ":" + cc);
-      }
-      const n = Object.keys(map).length;
-      if (n > 0) await env.GAUGE_KV.put("dart-corpmap", JSON.stringify(map), { expirationTtl: 86400 });
-      return FJ({ ok: true, zip_len: buf.length, unzip_err: uerr, xml_len: xml.length, lists: parts.length, listed: n, has005930: has, samples, samsung: map["005930"] || null });
+      const map = await dartCorpMap(env);
+      const n = map ? Object.keys(map).length : 0;
+      const keys = map ? Object.keys(map) : [];
+      return FJ({ ok: true, listed: n, has005930: !!(map && map["005930"]), samsung: (map && map["005930"]) || null, samples: keys.slice(0, 5) });
     }
     if (p === "keystatus") {
       let d1 = false; try { const r = await env.RISK_DB.prepare("SELECT value FROM secrets WHERE key='dart_api_key'").first(); d1 = !!(r && r.value); } catch (e) {}
