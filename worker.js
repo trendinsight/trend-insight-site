@@ -1947,3 +1947,5 @@ async function handleReports(req, url, env, ctx) {
     return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
   }
 }
+
+// redeploy trigger: bind DART_KEY secret (forensic route)
