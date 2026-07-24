@@ -1537,9 +1537,16 @@ async function handleForensic(req, url, env) {
           const ab = await cr.arrayBuffer();
           const b = new Uint8Array(ab);
           const head4 = Array.from(b.slice(0, 4)).map(x => x.toString(16).padStart(2, "0")).join("");
-          let snippet = null;
-          if (head4 !== "504b0304") snippet = new TextDecoder("utf-8").decode(b.slice(0, 160));
-          corp = { http: cr.status, ctype: cr.headers.get("content-type"), len: b.length, head4, snippet };
+          if (head4 !== "504b0304") {
+            corp = { http: cr.status, len: b.length, head4, snippet: new TextDecoder("utf-8").decode(b.slice(0, 160)) };
+          } else {
+            try {
+              const xml = await dartUnzipFirst(b);
+              corp = { http: cr.status, len: b.length, xml_len: xml.length, xml_head: xml.slice(0, 60), lists: xml.split("<list>").length };
+            } catch (ue) {
+              corp = { http: cr.status, len: b.length, unzip_err: String((ue && ue.message) || ue).slice(0, 160) };
+            }
+          }
         }
       } catch (e) { corp = { err: String((e && e.message) || e).slice(0, 120) }; }
       return FJ({ ok: true, d1_key: d1, env_key: !!env.DART_KEY, dart_probe: probe, corp_probe: corp });
