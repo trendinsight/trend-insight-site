@@ -1,0 +1,206 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>포렌식 체크리스트 — 매수 전 회계 품질·지배구조 6축 게이트 | Trend Insight</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"><style>body{font-family:'Pretendard',sans-serif;margin:0;color:#1c2533;line-height:1.7}header{background:#0b1f3f;padding:16px 24px;font-weight:800}header a{color:#fff;text-decoration:none}main{max-width:860px;margin:0 auto;padding:48px 24px}h1{color:#0b1f3f;line-height:1.35}h2,h3{color:#13294b;margin-top:36px}.meta{color:#5b6779;font-size:.9rem;margin-bottom:32px}table{border-collapse:collapse;width:100%;margin:16px 0;font-size:.9rem}th,td{border:1px solid #e4e9f1;padding:8px 10px;text-align:left}th{background:#f5f7fb}.notice{background:#fff8e1;border-left:4px solid #ffc107;padding:12px 16px;margin:20px 0;font-size:.88rem;border-radius:4px}.disclaimer{margin-top:48px;padding-top:16px;border-top:1px solid #e4e9f1;font-size:.78rem;color:#9aa6b6}</style></head><body><header><a href="../index.html">← Trend Insight</a></header><main>
+<h1>포렌식 체크리스트 — 매수 전 회계 품질·지배구조 6축 게이트</h1>
+<div class="meta">오피니언 · 2026.07.24</div>
+<style>
+#fxapp{--fbg:#0e1117;--fpanel:#161b22;--fpanel2:#1c2330;--fline:#2a3242;--ftx:#e6edf3;--ftx2:#9aa7b8;--ftx3:#6b7688;--fpass:#2ea043;--fcond:#d29922;--ffail:#f85149;--facc:#4d8fef;--fpassbg:#12261a;--fcondbg:#2a2411;--ffailbg:#2a1517;
+  background:var(--fbg);color:var(--ftx);border-radius:14px;padding:18px 16px 26px;margin:8px 0;
+  font-family:'Pretendard',-apple-system,sans-serif;line-height:1.6}
+#fxapp *{box-sizing:border-box}
+#fxapp .intro{color:var(--ftx2);font-size:13px;margin:0 0 6px}
+#fxapp .mv{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;margin:6px 0 4px}
+#fxapp .mv b{color:#f85149}#fxapp .mv i{color:#4d8fef;font-style:normal}#fxapp .mv span{color:var(--ftx2)}
+#fxapp .meta-in{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:14px 0 4px}
+#fxapp .meta-in input{background:var(--fbg);border:1px solid var(--fline);border-radius:8px;color:var(--ftx);padding:8px 10px;font-size:13px;font-family:inherit}
+#fxapp .meta-in input:focus{outline:none;border-color:var(--facc)}
+#fxapp .verdict{position:sticky;top:0;z-index:20;background:var(--fbg);padding:12px 0;border-bottom:1px solid var(--fline);margin-bottom:16px}
+#fxapp .vcard{background:var(--fpanel2);border:1px solid var(--fline);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+#fxapp .vbadge{font-size:19px;font-weight:800;padding:7px 16px;border-radius:10px;white-space:nowrap}
+#fxapp .vmeta{font-size:13px;color:var(--ftx2);flex:1;min-width:200px}#fxapp .vmeta b{color:var(--ftx)}
+#fxapp .counts{display:flex;gap:12px;font-size:12.5px}#fxapp .counts span{display:flex;align-items:center;gap:6px}
+#fxapp .dot{width:10px;height:10px;border-radius:50%}
+#fxapp section.axis{background:var(--fpanel);border:1px solid var(--fline);border-radius:12px;padding:15px 16px;margin-bottom:13px}
+#fxapp .arow{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+#fxapp .atitle{font-size:15px;font-weight:700;margin:0;color:var(--ftx)}#fxapp .atitle .n{color:var(--ftx3);margin-right:8px}
+#fxapp .hint{color:var(--ftx2);font-size:12.5px;margin:6px 0 10px}
+#fxapp .hint code{background:var(--fpanel2);padding:1px 6px;border-radius:4px;color:#9ecbff;font-size:11.5px}
+#fxapp .trigger{color:var(--ffail);font-size:12px;margin-top:2px}
+#fxapp .grades{display:flex;gap:8px}
+#fxapp .gbtn{border:1px solid var(--fline);background:var(--fpanel2);color:var(--ftx2);padding:7px 15px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+#fxapp .gbtn:hover{border-color:var(--ftx3)}
+#fxapp .gbtn.on[data-g="PASS"]{background:var(--fpassbg);border-color:var(--fpass);color:var(--fpass)}
+#fxapp .gbtn.on[data-g="COND"]{background:var(--fcondbg);border-color:var(--fcond);color:var(--fcond)}
+#fxapp .gbtn.on[data-g="FAIL"]{background:var(--ffailbg);border-color:var(--ffail);color:var(--ffail)}
+#fxapp textarea{width:100%;margin-top:11px;background:var(--fbg);border:1px solid var(--fline);border-radius:8px;color:var(--ftx);padding:9px 11px;font-family:inherit;font-size:13px;resize:vertical;min-height:42px}
+#fxapp textarea:focus{outline:none;border-color:var(--facc)}
+#fxapp .tool{background:var(--fpanel2);border:1px dashed var(--fline);border-radius:10px;padding:12px 14px;margin-top:12px}
+#fxapp .tool h4{margin:0 0 8px;font-size:13px;font-weight:700;color:var(--ftx)}
+#fxapp .tool .lbl{font-size:11.5px;color:var(--ftx3);display:block;margin-bottom:3px}
+#fxapp input[type=number]{background:var(--fbg);border:1px solid var(--fline);border-radius:6px;color:var(--ftx);padding:6px 8px;font-size:13px;width:100%}
+#fxapp input[type=number]:focus{outline:none;border-color:var(--facc)}
+#fxapp .grid{display:grid;gap:8px}#fxapp .g4{grid-template-columns:64px repeat(3,1fr)}#fxapp .g3{grid-template-columns:1fr 1fr 1fr}
+#fxapp .toolout{margin-top:10px;font-size:13px;color:var(--ftx2);min-height:18px}#fxapp .toolout b{color:var(--ftx)}
+#fxapp .sg{font-weight:800}#fxapp .sg.PASS{color:var(--fpass)}#fxapp .sg.COND{color:var(--fcond)}#fxapp .sg.FAIL{color:var(--ffail)}
+#fxapp .apply{margin-top:6px;font-size:11.5px;color:var(--facc);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline}
+#fxapp table.tt{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px}
+#fxapp table.tt th,#fxapp table.tt td{border:1px solid var(--fline);padding:4px 7px;text-align:right;background:transparent}
+#fxapp table.tt th{color:var(--ftx3);font-weight:500}#fxapp table.tt td:first-child,#fxapp table.tt th:first-child{text-align:left}
+#fxapp .foot{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+#fxapp .btn{background:var(--facc);color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+#fxapp .btn.sec{background:var(--fpanel2);color:var(--ftx);border:1px solid var(--fline)}
+#fxapp .fnote{color:var(--ftx3);font-size:11.5px;margin-top:16px;border-top:1px solid var(--fline);padding-top:12px}
+</style>
+
+<div id="fxapp">
+  <p class="intro">매수 전 필수 통과 게이트 · 재무제표 밖 지뢰 탐지 · 6개 축을 채점하면 GO / 조건부 / NO-GO가 실시간 계산됩니다.</p>
+  <div class="mv">
+    <span><b>Mission</b> 모든 이해관계자의 행복을 위해 자본을 지킨다</span>
+    <span><i>Vision</i> 신뢰받는 리스크 관리 투자 조직</span>
+  </div>
+  <div class="meta-in">
+    <input id="m-name" placeholder="종목명">
+    <input id="m-code" placeholder="종목코드 (6자리)">
+    <input id="m-date" type="date">
+  </div>
+
+  <div class="verdict">
+    <div class="vcard">
+      <div id="vbadge" class="vbadge">—</div>
+      <div class="vmeta" id="vmeta">6개 축을 채점하면 게이트 판정이 실시간으로 계산됩니다.</div>
+      <div class="counts">
+        <span><span class="dot" style="background:var(--fpass)"></span>PASS <b id="cP">0</b></span>
+        <span><span class="dot" style="background:var(--fcond)"></span>COND <b id="cC">0</b></span>
+        <span><span class="dot" style="background:var(--ffail)"></span>FAIL <b id="cF">0</b></span>
+      </div>
+    </div>
+  </div>
+
+  <div id="axes"></div>
+
+  <div class="foot">
+    <button class="btn" onclick="fxCopy()">마크다운 리포트 복사</button>
+    <button class="btn sec" onclick="fxReset()">초기화</button>
+  </div>
+  <div class="fnote">산출 근거는 DART 원문 공시 기준. 데이터 미확보 축은 CONDITIONAL(확인 불가)로 두고 추정 통과하지 않는다. 종합 규칙: 감사의견(축4) FAIL은 단독으로 NO-GO를 정당화 · 오버행(축1)+증자(축3) 동시 CONDITIONAL이면 "조달 상습"으로 FAIL 수준 경고. 이 페이지는 판단 재료이지 매매 지시가 아니다.</div>
+</div>
+
+<script>
+(function(){
+const AXES=[
+ {id:1,t:"CB/BW/EB 오버행",hint:'DART <code>get_convertible_bond_issuance</code> / <code>get_bond_with_warrants_issuance</code> / <code>get_exchangeable_bond_issuance</code> — 미상환잔액·전환가·리픽싱·전환청구기간. 잠재 희석률 = 전환가능주식수 ÷ 상장주식수.',trig:"FAIL: 잠재 희석률 ≥10%, 또는 현재가<전환가(리픽싱 임박)",tool:"cb"},
+ {id:2,t:"최대주주 지분율·지분 담보",hint:'DART <code>get_disclosurelist</code> — 대량보유(5%룰)·최대주주 변동·주식담보 공시 + 웹. 지분율·담보비중·반대매매 위험.',trig:"FAIL: 최대주주 지분 <15% & 담보 과중, 담보 지분 ≥50%·반대매매선 근접, 최근 반대매매 발생",tool:null},
+ {id:3,t:"유상증자 이력",hint:'DART <code>get_paid_capital_increase</code> — 배정방식(주주/공모/제3자)·조달목적·규모·빈도.',trig:"FAIL: 최근 24개월 2회 이상, 대규모(≈20%+) 증자, 채무상환·운영자금 목적 제3자배정",tool:null},
+ {id:4,t:"감사의견",hint:'DART <code>get_disclosurelist</code> — 사업/감사보고서. 최근 3년 의견·계속기업 강조사항·감사인 교체. <b>이 축 FAIL은 단독으로 NO-GO를 정당화한다.</b>',trig:"FAIL: 적정 외(한정/부적정/거절), 계속기업 불확실성, 관리종목·실질심사 이력",tool:null},
+ {id:5,t:"매출채권·재고 회전일수 급증",hint:'DART <code>get_complete_financial_statements</code> — 3개 사업연도 매출·매출채권·재고. 회전일수 = 항목÷매출(원가)×365.',trig:"FAIL: 회전일수 YoY +50% & 매출 정체·감소 동반(가공매출·악성재고)",tool:"turn"},
+ {id:6,t:"특수관계자 거래",hint:'DART 재무제표 주석(특수관계자 거래) + <code>get_disclosurelist</code>(자금대여·담보제공·타법인출자) 교차 확인.',trig:"FAIL: 특수관계자 대여금·지급보증 급증, 오너·계열사 자금유출 구조, 일감몰아주기 의존",tool:null},
+];
+const state={};AXES.forEach(a=>state[a.id]=null);
+const root=document.getElementById('fxapp');
+const $=(id)=>root.querySelector('#'+id)||document.getElementById(id);
+const axesEl=$('axes');
+
+function cbTool(){return `
+ <div class="tool"><h4>희석률 계산기 (건별 합산은 메모에)</h4>
+  <div class="grid g3">
+   <div><span class="lbl">미상환 사채총액(원)</span><input type="number" id="cb-amt" placeholder="8000000000"></div>
+   <div><span class="lbl">전환가액(원)</span><input type="number" id="cb-cp" placeholder="5120"></div>
+   <div><span class="lbl">상장주식수(주)</span><input type="number" id="cb-sh" placeholder="20000000"></div></div>
+  <div class="grid g3" style="margin-top:8px">
+   <div><span class="lbl">현재가(원, 선택)</span><input type="number" id="cb-px" placeholder="4300"></div>
+   <div><span class="lbl">리픽싱 하한가(원, 선택)</span><input type="number" id="cb-floor" placeholder="3584"></div>
+   <div style="align-self:end"><button class="btn sec" style="width:100%;padding:6px" onclick="fxCB()">계산</button></div></div>
+  <div class="toolout" id="cb-out"></div></div>`;}
+
+function turnTool(){return `
+ <div class="tool"><h4>회전일수 계산기 (3개 사업연도)</h4>
+  <div class="grid g4" style="align-items:end">
+   <div style="font-size:11px;color:var(--ftx3)">연도별→</div>
+   <div><span class="lbl">연도</span><input type="number" id="t-y0" placeholder="2022"></div>
+   <div><span class="lbl">연도</span><input type="number" id="t-y1" placeholder="2023"></div>
+   <div><span class="lbl">연도</span><input type="number" id="t-y2" placeholder="2024"></div>
+   <div style="font-size:11px;color:var(--ftx3)">매출액</div>
+   <div><input type="number" id="t-r0"></div><div><input type="number" id="t-r1"></div><div><input type="number" id="t-r2"></div>
+   <div style="font-size:11px;color:var(--ftx3)">매출채권</div>
+   <div><input type="number" id="t-ar0"></div><div><input type="number" id="t-ar1"></div><div><input type="number" id="t-ar2"></div>
+   <div style="font-size:11px;color:var(--ftx3)">재고자산</div>
+   <div><input type="number" id="t-iv0"></div><div><input type="number" id="t-iv1"></div><div><input type="number" id="t-iv2"></div>
+   <div style="font-size:11px;color:var(--ftx3)">매출원가<br><span style="font-size:10px">(선택)</span></div>
+   <div><input type="number" id="t-c0"></div><div><input type="number" id="t-c1"></div><div><input type="number" id="t-c2"></div></div>
+  <button class="btn sec" style="margin-top:10px;padding:6px 14px" onclick="fxTurn()">계산</button>
+  <div class="toolout" id="t-out"></div></div>`;}
+
+AXES.forEach(a=>{
+  const s=document.createElement('section');s.className='axis';
+  let tool='';if(a.tool==='cb')tool=cbTool();if(a.tool==='turn')tool=turnTool();
+  s.innerHTML=`<div class="arow"><div style="flex:1;min-width:230px"><p class="atitle"><span class="n">축 ${a.id}</span>${a.t}</p></div>
+   <div class="grades" data-axis="${a.id}"><button class="gbtn" data-g="PASS">PASS</button><button class="gbtn" data-g="COND">COND</button><button class="gbtn" data-g="FAIL">FAIL</button></div></div>
+   <div class="hint">${a.hint}</div><div class="trigger">${a.trig}</div>${tool}
+   <textarea data-note="${a.id}" placeholder="근거·수치·공시일 메모 (예: 3회차 CB 미상환 80억, 전환가 5,120원, 현재가 4,300원 → 희석률 12%)"></textarea>`;
+  axesEl.appendChild(s);
+});
+
+root.querySelectorAll('.grades').forEach(g=>{
+  g.querySelectorAll('.gbtn').forEach(b=>{b.onclick=()=>{
+    const ax=g.dataset.axis,val=b.dataset.g;
+    if(state[ax]===val){state[ax]=null;b.classList.remove('on');}
+    else{state[ax]=val;g.querySelectorAll('.gbtn').forEach(x=>x.classList.remove('on'));b.classList.add('on');}
+    compute();};});
+});
+
+function compute(){
+  let P=0,C=0,F=0,scored=0;
+  AXES.forEach(a=>{const v=state[a.id];if(v){scored++;if(v==='PASS')P++;else if(v==='COND')C++;else F++;}});
+  $('cP').textContent=P;$('cC').textContent=C;$('cF').textContent=F;
+  const badge=$('vbadge'),meta=$('vmeta');let color,bg,reasons=[];
+  const a1=state[1],a3=state[3],a4=state[4];
+  const combo=(a1==='COND'||a1==='FAIL')&&(a3==='COND'||a3==='FAIL')&&!(a1==='FAIL'&&a3==='FAIL');
+  if(scored<6){badge.textContent='진행중';color='var(--ftx2)';bg='var(--fpanel2)';meta.innerHTML=`아직 <b>${6-scored}개 축</b> 미채점. 모두 채점하면 최종 게이트가 확정됩니다.`;}
+  else if(F>0){color='var(--ffail)';bg='var(--ffailbg)';if(a4==='FAIL')reasons.push('감사의견 FAIL(단독 NO-GO 사유)');reasons.push(`FAIL ${F}개`);if(C>0)reasons.push(`CONDITIONAL ${C}개`);badge.textContent='NO-GO 권고';meta.innerHTML=`<b>${reasons.join(' · ')}</b> — 매수 보류·재검토 권고. 강행 시 사유를 Journal/논거에 기록.`;}
+  else if(combo){color='var(--ffail)';bg='var(--ffailbg)';badge.textContent='NO-GO 급 경고';meta.innerHTML=`<b>오버행+증자 동시 CONDITIONAL</b> — "조달 상습" 플래그. FAIL 수준으로 보라. (CONDITIONAL ${C}개)`;}
+  else if(C>0){color='var(--fcond)';bg='var(--fcondbg)';badge.textContent='GO (조건부)';const ca=AXES.filter(a=>state[a.id]==='COND').map(a=>'축'+a.id);meta.innerHTML=`<b>CONDITIONAL ${C}개</b> (${ca.join(', ')}) — 소명·추가확인 후 진입. 사유 기록.`;}
+  else{color='var(--fpass)';bg='var(--fpassbg)';badge.textContent='GO';meta.innerHTML=`<b>회계·지배구조 이슈 없음</b> — 6개 축 모두 PASS. (실적·밸류에이션은 stock-analysis 담당)`;}
+  badge.style.color=color;badge.style.background=bg;badge.style.border='1px solid '+color;
+}
+const cbv=id=>$(id).value,fmt=n=>n.toLocaleString('ko-KR');
+
+window.fxCB=function(){
+  const amt=+cbv('cb-amt'),cp=+cbv('cb-cp'),sh=+cbv('cb-sh'),px=+cbv('cb-px'),fl=+cbv('cb-floor'),out=$('cb-out');
+  if(!amt||!cp||!sh){out.innerHTML='사채총액·전환가·상장주식수를 입력하세요.';return;}
+  const shares=amt/cp,dil=shares/sh*100;let txt=`전환가능주식수 <b>${fmt(Math.round(shares))}주</b> · 잠재 희석률 <b>${dil.toFixed(1)}%</b>`;
+  if(fl){const d2=(amt/fl)/sh*100;txt+=` · 리픽싱 하한 적용 시 <b>${d2.toFixed(1)}%</b>`;}
+  let g=dil>=10?'FAIL':(dil>=5?'COND':'PASS');
+  if(px&&px<cp){g='FAIL';txt+=` · <span style="color:var(--ffail)">현재가<전환가 → 리픽싱 위험</span>`;}
+  txt+=`<br>제안 등급: <span class="sg ${g}">${g}</span> <button class="apply" onclick="fxApply(1,'${g}')">축1에 적용</button>`;out.innerHTML=txt;
+};
+window.fxTurn=function(){
+  const yrs=['0','1','2'].map(i=>({y:cbv('t-y'+i),r:+cbv('t-r'+i),ar:+cbv('t-ar'+i),iv:+cbv('t-iv'+i),c:+cbv('t-c'+i)})).filter(x=>x.r>0);
+  const out=$('t-out');if(yrs.length<2){out.innerHTML='최소 2개 연도의 매출·매출채권·재고를 입력하세요.';return;}
+  yrs.forEach(x=>{x.ard=x.ar/x.r*365;x.ivd=x.iv/((x.c>0)?x.c:x.r)*365;x.basis=x.c>0?'COGS':'매출액';});
+  let tbl='<table class="tt"><tr><th>연도</th><th>매출</th><th>매출채권일수</th><th>재고일수</th></tr>';
+  yrs.forEach(x=>tbl+=`<tr><td>${x.y||'-'}</td><td>${fmt(Math.round(x.r))}</td><td>${x.ard.toFixed(1)}</td><td>${x.ivd.toFixed(1)}</td></tr>`);tbl+='</table>';
+  const last=yrs[yrs.length-1],prev=yrs[yrs.length-2];
+  const arYoY=(last.ard-prev.ard)/prev.ard*100,ivYoY=(last.ivd-prev.ivd)/prev.ivd*100,revYoY=(last.r-prev.r)/Math.abs(prev.r)*100,worst=Math.max(arYoY,ivYoY);
+  let g,reason;const flat=revYoY<=5;let two=false;
+  if(yrs.length>=3){const p2=yrs[0],arP=(prev.ard-p2.ard)/p2.ard*100;if(arYoY>0&&arP>0)two=true;}
+  if(worst>=50&&flat){g='FAIL';reason=`회전일수 YoY +${worst.toFixed(0)}% & 매출 정체(${revYoY.toFixed(0)}%) — 가공매출·악성재고 경보`;}
+  else if(two&&worst>=20){g='FAIL';reason=`회전일수 2년 연속 악화(직전 +${worst.toFixed(0)}%)`;}
+  else if(worst>=20){g='COND';reason=`회전일수 YoY +${worst.toFixed(0)}% — 매출(${revYoY.toFixed(0)}%) 대비 점검`;}
+  else if(revYoY>0&&worst>revYoY){g='COND';reason=`채권·재고 증가(+${worst.toFixed(0)}%)가 매출(+${revYoY.toFixed(0)}%) 상회`;}
+  else{g='PASS';reason=`회전일수 안정(YoY +${worst.toFixed(0)}%), 매출 ${revYoY.toFixed(0)}%와 정합`;}
+  out.innerHTML=tbl+`<div style="margin-top:6px">재고회전 분모: ${last.basis} · 제안 등급: <span class="sg ${g}">${g}</span> — ${reason} <button class="apply" onclick="fxApply(5,'${g}')">축5에 적용</button></div>`;
+};
+window.fxApply=function(axis,g){state[axis]=g;const grp=root.querySelector(`.grades[data-axis="${axis}"]`);grp.querySelectorAll('.gbtn').forEach(x=>x.classList.toggle('on',x.dataset.g===g));compute();};
+window.fxCopy=function(){
+  const name=$('m-name').value||'종목명',code=$('m-code').value||'------',date=$('m-date').value||new Date().toISOString().slice(0,10);
+  const badge=$('vbadge').textContent,gmap={PASS:'PASS',COND:'CONDITIONAL',FAIL:'FAIL'};
+  let md=`# 포렌식 체크리스트: ${name} (${code}) — ${date}\n\n## 게이트 판정: ${badge}\n`+$('vmeta').textContent.replace(/\s+/g,' ')+'\n\n## 축별 결과\n| 축 | 등급 | 근거 |\n|----|------|------|\n';
+  AXES.forEach(a=>{const g=state[a.id]?gmap[state[a.id]]:'미채점';const note=(root.querySelector(`[data-note="${a.id}"]`).value||'').replace(/\n/g,' ')||'-';md+=`| ${a.id} ${a.t} | ${g} | ${note} |\n`;});
+  md+=`\n> 판단 재료이지 매매 지시가 아니다. 근거는 DART 원문 기준.\n`;
+  navigator.clipboard.writeText(md).then(()=>{const b=event.target,o=b.textContent;b.textContent='복사됨 ✓';setTimeout(()=>b.textContent=o,1500);});
+};
+window.fxReset=function(){AXES.forEach(a=>state[a.id]=null);root.querySelectorAll('.gbtn').forEach(b=>b.classList.remove('on'));root.querySelectorAll('textarea,input').forEach(i=>i.value='');root.querySelectorAll('.toolout').forEach(o=>o.innerHTML='');$('m-date').value=new Date().toISOString().slice(0,10);compute();};
+$('m-date').value=new Date().toISOString().slice(0,10);compute();
+})();
+</script>
+
+<p class="disclaimer">본 자료는 투자 참고용이며 특정 종목의 매수·매도를 권유하지 않습니다. 투자의 최종 판단과 책임은 투자자 본인에게 있습니다.</p>
+</main></body></html>
