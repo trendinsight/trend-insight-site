@@ -280,15 +280,37 @@ function auxSummary(ax){
 /* ── 해석 문장 생성 ── */
 function narrate(r,name){
   const s=[];
-  s.push(`<b>${name}</b>은(는) 현재 구름대 <b>${r.pos}</b>에 위치하며, ${r.tk?'전환선이 기준선 위에 있어 단기 모멘텀은 살아있는':'기준선이 전환선 위에 있어 단기 모멘텀이 꺾인'} 상태입니다.`);
-  s.push(`후행스팬은 26일 전 가격을 ${r.chikouOk?'상회(호전)':'하회(역전)'} — 추세 ${r.chikouOk?'지지':'부담'} 요인입니다.`);
-  if(r.twist)s.push(`선행 구름은 <b>${r.twist.in_days}거래일 내 ${r.twist.dir} 꼬임</b>이 예정되어 변곡 가능성에 유의해야 합니다.`);
-  else s.push(`선행 구름은 ${r.futBull?'양운(상승 우호)':'음운(하락 우호)'}이 유지됩니다.`);
-  if(r.sanyaku)s.push(`⚑ <b>${r.sanyaku}</b> 상태 — ${r.sanyaku==='삼역호전'?'세 요소가 모두 강세로 정렬된 교과서적 매수 국면':'세 요소가 모두 약세로 정렬된 전형적 하락 국면'}입니다.`);
+  // ① 구름 위치 — 큰 흐름
+  const posTxt=r.pos==='위'?'구름 <b>위</b>에 있습니다. 구름 위는 큰 흐름이 <b>상승 쪽</b>이라는 뜻입니다':
+    r.pos==='아래'?'구름 <b>아래</b>에 있습니다. 구름 아래는 큰 흐름이 <b>하락 쪽</b>이라는 뜻입니다':
+    '구름 <b>안</b>에 있습니다. 구름 속은 방향이 아직 정해지지 않은 <b>눈치보기 구간</b>입니다';
+  s.push(`<b>${name}</b>의 주가는 지금 '구름대'(사고팔린 물량이 몰려 지지·저항 역할을 하는 가격 띠) ${posTxt}.`);
+  // ② 전환/기준선 — 단기 힘
+  s.push(`단기 흐름을 보는 두 선 중 ${r.tk?'빠른 선(전환선)이 위에 있어 <b>최근 매수 힘이 우세</b>':'느린 선(기준선)이 위에 있어 <b>최근 매도 힘이 우세</b>'}합니다.`);
+  // ③ 후행스팬 — 26일 전과 비교
+  s.push(`오늘 주가를 26일 전과 비교하는 선(후행스팬)은 26일 전 가격보다 ${r.chikouOk?'<b>높아 상승 추세를 뒷받침</b>':'<b>낮아 상승에 부담</b>'}합니다.`);
+  // ④ 미래 구름 — 앞으로의 색
+  if(r.twist)s.push(`앞쪽 구름은 <b>약 ${r.twist.in_days}거래일 뒤 ${r.twist.dir}으로 색이 뒤집힐(꼬임)</b> 예정입니다 — 이 무렵 방향이 바뀔 수 있으니 주의하세요.`);
+  else s.push(`앞쪽 구름은 계속 ${r.futBull?'<b>상승에 유리한 색(양운)</b>':'<b>하락에 유리한 색(음운)</b>'}을 유지합니다.`);
+  // 삼역
+  if(r.sanyaku)s.push(`⚑ 지금은 <b>${r.sanyaku}</b> 상태입니다 — ${r.sanyaku==='삼역호전'?'위 세 신호(구름·두 선·후행스팬)가 <b>모두 매수 방향으로 정렬</b>된, 일목에서 가장 강한 매수 국면':'위 세 신호가 <b>모두 매도 방향으로 정렬</b>된, 전형적으로 약한 하락 국면'}입니다.`);
   const ax=r.aux||{};
-  if(ax.adx)s.push(`ADX ${ax.adx.value}(${ax.adx.strength}) 기준 일목 신호 신뢰도는 <b>${ax.reliability}</b>이며, DI는 ${ax.adx.di_bullish?'상승':'하락'} 우위입니다.`);
-  if(ax.obv){s.push(`거래량(OBV)은 방향성을 <b>${ax.obv.volume_confirm}</b> 중입니다.`);
-    if(ax.obv.divergence)s.push(`⚠ <b>${ax.obv.divergence}</b> — 신호 강도를 낮춰 볼 필요가 있습니다.`);}
+  // ⑥ ADX — 추세 세기 + 신뢰도
+  if(ax.adx){
+    const rel=ax.reliability.split('(')[0].trim();
+    let t=`추세가 <b>얼마나 센지</b>를 재는 ADX는 ${ax.adx.value}(${ax.adx.strength})입니다. 그래서 지금 나온 일목 신호를 믿을 만한 정도는 <b>${rel}</b>입니다.`;
+    if(ax.adx.value<20)t+=` 추세가 약한 <b>횡보장</b>에서는 매수·매도 신호가 자주 <b>속임수</b>가 되니 방향 베팅은 자제하는 편이 좋습니다.`;
+    else t+=` 방향은 ${ax.adx.di_bullish?'<b>상승</b>':'<b>하락</b>'} 쪽 힘이 더 셉니다.`;
+    s.push(t);
+  }
+  // ⑦ OBV — 거래량 검증
+  if(ax.obv){
+    const vc=ax.obv.volume_confirm;
+    let t=`신호가 진짜인지 <b>거래량으로 확인</b>하는 OBV는 현재 주가 방향을 <b>${vc}</b>하고 있습니다.`;
+    t+= vc==='확인'?' (거래량이 방향을 받쳐줌 = 신뢰도 높음)':vc==='불일치'?' (거래량이 반대로 움직임 = 주의)':' (뚜렷하지 않음)';
+    s.push(t);
+    if(ax.obv.divergence)s.push(`⚠ <b>${ax.obv.divergence}</b> — 주가와 거래량이 서로 엇갈리는 신호라, 지금 신호는 더 조심해서 봐야 합니다.`);
+  }
   return s.join(' ');
 }
 
