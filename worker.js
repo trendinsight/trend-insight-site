@@ -2022,4 +2022,4 @@ async function handleReports(req, url, env, ctx) {
   }
 }
 
-// redeploy trigger: bind DART_KEY secret (forensic route)
+// redeploy trigger: force build of HEAD (tolerant inflater)
