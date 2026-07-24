@@ -1375,6 +1375,127 @@ async function handleJournal(req, url, env, ctx) {
 
 /* ═══════════════════════════════════════════════════════════════════ */
 
+
+/* ═══════════════ Forensic (/api/forensic/*) — DART OpenAPI 프록시 ═══════════════
+   회계 품질·지배구조 포렌식 체크리스트 페이지 전용. env.DART_KEY(대시보드 시크릿) 사용.
+   corpCode.xml(zip)을 GAUGE_KV에 24h 캐시하여 6자리 종목코드→8자리 corp_code 매핑. */
+const DART_BASE = "https://opendart.fss.or.kr/api";
+const FJ = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: JSON_HEADERS });
+function fYmd(d) { return "" + d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0"); }
+function fNum(v) { const x = parseFloat(String(v == null ? "" : v).replace(/,/g, "")); return isNaN(x) ? null : x; }
+function fPick(list, exact, incl) {
+  const norm = s => (s || "").replace(/\s/g, "");
+  for (const a of list) if (exact.includes(norm(a.account_nm))) { const n = fNum(a.thstrm_amount); if (n != null) return n; }
+  if (incl) for (const a of list) { const nm = norm(a.account_nm); if (incl.some(k => nm.includes(k))) { const n = fNum(a.thstrm_amount); if (n != null) return n; } }
+  return null;
+}
+async function dartGet(env, path, params) {
+  if (!env.DART_KEY) return { status: "NOKEY", message: "DART_KEY 미설정" };
+  const qs = new URLSearchParams({ crtfc_key: env.DART_KEY, ...params });
+  try {
+    const r = await fetch(`${DART_BASE}/${path}?${qs}`, { cf: { cacheTtl: 600 } });
+    if (!r.ok) return { status: "HTTP" + r.status, message: "DART HTTP 오류" };
+    return await r.json();
+  } catch (e) { return { status: "ERR", message: String(e) }; }
+}
+async function dartUnzipFirst(bytes) {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (dv.getUint32(0, false) !== 0x504b0304) throw new Error("not a zip");
+  const method = dv.getUint16(8, true);
+  let compsize = dv.getUint32(18, true);
+  const namelen = dv.getUint16(26, true);
+  const extralen = dv.getUint16(28, true);
+  const start = 30 + namelen + extralen;
+  if (!compsize) {
+    let cd = bytes.length;
+    for (let i = start; i < bytes.length - 3; i++) {
+      if (bytes[i] === 0x50 && bytes[i + 1] === 0x4b && bytes[i + 2] === 0x01 && bytes[i + 3] === 0x02) { cd = i; break; }
+    }
+    compsize = cd - start;
+  }
+  const comp = bytes.subarray(start, start + compsize);
+  if (method === 0) return new TextDecoder("utf-8").decode(comp);
+  const ds = new DecompressionStream("deflate-raw");
+  const stream = new Response(comp).body.pipeThrough(ds);
+  const out = new Uint8Array(await new Response(stream).arrayBuffer());
+  return new TextDecoder("utf-8").decode(out);
+}
+async function dartCorpMap(env) {
+  const cached = await env.GAUGE_KV.get("dart-corpmap");
+  if (cached) return JSON.parse(cached);
+  if (!env.DART_KEY) return null;
+  const r = await fetch(`${DART_BASE}/corpCode.xml?crtfc_key=${env.DART_KEY}`);
+  const buf = new Uint8Array(await r.arrayBuffer());
+  const xml = await dartUnzipFirst(buf);
+  const map = {};
+  const re = /<list>[\s\S]*?<corp_code>(\d+)<\/corp_code>[\s\S]*?<corp_name>([\s\S]*?)<\/corp_name>[\s\S]*?<stock_code>\s*([0-9A-Za-z]{6})\s*<\/stock_code>/g;
+  let m;
+  while ((m = re.exec(xml))) map[m[3]] = { corp_code: m[1], corp_name: m[2].trim() };
+  await env.GAUGE_KV.put("dart-corpmap", JSON.stringify(map), { expirationTtl: 86400 });
+  return map;
+}
+async function handleForensic(req, url, env) {
+  const p = url.pathname.slice("/api/forensic/".length);
+  try {
+    if (!env.DART_KEY) return FJ({ ok: false, error: "DART_KEY 미설정 — Cloudflare 대시보드(Workers > trend-insight-site > Settings > Variables and Secrets)에서 DART_KEY 시크릿을 추가하세요." });
+    const stock = (url.searchParams.get("stock") || "").replace(/[^0-9A-Za-z]/g, "").padStart(6, "0");
+    if (p === "resolve") {
+      const map = await dartCorpMap(env);
+      const hit = map && map[stock];
+      return FJ(hit ? { ok: true, ...hit, stock } : { ok: false, error: "corp_code 매핑 없음", stock });
+    }
+    if (p === "scan") {
+      const map = await dartCorpMap(env);
+      const hit = map && map[stock];
+      if (!hit) return FJ({ ok: false, error: "corp_code 매핑 없음 (신규상장·비상장 가능)", stock });
+      const cc = hit.corp_code;
+      const years = Math.min(parseInt(url.searchParams.get("years") || "5", 10) || 5, 10);
+      const now = new Date();
+      const end = fYmd(now);
+      const bgn = fYmd(new Date(now.getFullYear() - years, now.getMonth(), now.getDate()));
+      const [cb, bw, eb, rights, disc, st] = await Promise.all([
+        dartGet(env, "cvbdIsDecsn.json", { corp_code: cc, bgn_de: bgn, end_de: end }),
+        dartGet(env, "bdwtIsDecsn.json", { corp_code: cc, bgn_de: bgn, end_de: end }),
+        dartGet(env, "exbdIsDecsn.json", { corp_code: cc, bgn_de: bgn, end_de: end }),
+        dartGet(env, "piicDecsn.json", { corp_code: cc, bgn_de: bgn, end_de: end }),
+        dartGet(env, "list.json", { corp_code: cc, bgn_de: bgn, end_de: end, page_count: "100", last_reprt_at: "N" }),
+        dartGet(env, "stockTotqySttus.json", { corp_code: cc, bsns_year: String(now.getFullYear() - 1), reprt_code: "11011" }),
+      ]);
+      const yrs = [now.getFullYear() - 3, now.getFullYear() - 2, now.getFullYear() - 1];
+      const fin = [];
+      for (const y of yrs) {
+        let f = await dartGet(env, "fnlttSinglAcntAll.json", { corp_code: cc, bsns_year: String(y), reprt_code: "11011", fs_div: "CFS" });
+        if (f.status !== "000") f = await dartGet(env, "fnlttSinglAcntAll.json", { corp_code: cc, bsns_year: String(y), reprt_code: "11011", fs_div: "OFS" });
+        if (f.status === "000" && Array.isArray(f.list)) {
+          fin.push({
+            year: y,
+            revenue: fPick(f.list, ["매출액", "수익(매출액)", "영업수익", "매출"], ["매출액"]),
+            receivables: fPick(f.list, ["매출채권", "매출채권및기타채권", "매출채권및기타유동채권", "매출채권및기타유동자산"], ["매출채권"]),
+            inventory: fPick(f.list, ["재고자산"], ["재고자산"]),
+            cogs: fPick(f.list, ["매출원가"], ["매출원가"]),
+          });
+        }
+      }
+      let shares = null;
+      if (st.status === "000" && Array.isArray(st.list)) {
+        const row = st.list.find(r => /보통주/.test(r.se || "")) || st.list.find(r => /합\s*계|계$/.test(r.se || "")) || st.list[0];
+        const v = parseInt(String((row && row.istc_totqy) || "").replace(/[^\d]/g, ""), 10);
+        if (!isNaN(v)) shares = v;
+      }
+      const arr = x => (x && x.status === "000" && Array.isArray(x.list)) ? x.list : [];
+      return FJ({
+        ok: true, stock, corp_code: cc, corp_name: hit.corp_name, period: { bgn, end },
+        cb: arr(cb), bw: arr(bw), eb: arr(eb), rights: arr(rights),
+        disclosures: arr(disc).map(d => ({ report_nm: d.report_nm, rcept_dt: d.rcept_dt, rcept_no: d.rcept_no, flr_nm: d.flr_nm })),
+        shares, fin,
+        status: { cb: cb.status, bw: bw.status, eb: eb.status, rights: rights.status, disc: disc.status, st: st.status },
+      });
+    }
+    return FJ({ ok: false, error: "unknown endpoint" }, 404);
+  } catch (e) { return FJ({ ok: false, error: String(e) }, 502); }
+}
+
+
 export default {
   async scheduled(event, env, ctx) {
     // UTC 4시 = 13:00 KST(장중 참고) / UTC 7시 = 16:00 KST(종가 확정)
@@ -1432,6 +1553,10 @@ export default {
 
     if (url.pathname.startsWith("/api/entry/")) {
       return handleEntry(req, url, ctx);
+    }
+
+    if (url.pathname.startsWith("/api/forensic/")) {
+      return handleForensic(req, url, env);
     }
 
     if (url.pathname === "/api/refresh-gauge") {
