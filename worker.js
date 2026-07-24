@@ -1524,6 +1524,28 @@ async function handleForensic(req, url, env) {
         status: { cb: cb.status, bw: bw.status, eb: eb.status, rights: rights.status, disc: disc.status, st: st.status },
       });
     }
+    if (p === "rebuild") {
+      await env.GAUGE_KV.delete("dart-corpmap");
+      const key = await getDartKey(env);
+      if (!key) return FJ({ ok: false, error: "no key" });
+      const r = await fetch(`${DART_BASE}/corpCode.xml?crtfc_key=${key}`, { headers: DART_HEADERS, redirect: "manual" });
+      const buf = new Uint8Array(await r.arrayBuffer());
+      let xml = ""; let uerr = null;
+      try { xml = await dartUnzipFirst(buf); } catch (e) { uerr = String((e && e.message) || e).slice(0, 120); }
+      const parts = xml.split("<list>");
+      const map = {}; let has = false; const samples = [];
+      for (let i = 1; i < parts.length; i++) {
+        const sc = dartXField(parts[i], "stock_code");
+        if (!sc || !/^[0-9A-Za-z]{6}$/.test(sc)) continue;
+        const cc = dartXField(parts[i], "corp_code"); if (!cc) continue;
+        map[sc] = { corp_code: cc, corp_name: dartXField(parts[i], "corp_name") || "" };
+        if (sc === "005930") has = true;
+        if (samples.length < 5) samples.push(sc + ":" + cc);
+      }
+      const n = Object.keys(map).length;
+      if (n > 0) await env.GAUGE_KV.put("dart-corpmap", JSON.stringify(map), { expirationTtl: 86400 });
+      return FJ({ ok: true, zip_len: buf.length, unzip_err: uerr, xml_len: xml.length, lists: parts.length, listed: n, has005930: has, samples, samsung: map["005930"] || null });
+    }
     if (p === "keystatus") {
       let d1 = false; try { const r = await env.RISK_DB.prepare("SELECT value FROM secrets WHERE key='dart_api_key'").first(); d1 = !!(r && r.value); } catch (e) {}
       let probe = null;
