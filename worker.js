@@ -1380,6 +1380,15 @@ async function handleJournal(req, url, env, ctx) {
    회계 품질·지배구조 포렌식 체크리스트 페이지 전용. env.DART_KEY(대시보드 시크릿) 사용.
    corpCode.xml(zip)을 GAUGE_KV에 24h 캐시하여 6자리 종목코드→8자리 corp_code 매핑. */
 const DART_BASE = "https://opendart.fss.or.kr/api";
+// 키 출처: D1 secrets 테이블(dart_api_key) 우선 → env.DART_KEY 폴백.
+// D1은 배포/빌드와 무관하게 유지되므로 GitHub 빌드가 대시보드 시크릿을 덮어써도 안전.
+async function getDartKey(env) {
+  try {
+    const r = await env.RISK_DB.prepare("SELECT value FROM secrets WHERE key='dart_api_key'").first();
+    if (r && r.value) return r.value;
+  } catch (e) { /* D1 조회 실패 시 env 폴백 */ }
+  return env.DART_KEY || null;
+}
 const FJ = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: JSON_HEADERS });
 function fYmd(d) { return "" + d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0"); }
 function fNum(v) { const x = parseFloat(String(v == null ? "" : v).replace(/,/g, "")); return isNaN(x) ? null : x; }
@@ -1390,8 +1399,9 @@ function fPick(list, exact, incl) {
   return null;
 }
 async function dartGet(env, path, params) {
-  if (!env.DART_KEY) return { status: "NOKEY", message: "DART_KEY 미설정" };
-  const qs = new URLSearchParams({ crtfc_key: env.DART_KEY, ...params });
+  const key = await getDartKey(env);
+  if (!key) return { status: "NOKEY", message: "DART 키 미설정" };
+  const qs = new URLSearchParams({ crtfc_key: key, ...params });
   try {
     const r = await fetch(`${DART_BASE}/${path}?${qs}`, { cf: { cacheTtl: 600 } });
     if (!r.ok) return { status: "HTTP" + r.status, message: "DART HTTP 오류" };
@@ -1423,8 +1433,9 @@ async function dartUnzipFirst(bytes) {
 async function dartCorpMap(env) {
   const cached = await env.GAUGE_KV.get("dart-corpmap");
   if (cached) return JSON.parse(cached);
-  if (!env.DART_KEY) return null;
-  const r = await fetch(`${DART_BASE}/corpCode.xml?crtfc_key=${env.DART_KEY}`);
+  const key = await getDartKey(env);
+  if (!key) return null;
+  const r = await fetch(`${DART_BASE}/corpCode.xml?crtfc_key=${key}`);
   const buf = new Uint8Array(await r.arrayBuffer());
   const xml = await dartUnzipFirst(buf);
   const map = {};
@@ -1437,7 +1448,8 @@ async function dartCorpMap(env) {
 async function handleForensic(req, url, env) {
   const p = url.pathname.slice("/api/forensic/".length);
   try {
-    if (!env.DART_KEY) return FJ({ ok: false, error: "DART_KEY 미설정 — Cloudflare 대시보드(Workers > trend-insight-site > Settings > Variables and Secrets)에서 DART_KEY 시크릿을 추가하세요." });
+    const dkey = await getDartKey(env);
+    if (!dkey) return FJ({ ok: false, error: "DART 키 미설정 — D1(risk-manager) secrets 테이블에 dart_api_key를 넣거나 env.DART_KEY를 설정하세요." });
     const stock = (url.searchParams.get("stock") || "").replace(/[^0-9A-Za-z]/g, "").padStart(6, "0");
     if (p === "resolve") {
       const map = await dartCorpMap(env);
@@ -1490,6 +1502,10 @@ async function handleForensic(req, url, env) {
         shares, fin,
         status: { cb: cb.status, bw: bw.status, eb: eb.status, rights: rights.status, disc: disc.status, st: st.status },
       });
+    }
+    if (p === "keystatus") {
+      let d1 = false; try { const r = await env.RISK_DB.prepare("SELECT value FROM secrets WHERE key='dart_api_key'").first(); d1 = !!(r && r.value); } catch (e) {}
+      return FJ({ ok: true, d1_key: d1, env_key: !!env.DART_KEY });
     }
     return FJ({ ok: false, error: "unknown endpoint" }, 404);
   } catch (e) { return FJ({ ok: false, error: String(e) }, 502); }
