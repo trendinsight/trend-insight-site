@@ -1431,6 +1431,12 @@ async function dartUnzipFirst(bytes) {
   const out = new Uint8Array(await new Response(stream).arrayBuffer());
   return new TextDecoder("utf-8").decode(out);
 }
+function dartXField(seg, tag) {
+  const a = "<" + tag + ">", b = "</" + tag + ">";
+  const i = seg.indexOf(a); if (i < 0) return null;
+  const j = seg.indexOf(b, i + a.length); if (j < 0) return null;
+  return seg.slice(i + a.length, j).trim();
+}
 async function dartCorpMap(env) {
   const cached = await env.GAUGE_KV.get("dart-corpmap");
   if (cached) return JSON.parse(cached);
@@ -1441,9 +1447,15 @@ async function dartCorpMap(env) {
   const buf = new Uint8Array(await r.arrayBuffer());
   const xml = await dartUnzipFirst(buf);
   const map = {};
-  const re = /<list>[\s\S]*?<corp_code>(\d+)<\/corp_code>[\s\S]*?<corp_name>([\s\S]*?)<\/corp_name>[\s\S]*?<stock_code>\s*([0-9A-Za-z]{6})\s*<\/stock_code>/g;
-  let m;
-  while ((m = re.exec(xml))) map[m[3]] = { corp_code: m[1], corp_name: m[2].trim() };
+  const parts = xml.split("<list>");
+  for (let i = 1; i < parts.length; i++) {
+    const seg = parts[i];
+    const sc = dartXField(seg, "stock_code");
+    if (!sc || !/^[0-9A-Za-z]{6}$/.test(sc)) continue;
+    const cc = dartXField(seg, "corp_code");
+    if (!cc) continue;
+    map[sc] = { corp_code: cc, corp_name: dartXField(seg, "corp_name") || "" };
+  }
   await env.GAUGE_KV.put("dart-corpmap", JSON.stringify(map), { expirationTtl: 86400 });
   return map;
 }
