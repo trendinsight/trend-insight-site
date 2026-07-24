@@ -79,6 +79,10 @@ main{max-width:1240px;margin:0 auto;padding:18px 22px 40px}
   padding:3px 12px;letter-spacing:.5px}
 .sy-bull{background:rgba(232,98,27,.16);color:var(--orange-soft);border:1px solid rgba(232,98,27,.5)}
 .sy-bear{background:rgba(59,130,246,.15);color:var(--down);border:1px solid rgba(59,130,246,.5)}
+.auxsum{font-size:11.5px;color:var(--muted);text-align:center;margin-top:10px;padding-top:9px;
+  border-top:1px solid var(--line);line-height:1.6}
+.auxsum b{color:var(--ink)} .auxsum .ok{color:var(--orange-soft)} .auxsum .bad{color:var(--down)}
+.auxsum.warn{color:var(--down);border-top:0;padding-top:2px;margin-top:5px;font-weight:700}
 .scen{margin-top:4px}
 .scen .row{display:flex;align-items:center;gap:9px;font-size:12px;margin:7px 0}
 .scen .tag{width:34px;color:var(--muted);font-weight:700}
@@ -254,6 +258,25 @@ function computeAux(c,score){
   return out;
 }
 
+/* ── ADX/DMI/OBV 한 줄 요약 (점수 바로 밑 표기) ── */
+function auxSummary(ax){
+  if(!ax||(!ax.adx&&!ax.obv))return '';
+  const p=[];
+  if(ax.adx){
+    const rel=ax.reliability.split('(')[0].trim();
+    const relCls=rel==='높음'?'ok':(rel==='낮음'?'bad':'');
+    p.push(`ADX <b>${ax.adx.value}</b>(${ax.adx.strength}) · 신뢰도 <b class="${relCls}">${rel}</b> · DI <b class="${ax.adx.di_bullish?'ok':'bad'}">${ax.adx.di_bullish?'상승':'하락'} 우위</b>`);
+  }
+  if(ax.obv){
+    const vc=ax.obv.volume_confirm;
+    const vCls=vc==='확인'?'ok':(vc==='불일치'?'bad':'');
+    p.push(`거래량(OBV) <b class="${vCls}">${vc}</b>`);
+  }
+  let html=`<div class="auxsum">${p.join(' · ')}</div>`;
+  if(ax.obv&&ax.obv.divergence)html+=`<div class="auxsum warn">⚠ ${ax.obv.divergence}</div>`;
+  return html;
+}
+
 /* ── 해석 문장 생성 ── */
 function narrate(r,name){
   const s=[];
@@ -317,6 +340,7 @@ function render(d,fallbackName){
           <div class="score" style="color:${scColor}">${r.score}<span style="font-size:18px;color:var(--faint)">/100</span></div>
           <div class="lab">${r.zone}</div>
           ${r.sanyaku?`<div class="sanyaku ${r.sanyaku==='삼역호전'?'sy-bull':'sy-bear'}">★ ${r.sanyaku}</div>`:''}
+          ${auxSummary(r.aux)}
         </div>
         ${sigRow('① 가격 vs 구름',r.pos==='위',`구름 ${r.pos}`)}
         ${sigRow('② 전환선 > 기준선',r.tk,r.cross?`${r.cross.type} ${r.cross.date.slice(5)}`:(r.tk?'전환 우위':'기준 우위'))}
