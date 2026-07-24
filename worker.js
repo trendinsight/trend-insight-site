@@ -1517,7 +1517,20 @@ async function handleForensic(req, url, env) {
           probe = { http: pr.status, status: st };
         }
       } catch (e) { probe = { status: "ERR", detail: String((e && e.message) || e).slice(0, 80) }; }
-      return FJ({ ok: true, d1_key: d1, env_key: !!env.DART_KEY, dart_probe: probe });
+      let corp = null;
+      try {
+        const k = await getDartKey(env);
+        if (k) {
+          const cr = await fetch(`${DART_BASE}/corpCode.xml?crtfc_key=${k}`, { headers: DART_HEADERS, redirect: "manual" });
+          const ab = await cr.arrayBuffer();
+          const b = new Uint8Array(ab);
+          const head4 = Array.from(b.slice(0, 4)).map(x => x.toString(16).padStart(2, "0")).join("");
+          let snippet = null;
+          if (head4 !== "504b0304") snippet = new TextDecoder("utf-8").decode(b.slice(0, 160));
+          corp = { http: cr.status, ctype: cr.headers.get("content-type"), len: b.length, head4, snippet };
+        }
+      } catch (e) { corp = { err: String((e && e.message) || e).slice(0, 120) }; }
+      return FJ({ ok: true, d1_key: d1, env_key: !!env.DART_KEY, dart_probe: probe, corp_probe: corp });
     }
     return FJ({ ok: false, error: "unknown endpoint" }, 404);
   } catch (e) {
