@@ -164,9 +164,9 @@ function hhll(h,l,i,n){if(i+1<n)return null;
   for(let j=i-n+1;j<=i;j++){if(h[j]>hh)hh=h[j];if(l[j]<ll)ll=l[j];}
   return (hh+ll)/2;}
 function nextBizDays(last,cnt){
-  const out=[];let d=new Date(last+'T00:00:00Z');
-  while(out.length<cnt){d.setUTCDate(d.getUTCDate()+1);
-    const w=d.getUTCDay();if(w===0||w===6)continue;
+  const out=[];let d=new Date(last+'T00:00:00');
+  while(out.length<cnt){d.setDate(d.getDate()+1);
+    const w=d.getDay();if(w===0||w===6)continue;
     out.push(d.toISOString().slice(0,10));}
   return out;}
 function computeIchimoku(c){
@@ -210,6 +210,50 @@ function computeIchimoku(c){
     futBull,twist,kjS,tkS,thick,sc,score,sanyaku,zone,up,dn,neu};
 }
 
+/* ── 보조지표: ADX(14)/DMI + OBV — ichimoku_analyze.py와 로직 동일 유지 ── */
+function computeAux(c,score){
+  const h=c.high,l=c.low,cl=c.close,v=c.volume,n=cl.length,i=n-1,P=14,out={};
+  if(n>=P*2+1){
+    const tr=[],pdm=[],mdm=[];
+    for(let j=1;j<n;j++){
+      tr.push(Math.max(h[j]-l[j],Math.abs(h[j]-cl[j-1]),Math.abs(l[j]-cl[j-1])));
+      const up=h[j]-h[j-1],dn=l[j-1]-l[j];
+      pdm.push(up>dn&&up>0?up:0);mdm.push(dn>up&&dn>0?dn:0);}
+    let atr=0,ap=0,am=0;
+    for(let j=0;j<P;j++){atr+=tr[j];ap+=pdm[j];am+=mdm[j];}
+    let adx=null,dip=0,dim=0;const dxs=[];
+    for(let j=P;j<tr.length;j++){
+      atr=atr-atr/P+tr[j];ap=ap-ap/P+pdm[j];am=am-am/P+mdm[j];
+      dip=atr?100*ap/atr:0;dim=atr?100*am/atr:0;
+      const dx=(dip+dim)?100*Math.abs(dip-dim)/(dip+dim):0;
+      dxs.push(dx);
+      if(dxs.length===P)adx=dxs.reduce((a,b)=>a+b,0)/P;
+      else if(dxs.length>P)adx=(adx*(P-1)+dx)/P;}
+    const strength=adx>=40?'강한 추세':adx>=25?'추세장':adx>=20?'약한 추세':'횡보장';
+    out.adx={value:Math.round(adx*10)/10,di_plus:Math.round(dip*10)/10,
+      di_minus:Math.round(dim*10)/10,strength,di_bullish:dip>dim};
+    out.reliability=adx>=25?'높음':adx>=20?'보통':'낮음(횡보장 — 일목 신호 신뢰도 저하)';
+  }else{out.adx=null;out.reliability='판정 불가(봉 수 부족)';}
+  const W=20;
+  if(v&&v.length===n&&v.some(x=>x)&&n>=W+1){
+    const obv=new Array(n).fill(0);
+    for(let j=1;j<n;j++){const vol=v[j]||0;
+      obv[j]=obv[j-1]+(cl[j]>cl[j-1]?vol:cl[j]<cl[j-1]?-vol:0);}
+    let ma=0;for(let j=i-W+1;j<=i;j++)ma+=obv[j];ma/=W;
+    const above=obv[i]>ma,rising=obv[i]>obv[i-W];
+    const win=a=>a.slice(i-W+1,i+1);
+    const pxHi=cl[i]>=Math.max(...win(cl)),pxLo=cl[i]<=Math.min(...win(cl));
+    const obvHi=obv[i]>=Math.max(...win(obv)),obvLo=obv[i]<=Math.min(...win(obv));
+    const div=pxHi&&!obvHi?'약세 다이버전스(가격 신고가·OBV 미동행)':
+      pxLo&&!obvLo?'강세 다이버전스(가격 신저가·OBV 미동행)':null;
+    const bull=score>=60,bear=score<40;
+    const confirm=(bull&&above&&rising)||(bear&&!above&&!rising)?'확인':
+      (bull&&!above&&!rising)||(bear&&above&&rising)?'불일치':'중립';
+    out.obv={above_ma20:above,rising_20d:rising,divergence:div,volume_confirm:confirm};
+  }else out.obv=null;
+  return out;
+}
+
 /* ── 해석 문장 생성 ── */
 function narrate(r,name){
   const s=[];
@@ -218,6 +262,10 @@ function narrate(r,name){
   if(r.twist)s.push(`선행 구름은 <b>${r.twist.in_days}거래일 내 ${r.twist.dir} 꼬임</b>이 예정되어 변곡 가능성에 유의해야 합니다.`);
   else s.push(`선행 구름은 ${r.futBull?'양운(상승 우호)':'음운(하락 우호)'}이 유지됩니다.`);
   if(r.sanyaku)s.push(`⚑ <b>${r.sanyaku}</b> 상태 — ${r.sanyaku==='삼역호전'?'세 요소가 모두 강세로 정렬된 교과서적 매수 국면':'세 요소가 모두 약세로 정렬된 전형적 하락 국면'}입니다.`);
+  const ax=r.aux||{};
+  if(ax.adx)s.push(`ADX ${ax.adx.value}(${ax.adx.strength}) 기준 일목 신호 신뢰도는 <b>${ax.reliability}</b>이며, DI는 ${ax.adx.di_bullish?'상승':'하락'} 우위입니다.`);
+  if(ax.obv){s.push(`거래량(OBV)은 방향성을 <b>${ax.obv.volume_confirm}</b> 중입니다.`);
+    if(ax.obv.divergence)s.push(`⚠ <b>${ax.obv.divergence}</b> — 신호 강도를 낮춰 볼 필요가 있습니다.`);}
   return s.join(' ');
 }
 
@@ -234,6 +282,7 @@ async function analyze(code,name){
 function sigRow(k,ok,val){return `<div class="sig"><span class="k"><span class="dot ${ok?'y':'n'}"></span>${k}</span><span class="v" style="color:${ok?'var(--orange-soft)':'var(--down)'}">${val}</span></div>`;}
 function render(d,fallbackName){
   const c=d.chart,q=d.quote||{},r=computeIchimoku(c);
+  r.aux=computeAux(c,r.score);
   const name=d.name||fallbackName||d.code;
   const price=q.price??r.price, rate=q.change_rate||0, chg=q.change||0;
   const scColor=r.score>=60?'var(--orange)':r.score>=40?'var(--muted)':'var(--down)';
@@ -274,6 +323,14 @@ function render(d,fallbackName){
         ${sigRow('③ 후행스팬',r.chikouOk,`${r.chikouOk?'호전':'역전'} ${r.chikouGap>=0?'+':''}${r.chikouGap.toFixed(1)}%`)}
         ${sigRow('④ 미래 구름',r.futBull,r.twist?`${r.twist.in_days}일 내 ${r.twist.dir} 꼬임`:(r.futBull?'양운':'음운'))}
         ${sigRow('⑤ 기준선 기울기',r.kjS>0,r.kjS>0?'상승':(r.kjS<0?'하락':'횡보'))}
+      </div>
+      <div class="box" style="margin-top:16px">
+        <h3>보조 지표 확인 (ADX · OBV)</h3>
+        ${r.aux.adx?sigRow('⑥ ADX(14) 추세 강도',r.aux.adx.value>=25,`${r.aux.adx.value} · ${r.aux.adx.strength}`):''}
+        ${r.aux.adx?sigRow('&nbsp;&nbsp;DMI 방향',r.aux.adx.di_bullish,`+DI ${r.aux.adx.di_plus} / -DI ${r.aux.adx.di_minus}`):''}
+        ${r.aux.obv?sigRow('⑦ OBV 거래량 확인',r.aux.obv.volume_confirm==='확인',`MA20 ${r.aux.obv.above_ma20?'위':'아래'} · 20일 ${r.aux.obv.rising_20d?'증가':'감소'} · ${r.aux.obv.volume_confirm}`):''}
+        ${r.aux.obv&&r.aux.obv.divergence?`<div class="note" style="margin-top:8px;color:var(--down)">⚠ ${r.aux.obv.divergence}</div>`:''}
+        ${r.aux.adx?`<div class="note" style="margin-top:8px">일목 신호 신뢰도: <b>${r.aux.reliability}</b> — ADX 25↑ 추세장, 20↓ 횡보장(속임수 신호 주의)</div>`:''}
       </div>
       <div class="box" style="margin-top:16px">
         <h3>향후 방향성 시나리오</h3>
