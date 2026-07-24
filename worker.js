@@ -1409,39 +1409,29 @@ async function dartGet(env, path, params) {
     return await r.json();
   } catch (e) { return { status: "ERR", message: String(e) }; }
 }
-async function dartInflateRaw(comp) {
-  // DecompressionStream은 압축스트림 뒤 잔여바이트에 예외를 던지지만,
-  // 실제 해제 데이터는 그 전에 모두 방출된다 → 청크를 모으고 마지막 예외는 무시한다.
-  const ds = new DecompressionStream("deflate-raw");
-  const writer = ds.writable.getWriter();
-  writer.write(comp);
-  writer.close().catch(() => {});
-  const reader = ds.readable.getReader();
-  const chunks = [];
-  try {
-    for (;;) { const { done, value } = await reader.read(); if (done) break; if (value) chunks.push(value); }
-  } catch (e) { /* trailing bytes 등 무시 */ }
-  let total = 0; for (const c of chunks) total += c.length;
-  const out = new Uint8Array(total); let o = 0;
-  for (const c of chunks) { out.set(c, o); o += c.length; }
-  return out;
-}
 async function dartUnzipFirst(bytes) {
   const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  // EOCD → 중앙디렉터리 → 정확한 압축크기(compsize)로 슬라이스한다.
+  // (파일 끝까지 넘기면 뒤쪽 데이터디스크립터/중앙디렉터리가 잔여바이트로 붙어
+  //  DecompressionStream이 스트림을 error 시키고 이미 방출한 청크까지 폐기됨 → xml_len 0)
   let e = -1;
   for (let i = bytes.length - 22; i >= 0; i--) {
     if (bytes[i] === 0x50 && bytes[i + 1] === 0x4b && bytes[i + 2] === 0x05 && bytes[i + 3] === 0x06) { e = i; break; }
   }
   if (e < 0) throw new Error("EOCD not found");
   const cd = dv.getUint32(e + 16, true);
+  if (!(bytes[cd] === 0x50 && bytes[cd + 1] === 0x4b && bytes[cd + 2] === 0x01 && bytes[cd + 3] === 0x02))
+    throw new Error("central dir mismatch");
   const method = dv.getUint16(cd + 10, true);
+  const compsize = dv.getUint32(cd + 20, true);
   const localoff = dv.getUint32(cd + 42, true);
   const namelen = dv.getUint16(localoff + 26, true);
   const extralen = dv.getUint16(localoff + 28, true);
   const startPos = localoff + 30 + namelen + extralen;
-  const comp = bytes.subarray(startPos);           // 끝까지 넘기고 tolerant inflater가 처리
+  const comp = bytes.subarray(startPos, startPos + compsize);   // 정확한 길이
   if (method === 0) return new TextDecoder("utf-8").decode(comp);
-  const out = await dartInflateRaw(comp);
+  const ds = new DecompressionStream("deflate-raw");
+  const out = new Uint8Array(await new Response(new Response(comp).body.pipeThrough(ds)).arrayBuffer());
   return new TextDecoder("utf-8").decode(out);
 }
 async function dartCorpMap(env) {
