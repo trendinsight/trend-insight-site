@@ -97,6 +97,7 @@ main{max-width:1240px;margin:0 auto;padding:18px 22px 40px}
 .bipolar .bb{background:linear-gradient(90deg,#c9531a,#f08a4f);height:100%}
 .bipolar .ss{background:linear-gradient(90deg,#2b5fb8,#6ba0f5);height:100%;margin-left:auto}
 .contrib .desc{font-size:11.5px;color:var(--muted);line-height:1.5}
+.contrib .expl{font-size:11px;color:var(--faint);line-height:1.55;margin-top:4px;padding-left:8px;border-left:2px solid var(--line)}
 .lvl{width:100%;border-collapse:collapse;font-size:12.5px}
 .lvl td{padding:6px 0;border-bottom:1px solid var(--line)}
 .lvl tr:last-child td{border-bottom:0}
@@ -303,13 +304,21 @@ async function analyze(code,name){
   }catch(e){$('#detail').innerHTML='<div class="empty"><div class="big">⚠</div><div>연결 실패 · 잠시 후 다시 시도하세요</div></div>';}
 }
 const NAMES={macd:'MACD',rsi:'RSI',boll:'볼린저밴드',obv:'OBV',adx:'ADX/DMI'};
+const DESC={
+  macd:'두 이동평균선의 간격으로 <b>추세의 방향과 힘</b>을 봅니다. MACD선이 시그널선 위로 올라서면 매수 우위, 아래로 내려가면 매도 우위입니다.',
+  rsi:'최근 오른 힘과 빠진 힘을 <b>0~100</b>으로 나타냅니다. <b>70 이상=과열</b>(너무 올라 조정 위험), <b>30 이하=과매도</b>(너무 빠져 반등 기대).',
+  boll:'20일 평균선 위아래로 <b>변동폭 띠</b>를 그립니다. 주가가 <b>하단에 닿으면 싸다</b>(반등 기대), <b>상단에 닿으면 비싸다</b>(조정 경계) 신호입니다.',
+  obv:'거래량을 <b>누적</b>해 돈이 들어오는지 나가는지 봅니다. 주가와 함께 OBV가 오르면 상승에 <b>거래량이 실린</b> 것이라 신뢰도가 높습니다.',
+  adx:'추세가 <b>얼마나 센지</b>(ADX)와 <b>방향</b>(+DI 상승/−DI 하락)을 함께 봅니다. <b>ADX 25↑=뚜렷한 추세</b>, <b>20↓=방향 없는 횡보장</b>(신호가 자주 속음).'
+};
 function contribRow(k,x){
   const w=W[k],bw=x.buy/w*100,sw=x.sell/w*100;
   return `<div class="row"><div class="top"><span class="nm">${NAMES[k]}</span>
     <span class="wt">가중 ${w}</span>
     <span class="pts"><span class="b">+${x.buy}</span> / <span class="s">-${x.sell}</span></span></div>
     <div class="bipolar"><span class="bb" style="width:${bw/2}%"></span><span class="ss" style="width:${sw/2}%"></span></div>
-    <div class="desc">${x.note}</div></div>`;
+    <div class="desc">${x.note}</div>
+    <div class="expl">${DESC[k]}</div></div>`;
 }
 function render(d,fallbackName){
   const c=d.chart,q=d.quote||{},r=computeSignal(c);
