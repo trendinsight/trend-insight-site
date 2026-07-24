@@ -1380,6 +1380,7 @@ async function handleJournal(req, url, env, ctx) {
    회계 품질·지배구조 포렌식 체크리스트 페이지 전용. env.DART_KEY(대시보드 시크릿) 사용.
    corpCode.xml(zip)을 GAUGE_KV에 24h 캐시하여 6자리 종목코드→8자리 corp_code 매핑. */
 const DART_BASE = "https://opendart.fss.or.kr/api";
+const DART_HEADERS = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Accept": "application/json,text/xml,application/zip,*/*" };
 // 키 출처: D1 secrets 테이블(dart_api_key) 우선 → env.DART_KEY 폴백.
 // D1은 배포/빌드와 무관하게 유지되므로 GitHub 빌드가 대시보드 시크릿을 덮어써도 안전.
 async function getDartKey(env) {
@@ -1403,7 +1404,7 @@ async function dartGet(env, path, params) {
   if (!key) return { status: "NOKEY", message: "DART 키 미설정" };
   const qs = new URLSearchParams({ crtfc_key: key, ...params });
   try {
-    const r = await fetch(`${DART_BASE}/${path}?${qs}`, { cf: { cacheTtl: 600 } });
+    const r = await fetch(`${DART_BASE}/${path}?${qs}`, { headers: DART_HEADERS, cf: { cacheTtl: 600 } });
     if (!r.ok) return { status: "HTTP" + r.status, message: "DART HTTP 오류" };
     return await r.json();
   } catch (e) { return { status: "ERR", message: String(e) }; }
@@ -1435,8 +1436,8 @@ async function dartCorpMap(env) {
   if (cached) return JSON.parse(cached);
   const key = await getDartKey(env);
   if (!key) return null;
-  const r = await fetch(`${DART_BASE}/corpCode.xml?crtfc_key=${key}`, { redirect: "manual" });
-  if (r.status !== 200) throw new Error("DART_KEY_INVALID");
+  const r = await fetch(`${DART_BASE}/corpCode.xml?crtfc_key=${key}`, { headers: DART_HEADERS, redirect: "manual" });
+  if (r.status !== 200) throw new Error("DART_CORPCODE_HTTP_" + r.status);
   const buf = new Uint8Array(await r.arrayBuffer());
   const xml = await dartUnzipFirst(buf);
   const map = {};
@@ -1507,14 +1508,24 @@ async function handleForensic(req, url, env) {
     if (p === "keystatus") {
       let d1 = false; try { const r = await env.RISK_DB.prepare("SELECT value FROM secrets WHERE key='dart_api_key'").first(); d1 = !!(r && r.value); } catch (e) {}
       let probe = null;
-      try { const k = await getDartKey(env); if (k) { const pr = await fetch(`${DART_BASE}/list.json?crtfc_key=${k}&page_count=1`); const pj = await pr.json(); probe = { status: pj.status, message: pj.message }; } } catch (e) { probe = { status: "ERR" }; }
+      try {
+        const k = await getDartKey(env);
+        if (k) {
+          const pr = await fetch(`${DART_BASE}/list.json?crtfc_key=${k}&page_count=1`, { headers: DART_HEADERS, redirect: "manual" });
+          const txt = await pr.text();
+          let st = null; try { st = JSON.parse(txt).status; } catch (e) { st = "NONJSON"; }
+          probe = { http: pr.status, status: st };
+        }
+      } catch (e) { probe = { status: "ERR", detail: String((e && e.message) || e).slice(0, 80) }; }
       return FJ({ ok: true, d1_key: d1, env_key: !!env.DART_KEY, dart_probe: probe });
     }
     return FJ({ ok: false, error: "unknown endpoint" }, 404);
   } catch (e) {
     const msg = String((e && e.message) || e);
     if (msg.includes("DART_KEY_INVALID"))
-      return FJ({ ok: false, error: "DART 키가 유효하지 않습니다(등록되지 않은/미활성 인증키, status 010). opendart에서 키를 활성화한 뒤 D1 secrets의 dart_api_key를 갱신하세요." }, 502);
+      return FJ({ ok: false, error: "DART 키가 유효하지 않습니다(등록되지 않은/미활성 인증키, status 010)." }, 502);
+    if (msg.includes("DART_CORPCODE_HTTP_"))
+      return FJ({ ok: false, error: "DART corpCode 응답 이상(" + msg + ") — 키/네트워크 확인 필요." }, 502);
     return FJ({ ok: false, error: "DART 조회 오류 (요청/응답 확인 필요)" }, 502);
   }
 }
