@@ -1411,31 +1411,27 @@ async function dartGet(env, path, params) {
 }
 async function dartUnzipFirst(bytes) {
   const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  if (dv.getUint32(0, false) !== 0x504b0304) throw new Error("not a zip");
-  const method = dv.getUint16(8, true);
-  let compsize = dv.getUint32(18, true);
-  const namelen = dv.getUint16(26, true);
-  const extralen = dv.getUint16(28, true);
-  const start = 30 + namelen + extralen;
-  if (!compsize) {
-    let cd = bytes.length;
-    for (let i = start; i < bytes.length - 3; i++) {
-      if (bytes[i] === 0x50 && bytes[i + 1] === 0x4b && bytes[i + 2] === 0x01 && bytes[i + 3] === 0x02) { cd = i; break; }
-    }
-    compsize = cd - start;
+  // 정확한 압축크기를 위해 EOCD → 중앙디렉터리 레코드에서 읽는다 (로컬헤더 추정 금지).
+  let e = -1;
+  for (let i = bytes.length - 22; i >= 0; i--) {
+    if (bytes[i] === 0x50 && bytes[i + 1] === 0x4b && bytes[i + 2] === 0x05 && bytes[i + 3] === 0x06) { e = i; break; }
   }
-  const comp = bytes.subarray(start, start + compsize);
+  if (e < 0) throw new Error("EOCD not found");
+  const cd = dv.getUint32(e + 16, true);            // 중앙디렉터리 시작 오프셋
+  if (!(bytes[cd] === 0x50 && bytes[cd + 1] === 0x4b && bytes[cd + 2] === 0x01 && bytes[cd + 3] === 0x02))
+    throw new Error("central dir header mismatch");
+  const method = dv.getUint16(cd + 10, true);
+  const compsize = dv.getUint32(cd + 20, true);     // 정확한 압축 크기
+  const localoff = dv.getUint32(cd + 42, true);
+  const namelen = dv.getUint16(localoff + 26, true);
+  const extralen = dv.getUint16(localoff + 28, true);
+  const startPos = localoff + 30 + namelen + extralen;
+  const comp = bytes.subarray(startPos, startPos + compsize);
   if (method === 0) return new TextDecoder("utf-8").decode(comp);
   const ds = new DecompressionStream("deflate-raw");
   const stream = new Response(comp).body.pipeThrough(ds);
   const out = new Uint8Array(await new Response(stream).arrayBuffer());
   return new TextDecoder("utf-8").decode(out);
-}
-function dartXField(seg, tag) {
-  const a = "<" + tag + ">", b = "</" + tag + ">";
-  const i = seg.indexOf(a); if (i < 0) return null;
-  const j = seg.indexOf(b, i + a.length); if (j < 0) return null;
-  return seg.slice(i + a.length, j).trim();
 }
 async function dartCorpMap(env) {
   const cached = await env.GAUGE_KV.get("dart-corpmap");
