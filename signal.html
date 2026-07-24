@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0c111c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>시그널 · 5대 보조지표 매수/매도 점수</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+:root{
+  --bg:#0c111c; --panel:#141c2b; --panel2:#1a2336; --line:#26314a;
+  --ink:#e9eef7; --muted:#8896ae; --faint:#5d6b85;
+  --buy:#E8621B; --buy2:#f08a4f; --sell:#3b82f6; --sell2:#6ba0f5;
+  --up:#f0454e; --down:#3b82f6;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Pretendard',sans-serif;
+  font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+.up{color:var(--up)} .down{color:var(--down)}
+header{display:flex;align-items:center;gap:14px;padding:12px 18px;flex-wrap:wrap;
+  background:linear-gradient(180deg,#101827,#0c111c);border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:30}
+.brand{display:flex;align-items:baseline;gap:9px;white-space:nowrap}
+.brand .ti{font-family:'JetBrains Mono';font-weight:700;font-size:20px;color:var(--buy);
+  letter-spacing:1px;border:1.5px solid var(--buy);border-radius:6px;padding:1px 8px}
+.brand h1{font-size:15px;font-weight:700}
+.brand small{color:var(--faint);font-size:11px;letter-spacing:1.5px;text-transform:uppercase}
+.searchwrap{position:relative;flex:1;min-width:220px;max-width:420px}
+#q{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:9px;
+  color:var(--ink);padding:10px 14px;font-size:14px;font-family:inherit;outline:none}
+#q:focus{border-color:var(--buy)} #q::placeholder{color:var(--faint)}
+#qresults{position:absolute;top:calc(100% + 5px);left:0;right:0;background:var(--panel2);
+  border:1px solid var(--line);border-radius:9px;overflow:hidden;display:none;z-index:50;
+  box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#qresults .qi{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer}
+#qresults .qi:hover,#qresults .qi.hl{background:#232d44}
+#qresults .qi .nm{font-weight:600;font-size:13.5px}
+#qresults .qi .cd{font-family:'JetBrains Mono';font-size:11px;color:var(--faint);margin-left:auto}
+#qresults .qi .mk{font-size:10px;color:var(--buy2);border:1px solid rgba(232,98,27,.4);
+  border-radius:4px;padding:1px 5px}
+.idxbtns{display:flex;gap:8px}
+.idxbtns button{background:var(--panel2);border:1px solid var(--line);color:var(--muted);
+  border-radius:8px;padding:9px 14px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
+.idxbtns button:hover{border-color:var(--sell2);color:var(--ink)}
+.idxbtns button.on{border-color:var(--buy);color:var(--buy)}
+main{max-width:1240px;margin:0 auto;padding:18px 22px 40px}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:55vh;
+  color:var(--faint);text-align:center;gap:10px;padding:20px}
+.empty .big{font-size:46px;opacity:.3}
+.dhead{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.dhead .nm{font-size:24px;font-weight:800;letter-spacing:-.4px}
+.dhead .cd{font-size:13px;color:var(--faint);font-family:'JetBrains Mono';margin-bottom:3px}
+.dhead .px{font-size:26px;font-weight:700;margin-left:auto}
+.dhead .px small{font-size:14px;font-weight:600;margin-left:8px}
+.grid2{display:grid;grid-template-columns:1fr 340px;gap:18px}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.box h3{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);
+  margin-bottom:12px;font-weight:700}
+#px-chart{height:400px;width:100%}
+.legend{display:flex;gap:13px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
+.note{font-size:12.5px;color:var(--muted);line-height:1.7;margin-top:4px}
+.note b{color:var(--ink)}
+/* 매수/매도 듀얼 게이지 */
+.duo{display:flex;gap:12px;text-align:center;margin-bottom:6px}
+.duo .cell{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 6px}
+.duo .cap{font-size:11px;letter-spacing:1px;font-weight:700;margin-bottom:3px}
+.duo .num{font-size:38px;font-weight:800;font-family:'JetBrains Mono';line-height:1}
+.duo .num small{font-size:14px;color:var(--faint);font-weight:600}
+.duo .buy .cap{color:var(--buy2)} .duo .buy .num{color:var(--buy)}
+.duo .sell .cap{color:var(--sell2)} .duo .sell .num{color:var(--sell)}
+.vbadge{display:block;text-align:center;margin:10px 0 4px;font-size:15px;font-weight:800;
+  border-radius:22px;padding:7px 0;letter-spacing:.5px}
+.v-강력매수{background:rgba(232,98,27,.2);color:var(--buy2);border:1px solid rgba(232,98,27,.6)}
+.v-매수{background:rgba(232,98,27,.13);color:var(--buy2);border:1px solid rgba(232,98,27,.4)}
+.v-중립{background:rgba(136,150,174,.13);color:var(--muted);border:1px solid var(--line)}
+.v-매도{background:rgba(59,130,246,.13);color:var(--sell2);border:1px solid rgba(59,130,246,.4)}
+.v-강력매도{background:rgba(59,130,246,.2);color:var(--sell2);border:1px solid rgba(59,130,246,.6)}
+.submeta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);
+  margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.submeta b{color:var(--ink)}
+/* 지표별 기여도 */
+.contrib .row{padding:11px 0;border-bottom:1px solid var(--line)}
+.contrib .row:last-child{border-bottom:0}
+.contrib .top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.contrib .nm{font-size:13.5px;font-weight:700}
+.contrib .wt{font-size:10.5px;color:var(--faint);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+.contrib .pts{margin-left:auto;font-family:'JetBrains Mono';font-size:12.5px;font-weight:700}
+.contrib .pts .b{color:var(--buy2)} .contrib .pts .s{color:var(--sell2)}
+.bipolar{display:flex;height:9px;border-radius:3px;overflow:hidden;background:#222c42;margin-bottom:5px}
+.bipolar .bb{background:linear-gradient(90deg,#c9531a,#f08a4f);height:100%}
+.bipolar .ss{background:linear-gradient(90deg,#2b5fb8,#6ba0f5);height:100%;margin-left:auto}
+.contrib .desc{font-size:11.5px;color:var(--muted);line-height:1.5}
+.lvl{width:100%;border-collapse:collapse;font-size:12.5px}
+.lvl td{padding:6px 0;border-bottom:1px solid var(--line)}
+.lvl tr:last-child td{border-bottom:0}
+.lvl td:last-child{text-align:right;font-family:'JetBrains Mono'}
+.spin{border:2px solid var(--line);border-top-color:var(--buy);border-radius:50%;
+  width:22px;height:22px;animation:sp .7s linear infinite;margin:60px auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:8px} ::-webkit-scrollbar-thumb{background:#243047;border-radius:4px}
+@media(max-width:980px){.grid2{grid-template-columns:1fr} #px-chart{height:320px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="ti">TI</span><h1>시그널</h1><small>5-Indicator Signal</small></div>
+  <div class="searchwrap">
+    <input id="q" placeholder="종목명 또는 코드 검색 (예: 삼성전자)" autocomplete="off">
+    <div id="qresults"></div>
+  </div>
+  <div class="idxbtns">
+    <button data-idx="KOSPI">코스피</button>
+    <button data-idx="KOSDAQ">코스닥</button>
+  </div>
+</header>
+<main>
+  <div id="detail">
+    <div class="empty"><div class="big">◒</div>
+      <div>종목을 검색하거나 코스피·코스닥 버튼을 눌러<br>5대 보조지표 매수/매도 점수를 확인하세요</div></div>
+  </div>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const API='/api/cockpit';
+const fmt=(n,d)=>n==null||isNaN(n)?'—':Number(n).toLocaleString('ko-KR',{minimumFractionDigits:d??0,maximumFractionDigits:d??2});
+const cls=v=>v>0?'up':(v<0?'down':'');
+const sign=v=>v>0?'▲':(v<0?'▼':'');
+const W={macd:25,rsi:20,boll:20,obv:15,adx:20};
+
+/* ── 검색 (일목 앱과 동일) ── */
+let qTimer=null,qItems=[],qHl=-1;
+const qBox=$('#qresults'),qIn=$('#q');
+function hideQ(){qBox.style.display='none';qHl=-1;}
+function renderQ(){
+  if(!qItems.length){hideQ();return;}
+  qBox.innerHTML=qItems.map((x,i)=>`<div class="qi ${i===qHl?'hl':''}" data-i="${i}">
+    <span class="nm">${x.name}</span><span class="mk">${x.market||''}</span><span class="cd">${x.code}</span></div>`).join('');
+  qBox.style.display='block';
+  qBox.querySelectorAll('.qi').forEach(el=>el.onclick=()=>pickQ(+el.dataset.i));
+}
+function pickQ(i){const x=qItems[i];if(!x)return;hideQ();qIn.value=x.name;qIn.blur();analyze(x.code,x.name);}
+qIn.addEventListener('input',()=>{
+  clearTimeout(qTimer);const q=qIn.value.trim();
+  if(q.length<1){hideQ();return;}
+  qTimer=setTimeout(async()=>{
+    try{const r=await(await fetch(`${API}/search?q=${encodeURIComponent(q)}`)).json();
+      qItems=r.data||[];qHl=qItems.length?0:-1;renderQ();}catch(e){hideQ();}
+  },250);
+});
+qIn.addEventListener('keydown',e=>{
+  if(qBox.style.display!=='block')return;
+  if(e.key==='ArrowDown'){e.preventDefault();qHl=Math.min(qHl+1,qItems.length-1);renderQ();}
+  else if(e.key==='ArrowUp'){e.preventDefault();qHl=Math.max(qHl-1,0);renderQ();}
+  else if(e.key==='Enter'){e.preventDefault();pickQ(qHl>=0?qHl:0);}
+  else if(e.key==='Escape'){hideQ();}
+});
+document.addEventListener('click',e=>{if(!e.target.closest('.searchwrap'))hideQ();});
+document.querySelectorAll('.idxbtns button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.idxbtns button').forEach(x=>x.classList.toggle('on',x===b));
+  analyze(b.dataset.idx,b.dataset.idx==='KOSPI'?'코스피 지수':'코스닥 지수');
+});
+
+/* ── 지표 유틸 (signal_analyze.py와 동일 로직) ── */
+function ema(s,span){const k=2/(span+1);const o=[s[0]];for(let x=1;x<s.length;x++)o.push(s[x]*k+o[o.length-1]*(1-k));return o;}
+function smaAt(s,n,i){let t=0;for(let j=i-n+1;j<=i;j++)t+=s[j];return t/n;}
+function stdAt(s,n,i,m){let v=0;for(let j=i-n+1;j<=i;j++)v+=(s[j]-m)**2;return Math.sqrt(v/n);}
+const mn=(v,w)=>Math.round(Math.min(v,w)*10)/10;
+
+function scoreMACD(c){
+  const cl=c.close,w=W.macd,e12=ema(cl,12),e26=ema(cl,26);
+  const macd=e12.map((v,i)=>v-e26[i]),sig=ema(macd,9),hist=macd.map((v,i)=>v-sig[i]);
+  const i=cl.length-1,m=macd[i],s=sig[i],hi=hist[i],hip=hist[i-1];
+  let buy=0,sell=0;
+  if(m>s)buy+=10;else sell+=10;
+  if(hi>hip)buy+=8;else if(hi<hip)sell+=8;
+  if(m>0)buy+=4;else sell+=4;
+  let cross=null;
+  for(let j=i;j>Math.max(i-3,0);j--){
+    if(hist[j-1]<=0&&hist[j]>0){cross='골든크로스';buy+=3;break;}
+    if(hist[j-1]>=0&&hist[j]<0){cross='데드크로스';sell+=3;break;}}
+  const note=`${m>s?'MACD>시그널(정배열)':'MACD<시그널(역배열)'} · 히스토그램 ${hi>hip?'확대':'축소'} · ${m>0?'0선 위':'0선 아래'}`+(cross?` · ${cross}`:'');
+  return{macd:m,signal:s,hist:hi,cross,buy:mn(buy,w),sell:mn(sell,w),note};
+}
+function rsiSeries(cl,P){P=P||14;if(cl.length<P+1)return null;
+  let g=0,l=0;for(let j=1;j<=P;j++){const d=cl[j]-cl[j-1];g+=Math.max(d,0);l+=Math.max(-d,0);}
+  let ag=g/P,al=l/P;const o=new Array(P).fill(null);
+  o.push(100-100/(1+(al?ag/al:999)));
+  for(let j=P+1;j<cl.length;j++){const d=cl[j]-cl[j-1];
+    ag=(ag*(P-1)+Math.max(d,0))/P;al=(al*(P-1)+Math.max(-d,0))/P;
+    o.push(100-100/(1+(al?ag/al:999)));}
+  return o;}
+function scoreRSI(c){
+  const cl=c.close,w=W.rsi,rs=rsiSeries(cl);
+  if(!rs||rs[rs.length-1]==null)return{value:null,buy:0,sell:0,note:'RSI 산출 불가'};
+  const i=cl.length-1,r=rs[i],rp=rs[i-1],rising=r>rp;let buy=0,sell=0,zone;
+  if(r<30){zone='과매도';if(rising)buy+=16;else sell+=8;}
+  else if(r<45){zone='약세권';if(rising)buy+=12;else sell+=6;}
+  else if(r<=55){zone='중립';if(rising)buy+=5;else sell+=5;}
+  else if(r<=70){zone='강세권';if(rising)buy+=8;else sell+=8;}
+  else{zone='과열';if(!rising)sell+=16;else sell+=8;}
+  let div=null;const W2=20;
+  if(i>=W2){const seg=cl.slice(i-W2,i+1);const pxHi=cl[i]>=Math.max(...seg),pxLo=cl[i]<=Math.min(...seg);
+    const rr=rs.slice(i-W2,i+1).filter(x=>x!=null);
+    if(rr.length){if(pxHi&&r<Math.max(...rr)){div='약세 다이버전스';sell+=3;}
+      else if(pxLo&&r>Math.min(...rr)){div='강세 다이버전스';buy+=3;}}}
+  const note=`RSI ${r.toFixed(0)} · ${zone} · ${rising?'상승':'하락'}`+(div?` · ${div}`:'');
+  return{value:Math.round(r*10)/10,zone,divergence:div,buy:mn(buy,w),sell:mn(sell,w),note};
+}
+function bollAt(cl,i,N,K){const m=smaAt(cl,N,i),sd=stdAt(cl,N,i,m);return{up:m+K*sd,lo:m-K*sd,mid:m,bw:m?(2*K*sd)/m*100:0};}
+function scoreBoll(c){
+  const cl=c.close,w=W.boll,N=20,K=2,i=cl.length-1;
+  if(i<N)return{buy:0,sell:0,note:'볼린저 산출 불가'};
+  const b=bollAt(cl,i,N,K),pctB=b.up!==b.lo?(cl[i]-b.lo)/(b.up-b.lo):0.5,rising=cl[i]>cl[i-1];
+  const look=Math.min(120,i-N),bws=[];
+  for(let j=i-look;j<=i;j++)bws.push(bollAt(cl,j,N,K).bw);
+  const rank=bws.length?bws.filter(x=>x<=b.bw).length/bws.length:0.5,squeeze=rank<=0.2;
+  let buy=0,sell=0,pos;
+  if(pctB<=0.2){pos='하단밴드 접근';if(rising)buy+=14;else sell+=10;}
+  else if(pctB<0.5){pos='중심선 하단';if(rising)buy+=8;else sell+=4;}
+  else if(pctB<0.8){pos='중심선 상단';if(rising)buy+=8;else sell+=4;}
+  else{pos='상단밴드 접근';if(!rising)sell+=14;else buy+=6;}
+  if(squeeze){if(rising)buy+=6;else sell+=6;}
+  const note=`%B ${pctB.toFixed(2)}(${pos}) · 밴드폭 ${b.bw.toFixed(1)}%`+(squeeze?' · 스퀴즈(변동성 수축, 방향 임박)':'');
+  return{pctB:Math.round(pctB*100)/100,bandwidth:Math.round(b.bw*10)/10,squeeze,upper:b.up,mid:b.mid,lower:b.lo,buy:mn(buy,w),sell:mn(sell,w),note};
+}
+function scoreOBV(c){
+  const cl=c.close,v=c.volume,w=W.obv,n=cl.length,i=n-1,W2=20;
+  if(!v||v.length!==n||!v.some(x=>x)||i<W2)return{buy:0,sell:0,note:'거래량 데이터 없음 — OBV 생략',na:true};
+  const obv=new Array(n).fill(0);
+  for(let j=1;j<n;j++){const vol=v[j]||0;obv[j]=obv[j-1]+(cl[j]>cl[j-1]?vol:cl[j]<cl[j-1]?-vol:0);}
+  let ma=0;for(let j=i-W2+1;j<=i;j++)ma+=obv[j];ma/=W2;
+  const above=obv[i]>ma,rising=obv[i]>obv[i-W2];let buy=0,sell=0;
+  if(above&&rising)buy+=10;else if(above&&!rising)buy+=3;else if(!above&&!rising)sell+=10;else sell+=3;
+  const win=a=>a.slice(i-W2,i+1);
+  const pxHi=cl[i]>=Math.max(...win(cl)),pxLo=cl[i]<=Math.min(...win(cl));
+  const obvHi=obv[i]>=Math.max(...win(obv)),obvLo=obv[i]<=Math.min(...win(obv));
+  let div=null;
+  if(pxHi&&!obvHi){div='약세 다이버전스(가격 신고가·OBV 미동행)';sell+=5;}
+  else if(pxLo&&!obvLo){div='강세 다이버전스(가격 신저가·OBV 미동행)';buy+=5;}
+  const note=`OBV ${above?'MA20 위':'MA20 아래'} · 20일 ${rising?'증가':'감소'}`+(div?` · ⚠ ${div}`:'');
+  return{above_ma20:above,rising_20d:rising,divergence:div,buy:mn(buy,w),sell:mn(sell,w),note};
+}
+function scoreADX(c){
+  const h=c.high,l=c.low,cl=c.close,w=W.adx,n=cl.length,P=14;
+  if(n<P*2+1)return{value:null,buy:0,sell:0,note:'ADX 산출 불가(봉 수 부족)'};
+  const tr=[],pdm=[],mdm=[];
+  for(let j=1;j<n;j++){tr.push(Math.max(h[j]-l[j],Math.abs(h[j]-cl[j-1]),Math.abs(l[j]-cl[j-1])));
+    const up=h[j]-h[j-1],dn=l[j-1]-l[j];pdm.push(up>dn&&up>0?up:0);mdm.push(dn>up&&dn>0?dn:0);}
+  let atr=0,ap=0,am=0;for(let j=0;j<P;j++){atr+=tr[j];ap+=pdm[j];am+=mdm[j];}
+  let adx=null,dip=0,dim=0;const dxs=[];
+  for(let j=P;j<tr.length;j++){atr=atr-atr/P+tr[j];ap=ap-ap/P+pdm[j];am=am-am/P+mdm[j];
+    dip=atr?100*ap/atr:0;dim=atr?100*am/atr:0;
+    const dx=(dip+dim)?100*Math.abs(dip-dim)/(dip+dim):0;dxs.push(dx);
+    if(dxs.length===P)adx=dxs.reduce((a,b)=>a+b,0)/P;else if(dxs.length>P)adx=(adx*(P-1)+dx)/P;}
+  const strength=adx>=40?'강한 추세':adx>=25?'추세장':adx>=20?'약한 추세':'횡보장';
+  const factor=adx>=40?1:adx>=25?0.85:adx>=20?0.6:0.35,pts=w*factor;
+  let buy=0,sell=0;if(dip>dim)buy+=pts;else sell+=pts;
+  const reliability=adx>=25?'높음':adx>=20?'보통':'낮음(횡보장 — 오실레이터 속임수 주의)';
+  const note=`ADX ${adx.toFixed(0)}(${strength}) · +DI ${dip.toFixed(0)}/-DI ${dim.toFixed(0)} → ${dip>dim?'상승 방향':'하락 방향'} · 신뢰도 ${reliability}`;
+  return{value:Math.round(adx*10)/10,di_plus:Math.round(dip*10)/10,di_minus:Math.round(dim*10)/10,strength,di_bullish:dip>dim,reliability,buy:mn(buy,w),sell:mn(sell,w),note};
+}
+function verdictOf(b,s){const net=b-s;
+  if(b>=70&&net>=40)return'강력 매수';if(b>=55&&net>=20)return'매수';
+  if(s>=70&&-net>=40)return'강력 매도';if(s>=55&&-net>=20)return'매도';return'중립·관망';}
+function computeSignal(c){
+  const ind={macd:scoreMACD(c),rsi:scoreRSI(c),boll:scoreBoll(c),obv:scoreOBV(c),adx:scoreADX(c)};
+  let buy=0,sell=0,bull=0,bear=0,neu=0;
+  for(const k in ind){buy+=ind[k].buy;sell+=ind[k].sell;
+    if(ind[k].na)continue;
+    if(ind[k].buy>ind[k].sell)bull++;else if(ind[k].sell>ind[k].buy)bear++;else neu++;}
+  buy=Math.round(buy*10)/10;sell=Math.round(sell*10)/10;
+  return{ind,buy,sell,agree:{bull,bear,neu},verdict:verdictOf(buy,sell),
+    reliability:ind.adx.value!=null?ind.adx.reliability:'판정 불가'};
+}
+
+/* ── 해석 문장 ── */
+function narrate(r,name){
+  const s=[],ind=r.ind;
+  const lead=r.buy>r.sell?'매수':r.sell>r.buy?'매도':'중립';
+  s.push(`<b>${name}</b>의 5대 보조지표 종합은 <b>매수 ${r.buy} / 매도 ${r.sell}</b> — ${lead} 우위이며 판정은 <b>${r.verdict}</b>입니다.`);
+  s.push(`5개 지표 중 매수 우위 <b>${r.agree.bull}</b>개 · 매도 우위 <b>${r.agree.bear}</b>개로, ${r.agree.bull>=4||r.agree.bear>=4?'대부분 한 방향으로 모여 신호가 뚜렷':'방향이 다소 엇갈려 신중이 필요'}합니다.`);
+  s.push(`추세 강도(ADX)로 본 신뢰도는 <b>${r.reliability}</b>입니다`+(String(r.reliability).startsWith('낮음')?' — 지금은 방향 없는 횡보장이라 RSI·볼린저 신호가 속기 쉽습니다.':'.'));
+  if(ind.obv.divergence)s.push(`⚠ OBV <b>${ind.obv.divergence}</b> — 가격과 거래량이 엇갈립니다.`);
+  if(ind.macd.cross)s.push(`MACD <b>${ind.macd.cross}</b>가 최근 발생했습니다.`);
+  return s.join(' ');
+}
+
+/* ── 분석 & 렌더 ── */
+let chart=null;
+async function analyze(code,name){
+  $('#detail').innerHTML='<div class="spin"></div>';
+  try{
+    const r=await(await fetch(`${API}/analyze/${code}`)).json();
+    if(!r.ok){$('#detail').innerHTML=`<div class="empty"><div class="big">⚠</div><div>${r.error||'분석 불가'}</div></div>`;return;}
+    render(r.data,name);
+  }catch(e){$('#detail').innerHTML='<div class="empty"><div class="big">⚠</div><div>연결 실패 · 잠시 후 다시 시도하세요</div></div>';}
+}
+const NAMES={macd:'MACD',rsi:'RSI',boll:'볼린저밴드',obv:'OBV',adx:'ADX/DMI'};
+function contribRow(k,x){
+  const w=W[k],bw=x.buy/w*100,sw=x.sell/w*100;
+  return `<div class="row"><div class="top"><span class="nm">${NAMES[k]}</span>
+    <span class="wt">가중 ${w}</span>
+    <span class="pts"><span class="b">+${x.buy}</span> / <span class="s">-${x.sell}</span></span></div>
+    <div class="bipolar"><span class="bb" style="width:${bw/2}%"></span><span class="ss" style="width:${sw/2}%"></span></div>
+    <div class="desc">${x.note}</div></div>`;
+}
+function render(d,fallbackName){
+  const c=d.chart,q=d.quote||{},r=computeSignal(c);
+  const name=d.name||fallbackName||d.code,i=c.close.length-1;
+  const price=q.price??c.close[i],rate=q.change_rate||0,chg=q.change||0;
+  const vkey='v-'+r.verdict.replace('·관망','').replace(' ','');
+  $('#detail').innerHTML=`
+  <div class="dhead">
+    <div class="nm">${name}</div><div class="cd">${d.code} · ${c.date[i]}</div>
+    <div class="px mono ${cls(rate)}">${fmt(price)}<small>${sign(rate)} ${fmt(Math.abs(chg))} (${fmt(Math.abs(rate),2)}%)</small></div>
+  </div>
+  <div class="grid2">
+    <div>
+      <div class="box">
+        <h3>주가 + 볼린저밴드(20,2)</h3>
+        <div id="px-chart"></div>
+        <div class="legend">
+          <span><i style="background:#e9eef7"></i>캔들</span>
+          <span><i style="background:#E8621B"></i>중심선(20일)</span>
+          <span><i style="background:rgba(136,150,174,.7)"></i>상·하단 밴드</span>
+        </div>
+      </div>
+      <div class="box contrib" style="margin-top:16px">
+        <h3>지표별 기여도 (매수 / 매도)</h3>
+        ${Object.keys(NAMES).map(k=>contribRow(k,r.ind[k])).join('')}
+      </div>
+    </div>
+    <div>
+      <div class="box">
+        <h3>매수 / 매도 점수</h3>
+        <div class="duo">
+          <div class="cell buy"><div class="cap">매수</div><div class="num">${r.buy}<small>/100</small></div></div>
+          <div class="cell sell"><div class="cap">매도</div><div class="num">${r.sell}<small>/100</small></div></div>
+        </div>
+        <div class="vbadge ${vkey}">${r.verdict}</div>
+        <div class="submeta"><span>지표 우위</span><span>매수 <b>${r.agree.bull}</b> · 매도 <b>${r.agree.bear}</b> · 중립 <b>${r.agree.neu}</b></span></div>
+        <div class="submeta"><span>신뢰도(ADX)</span><span><b>${r.reliability}</b></span></div>
+      </div>
+      <div class="box" style="margin-top:16px">
+        <h3>쉬운 해석</h3>
+        <div class="note" id="narr"></div>
+      </div>
+      <div class="box" style="margin-top:16px">
+        <h3>핵심 레벨</h3>
+        <table class="lvl">
+          <tr><td>볼린저 상단 · 저항</td><td>${fmt(r.ind.boll.upper)}</td></tr>
+          <tr><td>볼린저 중심 · 20일선</td><td>${fmt(r.ind.boll.mid)}</td></tr>
+          <tr><td>볼린저 하단 · 지지</td><td>${fmt(r.ind.boll.lower)}</td></tr>
+          <tr><td>현재가</td><td>${fmt(price)}</td></tr>
+        </table>
+        <div class="note" style="margin-top:10px">점수·판정은 규칙 기반 참고치입니다. 매수/매도 지시가 아니며 보조 지표로만 활용하세요.</div>
+      </div>
+    </div>
+  </div>`;
+  $('#narr').innerHTML=narrate(r,name);
+  drawChart(c);
+}
+
+/* ── 차트: 캔들 + 볼린저밴드 ── */
+function drawChart(c){
+  const P=$('#px-chart');P.innerHTML='';
+  const isM=window.innerWidth<=980;
+  chart=LightweightCharts.createChart(P,{
+    layout:{background:{color:'transparent'},textColor:'#8896ae'},
+    grid:{vertLines:{visible:false},horzLines:{color:'#161f31'}},
+    rightPriceScale:{borderColor:'#26314a'},timeScale:{borderColor:'#26314a',rightOffset:4},
+    crosshair:{mode:0},height:isM?320:400,width:P.clientWidth});
+  const cl=c.close,N=20,K=2,up=[],mid=[],lo=[];
+  for(let i=0;i<cl.length;i++){
+    if(i<N-1){continue;}
+    const b=bollAt(cl,i,N,K);
+    up.push({time:c.date[i],value:b.up});mid.push({time:c.date[i],value:b.mid});lo.push({time:c.date[i],value:b.lo});
+  }
+  const band={priceLineVisible:false,lastValueVisible:false,lineWidth:1,crosshairMarkerVisible:false};
+  chart.addLineSeries({...band,color:'rgba(136,150,174,.6)'}).setData(up);
+  chart.addLineSeries({...band,color:'rgba(136,150,174,.6)'}).setData(lo);
+  chart.addLineSeries({...band,color:'#E8621B',lineWidth:1.4}).setData(mid);
+  const candle=chart.addCandlestickSeries({upColor:'#f0454e',downColor:'#3b82f6',
+    wickUpColor:'#f0454e',wickDownColor:'#3b82f6',borderVisible:false});
+  candle.setData(c.date.map((t,i)=>({time:t,open:c.open[i],high:c.high[i],low:c.low[i],close:c.close[i]})).filter(x=>x.close!=null));
+  chart.timeScale().fitContent();
+}
+window.addEventListener('resize',()=>{if(chart){const P=$('#px-chart');
+  if(P)chart.resize(P.clientWidth,window.innerWidth<=980?320:400);}});
+
+const usp=new URLSearchParams(location.search);
+if(usp.get('code'))analyze(usp.get('code'),usp.get('name')||usp.get('code'));
+</script>
+</body>
+</html>
