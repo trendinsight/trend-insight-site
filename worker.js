@@ -1435,7 +1435,8 @@ async function dartCorpMap(env) {
   if (cached) return JSON.parse(cached);
   const key = await getDartKey(env);
   if (!key) return null;
-  const r = await fetch(`${DART_BASE}/corpCode.xml?crtfc_key=${key}`);
+  const r = await fetch(`${DART_BASE}/corpCode.xml?crtfc_key=${key}`, { redirect: "manual" });
+  if (r.status !== 200) throw new Error("DART_KEY_INVALID");
   const buf = new Uint8Array(await r.arrayBuffer());
   const xml = await dartUnzipFirst(buf);
   const map = {};
@@ -1505,10 +1506,17 @@ async function handleForensic(req, url, env) {
     }
     if (p === "keystatus") {
       let d1 = false; try { const r = await env.RISK_DB.prepare("SELECT value FROM secrets WHERE key='dart_api_key'").first(); d1 = !!(r && r.value); } catch (e) {}
-      return FJ({ ok: true, d1_key: d1, env_key: !!env.DART_KEY });
+      let probe = null;
+      try { const k = await getDartKey(env); if (k) { const pr = await fetch(`${DART_BASE}/list.json?crtfc_key=${k}&page_count=1`); const pj = await pr.json(); probe = { status: pj.status, message: pj.message }; } } catch (e) { probe = { status: "ERR" }; }
+      return FJ({ ok: true, d1_key: d1, env_key: !!env.DART_KEY, dart_probe: probe });
     }
     return FJ({ ok: false, error: "unknown endpoint" }, 404);
-  } catch (e) { return FJ({ ok: false, error: String(e) }, 502); }
+  } catch (e) {
+    const msg = String((e && e.message) || e);
+    if (msg.includes("DART_KEY_INVALID"))
+      return FJ({ ok: false, error: "DART 키가 유효하지 않습니다(등록되지 않은/미활성 인증키, status 010). opendart에서 키를 활성화한 뒤 D1 secrets의 dart_api_key를 갱신하세요." }, 502);
+    return FJ({ ok: false, error: "DART 조회 오류 (요청/응답 확인 필요)" }, 502);
+  }
 }
 
 
