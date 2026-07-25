@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>숏 후보 레이더 | Trend Insight</title>
+<meta name="description" content="공매도·대주·대차 가능 종목 중 낙폭 여력이 큰 후보를 5축 100점으로 점수화한 숏 후보 레이더">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--navy:#0b1f3f;--accent:#2e6ff2;--red:#b22f2f;--orange:#e8830c;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg:#f5f7fb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{text-decoration:none;color:inherit}
+header{background:var(--navy);padding:16px 24px}
+header a{color:#fff;font-weight:800}
+.wrap{max-width:1080px;margin:0 auto;padding:34px 20px 60px}
+h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:.92rem;margin:6px 0 4px}
+.asof{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 16px;font-size:.88rem;font-weight:700;color:var(--navy);margin:10px 8px 10px 0}
+.asof span{color:var(--red)}
+.datebox{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:.88rem;font-weight:600;color:var(--navy);margin:10px 0}
+.datebox input{font-family:inherit;font-size:.88rem;font-weight:700;color:var(--navy);border:none;outline:none;background:transparent}
+.datebox button{font-family:inherit;font-size:.8rem;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:999px;padding:4px 12px;cursor:pointer}
+.datebox button.ghost{background:#eef2f8;color:#39506e}
+#datemsg{font-size:.8rem;color:var(--red);margin:4px 0 8px;display:none}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 1px 3px rgba(11,31,63,.05);margin-top:22px}
+.card h2{font-size:1.1rem;color:var(--navy);margin-bottom:6px}
+.summary{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.kpi{flex:1;min-width:150px;background:#f8fafd;border:1px solid var(--line);border-radius:10px;padding:12px 16px}
+.kpi b{display:block;font-size:1.5rem;color:var(--navy);line-height:1.2}
+.kpi span{font-size:.78rem;color:var(--muted);font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:12px}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}
+td:first-child{font-weight:600}
+th{color:var(--muted);font-weight:600;font-size:.78rem}
+tr.clickable{cursor:pointer}
+tr.clickable:hover{background:#f8fafd}
+.grade{padding:3px 11px;border-radius:999px;font-size:.76rem;font-weight:800;white-space:nowrap}
+.g-PRIME_SHORT{background:#fdecea;color:#c62828}
+.g-CANDIDATE{background:#fff3e0;color:#e65100}
+.g-WATCH{background:#eef2f8;color:#5b6779}
+.warn{color:#7b1fa2;font-weight:700}
+.bars{display:flex;height:9px;border-radius:5px;overflow:hidden;background:#eef2f8;min-width:110px}
+.bars i{display:block;height:100%}
+.b-t{background:#c62828}.b-f{background:#e8830c}.b-s{background:#2e6ff2}.b-o{background:#5e35b1}.b-c{background:#00897b}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.75rem;color:var(--muted);margin-top:10px}
+.legend em{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+.detail{background:#f8fafd;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-top:10px;font-size:.84rem}
+.detail h3{font-size:.95rem;color:var(--navy);margin-bottom:6px}
+.detail .r{color:var(--muted);margin-top:4px}
+.detail .r b{color:var(--text)}
+.reasons{font-size:.82rem;color:var(--muted);margin-top:10px}
+.banner{border-radius:10px;padding:12px 16px;font-size:.86rem;font-weight:600;margin-top:14px}
+.b-warn{background:#f3e5f5;color:#6a1b9a}
+.b-info{background:#eef2f8;color:#39506e}
+.empty{text-align:center;color:var(--muted);padding:60px 20px;font-size:.95rem}
+.note{font-size:.78rem;color:#9aa6b6;margin-top:24px;line-height:1.6}
+</style>
+</head>
+<body>
+<header><a href="index.html">← Trend Insight</a></header>
+<div class="wrap">
+<h1>📉 숏 후보 레이더</h1>
+<p class="sub">공매도·대주·대차 가능 종목 중 낙폭 여력이 큰 후보 — 기술적 붕괴·펀더멘털·수급·오버행·군중심리 5축 100점</p>
+<div>
+<span class="asof">기준일 <span id="asof">—</span></span>
+<span class="datebox">📅 <input type="date" id="datepick"><button onclick="showDate()">조회</button><button class="ghost" onclick="showLatest()">최신</button></span>
+</div>
+<div id="datemsg"></div>
+<div id="content"><div class="empty">데이터를 불러오는 중…</div></div>
+<p class="note">배점: T 기술적 붕괴 30 (역배열·MA50 하회 지속·반등 실패·MA50 기울기) · F 펀더멘털 악화 20 (적자·고PER·고PBR) · S 수급 압력 25 (공매도잔고 비중·20일 증가·거래비중) · O 오버행 15 (CB·BW·유증·보호예수) · C 군중심리 10 (신용잔고·버즈).<br>
+공매도잔고는 T+2 지연 공표이며, 대주 가능 여부·재고·수수료는 실행 시점에 증권사에서 재확인해야 합니다. 공매도잔고 과밀 + 과매도가 겹치는 종목은 숏스퀴즈 위험 구간입니다.<br>
+본 자료는 투자 참고용이며 특정 종목의 매수·매도·공매도를 권유하지 않습니다. 투자의 최종 판단과 책임은 투자자 본인에게 있습니다.</p>
+</div>
+<script>
+let DB=null,OPEN=null,CUR=null;
+function fmt(n){return n==null?"—":Number(n).toLocaleString("ko-KR")}
+function sc(x){return x.final_score!=null?x.final_score:x.quant_score}
+function gradeOf(x){
+  if(x.grade)return x.grade;
+  const s=sc(x);
+  return s>=75?"PRIME_SHORT":s>=60?"CANDIDATE":"WATCH";
+}
+function bars(x){
+  const v=[["b-t",x.t_score],["b-f",x.f_score],["b-s",x.s_score],["b-o",x.o_score],["b-c",x.c_score]];
+  return '<div class="bars">'+v.map(function(p){return '<i class="'+p[0]+'" style="width:'+(p[1]||0)+'%"></i>';}).join("")+'</div>';
+}
+function detail(x){
+  const rs=[].concat(x.t_reasons||[],x.f_reasons||[],x.s_reasons||[],x.o_reasons||[],x.c_reasons||[]);
+  let h='<div class="detail"><h3>'+x.name+' ('+x.ticker+')</h3>';
+  h+='<div class="r"><b>5축 분해</b> — T '+(x.t_score||0)+'/30 · F '+(x.f_score||0)+'/20 · S '+(x.s_score||0)+'/25 · O '+(x.o_score==null?"미평가":x.o_score+"/15")+' · C '+(x.c_score==null?"미평가":x.c_score+"/10")+'</div>';
+  if(rs.length)h+='<div class="r"><b>근거</b> — '+rs.join(" · ")+'</div>';
+  if(x.shorting){
+    const s=x.shorting;
+    h+='<div class="r"><b>공매도</b> — 잔고비중 '+(s.balance_ratio==null?"—":s.balance_ratio)+'% · 20일 변화 '+(s.balance_chg20d_pct==null?"—":(s.balance_chg20d_pct>0?"+":"")+s.balance_chg20d_pct+"%")+' · 거래비중(5일) '+(s.short_vol_weight5d==null?"—":s.short_vol_weight5d)+'%</div>';
+  }
+  h+='<div class="r"><b>무효화</b> — 종가가 MA50('+fmt(x.ma50)+') 회복 시 숏 논거 소멸</div>';
+  if(x.trigger)h+='<div class="r"><b>진입 트리거</b> — '+x.trigger+'</div>';
+  if(x.squeeze_warning)h+='<div class="r warn">⚠ 숏스퀴즈 경계 — 등급과 무관하게 신규 숏 진입 비권고</div>';
+  h+='</div>';
+  return h;
+}
+function render(rec){
+  CUR=rec;
+  const el=document.getElementById("content");
+  document.getElementById("asof").textContent=rec.date||"—";
+  const items=(rec.items||[]).slice().sort(function(a,b){return sc(b)-sc(a);});
+  let h="";
+  const prime=items.filter(function(x){return gradeOf(x)==="PRIME_SHORT";}).length;
+  const sq=items.filter(function(x){return x.squeeze_warning;}).length;
+  h+='<div class="card"><h2>스크리닝 요약</h2>';
+  h+='<div class="summary">';
+  h+='<div class="kpi"><b>'+items.length+'</b><span>후보 종목</span></div>';
+  h+='<div class="kpi"><b>'+prime+'</b><span>PRIME_SHORT</span></div>';
+  h+='<div class="kpi"><b>'+sq+'</b><span>숏스퀴즈 경계</span></div>';
+  h+='<div class="kpi"><b>'+(items.length?Math.round(sc(items[0])):"—")+'</b><span>최고 점수</span></div>';
+  h+='</div>';
+  if(rec.regime)h+='<div class="banner b-info">시장 국면: <b>'+rec.regime+'</b>'+(rec.regime_note?' — '+rec.regime_note:'')+'</div>';
+  if(sq)h+='<div class="banner b-warn">⚠ 숏스퀴즈 경계 '+sq+'종목 — 공매도잔고 과밀 또는 과매도 구간. 신규 숏 진입 비권고.</div>';
+  h+='</div>';
+  if(!items.length){
+    h+='<div class="card"><div class="empty">조건을 충족하는 후보가 없습니다.</div></div>';
+    el.innerHTML=h;return;
+  }
+  h+='<div class="card"><h2>후보 랭킹 <span style="font-size:.75rem;color:var(--muted);font-weight:600">행을 누르면 상세</span></h2>';
+  h+='<table><tr><th>종목</th><th>등급</th><th>점수</th><th>5축</th><th>종가</th><th>MA50하회</th><th>RSI</th><th>잔고%</th><th>대주</th></tr>';
+  items.forEach(function(x,i){
+    const g=gradeOf(x),s=x.shorting||{};
+    const dj=x.daeju===true?"가능":(x.daeju===false?'<span style="color:#8a97a8">불가</span>':'<span style="color:#8a97a8">미확인</span>');
+    h+='<tr class="clickable" onclick="toggle('+i+')"><td>'+x.name+(x.squeeze_warning?' <span class="warn">⚠</span>':'')+'</td>';
+    h+='<td><span class="grade g-'+g+'">'+g+'</span></td>';
+    h+='<td><b>'+Math.round(sc(x))+'</b></td>';
+    h+='<td>'+bars(x)+'</td>';
+    h+='<td>'+fmt(x.close)+'</td><td>'+(x.below_ma50_days==null?"—":x.below_ma50_days)+'/20</td><td>'+(x.rsi14==null?"—":x.rsi14)+'</td>';
+    h+='<td>'+(s.balance_ratio==null?"—":s.balance_ratio)+'</td><td>'+dj+'</td></tr>';
+    if(OPEN===i)h+='<tr><td colspan="9">'+detail(x)+'</td></tr>';
+  });
+  h+='</table>';
+  h+='<div class="legend">';
+  [["b-t","T 기술"],["b-f","F 펀더"],["b-s","S 수급"],["b-o","O 오버행"],["b-c","C 심리"]].forEach(function(p){
+    h+='<span><em class="'+p[0]+'"></em>'+p[1]+'</span>';
+  });
+  h+='</div>';
+  if(!rec.broker_filter)h+='<div class="reasons">대주가능 필터 미적용 — 증권사 대주가능 종목 파일을 넣으면 가능/불가가 표시됩니다.</div>';
+  h+='</div>';
+  el.innerHTML=h;
+}
+function toggle(i){OPEN=(OPEN===i?null:i);if(CUR)render(CUR);}
+function showLatest(){OPEN=null;document.getElementById("datemsg").style.display="none";if(DB&&DB.history&&DB.history.length)render(DB.history[DB.history.length-1]);}
+function showDate(){
+  const d=document.getElementById("datepick").value,msg=document.getElementById("datemsg");
+  if(!DB||!d)return;
+  const rec=(DB.history||[]).find(function(r){return r.date===d;});
+  if(rec){OPEN=null;msg.style.display="none";render(rec);}
+  else{msg.textContent=d+" 데이터가 없습니다 (게시된 날짜만 조회 가능).";msg.style.display="block";}
+}
+fetch("data/short-radar.json?cb="+Date.now()).then(function(r){return r.json();}).then(function(j){
+  DB=j;
+  if(!j.history||!j.history.length){
+    document.getElementById("content").innerHTML='<div class="empty">아직 게시된 데이터가 없습니다.<br>short-candidate-screener 스킬로 첫 스크리닝을 실행하면 여기에 표시됩니다.</div>';
+    return;
+  }
+  showLatest();
+}).catch(function(){
+  document.getElementById("content").innerHTML='<div class="empty">데이터를 불러오지 못했습니다.</div>';
+});
+</script>
+</body>
+</html>
