@@ -79,6 +79,11 @@ tr.clickable:hover{background:#f8fafd}
 <script>
 let DB=null,OPEN=null,CUR=null;
 function fmt(n){return n==null?"—":Number(n).toLocaleString("ko-KR")}
+function amtStr(x){
+  const mw=x.daeju_amt_manwon!=null?x.daeju_amt_manwon:(x.daeju_amt_eok!=null?x.daeju_amt_eok*1e4:null);
+  if(mw==null)return null;
+  return mw>=1e4?(mw/1e4).toFixed(1)+"억":Math.round(mw).toLocaleString("ko-KR")+"만원";
+}
 function sc(x){return x.final_score!=null?x.final_score:x.quant_score}
 function gradeOf(x){
   if(x.grade)return x.grade;
@@ -137,9 +142,9 @@ function render(rec){
   items.forEach(function(x,i){
     const g=gradeOf(x),s=x.shorting||{};
     let dj;
-    if(x.daeju==null)dj='<span class="thin">미확인</span>';
-    else if(x.daeju===false)dj='<span class="thin">불가</span>';
-    else if(x.daeju_amt_eok!=null)dj=(x.daeju_effective===false?'<span class="thin">'+x.daeju_amt_eok.toFixed(1)+'억 부족</span>':'<span>'+x.daeju_amt_eok.toFixed(1)+'억</span>');
+    if(x.daeju==null)dj='<span style="color:#8a97a8">미확인</span>';
+    else if(x.daeju===false)dj='<span style="color:#8a97a8">불가</span>';
+    else if(amtStr(x)!=null)dj=(x.daeju_effective===false?'<span class="thin">'+amtStr(x)+' 부족</span>':'<span>'+amtStr(x)+'</span>');
     else dj='가능';
     let oh='—';
     if(x.overheat_banned)oh='<span class="ban">금지</span>';
