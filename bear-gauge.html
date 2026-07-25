@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>하락장 레이더 | Trend Insight</title>
+<meta name="description" content="코스피·코스닥 약세 국면 판정 + 인버스 ETF·숏 후보·낙폭과대 반등 전략 — 하락장 수익 레이더">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--navy:#0b1f3f;--navy2:#13294b;--accent:#2e6ff2;--red:#b22f2f;--orange:#e8830c;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg:#f5f7fb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{text-decoration:none;color:inherit}
+header{background:var(--navy);padding:16px 24px}
+header a{color:#fff;font-weight:800}
+.wrap{max-width:1080px;margin:0 auto;padding:34px 20px 60px}
+h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:.92rem;margin:6px 0 4px}
+.asof{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 16px;font-size:.88rem;font-weight:700;color:var(--navy);margin:10px 8px 10px 0}
+.asof span{color:var(--red)}
+.datebox{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:.88rem;font-weight:600;color:var(--navy);margin:10px 0 10px}
+.datebox input{font-family:inherit;font-size:.88rem;font-weight:700;color:var(--navy);border:none;outline:none;background:transparent}
+.datebox button{font-family:inherit;font-size:.8rem;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:999px;padding:4px 12px;cursor:pointer}
+.datebox button.ghost{background:#eef2f8;color:#39506e}
+#datemsg{font-size:.8rem;color:var(--red);margin:4px 0 8px;display:none}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 1px 3px rgba(11,31,63,.05);margin-top:22px}
+.card h2{font-size:1.1rem;color:var(--navy);margin-bottom:8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:860px){.grid2{grid-template-columns:1fr}}
+.regime-badge{display:inline-block;padding:6px 20px;border-radius:999px;font-size:1.05rem;font-weight:800;margin:8px 0}
+.r-BULL{background:#e8f5e9;color:#2e7d32}
+.r-NEUTRAL{background:#eef2f8;color:#39506e}
+.r-CORRECTION{background:#fff3e0;color:#e65100}
+.r-BEAR{background:#fdecea;color:#c62828}
+.r-CAPITULATION{background:#ede7f6;color:#5e35b1}
+.scoreline{font-size:2.2rem;font-weight:800;color:var(--navy);line-height:1.1}
+.scoreline small{font-size:1rem;color:var(--muted);font-weight:600}
+.meter{position:relative;height:14px;border-radius:7px;margin:16px 0 6px;background:linear-gradient(90deg,#66bb6a 0%,#9e9e9e 25%,#ffa726 45%,#ef5350 65%,#7e57c2 85%)}
+.meter .pin{position:absolute;top:-7px;width:4px;height:28px;background:var(--navy);border-radius:2px;transform:translateX(-2px)}
+.meterlab{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:12px}
+th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}
+td:first-child{font-weight:600}
+th{color:var(--muted);font-weight:600;font-size:.78rem}
+.strat{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.strat .row{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#f8fafd;border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:.9rem}
+.strat .row b{color:var(--navy)}
+.pill{padding:3px 12px;border-radius:999px;font-size:.8rem;font-weight:700;white-space:nowrap}
+.p-on{background:#fdecea;color:#c62828}
+.p-watch{background:#fff3e0;color:#e65100}
+.p-off{background:#eef2f8;color:#8a97a8}
+.p-buy{background:#e8f5e9;color:#2e7d32}
+.reasons{font-size:.82rem;color:var(--muted);margin-top:8px}
+.status-TRIGGER{color:#2e7d32;font-weight:700}
+.status-SETUP{color:#1565c0;font-weight:700}
+.status-WATCH{color:#8a97a8;font-weight:600}
+.empty{text-align:center;color:var(--muted);padding:60px 20px;font-size:.95rem}
+.note{font-size:.78rem;color:#9aa6b6;margin-top:24px;line-height:1.6}
+.chart{margin-top:14px}
+</style>
+</head>
+<body>
+<header><a href="index.html">← Trend Insight</a></header>
+<div class="wrap">
+<h1>🐻 하락장 레이더</h1>
+<p class="sub">코스피·코스닥 약세 국면(이평선·분산일·낙폭 + 온도계 보정) → 인버스 ETF · 개별주 숏 · 낙폭과대 반등 전략 매트릭스</p>
+<div>
+<span class="asof">기준일 <span id="asof">—</span></span>
+<span class="datebox">📅 <input type="date" id="datepick"><button onclick="showDate()">조회</button><button class="ghost" onclick="showLatest()">최신</button></span>
+</div>
+<div id="datemsg"></div>
+<div id="content"><div class="empty">데이터를 불러오는 중…</div></div>
+<p class="note">약세점수: 종가<MA20 +10 · <MA50 +20 · <MA200 +15 · MA50 하락기울기 +10 · 데드크로스 +10 · 분산일 +8~15 · 고점대비 낙폭 +5~20 (코스피·코스닥 평균, 거시온도 보정 ±5).<br>
+본 자료는 투자 참고용이며 특정 종목의 매수·매도를 권유하지 않습니다. 투자의 최종 판단과 책임은 투자자 본인에게 있습니다.</p>
+</div>
+<script>
+let DB=null;
+const REGIME_KO={BULL:"강세 (BULL)",NEUTRAL:"중립 (NEUTRAL)",CORRECTION:"조정 (CORRECTION)",BEAR:"하락장 (BEAR)",CAPITULATION:"투매 (CAPITULATION)"};
+const STRAT_KO={inverse:"인버스 ETF",short:"개별주 숏(대주)",rebound:"낙폭과대 반등 매수"};
+function pillCls(k,v){
+  if(!v||v.indexOf("OFF")===0||v.indexOf("금지")>=0&&v.indexOf("이익실현")<0&&k!=="rebound")return "p-off";
+  if(v.indexOf("감시")>=0||v.indexOf("대기")>=0||v.indexOf("검토")>=0)return "p-watch";
+  if(k==="rebound"&&v.indexOf("ON")>=0)return "p-buy";
+  return "p-on";
+}
+function fmt(n){return n==null?"—":Number(n).toLocaleString("ko-KR")}
+function render(rec){
+  const el=document.getElementById("content");
+  document.getElementById("asof").textContent=rec.date||"—";
+  let h="";
+  h+='<div class="card"><h2>국면 판정</h2>';
+  h+='<div class="scoreline">'+Math.round(rec.final_score)+'<small> /100</small></div>';
+  h+='<span class="regime-badge r-'+rec.regime+'">'+(REGIME_KO[rec.regime]||rec.regime)+'</span>';
+  h+='<div class="meter"><div class="pin" style="left:'+Math.max(0,Math.min(100,rec.final_score))+'%"></div></div>';
+  h+='<div class="meterlab"><span>BULL</span><span>NEUTRAL</span><span>CORRECTION</span><span>BEAR</span><span>CAPITULATION</span></div>';
+  h+='<table><tr><th>시장</th><th>종가</th><th>약세점수</th><th>RSI</th><th>분산일</th><th>고점대비</th></tr>';
+  [["kospi","코스피"],["kosdaq","코스닥"]].forEach(([k,nm])=>{
+    const m=rec[k]; if(!m)return;
+    h+='<tr><td>'+nm+'</td><td>'+fmt(m.close)+'</td><td>'+m.bear_score+'</td><td>'+(m.rsi14??"—")+'</td><td>'+(m.dist_days??"—")+'회</td><td>-'+(m.drawdown_pct??"—")+'%</td></tr>';
+  });
+  h+='</table>';
+  const rs=[...(rec.kospi?.reasons||[])];
+  if(rs.length)h+='<div class="reasons">코스피 신호: '+rs.join(" · ")+'</div>';
+  if(rec.gauge_notes&&rec.gauge_notes.length)h+='<div class="reasons">온도계: '+rec.gauge_notes.join(" · ")+'</div>';
+  h+='</div>';
+  h+='<div class="grid2">';
+  h+='<div class="card"><h2>전략 매트릭스</h2><div class="strat">';
+  const sm=rec.strategy_matrix||{};
+  ["inverse","short","rebound"].forEach(k=>{
+    h+='<div class="row"><b>'+STRAT_KO[k]+'</b><span class="pill '+pillCls(k,sm[k])+'">'+(sm[k]||"—")+'</span></div>';
+  });
+  h+='</div></div>';
+  h+='<div class="card"><h2>인버스 ETF 플랜 <span style="font-size:.75rem;color:var(--muted);font-weight:600">터틀 ATR · 2N 손절</span></h2>';
+  const ip=rec.inverse_plans||[];
+  if(ip.length){
+    h+='<table><tr><th>ETF</th><th>종가</th><th>N</th><th>손절</th><th>진입</th></tr>';
+    ip.forEach(p=>{
+      h+='<tr><td>'+p.name+'</td><td>'+fmt(p.close)+'</td><td>'+fmt(p.atr_n)+'</td><td>'+fmt(p.stop)+'</td><td>'+(p.allowed_now?'<span style="color:#c62828;font-weight:700">가능</span>':'<span style="color:#8a97a8">불가</span>')+'</td></tr>';
+    });
+    h+='</table><div class="reasons">곱버스(-2X)는 변동성 드래그로 단기 전용 · 2주 초과 보유 비권고</div>';
+  } else h+='<div class="reasons">플랜 없음</div>';
+  h+='</div></div>';
+  const reb=rec.rebound||[], sho=rec.short||[];
+  if(reb.length||sho.length){
+    h+='<div class="grid2">';
+    if(reb.length){
+      h+='<div class="card"><h2>낙폭과대 반등 후보</h2><table><tr><th>종목</th><th>종가</th><th>낙폭</th><th>상태</th><th>점수</th></tr>';
+      reb.forEach(x=>{h+='<tr><td>'+x.name+'</td><td>'+fmt(x.close)+'</td><td>-'+x.drawdown_pct+'%</td><td class="status-'+x.status+'">'+x.status+'</td><td>'+x.score+'</td></tr>';});
+      h+='</table><div class="reasons">TRIGGER=투매+반전 확인 · 매수 전 포렌식·리스크 점검 권고</div></div>';
+    }
+    if(sho.length){
+      h+='<div class="card"><h2>숏(대주) 후보</h2><table><tr><th>종목</th><th>종가</th><th>MA50하회</th><th>RSI</th><th>점수</th></tr>';
+      sho.forEach(x=>{h+='<tr><td>'+x.name+'</td><td>'+fmt(x.close)+'</td><td>'+x.below_ma50_days+'/20</td><td>'+(x.rsi14??"—")+'</td><td>'+x.score+'</td></tr>';});
+      h+='</table><div class="reasons">대주 가능 여부는 증권사 확인 필수 · MA50 회복 시 논거 무효</div></div>';
+    }
+    h+='</div>';
+  }
+  el.innerHTML=h;
+}
+function showLatest(){
+  document.getElementById("datemsg").style.display="none";
+  if(DB&&DB.history&&DB.history.length)render(DB.history[DB.history.length-1]);
+}
+function showDate(){
+  const d=document.getElementById("datepick").value;
+  const msg=document.getElementById("datemsg");
+  if(!DB||!d)return;
+  const rec=(DB.history||[]).find(r=>r.date===d);
+  if(rec){msg.style.display="none";render(rec);}
+  else{msg.textContent=d+" 데이터가 없습니다 (게시된 날짜만 조회 가능).";msg.style.display="block";}
+}
+fetch("data/bear-gauge.json?cb="+Date.now()).then(r=>r.json()).then(j=>{
+  DB=j;
+  if(!j.history||!j.history.length){
+    document.getElementById("content").innerHTML='<div class="empty">아직 게시된 데이터가 없습니다.<br>bear-market-trader 스킬로 첫 점검을 실행하면 여기에 표시됩니다.</div>';
+    return;
+  }
+  showLatest();
+}).catch(()=>{
+  document.getElementById("content").innerHTML='<div class="empty">데이터를 불러오지 못했습니다.</div>';
+});
+</script>
+</body>
+</html>
