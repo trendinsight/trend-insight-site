@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>레버리지 스위치 | Trend Insight</title>
+<meta name="description" content="KODEX 레버리지·인버스 3-state 스위칭 신호 — 강세점수·터틀 플랜·세후 백테스트">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--navy:#0b1f3f;--accent:#2e6ff2;--red:#b22f2f;--green:#2e7d32;--orange:#e8830c;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg:#f5f7fb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{text-decoration:none;color:inherit}
+header{background:var(--navy);padding:16px 24px}
+header a{color:#fff;font-weight:800}
+.wrap{max-width:1080px;margin:0 auto;padding:34px 20px 60px}
+h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:.92rem;margin:6px 0 4px}
+.asof{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 16px;font-size:.88rem;font-weight:700;color:var(--navy);margin:10px 8px 10px 0}
+.asof span{color:var(--accent)}
+.datebox{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:.88rem;font-weight:600;color:var(--navy)}
+.datebox input{font-family:inherit;font-size:.88rem;font-weight:700;color:var(--navy);border:none;outline:none;background:transparent}
+.datebox button{font-family:inherit;font-size:.8rem;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:999px;padding:4px 12px;cursor:pointer}
+.datebox button.ghost{background:#eef2f8;color:#39506e}
+#datemsg{font-size:.8rem;color:var(--red);margin:4px 0 8px;display:none}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 1px 3px rgba(11,31,63,.05);margin-top:22px}
+.card h2{font-size:1.1rem;color:var(--navy);margin-bottom:8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:860px){.grid2{grid-template-columns:1fr}}
+.state-badge{display:inline-block;padding:8px 26px;border-radius:999px;font-size:1.25rem;font-weight:800;margin:6px 0}
+.s-LEV{background:#e8f5e9;color:#2e7d32}
+.s-CASH{background:#eef2f8;color:#39506e}
+.s-INV{background:#fdecea;color:#c62828}
+.changed{display:inline-block;margin-left:10px;padding:5px 14px;border-radius:999px;background:#fff3e0;color:#e65100;font-size:.85rem;font-weight:700}
+.scoreline{font-size:2.6rem;font-weight:800;color:var(--navy);line-height:1.1}
+.scoreline small{font-size:1rem;color:var(--muted);font-weight:600}
+.band{position:relative;height:34px;border-radius:8px;margin:18px 0 6px;overflow:hidden;display:flex}
+.band i{display:block;height:100%;font-style:normal;font-size:.72rem;font-weight:700;display:flex;align-items:center;justify-content:center;color:#fff}
+.b-inv{background:#ef5350;width:35%}
+.b-mid{background:#b0bac7;width:30%}
+.b-lev{background:#66bb6a;width:35%}
+.band .pin{position:absolute;top:-4px;width:5px;height:42px;background:var(--navy);border-radius:3px;transform:translateX(-2.5px);box-shadow:0 0 0 2px #fff}
+.bandlab{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);font-weight:600}
+.instr{margin-top:14px;background:#f8fafd;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:0 8px 8px 0;padding:12px 16px;font-size:.92rem;font-weight:600;color:var(--navy)}
+.notewarn{margin-top:10px;background:#fff8e1;border:1px solid #ffe0a3;border-radius:8px;padding:10px 14px;font-size:.85rem;color:#8a5a00}
+table{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:12px}
+th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}
+td:first-child{font-weight:600}
+th{color:var(--muted);font-weight:600;font-size:.78rem}
+.kv{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:.9rem}
+.kv b{color:var(--navy);font-weight:700}
+.ok{color:var(--green);font-weight:700}
+.no{color:#8a97a8}
+.distrow{margin:14px 0 4px}
+.distrow .lab{display:flex;justify-content:space-between;font-size:.85rem;font-weight:600;color:var(--navy);margin-bottom:5px}
+.distbar{position:relative;height:26px;background:#eef2f8;border-radius:6px}
+.distbar .box{position:absolute;top:0;height:100%;background:#c5d8f7;border-radius:4px}
+.distbar .whisk{position:absolute;top:11px;height:4px;background:#9db4d6}
+.distbar .med{position:absolute;top:-3px;width:3px;height:32px;background:var(--navy);border-radius:2px}
+.distbar .zero{position:absolute;top:0;width:1px;height:100%;background:#8a97a8}
+.distnum{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-top:3px}
+.spark{width:100%;height:120px;margin-top:10px}
+.legend{display:flex;gap:14px;font-size:.75rem;color:var(--muted);margin-top:6px}
+.legend s{text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+.legend em{width:10px;height:10px;border-radius:3px;display:inline-block;font-style:normal}
+.empty{text-align:center;color:var(--muted);padding:60px 20px;font-size:.95rem}
+.note{font-size:.78rem;color:#9aa6b6;margin-top:24px;line-height:1.6}
+</style>
+</head>
+<body>
+<header><a href="index.html">← Trend Insight</a></header>
+<div class="wrap">
+<h1>⚖️ 레버리지 스위치</h1>
+<p class="sub">KODEX 레버리지(122630) · 현금 · KODEX 인버스(114800) 3-state 스위칭 — 코스피 강세점수 + 히스테리시스 밴드 + 터틀 ATR 플랜</p>
+<div>
+<span class="asof">기준일 <span id="asof">—</span></span>
+<span class="datebox">📅 <input type="date" id="datepick"><button onclick="showDate()">조회</button><button class="ghost" onclick="showLatest()">최신</button></span>
+</div>
+<div id="datemsg"></div>
+<div id="content"><div class="empty">데이터를 불러오는 중…</div></div>
+<div id="bt"></div>
+<p class="note">강세점수: 종가&gt;MA200 +25 · 종가&gt;MA50 +15 · MA50&gt;MA200 +15 · MA50 상승기울기 +15 · 분산일 감점(15−3×횟수) · 250일 고점대비 낙폭 최대 +15.<br>
+밴드: LEV 진입 65↑ / 이탈 55↓ · INV 진입 35↓ / 이탈 45↑ · 그 외 현금. 히스테리시스로 휩쏘를 줄인다.<br>
+본 자료는 투자 참고용이며 특정 종목의 매수·매도를 권유하지 않습니다. 투자의 최종 판단과 책임은 투자자 본인에게 있습니다.</p>
+</div>
+<script>
+let DB=null;
+const KO={LEV:"레버리지 보유",CASH:"전량 현금",INV:"인버스 보유"};
+function fmt(n){return n==null?"—":Number(n).toLocaleString("ko-KR")}
+function pc(n){return n==null?"—":(n*100).toFixed(2)+"%"}
+
+function render(rec){
+  const el=document.getElementById("content");
+  document.getElementById("asof").textContent=rec.date||"—";
+  const sc=Math.max(0,Math.min(100,rec.score));
+  let h='<div class="card"><h2>현재 상태</h2>';
+  h+='<span class="state-badge s-'+rec.state+'">'+rec.state+' · '+(KO[rec.state]||"")+'</span>';
+  if(rec.changed)h+='<span class="changed">⚡ '+rec.prev_state+' → '+rec.state+' 전환</span>';
+  h+='<div class="scoreline">'+Math.round(rec.score)+'<small> /100 강세점수</small></div>';
+  h+='<div class="band"><i class="b-inv">INV 구간</i><i class="b-mid">현금 구간</i><i class="b-lev">LEV 구간</i>';
+  h+='<div class="pin" style="left:'+sc+'%"></div></div>';
+  h+='<div class="bandlab"><span>0</span><span>35</span><span>65</span><span>100</span></div>';
+  h+='<div class="instr">'+(rec.instruction||"")+'</div>';
+  (rec.gauge_notes||[]).forEach(n=>{h+='<div class="notewarn">⚠ '+n+'</div>';});
+  h+='</div>';
+
+  h+='<div class="grid2">';
+  h+='<div class="card"><h2>터틀 실행 플랜 <span style="font-size:.75rem;color:var(--muted);font-weight:600">1% 리스크 · 2N 손절</span></h2>';
+  const p=rec.plan;
+  if(p){
+    h+='<div class="kv"><span>대상</span><b>'+p.name+'</b></div>';
+    h+='<div class="kv"><span>현재가</span><b>'+fmt(p.close)+'원</b></div>';
+    h+='<div class="kv"><span>N (20일 ATR)</span><b>'+fmt(p.N)+'</b></div>';
+    if(p.unit_qty!=null){
+      h+='<div class="kv"><span>1유닛</span><b>'+fmt(p.unit_qty)+'주 ('+fmt(p.unit_value)+'원)</b></div>';
+      h+='<div class="kv"><span>손절가 (2N)</span><b style="color:var(--red)">'+fmt(p.stop)+'원</b></div>';
+      h+='<div class="kv"><span>피라미딩 (+0.5N)</span><b>'+(p.pyramid||[]).map(fmt).join(" / ")+'</b></div>';
+    } else h+='<div class="kv"><span>수량</span><b class="no">자본 미지정</b></div>';
+  } else h+='<div class="empty" style="padding:30px 0">현금 상태 — 보유 포지션 없음</div>';
+  h+='</div>';
+
+  h+='<div class="card"><h2>강세점수 추이 <span style="font-size:.75rem;color:var(--muted);font-weight:600">최근 60회</span></h2>';
+  h+=spark(rec.date);
+  h+='<div class="legend"><s><em style="background:#66bb6a"></em>LEV</s><s><em style="background:#b0bac7"></em>CASH</s><s><em style="background:#ef5350"></em>INV</s></div>';
+  h+='</div></div>';
+  el.innerHTML=h;
+}
+
+function spark(upto){
+  const H=(DB.history||[]).filter(r=>r.date<=upto).slice(-60);
+  if(H.length<2)return '<div class="empty" style="padding:30px 0">추이 데이터 누적 중 (2회 이상 게시 필요)</div>';
+  const W=460,Ht=110,pad=6;
+  const x=i=>pad+i*(W-2*pad)/(H.length-1), y=v=>Ht-pad-(v/100)*(Ht-2*pad);
+  let s='<svg class="spark" viewBox="0 0 '+W+' '+Ht+'" preserveAspectRatio="none">';
+  s+='<rect x="0" y="'+y(100)+'" width="'+W+'" height="'+(y(65)-y(100))+'" fill="#e8f5e9"/>';
+  s+='<rect x="0" y="'+y(35)+'" width="'+W+'" height="'+(y(0)-y(35))+'" fill="#fdecea"/>';
+  [35,65].forEach(v=>{s+='<line x1="0" y1="'+y(v)+'" x2="'+W+'" y2="'+y(v)+'" stroke="#c9d3e0" stroke-dasharray="3 3"/>';});
+  s+='<polyline fill="none" stroke="#0b1f3f" stroke-width="2" points="'+H.map((r,i)=>x(i)+','+y(Math.max(0,Math.min(100,r.score)))).join(" ")+'"/>';
+  H.forEach((r,i)=>{
+    const c=r.state==="LEV"?"#2e7d32":r.state==="INV"?"#c62828":"#8a97a8";
+    s+='<circle cx="'+x(i)+'" cy="'+y(Math.max(0,Math.min(100,r.score)))+'" r="'+(r.changed?3.5:2)+'" fill="'+c+'"/>';
+  });
+  return s+'</svg>';
+}
+
+function renderBT(bt){
+  if(!bt)return;
+  const el=document.getElementById("bt");
+  let h='<div class="card"><h2>세후 백테스트 <span style="font-size:.75rem;color:var(--muted);font-weight:600">'+(bt.period||"")+' · 수수료·슬리피지·매매차익 15.4% 차감</span></h2>';
+  h+='<table><tr><th>지표</th><th>스위칭 전략</th><th>코스피 보유</th><th>레버리지 보유</th></tr>';
+  h+='<tr><td>누적수익률</td><td>'+pc(bt.strategy.total)+'</td><td>'+pc(bt.bh_kospi.total_pre)+'</td><td>'+pc(bt.bh_lev.total_post)+'</td></tr>';
+  h+='<tr><td>연평균(CAGR)</td><td>'+pc(bt.strategy.cagr)+'</td><td>'+pc(bt.bh_kospi.cagr_pre)+'</td><td>'+pc(bt.bh_lev.cagr_post)+'</td></tr>';
+  h+='<tr><td>최대낙폭(MDD)</td><td>'+pc(bt.strategy.mdd)+'</td><td>—</td><td>—</td></tr>';
+  h+='<tr><td>거래 / 승률</td><td>'+bt.n_trades+'회 · '+Math.round(bt.win_rate*100)+'%</td><td>—</td><td>—</td></tr>';
+  h+='</table>';
+  if(bt.legs){
+    h+='<div class="notewarn">레그 기여 — LEV '+bt.legs.lev_n+'건 ×'+bt.legs.lev_mult.toFixed(2)+' · INV '+bt.legs.inv_n+'건 ×'+bt.legs.inv_mult.toFixed(2)+
+       '. 인버스 다리는 장기 순손실 구간이 많다(코스피 V자 반등 특성). 수익은 소수의 대세 상승 구간에 집중된다.</div>';
+  }
+  h+='</div>';
+
+  h+='<div class="grid2">';
+  const mc=bt.min_capital;
+  if(mc){
+    h+='<div class="card"><h2>최소 투자금 <span style="font-size:.75rem;color:var(--muted);font-weight:600">1유닛 ≥20주 &amp; 기대 연수익 ≥50만원</span></h2>';
+    h+='<table><tr><th>자본</th><th>1유닛</th><th>절사오차</th><th>기대 연수익</th><th>실익</th></tr>';
+    mc.rows.forEach(r=>{
+      h+='<tr><td>'+fmt(r.capital)+'</td><td>'+r.unit_qty+'주</td><td>'+r.rounding_err_pct+'%</td><td>'+fmt(r.expected_annual_krw)+'원</td>'+
+         '<td>'+(r.viable?'<span class="ok">✅</span>':'<span class="no">△</span>')+'</td></tr>';
+    });
+    h+='</table></div>';
+  }
+  if(bt.dist){
+    h+='<div class="card"><h2>기간별 수익률 분포 <span style="font-size:.75rem;color:var(--muted);font-weight:600">롤링 실현 분포 · 예측 아님</span></h2>';
+    const keys=[["m1","1개월"],["m3","3개월"],["m6","6개월"]];
+    let lo=0,hi=0;
+    keys.forEach(([k])=>{const b=bt.dist[k]&&bt.dist[k].all;if(b){lo=Math.min(lo,b.p5);hi=Math.max(hi,b.p95);}});
+    const rng=hi-lo||1, px=v=>((v-lo)/rng)*100;
+    keys.forEach(([k,lab])=>{
+      const b=bt.dist[k]&&bt.dist[k].all; if(!b)return;
+      h+='<div class="distrow"><div class="lab"><span>'+lab+'</span><span>중앙값 '+b.p50+'%</span></div>';
+      h+='<div class="distbar"><div class="zero" style="left:'+px(0)+'%"></div>';
+      h+='<div class="whisk" style="left:'+px(b.p5)+'%;width:'+(px(b.p95)-px(b.p5))+'%"></div>';
+      h+='<div class="box" style="left:'+px(b.p25)+'%;width:'+(px(b.p75)-px(b.p25))+'%"></div>';
+      h+='<div class="med" style="left:'+px(b.p50)+'%"></div></div>';
+      h+='<div class="distnum"><span>하위5% '+b.p5+'%</span><span>상위5% '+b.p95+'%</span></div></div>';
+    });
+    h+='<div class="notewarn">막대=25~75% 구간, 선=5~95%, 세로선=중앙값. 평소엔 소폭 손실, 드물게 큰 수익이 나는 비대칭 분포다. 하위 5% 손실을 감당할 수 없다면 자본을 줄여야 한다.</div>';
+    h+='</div>';
+  }
+  h+='</div>';
+  el.innerHTML=h;
+}
+
+function showLatest(){
+  document.getElementById("datemsg").style.display="none";
+  if(DB&&DB.history&&DB.history.length)render(DB.history[DB.history.length-1]);
+}
+function showDate(){
+  const d=document.getElementById("datepick").value, msg=document.getElementById("datemsg");
+  if(!DB||!d)return;
+  const rec=(DB.history||[]).find(r=>r.date===d);
+  if(rec){msg.style.display="none";render(rec);}
+  else{msg.textContent=d+" 데이터가 없습니다 (게시된 날짜만 조회 가능).";msg.style.display="block";}
+}
+fetch("data/switch-gauge.json?cb="+Date.now()).then(r=>r.json()).then(j=>{
+  DB=j;
+  if(!j.history||!j.history.length){
+    document.getElementById("content").innerHTML='<div class="empty">아직 게시된 데이터가 없습니다.<br>leverage-switcher 스킬로 첫 신호를 실행하면 여기에 표시됩니다.</div>';
+  } else showLatest();
+  renderBT(j.backtest);
+}).catch(()=>{
+  document.getElementById("content").innerHTML='<div class="empty">데이터를 불러오지 못했습니다.</div>';
+});
+</script>
+</body>
+</html>
