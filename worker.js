@@ -1612,6 +1612,19 @@ export default {
       return handleSupply(req, url, env, ctx);
     }
 
+    if (url.pathname.startsWith("/api/masters/fund/")) {
+      const mcode = url.pathname.slice("/api/masters/fund/".length).replace(/[^0-9A-Za-z]/g, "");
+      try {
+        const mr = await fetch(`https://m.stock.naver.com/api/stock/${mcode}/integration`, { headers: CK_HEADERS });
+        if (!mr.ok) throw new Error(`fund HTTP ${mr.status}`);
+        const mj = await mr.json();
+        const minfo = {};
+        for (const x of mj.totalInfos || []) minfo[x.code] = x.value;
+        return new Response(JSON.stringify({ ok: true, data: { code: mcode, name: mj.stockName || null, info: minfo } }), { headers: JSON_HEADERS });
+      } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 502, headers: JSON_HEADERS });
+      }
+    }
     if (url.pathname.startsWith("/api/cockpit/")) {
       return handleCockpit(req, url, ctx);
     }
