@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0c111c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>거장 자문단 · Masters&#x27; Council</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c111c; --panel:#141c2b; --panel2:#1a2336; --line:#26314a;
+  --ink:#e9eef7; --muted:#8896ae; --faint:#5d6b85;
+  --navy:#1B3A6B; --navy-bright:#3a72d6; --orange:#E8621B; --orange-soft:#f08a4f;
+  --gold:#c9a227; --up:#f0454e; --down:#3b82f6; --green:#2ecc71;
+  --val:#3a72d6; --spec:#E8621B; --tech:#9d6bff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Pretendard',sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+header{display:flex;align-items:center;gap:14px;padding:12px 18px;flex-wrap:wrap;background:linear-gradient(180deg,#101827,#0c111c);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30}
+.brand{display:flex;align-items:baseline;gap:9px;white-space:nowrap}
+.brand .ti{font-family:'JetBrains Mono';font-weight:700;font-size:20px;color:var(--gold);letter-spacing:1px;border:1.5px solid var(--gold);border-radius:6px;padding:1px 8px}
+.brand h1{font-size:15px;font-weight:700}
+.brand small{color:var(--faint);font-size:11px;letter-spacing:1.5px;text-transform:uppercase}
+.searchwrap{position:relative;flex:1;min-width:220px;max-width:420px}
+#q{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:9px;color:var(--ink);padding:10px 14px;font-size:14px;font-family:inherit;outline:none}
+#q:focus{border-color:var(--gold)} #q::placeholder{color:var(--faint)}
+#qresults{position:absolute;top:calc(100% + 5px);left:0;right:0;background:var(--panel2);border:1px solid var(--line);border-radius:9px;overflow:hidden;display:none;z-index:50;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#qresults .qi{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer}
+#qresults .qi:hover,#qresults .qi.hl{background:#232d44}
+#qresults .qi .nm{font-weight:600;font-size:13.5px}
+#qresults .qi .cd{font-family:'JetBrains Mono';font-size:11.5px;color:var(--faint)}
+.mktbtn{background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:9px;padding:9px 14px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600}
+.mktbtn:hover{border-color:var(--gold);color:var(--ink)}
+main{max-width:1060px;margin:0 auto;padding:18px 16px 60px}
+.hint{color:var(--faint);text-align:center;padding:60px 10px;font-size:13.5px}
+.loading{color:var(--gold);text-align:center;padding:50px 0;font-size:14px}
+.summary{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+.sumtop{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.sumtop .snm{font-size:20px;font-weight:800}
+.sumtop .scd{color:var(--faint);font-family:'JetBrains Mono';font-size:12px}
+.sumtop .spx{font-family:'JetBrains Mono';font-size:18px;font-weight:700}
+.verdict{display:inline-block;border-radius:8px;padding:4px 14px;font-weight:800;font-size:15px;margin-left:auto}
+.v-buy{background:rgba(46,204,113,.15);color:var(--green);border:1px solid var(--green)}
+.v-watch{background:rgba(201,162,39,.15);color:var(--gold);border:1px solid var(--gold)}
+.v-hold{background:rgba(136,150,174,.15);color:var(--muted);border:1px solid var(--muted)}
+.v-avoid{background:rgba(240,69,78,.14);color:var(--up);border:1px solid var(--up)}
+.gaugewrap{display:flex;align-items:center;gap:16px;margin-top:14px;flex-wrap:wrap}
+.avgnum{font-family:'JetBrains Mono';font-size:42px;font-weight:700;color:var(--gold)}
+.avgnum small{font-size:16px;color:var(--faint)}
+.gbar{flex:1;min-width:200px;height:14px;background:var(--panel2);border-radius:7px;overflow:hidden;border:1px solid var(--line)}
+.gbar i{display:block;height:100%;background:linear-gradient(90deg,#8a6d1a,var(--gold));border-radius:7px}
+.facts{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:12.5px;color:var(--muted)}
+.facts b{color:var(--ink);font-family:'JetBrains Mono'}
+.camp{margin:18px 0 8px;font-size:13px;font-weight:700;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
+.camp .avg{margin-left:auto;font-family:'JetBrains Mono';color:var(--muted);font-weight:400;font-size:12px}
+.c-val{color:var(--val)} .c-spec{color:var(--spec)} .c-tech{color:var(--tech)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;transition:border-color .15s}
+.card:hover{border-color:var(--faint)}
+.card .top{display:flex;align-items:center;gap:9px}
+.card .who{font-weight:800;font-size:14.5px}
+.card .role{color:var(--faint);font-size:11px}
+.card .sc{margin-left:auto;font-family:'JetBrains Mono';font-size:19px;font-weight:700}
+.card .sc small{font-size:11px;color:var(--faint)}
+.sbar{height:6px;background:var(--panel2);border-radius:3px;margin:9px 0 8px;overflow:hidden}
+.sbar i{display:block;height:100%;border-radius:3px}
+.quote{font-size:12.8px;color:var(--muted);font-style:italic}
+.veto{display:inline-block;background:rgba(240,69,78,.15);color:var(--up);border:1px solid var(--up);border-radius:5px;font-size:10.5px;font-weight:700;padding:1px 7px;margin-left:6px}
+.badge-na{display:inline-block;background:var(--panel2);color:var(--faint);border-radius:5px;font-size:10.5px;padding:1px 7px;margin-left:6px}
+.detail{display:none;margin-top:10px;border-top:1px dashed var(--line);padding-top:9px}
+.card.open .detail{display:block}
+.detail table{width:100%;border-collapse:collapse;font-size:12px}
+.detail td{padding:3px 4px;border-bottom:1px solid #1c2537;color:var(--muted)}
+.detail td:last-child{text-align:right;font-family:'JetBrains Mono';color:var(--ink)}
+.minor{background:rgba(201,162,39,.07);border:1px solid rgba(201,162,39,.4);border-radius:12px;padding:14px;margin-top:16px}
+.minor h3{font-size:13.5px;color:var(--gold);margin-bottom:8px}
+.minor p{font-size:13px;color:var(--muted);margin:4px 0}
+.minor b{color:var(--ink)}
+.foot{margin-top:26px;color:var(--faint);font-size:11.5px;line-height:1.7;border-top:1px solid var(--line);padding-top:14px}
+a.back{color:var(--faint);font-size:12px;text-decoration:none;margin-left:auto}
+a.back:hover{color:var(--ink)}
+@media (max-width:640px){ .grid{grid-template-columns:1fr} .avgnum{font-size:34px} }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="ti">TI</span><div><h1>거장 자문단</h1><small>Masters&#x27; Council</small></div></div>
+  <div class="searchwrap">
+    <input id="q" placeholder="종목명 또는 코드 검색 (예: 삼성전자, 005930)" autocomplete="off">
+    <div id="qresults"></div>
+  </div>
+  <button class="mktbtn" onclick="runMarket('KOSPI')">코스피 자문</button>
+  <button class="mktbtn" onclick="runMarket('KOSDAQ')">코스닥 자문</button>
+  <a class="back" href="index.html">← Trend Insight</a>
+</header>
+<main>
+  <div id="out"><div class="hint">종목을 검색하면 투자 거장 11인이 각자의 철학으로 채점합니다.<br>
+  가치 6인(그레이엄·버핏·멍거·린치·시겔·켄 피셔) · 투기/심리 4인(소로스·코스톨라니·바루크·리버모어) · 기술 1인(엘리엇)</div></div>
+</main>
+<script>
+const API='/api/cockpit', FUND='/api/masters/fund';
+const $=s=>document.querySelector(s);
+const fmt=(n,d=0)=>n==null?'—':Number(n).toLocaleString('ko-KR',{maximumFractionDigits:d});
+const num=s=>{if(s==null)return null;const n=Number(String(s).replace(/[,%배원\s]/g,''));return Number.isFinite(n)?n:null;};
+
+/* ---------- 검색 ---------- */
+let qtimer=null;
+$('#q').addEventListener('input',e=>{clearTimeout(qtimer);const v=e.target.value.trim();
+  if(!v){$('#qresults').style.display='none';return;}
+  qtimer=setTimeout(async()=>{try{
+    const r=await(await fetch(`${API}/search?q=${encodeURIComponent(v)}`)).json();
+    const box=$('#qresults');box.innerHTML='';
+    (r.data||[]).forEach(it=>{const d=document.createElement('div');d.className='qi';
+      d.innerHTML=`<span class="nm">${it.name}</span><span class="cd">${it.code} · ${it.market||''}</span>`;
+      d.onclick=()=>{box.style.display='none';$('#q').value=it.name;runStock(it.code,it.name);};box.appendChild(d);});
+    box.style.display=(r.data||[]).length?'block':'none';
+  }catch(_){}} ,250);});
+document.addEventListener('click',e=>{if(!e.target.closest('.searchwrap'))$('#qresults').style.display='none';});
+
+/* ---------- 지표 계산 ---------- */
+function rsi14(c){if(c.length<30)return null;let g=0,l=0;
+  for(let i=1;i<=14;i++){const d=c[i]-c[i-1];if(d>0)g+=d;else l-=d;}g/=14;l/=14;
+  for(let i=15;i<c.length;i++){const d=c[i]-c[i-1];g=(g*13+Math.max(d,0))/14;l=(l*13+Math.max(-d,0))/14;}
+  return Math.round((100-100/(1+(l?g/l:99)))*10)/10;}
+function avg(a){return a.reduce((x,y)=>x+y,0)/a.length;}
+
+function derive(an,fund){
+  const s=an.signals,ch=an.chart,c=ch.close.filter(x=>x!=null),v=ch.volume.filter(x=>x!=null);
+  const price=(an.quote&&an.quote.price)||s.price;
+  const info=fund&&fund.info||{};
+  const hi52=num(info.highPriceOf52Weeks)||Math.max(...ch.high.filter(x=>x!=null));
+  const lo52=num(info.lowPriceOf52Weeks)||Math.min(...ch.low.filter(x=>x!=null));
+  const per=num(info.per),pbr=num(info.pbr),dy=num(info.dividendYieldRatio);
+  const eps=num(info.eps),bps=num(info.bps),cnsEps=num(info.cnsEps);
+  const roe=eps!=null&&bps?Math.round(eps/bps*1000)/10:null;
+  const growth=eps&&eps>0&&cnsEps?Math.round((cnsEps/eps-1)*1000)/10:null;
+  const peg=per&&growth&&growth>0?Math.round(per/growth*100)/100:null;
+  const offHigh=Math.round((price/hi52-1)*1000)/10;
+  const band=hi52>lo52?(price-lo52)/(hi52-lo52):.5;
+  const retr=hi52>lo52?(hi52-price)/(hi52-lo52):0;
+  const v20=avg(v.slice(-20)),v60=avg(v.slice(-60));
+  const ret6m=c.length>119?Math.round((c[c.length-1]/c[0]-1)*1000)/10:null;
+  return {price,hi52,lo52,offHigh,band,retr,per,pbr,dy,eps,roe,growth,peg,
+    rsi:rsi14(c),ma:s.ma,jby:s.jeongbaeyeol,macdUp:s.macd.above_signal,
+    aboveCloud:s.ichimoku.above_cloud,volRatio:v60?Math.round(v20/v60*100)/100:null,ret6m,
+    ey:per?Math.round(1/per*1000)/10:null};
+}
+
+/* ---------- 거장 채점 (각 항목 0~2점, N/A는 만점 환산) ---------- */
+function S(items){const av=items.filter(i=>i.pts!=null);
+  if(!av.length)return{score:null,items};
+  const sc=Math.round(av.reduce((a,i)=>a+i.pts,0)/(av.length*2)*100)/10;
+  return{score:sc,items,na:items.length-av.length};}
+const MASTERS=[
+ {id:'graham',who:'벤저민 그레이엄',camp:'val',role:'안전마진',
+  fn:d=>{const it=[
+    {k:'PBR',pts:d.pbr==null?null:d.pbr<1?2:d.pbr<1.5?1:0,v:d.pbr},
+    {k:'PER',pts:d.per==null?null:d.per<10?2:d.per<15?1:0,v:d.per},
+    {k:'가격 위치(고점比)',pts:d.offHigh<=-30?2:d.offHigh<=-15?1:0,v:d.offHigh+'%'},
+    {k:'재무 안전성',pts:null,v:'DART 확인'},{k:'이익 안정성',pts:null,v:'DART 확인'}];
+   const veto=d.eps!=null&&d.eps<0&&d.pbr!=null&&d.pbr>3;
+   return{...S(it),veto,vetoWhy:veto?'적자 + PBR 3배↑ — 투기이지 투자가 아님':null,
+    say:d.pbr!=null?`PBR ${d.pbr}배, PER ${d.per??'—'}배. 안전마진이 ${d.pbr<1.5&&d.per<15?'보이기 시작하는군':'충분치 않소'}. 가격은 지불하는 것, 가치는 얻는 것이오.`:'장부가치 없이 어찌 안전마진을 논하겠소.'};}},
+ {id:'buffett',who:'워런 버핏',camp:'val',role:'경제적 해자',
+  fn:d=>{const it=[
+    {k:'ROE(EPS/BPS 근사)',pts:d.roe==null?null:d.roe>=15?2:d.roe>=10?1:0,v:d.roe+'%'},
+    {k:'이익수익률(1/PER)',pts:d.ey==null?null:d.ey>=6?2:d.ey>=4?1:0,v:d.ey+'%'},
+    {k:'이익 개선(추정EPS)',pts:d.growth==null?null:d.growth>15?2:d.growth>0?1:0,v:d.growth==null?'—':d.growth+'%'},
+    {k:'해자',pts:null,v:'정성 판정'},{k:'경영진',pts:null,v:'정성 판정'}];
+   return{...S(it),veto:false,
+    say:`ROE ${d.roe??'—'}%, 이익수익률 ${d.ey??'—'}%… ${d.roe>=15?'멋진 기업일 수 있겠네요. 이제 가격이 적당한지 봅시다':'멋진 기업인지부터 확인해야겠군요'}. 10년 보유할 게 아니면 10분도 보유하지 마세요.`};}},
+ {id:'munger',who:'찰리 멍거',camp:'val',role:'인버전',
+  fn:d=>{const it=[
+    {k:'질(ROE·수익성)',pts:d.roe==null?null:d.roe>=15?2:d.roe>=8?1:0,v:d.roe+'%'},
+    {k:'개선 방향',pts:d.growth==null?null:d.growth>0?1:0,v:d.growth==null?'—':d.growth+'%'},
+    {k:'인버전(망하는 경로)',pts:null,v:'포렌식 필요'},{k:'인센티브 정렬',pts:null,v:'지배구조 확인'},{k:'심리 편향 점검',pts:null,v:'자기 점검'}];
+   return{...S(it),veto:false,
+    say:`숫자보다 먼저 물으시오 — 이 투자가 어디서 죽는지. ${d.offHigh<=-50?'반토막 난 데는 이유가 있는 법이오. CB·감사의견부터 뒤집어 보시오':'거꾸로 봐도 치명타가 없으면 그때 사는 것이오'}.`};}},
+ {id:'lynch',who:'피터 린치',camp:'val',role:'PEG·유형 분류',
+  fn:d=>{const it=[
+    {k:'PEG',pts:d.peg==null?null:d.peg<0.5?2:d.peg<1?1:0,v:d.peg},
+    {k:'이익 성장(추정)',pts:d.growth==null?null:d.growth>=25?2:d.growth>=10?1:0,v:d.growth==null?'—':d.growth+'%'},
+    {k:'2분 스토리',pts:null,v:'직접 말해보기'},{k:'생활 검증',pts:null,v:'직접 확인'},{k:'기관 소외',pts:null,v:'커버리지 확인'}];
+   return{...S(it),veto:false,
+    say:d.peg!=null?`PEG ${d.peg}${d.peg<1?' — 성장 대비 싸군요. 단, 이게 경기순환주라면 낮은 PER가 오히려 고점 신호일 수 있어요':' — 성장이 가격을 못 따라옵니다'}. 아는 것과 아는 느낌은 다릅니다.`:'추정 성장률이 없네요. 이 회사가 뭘로 돈 버는지 2분 안에 말해보실 수 있나요?'};}},
+ {id:'siegel',who:'제러미 시겔',camp:'val',role:'장기 실질수익',
+  fn:d=>{const it=[
+    {k:'배당수익률',pts:d.dy==null?null:d.dy>=3?2:d.dy>=2?1:0,v:d.dy+'%'},
+    {k:'성장의 함정 회피',pts:d.per==null?null:d.per<15?2:d.per<25?1:0,v:'PER '+d.per},
+    {k:'실질 이익수익률',pts:d.ey==null?null:d.ey>=5?2:d.ey>=3.5?1:0,v:d.ey+'%'},
+    {k:'배당 지속성',pts:null,v:'5년 이력 확인'},{k:'생존성(20년)',pts:null,v:'정성 판정'}];
+   return{...S(it),veto:false,
+    say:`배당 ${d.dy??'—'}%, 이익수익률 ${d.ey??'—'}%. ${d.dy>=3?'재투자만 꾸준히 하면 시간이 일해줍니다':'수익의 대부분은 배당 재투자에서 나옵니다 — 이 종목은 그 엔진이 약하군요'}.`};}},
+ {id:'fisher',who:'켄 피셔',camp:'val',role:'군중이 모르는 것',
+  fn:d=>{const it=[
+    {k:'기대치 리셋(낙폭)',pts:d.offHigh<=-40?2:d.offHigh<=-25?1:0,v:d.offHigh+'%'},
+    {k:'추정치 개선 여지',pts:d.growth==null?null:d.growth>20?2:d.growth>0?1:0,v:d.growth==null?'—':d.growth+'%'},
+    {k:'PSR',pts:null,v:'매출로 계산'},{k:'컨센서스 역방향',pts:null,v:'정성 판정'},{k:'3년 시계',pts:null,v:'정성 판정'}];
+   return{...S(it),veto:false,
+    say:`당신이 아는 건 시장도 압니다. ${d.offHigh<=-40?'모두가 던진 지금이야말로 "시장이 모르는 것"을 찾아볼 자리군요':'이 가격엔 이미 모두의 낙관이 들어 있습니다'}.`};}},
+ {id:'soros',who:'조지 소로스',camp:'spec',role:'재귀성',
+  fn:d=>{const it=[
+    {k:'불균형(극단 괴리)',pts:Math.abs(d.offHigh)>=40||d.rsi<=25||d.rsi>=75?2:Math.abs(d.offHigh)>=25?1:0,v:`고점比 ${d.offHigh}% · RSI ${d.rsi}`},
+    {k:'모멘텀 전환 신호',pts:d.macdUp?1:0,v:'MACD '+(d.macdUp?'상방':'하방')},
+    {k:'재귀 루프 식별',pts:null,v:'정성 판정'},{k:'오류 인정선',pts:null,v:'직접 설정'},{k:'거시 정합',pts:null,v:'거시 온도계'}];
+   return{...S(it),veto:false,
+    say:`${Math.abs(d.offHigh)>=40?'인식과 실체의 괴리가 극단입니다 — 기회는 항상 불균형에 있지요':'아직 괴리가 심심하군요'}. 중요한 건 맞느냐가 아니라, 틀렸을 때 얼마나 빨리 인정하느냐입니다.`};}},
+ {id:'kostolany',who:'앙드레 코스톨라니',camp:'spec',role:'달걀 모형',
+  fn:d=>{const above=d.ma&&d.ma['120']!=null?d.price>d.ma['120']:null;
+   let egg,pts;
+   if(above===null){egg='판정불가';pts=null;}
+   else if(!above&&d.volRatio>1.1&&d.ret6m<-20){egg='B3/C1 과장 하락·투매';pts=2;}
+   else if(!above&&d.volRatio<=1.1){egg='C2 하락 소강';pts=1.5;}
+   else if(above&&d.volRatio>1.2&&d.ret6m>25){egg='A3/B1 과장 상승';pts=0;}
+   else if(above){egg='A1~A2 상승 국면';pts=1;}
+   else{egg='B2 하락 진행';pts=0.5;}
+   const it=[
+    {k:'달걀 위치',pts:pts,v:egg},
+    {k:'거래량 신호',pts:d.volRatio==null?null:(!above&&d.volRatio<0.9)||(above&&d.volRatio>1.1)?2:1,v:'20/60일 '+d.volRatio+'배'},
+    {k:'부화뇌동 역행',pts:d.rsi<=30?2:d.rsi>=70?0:1,v:'RSI '+d.rsi},
+    {k:'소신파 3조건',pts:null,v:'돈·생각·인내'},{k:'유동성(금리)',pts:null,v:'거시 확인'}];
+   return{...S(it),veto:false,eggPos:egg,
+    say:`지금은 ${egg} 구간으로 보이는군. ${pts>=1.5?'부화뇌동파가 던질 때 소신파는 줍는 법이지. 단, 반드시 여유자금으로':'서두를 것 없네. 돈과 생각과 인내 — 셋 중 하나라도 없으면 앉아 있게'}.`};}},
+ {id:'baruch',who:'버나드 바루크',camp:'spec',role:'군중 반대·규율',
+  fn:d=>{const it=[
+    {k:'군중 극단',pts:d.rsi<=25||d.rsi>=78?2:d.rsi<=32||d.rsi>=70?1:0,v:'RSI '+d.rsi},
+    {k:'과열 아님(어깨 매도)',pts:d.offHigh>-5?0:d.offHigh<=-20?2:1,v:'고점比 '+d.offHigh+'%'},
+    {k:'사실 검증',pts:null,v:'공시·재무 직접'},{k:'현금 여력',pts:null,v:'예수금 온도계'},{k:'손절 계획',pts:null,v:'직접 명문화'}];
+   return{...S(it),veto:false,
+    say:`${d.rsi<=30?'모두가 파는 자리엔 대개 팔 이유가 없지요':'무릎에 사서 어깨에 파세요 — 꼭대기와 바닥은 거짓말쟁이의 것입니다'}. 소문이 아니라 검증한 사실에만 돈을 거세요.`};}},
+ {id:'livermore',who:'제시 리버모어',camp:'spec',role:'추세·피벗',
+  fn:d=>{const it=[
+    {k:'추세(정배열)',pts:d.jby?2:0,v:d.jby?'정배열':'비정배열'},
+    {k:'MA60 위',pts:d.ma&&d.ma['60']?(d.price>d.ma['60']?2:0):null,v:d.ma&&d.ma['60']?fmt(d.ma['60']):'—'},
+    {k:'신고가 근접(피벗)',pts:d.offHigh>=-5?2:d.offHigh>=-15?1:0,v:d.offHigh+'%'},
+    {k:'모멘텀(MACD)',pts:d.macdUp?2:0,v:d.macdUp?'상방':'하방'},
+    {k:'구름 위(일목)',pts:d.aboveCloud?2:0,v:d.aboveCloud?'구름 위':'구름 아래'}];
+   const veto=d.ma&&d.ma['60']&&d.ma['120']&&d.price<d.ma['60']&&d.ma['60']<d.ma['120'];
+   return{...S(it),veto,vetoWhy:veto?'하락 추세 역행 매수 금지 — 떨어지는 칼날':null,
+    say:veto?'최소저항선이 아래를 향하고 있소. 싸 보인다고 잡는 손이 제일 먼저 베입니다. 시장과 싸우지 마시오.':`${d.jby?'최소저항선이 위요. 피벗 돌파를 확인하고 올라타되, 추가는 이익 위에만 얹으시오':'추세 확인 전엔 관망이오. 돈은 판단이 아니라 기다림으로 법니다'}.`};}},
+ {id:'elliott',who:'랠프 엘리엇',camp:'tech',role:'파동',
+  fn:d=>{const zone=d.band>0.85?'고점권(5파/B파 의심)':d.band<0.15?'저점권(C파 말기 후보)':(d.retr>=0.382&&d.retr<=0.618)?'38.2~61.8% 되돌림대':'중간대';
+   const it=[
+    {k:'파동 위치(근사)',pts:zone.startsWith('저점권')?1.5:zone.startsWith('38.2')?2:zone.startsWith('고점권')?0.5:1,v:zone},
+    {k:'되돌림 비율',pts:d.retr>=0.382&&d.retr<=0.618?2:1,v:(d.retr*100).toFixed(1)+'%'},
+    {k:'파동 교대·카운트',pts:null,v:'차트 판독 필요'},{k:'거래량 확인(3파)',pts:null,v:'차트 판독 필요'},{k:'무효화선',pts:null,v:'직접 설정'}];
+   return{...S(it),veto:false,zone,
+    say:`52주 밴드의 ${(d.band*100).toFixed(0)}% 지점, ${zone}. 시장은 리듬입니다 — 단, 무효화선 없는 파동 해석은 점성술이니 카운트가 깨지는 가격부터 정하시오.`};}}
+];
+const CAMPN={val:'가치·펀더멘털',spec:'투기·심리·거시',tech:'기술·파동'};
+
+/* ---------- 실행 ---------- */
+async function runStock(code,name){
+  $('#out').innerHTML='<div class="loading">거장 11인 소집 중…</div>';
+  try{
+    const [ar,fr]=await Promise.all([
+      fetch(`${API}/analyze/${code}`).then(r=>r.json()),
+      fetch(`${FUND}/${code}`).then(r=>r.json()).catch(()=>null)]);
+    if(!ar.ok)throw new Error(ar.error||'분석 실패');
+    const d=derive(ar.data,fr&&fr.ok?fr.data:null);
+    render(ar.data.name||name,code,d,false);
+  }catch(e){$('#out').innerHTML=`<div class="hint">오류: ${e.message}</div>`;}
+}
+async function runMarket(sym){
+  $('#out').innerHTML='<div class="loading">거장 자문단 시장 회의 중…</div>';
+  try{
+    const ar=await fetch(`${API}/analyze/${sym}`).then(r=>r.json());
+    if(!ar.ok)throw new Error(ar.error||'분석 실패');
+    const d=derive(ar.data,null);
+    render(sym==='KOSPI'?'코스피 지수':'코스닥 지수',sym,d,true);
+  }catch(e){$('#out').innerHTML=`<div class="hint">오류: ${e.message}</div>`;}
+}
+
+function render(name,code,d,isMkt){
+  const res=MASTERS.map(m=>({m,r:m.fn(d)})).filter(x=>x.r.score!=null);
+  const scores=res.map(x=>x.r.score);
+  const mean=Math.round(avg(scores)*10)/10;
+  const vetos=res.filter(x=>x.r.veto);
+  let vIdx=mean>=7?0:mean>=5.5?1:mean>=4?2:3;
+  if(vetos.length)vIdx=Math.min(3,vIdx+1);
+  const VN=['매수 우위','관망(조건부)','유보','회피'],VC=['v-buy','v-watch','v-hold','v-avoid'];
+  const minors=res.filter(x=>Math.abs(x.r.score-mean)>=3);
+  const camps={};res.forEach(x=>{(camps[x.m.camp]=camps[x.m.camp]||[]).push(x);});
+  let h=`<div class="summary"><div class="sumtop">
+    <span class="snm">${name}</span><span class="scd mono">${code}</span>
+    <span class="spx mono">${fmt(d.price)}${isMkt?'':'원'}</span>
+    <span class="verdict ${VC[vIdx]}">${VN[vIdx]}${vetos.length?' (VETO '+vetos.length+'명 → 강등)':''}</span></div>
+    <div class="gaugewrap"><span class="avgnum">${mean}<small>/10</small></span>
+    <div class="gbar"><i style="width:${mean*10}%"></i></div></div>
+    <div class="facts">
+      <span>52주 고점比 <b>${d.offHigh}%</b></span><span>RSI <b>${d.rsi??'—'}</b></span>
+      ${d.per!=null?`<span>PER <b>${d.per}</b></span>`:''}${d.pbr!=null?`<span>PBR <b>${d.pbr}</b></span>`:''}
+      ${d.dy!=null?`<span>배당 <b>${d.dy}%</b></span>`:''}${d.roe!=null?`<span>ROE≈ <b>${d.roe}%</b></span>`:''}
+      ${d.peg!=null?`<span>PEG≈ <b>${d.peg}</b></span>`:''}
+      <span>추세 <b>${d.jby?'정배열':'비정배열'}</b></span></div></div>`;
+  for(const ck of ['val','spec','tech']){
+    if(!camps[ck])continue;
+    const ca=Math.round(avg(camps[ck].map(x=>x.r.score))*10)/10;
+    h+=`<div class="camp c-${ck}">◆ ${CAMPN[ck]}<span class="avg">진영 평균 ${ca}/10</span></div><div class="grid">`;
+    for(const {m,r} of camps[ck]){
+      const col=ck==='val'?'var(--val)':ck==='spec'?'var(--spec)':'var(--tech)';
+      h+=`<div class="card" onclick="this.classList.toggle('open')">
+        <div class="top"><div><span class="who">${m.who}</span>${r.veto?'<span class="veto">VETO</span>':''}${r.na?`<span class="badge-na">N/A ${r.na}</span>`:''}
+        <div class="role">${m.role}</div></div>
+        <span class="sc" style="color:${col}">${r.score}<small>/10</small></span></div>
+        <div class="sbar"><i style="width:${r.score*10}%;background:${col}"></i></div>
+        <p class="quote">"${r.say}"${r.vetoWhy?`<br><span style="color:var(--up)">⛔ ${r.vetoWhy}</span>`:''}</p>
+        <div class="detail"><table>${r.items.map(i=>`<tr><td>${i.k}</td><td>${i.v??'—'}</td><td>${i.pts==null?'N/A':i.pts+'/2'}</td></tr>`).join('')}</table></div></div>`;
+    }
+    h+='</div>';
+  }
+  if(minors.length){h+=`<div class="minor"><h3>⚖ 소수의견 (평균과 3점 이상 괴리)</h3>${minors.map(x=>
+    `<p><b>${x.m.who} ${x.r.score}/10</b> — ${x.r.say}</p>`).join('')}</div>`;}
+  h+=`<div class="foot">거장 논평은 각 인물의 저작·어록에 기반한 <b>해석적 재구성</b>이며 실제 발언이 아닙니다.
+  자동 채점은 근사치(N/A 항목은 만점 환산 제외)로, 재무 안전성·해자·파동 카운트 등 정성 항목은 별도 확인이 필요합니다.
+  본 자문은 참고 자료이며 매수·매도 추천이 아닙니다. 데이터: 네이버금융(지연/전일 종가 기준일 수 있음).</div>`;
+  $('#out').innerHTML=h;
+}
+</script>
+</body>
+</html>
