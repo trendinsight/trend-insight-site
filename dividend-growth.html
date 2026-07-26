@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>배당성장 보드 — Trend Insight</title>
+<style>
+:root{--green:#1a7f37;--green-bg:#e6f4ea;--ink:#1c1c1c;--muted:#777;--line:#e3e3e3}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;color:var(--ink);background:#fafafa;padding:16px;max-width:960px;margin:0 auto}
+h1{font-size:22px;margin:8px 0 2px}
+.sub{color:var(--muted);font-size:13px;margin-bottom:14px}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+select,button{font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+button{cursor:pointer}
+.cards{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 16px;min-width:130px}
+.card .k{font-size:12px;color:var(--muted)}
+.card .v{font-size:20px;font-weight:700;margin-top:2px}
+.card .v.green{color:var(--green)}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13px}
+th{background:var(--green);color:#fff;padding:8px 6px;text-align:center;font-weight:600}
+td{padding:7px 6px;text-align:center;border-top:1px solid var(--line)}
+tr:hover td{background:var(--green-bg)}
+.g-PRIME{color:var(--green);font-weight:700}
+.g-CANDIDATE{color:#b58900;font-weight:600}
+.g-WATCH{color:var(--muted)}
+.drip{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-top:14px;font-size:14px}
+.note{color:var(--muted);font-size:12px;margin-top:14px}
+a.home{font-size:13px;color:var(--green);text-decoration:none}
+@media(max-width:600px){table{font-size:11px}td,th{padding:5px 3px}}
+</style>
+</head>
+<body>
+<a class="home" href="index.html">← Trend Insight 홈</a>
+<h1>💰 배당성장 보드</h1>
+<div class="sub">배당수익률 + 배당 비감소 + EPS 성장 + 배당성향 4대 관문 통과 종목 · <span id="updated"></span></div>
+<div class="bar">
+  <label for="dateSel">날짜</label>
+  <select id="dateSel"></select>
+  <button id="latestBtn">최신</button>
+</div>
+<div class="cards" id="cards"></div>
+<div id="tableWrap"></div>
+<div class="drip" id="dripWrap" style="display:none"></div>
+<div class="note">※ 본 자료는 참고용이며 투자 판단과 책임은 이용자 본인에게 있습니다. 스크리닝 기준·배점은 스킬 문서 참조.</div>
+<script>
+let DATA=null;
+function fmt(n){return n==null?"—":Number(n).toLocaleString("ko-KR")}
+function render(rec){
+  const p=rec.params||{};
+  document.getElementById("cards").innerHTML=
+    `<div class="card"><div class="k">기준일</div><div class="v">${rec.date}</div></div>`+
+    `<div class="card"><div class="k">통과 종목</div><div class="v green">${rec.candidates.length}</div></div>`+
+    `<div class="card"><div class="k">PRIME</div><div class="v green">${rec.candidates.filter(c=>c.grade==="PRIME").length}</div></div>`+
+    `<div class="card"><div class="k">기준</div><div class="v" style="font-size:13px;font-weight:400">배당 ${p.min_yield}%↑ · ${p.years}년 비감소<br>EPS +${p.eps_growth}%↑ · 성향 ${p.max_payout}%↓</div></div>`;
+  let h=`<table><tr><th>#</th><th>종목</th><th>시장</th><th>현재가</th><th>배당률</th><th>증가</th><th>EPS성장</th><th>성향</th><th>PER</th><th>점수</th><th>등급</th></tr>`;
+  rec.candidates.forEach((c,i)=>{
+    h+=`<tr><td>${i+1}</td><td style="text-align:left">${c.name}<br><span style="color:#999;font-size:11px">${c.ticker}</span></td>`+
+       `<td>${c.market}</td><td>${fmt(c.close)}</td><td><b>${c.div_yield}%</b></td>`+
+       `<td>${c.increase_cnt}/${c.nondec_years}</td><td>+${c.eps_growth_1y}%</td>`+
+       `<td>${c.payout}%</td><td>${c.per}</td><td><b>${c.score}</b></td>`+
+       `<td class="g-${c.grade}">${c.grade}</td></tr>`;
+  });
+  h+=`</table>`;
+  document.getElementById("tableWrap").innerHTML=h;
+  const d=rec.drip, w=document.getElementById("dripWrap");
+  if(d){
+    w.style.display="block";
+    w.innerHTML=`<b>복리 재투자 시뮬레이션</b> — ${d.params?d.params.years:"?"}년 후 `+
+      `<b style="color:var(--green)">${fmt(d.final)}원</b> (미재투자 ${fmt(d.no_reinvest)}원, `+
+      `재투자 효과 +${d.extra_pct}%) · 최종 YOC ${d.final_yoc}%`+
+      (d.double_year?` · 원금 2배 ${d.double_year}년차`:"");
+  } else { w.style.display="none"; }
+}
+fetch("data/dividend-growth.json").then(r=>r.json()).then(j=>{
+  DATA=j;
+  document.getElementById("updated").textContent="업데이트 "+(j.updated||"—");
+  const sel=document.getElementById("dateSel");
+  const hist=j.history||[];
+  if(!hist.length){document.getElementById("tableWrap").innerHTML="<p>아직 게시된 데이터가 없습니다.</p>";return}
+  hist.slice().reverse().forEach(h=>{
+    const o=document.createElement("option");o.value=h.date;o.textContent=h.date;sel.appendChild(o);
+  });
+  sel.onchange=()=>{const r=hist.find(h=>h.date===sel.value);if(r)render(r)};
+  document.getElementById("latestBtn").onclick=()=>{sel.value=hist[hist.length-1].date;render(hist[hist.length-1])};
+  render(hist[hist.length-1]);
+}).catch(e=>{document.getElementById("tableWrap").innerHTML="<p>데이터 로드 실패: "+e+"</p>"});
+</script>
+</body>
+</html>
