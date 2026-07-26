@@ -43,6 +43,20 @@ a.home{font-size:13px;color:var(--green);text-decoration:none}
 <div class="cards" id="cards"></div>
 <div id="tableWrap"></div>
 <div class="drip" id="dripWrap" style="display:none"></div>
+
+<div id="matrixSection" style="display:none">
+  <h2 style="font-size:18px;margin:22px 0 4px">📈 배당 재투자(DRIP) 복리 시뮬레이션</h2>
+  <div class="sub" id="matrixSub"></div>
+  <div class="bar">
+    <label for="scenSel">시나리오</label>
+    <select id="scenSel"><option>보수</option><option selected>중립</option><option>낙관</option></select>
+    <label for="sortSel">정렬</label>
+    <select id="sortSel"><option value="7">7년 자산</option><option value="5">5년 자산</option><option value="3">3년 자산</option><option value="yield">배당률</option><option value="score">스크리닝 점수</option></select>
+  </div>
+  <div id="matrixWrap"></div>
+  <div class="note">DPS 성장률은 각 종목의 실제 DPS CAGR(10% 상한), 주가 상승률은 EPS CAGR의 절반(3~9%)을 적용했으며 보수·낙관은 각각 ±3%p입니다. 가정 기반 예측치이며 확정 수익이 아닙니다.</div>
+</div>
+
 <div class="note">※ 본 자료는 참고용이며 투자 판단과 책임은 이용자 본인에게 있습니다. 스크리닝 기준·배점은 스킬 문서 참조.</div>
 <script>
 let DATA=null;
@@ -64,6 +78,7 @@ function render(rec){
   });
   h+=`</table>`;
   document.getElementById("tableWrap").innerHTML=h;
+  renderMatrix(rec.drip_matrix);
   const d=rec.drip, w=document.getElementById("dripWrap");
   if(d){
     w.style.display="block";
@@ -73,6 +88,47 @@ function render(rec){
       (d.double_year?` · 원금 2배 ${d.double_year}년차`:"");
   } else { w.style.display="none"; }
 }
+let MTX=null;
+function renderMatrix(m){
+  const sec=document.getElementById("matrixSection");
+  MTX=m;
+  if(!m||!m.rows||!m.rows.length){sec.style.display="none";return}
+  sec.style.display="block";
+  document.getElementById("matrixSub").textContent=
+    `종목당 ${fmt(m.capital)}원 투자 · 보유기간 ${m.horizons.join("/")}년 · 배당소득세 ${m.tax}% · 배당 전액 재투자 기준`;
+  drawMatrix();
+}
+function drawMatrix(){
+  if(!MTX)return;
+  const sc=document.getElementById("scenSel").value;
+  const sort=document.getElementById("sortSel").value;
+  const rows=MTX.rows.slice().sort((a,b)=>{
+    if(sort==="yield")return b.div_yield-a.div_yield;
+    if(sort==="score")return b.score-a.score;
+    return b.scenarios[sc].by_year[sort].final-a.scenarios[sc].by_year[sort].final;
+  });
+  const cap=MTX.capital;
+  let h=`<table><tr><th>#</th><th>종목</th><th>등급</th><th>배당률</th><th>가정<br>DPS/주가</th>`+
+        MTX.horizons.map(y=>`<th>${y}년</th>`).join("")+
+        `<th>7년<br>연환산</th><th>재투자<br>효과</th></tr>`;
+  rows.forEach((r,i)=>{
+    const s=r.scenarios[sc], b=s.by_year;
+    h+=`<tr><td>${i+1}</td><td style="text-align:left">${r.name}<br><span style="color:#999;font-size:11px">${r.ticker}</span></td>`+
+       `<td class="g-${r.grade}">${r.grade}</td><td><b>${r.div_yield}%</b></td>`+
+       `<td style="font-size:11px;color:#777">${s.div_growth}% / ${s.price_growth}%</td>`;
+    MTX.horizons.forEach(y=>{
+      const v=b[String(y)];
+      const up=v.final>=cap;
+      h+=`<td><b style="color:${up?'var(--green)':'#b22f2f'}">${fmt(v.final)}</b>`+
+         `<br><span style="font-size:11px;color:#999">${v.total_return_pct>=0?"+":""}${v.total_return_pct}%</span></td>`;
+    });
+    h+=`<td>${b["7"].cagr_pct}%</td><td style="color:var(--green)">+${b["7"].extra_pct}%</td></tr>`;
+  });
+  h+=`</table>`;
+  document.getElementById("matrixWrap").innerHTML=h;
+}
+document.getElementById("scenSel").onchange=drawMatrix;
+document.getElementById("sortSel").onchange=drawMatrix;
 fetch("data/dividend-growth.json").then(r=>r.json()).then(j=>{
   DATA=j;
   document.getElementById("updated").textContent="업데이트 "+(j.updated||"—");
