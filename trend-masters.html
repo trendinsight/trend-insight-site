@@ -65,6 +65,13 @@ main{max-width:1240px;margin:0 auto;padding:18px 22px 40px}
 .setup{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12.5px}
 .setup b{color:var(--orange-soft)} .setup .tg{font-family:'JetBrains Mono';color:var(--ink)}
 .note{color:var(--faint);font-size:11.5px;line-height:1.5;margin-top:auto;padding-top:8px;border-top:1px solid var(--line)}
+.learn{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:0;overflow:hidden}
+.learn summary{cursor:pointer;padding:9px 12px;font-size:12.5px;font-weight:700;color:var(--orange-soft);list-style:none;display:flex;align-items:center;gap:6px}
+.learn summary::before{content:'?';display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:1px solid rgba(232,98,27,.5);border-radius:50%;font-size:10px}
+.learn summary::-webkit-details-marker{display:none}
+.learn[open] summary{border-bottom:1px dashed #1f2940}
+.learn .body{padding:10px 12px;font-size:12.5px;color:var(--muted);line-height:1.7}
+.learn .body b{color:var(--ink)}
 .disc{color:var(--faint);font-size:11.5px;text-align:center;margin-top:22px}
 .err{color:var(--up);text-align:center;padding:40px 0}
 ::-webkit-scrollbar{width:8px} ::-webkit-scrollbar-thumb{background:#243047;border-radius:4px}
@@ -222,20 +229,53 @@ function render(d,mkt){
       <div class="row"><span class="k">추세 분류</span><span class="v">${ca.trend}</span></div>
       <div class="row"><span class="k">시장 편향</span><span class="v">${ca.mkt}</span></div>
       ${ca.setups.length?ca.setups.map(s=>`<div class="setup"><b>${s.name}</b> · 트리거 <span class="tg">${fmt(Math.round(s.trigger))}</span><br>${s.note}</div>`).join(''):'<div class="setup" style="color:var(--faint)">현재 탐지된 셋업 없음 — 눌림·수렴·돌파 대기</div>'}
-      <div class="note">셋업은 트리거 도달 시에만 진입 검토. 시장 편향과 반대 방향 매매는 성공률이 급락합니다.</div></div>
+      <details class="learn"><summary>이 기법 쉽게 이해하기</summary><div class="body">
+추세매매는 <b>이미 오르고 있는 방향에 올라타는</b> 방식입니다. 순서는 세 단계 —
+① 시장 전체(코스피)가 오르는 분위기인지 먼저 확인하고,
+② 이 종목이 상승추세인지 봅니다(단기→중기→장기 이동평균선이 차례로 위에 있으면 <b>정배열</b> = 건강한 상승).
+③ 그 다음 "살 자리(<b>셋업</b>)"가 나올 때까지 기다립니다.<br><br>
+셋업 5가지를 쉽게 말하면 — <b>눌림목</b>: 오르던 주식이 잠깐 쉬며 내려온 자리(할인 구간) ·
+<b>수렴 스프링</b>: 움직임이 점점 좁아지며 용수철처럼 힘을 모으는 중 ·
+<b>강세 다이버전스</b>: 주가는 새 저점인데 내부 힘(RSI)은 안 빠짐 = 바닥 신호 ·
+<b>블루스카이</b>: 1년 최고가 돌파, 위에 매물(팔 사람)이 없는 파란 하늘 ·
+<b>베이스 돌파</b>: 한 달간 좁게 다진 박스를 위로 뚫음.<br><br>
+<b>트리거</b>는 실제 매수 버튼을 누르는 조건 가격입니다. 그 가격을 넘기 전에는 사지 않습니다 —
+"좋아 보여서 미리 사기"가 아니라 "움직임이 증명되면 사기"입니다.</div></details>
+      <div class="note">시장이 약세인데 종목만 좋아 보이면 성공률이 급락 — 시장 편향부터 확인하세요.</div></div>
     <div class="mcard"><div class="who"><span class="num">②</span><div><div class="name">제시 리버모어</div><div class="sub">피벗 포인트 · 피라미딩</div></div>${B(li.verdict)}</div>
       <div class="row"><span class="k">최소저항선</span><span class="v">${li.lor}</span></div>
       <div class="row"><span class="k">피벗 (60일 고가)</span><span class="v mono">${fmt(Math.round(li.pivot))}</span></div>
       <div class="row"><span class="k">거래량 배율</span><span class="v mono">${li.vr?li.vr.toFixed(2)+'×':'—'} <span style="color:var(--faint)">(1.5× 필요)</span></span></div>
       ${li.plan?`<div class="setup"><b>피라미딩 플랜 (40/30/30)</b><br>탐색 <span class="tg">${fmt(Math.round(li.plan.probe))}</span> → 증액 <span class="tg">${fmt(Math.round(li.plan.add1))}</span> → <span class="tg">${fmt(Math.round(li.plan.add2))}</span><br>손절 <span class="tg">${fmt(Math.round(li.plan.stop))}</span> · 절대한도 −10% 전량 청산</div>`:'<div class="setup" style="color:var(--faint)">돌파 확인 전에는 아무것도 하지 않는다 — 대기</div>'}
-      <div class="note">앞 매수가 수익일 때만 추가(물타기 금지). 돌파 후 2~3일 내 후속 상승이 없으면 실패 경계.</div></div>
+      <details class="learn"><summary>이 기법 쉽게 이해하기</summary><div class="body">
+리버모어의 핵심은 <b>"확인 후 진입, 이길 때만 추가"</b>입니다.<br><br>
+<b>최소저항선</b>: 주가가 가장 쉽게 흘러갈 방향. 물이 낮은 곳으로 흐르듯 주가도 저항이 적은 쪽으로 갑니다 —
+위로 흐르는 종목만 사고, 아래로 흐르면 "싸 보여도" 안 삽니다.<br><br>
+<b>피벗</b>: 최근 60일 최고가. 이 가격을 <b>많은 거래량과 함께</b> 넘으면 위를 막고 있던
+매물(본전에 팔려는 사람들)이 사라졌다는 증거입니다. 거래량 없이 넘으면 가짜 돌파일 수 있어 경계.<br><br>
+<b>피라미딩(40/30/30)</b>: 전 재산을 한 번에 넣지 않습니다. 계획 수량의 40%만 "간 보기"로 사고,
+주가가 +2%, +5% 올라 <b>내 판단이 맞았음을 시장이 증명할 때만</b> 30%씩 추가합니다.
+반대로 사자마자 손해면 시장이 "아니"라고 답한 것 — 소량이니 미련 없이 자릅니다.
+손실 난 주식을 더 사는 물타기는 절대 금지, 그리고 어떤 경우에도 <b>-10%면 전량 청산</b>입니다.</div></details>
+      <div class="note">돌파 후 2~3일 내 후속 상승이 없으면 실패 신호로 경계하세요.</div></div>
     <div class="mcard"><div class="who"><span class="num">③</span><div><div class="name">알렉산더 엘더</div><div class="sub">삼중스크린 · 자금관리</div></div>${B(el.verdict)}</div>
       <div class="row"><span class="k">스크린1 주봉 조류</span><span class="v">${el.tide} · ${el.imp}</span></div>
       <div class="row"><span class="k">스크린2 눌림</span><span class="v">${el.waveOk?'충족':'미충족'} <span style="color:var(--faint)">(FI2 ${el.fiNow!=null?(el.fiNow<0?'−':'+'):'—'} · 스토캐 ${el.st!=null?el.st.toFixed(0):'—'})</span></span></div>
       <div class="row"><span class="k">스크린3 버이스탑</span><span class="v mono">${fmt(Math.round(el.entry))}</span></div>
       <div class="row"><span class="k">보호 손절</span><span class="v mono">${fmt(Math.round(el.stop))}</span></div>
       ${el.size?`<div class="setup"><b>2% 규칙 사이징</b><br>위험 한도 <span class="tg">${fmt(Math.round(el.size.riskAmt))}</span>원 ÷ 주당위험 <span class="tg">${fmt(Math.round(el.size.rps))}</span>원 = <span class="tg">${fmt(el.size.shares)}</span>주<br>월 누적 −6% 도달 시 신규 매매 중단</div>`:'<div class="setup" style="color:var(--faint)">자본 입력 시 2% 규칙 수량을 계산합니다</div>'}
-      <div class="note">손절은 진입 전에 정한다 — 체결 후 옮기지 않는다. 적색 임펄스에서 매수는 조류를 거스르는 것.</div></div>
+      <details class="learn"><summary>이 기법 쉽게 이해하기</summary><div class="body">
+삼중스크린은 <b>"세 번 걸러서 산다"</b>는 뜻입니다.<br><br>
+<b>스크린① 주봉 조류</b>: 바다의 밀물/썰물처럼 큰 흐름(주 단위 차트)이 위를 향할 때만 매수를 허용합니다.
+<b>녹색</b> = 관성과 힘이 모두 위 = 사도 됨 · <b>적색</b> = 둘 다 아래 = 매수 금지 · <b>청색</b> = 엇갈림 = 자제.
+밀물일 때만 헤엄치는 것입니다.<br><br>
+<b>스크린② 눌림</b>: 큰 흐름은 위인데 일봉이 잠깐 눌린(과매도) 순간이 <b>싸게 올라타는 기회</b>입니다.
+그래서 엘더는 신고가 돌파를 쫓아가지 않습니다 — "눌림 대기"가 뜨는 이유입니다.<br><br>
+<b>스크린③ 버이스탑</b>: 실제 매수는 <b>전날 고가를 다시 넘는 순간</b>에만 체결되게 예약 주문을 겁니다.
+눌렸다가 다시 오르기 시작했음을 시장이 증명할 때만 사는 안전장치입니다.<br><br>
+<b>2% 규칙</b>: 이번 매매가 최악(손절)으로 끝나도 잃는 돈이 전체 자본의 2%를 넘지 않게 수량을 정합니다.
+한 달 누적 -6%면 그 달은 매매를 쉽니다 — 돈과 멘탈을 같이 지키는 규칙입니다.</div></details>
+      <div class="note">손절은 진입 전에 정한다 — 체결 후 옮기지 않는다.</div></div>
   </div>
   <div class="disc">규칙 기반 참고 정보이며 매수·매도 지시가 아닙니다 · 데이터: Trend Insight (${d.date[i]})</div>`;
   drawChart(d,ind,li);
