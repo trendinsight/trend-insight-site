@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>기간별 종목선정 | Trend Insight</title>
+<meta name="description" content="단기(1개월)·중기(1개월~1년)·장기(1년+) 기간별 후보 5종목 — 수급·모멘텀 / CANSLIM / 펀더멘털 채점">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--navy:#0b1f3f;--accent:#2e6ff2;--red:#b22f2f;--green:#2e7d32;--orange:#e8830c;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg:#f5f7fb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{text-decoration:none;color:inherit}
+header{background:var(--navy);padding:16px 24px}
+header a{color:#fff;font-weight:800}
+.wrap{max-width:1080px;margin:0 auto;padding:34px 20px 60px}
+h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:.92rem;margin:6px 0 4px}
+.asof{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 16px;font-size:.88rem;font-weight:700;color:var(--navy);margin:10px 8px 10px 0}
+.asof span{color:var(--accent)}
+.datebox{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:.88rem;font-weight:600;color:var(--navy)}
+.datebox input{font-family:inherit;font-size:.88rem;font-weight:700;color:var(--navy);border:none;outline:none;background:transparent}
+.datebox button{font-family:inherit;font-size:.8rem;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:999px;padding:4px 12px;cursor:pointer}
+.datebox button.ghost{background:#eef2f8;color:#39506e}
+#datemsg{font-size:.8rem;color:var(--red);margin:4px 0 8px;display:none}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 1px 3px rgba(11,31,63,.05);margin-top:22px}
+.card h2{font-size:1.1rem;color:var(--navy);margin-bottom:4px}
+.card .hz{font-size:.82rem;color:var(--muted);margin-bottom:6px}
+.gate-badge{display:inline-block;padding:8px 26px;border-radius:999px;font-size:1.2rem;font-weight:800;margin:6px 8px 6px 0}
+.g-GREEN{background:#e8f5e9;color:#2e7d32}
+.g-YELLOW{background:#fff8e1;color:#9a6a00}
+.g-RED{background:#fdecea;color:#c62828}
+.gkv{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:.9rem}
+.gkv b{color:var(--navy)}
+table{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:12px}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:.78rem;white-space:nowrap}
+td.num,th.num{text-align:right}
+td.name{font-weight:700;color:var(--navy);white-space:nowrap}
+td .code{font-weight:500;color:var(--muted);font-size:.76rem}
+.score{font-weight:800;color:var(--accent)}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.7rem;font-weight:700;margin-left:6px;vertical-align:middle}
+.t-multi{background:#e3f2fd;color:#1258b3}
+.t-held{background:#ede7f6;color:#5e35b1}
+.t-warn{background:#fff3e0;color:#e65100}
+.risk{color:var(--red);font-size:.8rem}
+.basis{font-size:.82rem}
+.notewarn{margin-top:10px;background:#fff8e1;border:1px solid #ffe0a3;border-radius:8px;padding:10px 14px;font-size:.85rem;color:#8a5a00}
+.empty{text-align:center;color:var(--muted);padding:60px 20px;font-size:.95rem}
+.emptyrow{text-align:center;color:var(--muted);padding:18px;font-size:.88rem}
+.note{font-size:.78rem;color:#9aa6b6;margin-top:24px;line-height:1.6}
+@media(max-width:720px){.hidem{display:none}}
+</style>
+</head>
+<body>
+<header><a href="index.html">← Trend Insight</a></header>
+<div class="wrap">
+<h1>⏳ 기간별 종목선정</h1>
+<p class="sub">단기(1개월 이내) 수급·모멘텀·돌파 / 중기(1개월~1년) CANSLIM 실적모멘텀 / 장기(1년 이상) 펀더멘털·밸류에이션 — 구간별 후보 5종목</p>
+<div>
+<span class="asof">기준일 <span id="asof">—</span></span>
+<span class="datebox">📅 <input type="date" id="datepick"><button onclick="showDate()">조회</button><button class="ghost" onclick="showLatest()">최신</button></span>
+</div>
+<div id="datemsg"></div>
+<div id="content"><div class="empty">데이터를 불러오는 중…</div></div>
+<p class="note">단기 채점: 모멘텀 40(상대강도·거래량) + 수급 30(외국인·기관) + 셋업 30(VCP 피벗/다바스). 중기: CANSLIM 7요건 총점 + 포렌식 간이 3축 통과. 장기: 수익성 20·성장성 20·재무안정 15·밸류에이션 25·주주환원 10·정성 10 (100점) + 포렌식 전 6축 통과 필수.<br>
+게이트: 시장·거시 온도계 결합 — RED면 단기 생략, YELLOW면 단기 축소. 장기는 게이트와 무관하게 유지.<br>
+본 자료는 후보 목록이며 특정 종목의 매수·매도를 권유하지 않습니다. 투자의 최종 판단과 책임은 투자자 본인에게 있습니다.</p>
+</div>
+<script>
+let DB=null;
+const GK={GREEN:"정상 — 전 구간 발굴",YELLOW:"경계 — 단기 축소",RED:"위험 — 단기 생략"};
+function esc(s){return s==null?"":String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function tags(r,multi){let h="";if(multi[r.code||r.name])h+='<span class="tag t-multi">복수 구간</span>';if(r.held)h+='<span class="tag t-held">기보유</span>';if(r.warn)h+='<span class="tag t-warn">'+esc(r.warn)+'</span>';return h}
+function nameCell(r,multi){return '<td class="name">'+esc(r.name)+' <span class="code">'+esc(r.code||"")+'</span>'+tags(r,multi)+'</td>'}
+function table(rows,cols,multi){
+  if(!rows||!rows.length)return '<div class="emptyrow">해당 구간 적격 후보 없음</div>';
+  let h='<table><tr><th>#</th><th>종목</th>'+cols.map(c=>'<th class="'+(c.num?"num ":"")+(c.m?"":"hidem")+'">'+c.t+'</th>').join("")+'</tr>';
+  rows.forEach((r,i)=>{h+='<tr><td>'+(i+1)+'</td>'+nameCell(r,multi)+cols.map(c=>{
+    let v=r[c.k];v=(v==null||v==="")?"—":v;
+    let cls=(c.num?"num ":"")+(c.m?"":"hidem ")+(c.cls||"");
+    return '<td class="'+cls.trim()+'">'+(c.k==="score"?'<span class="score">'+esc(v)+'</span>':esc(v))+'</td>'}).join("")+'</tr>'});
+  return h+'</table>'}
+function render(rec){
+  document.getElementById("asof").textContent=rec.date||"—";
+  const multi={};
+  [["short"],["mid"],["long"]].forEach(([k])=>(rec[k]||[]).forEach(r=>{const id=r.code||r.name;multi[id]=(multi[id]||0)+1}));
+  Object.keys(multi).forEach(k=>{if(multi[k]<2)delete multi[k]});
+  const g=rec.gate||{};
+  let h='<div class="card"><h2>시장 게이트</h2>';
+  h+='<span class="gate-badge g-'+esc(g.verdict||"YELLOW")+'">'+esc(g.verdict||"—")+'</span> <b>'+ (GK[g.verdict]||"") +'</b>';
+  h+='<div class="gkv"><span>시장 온도</span><b>'+esc(g.market||"—")+'</b></div>';
+  h+='<div class="gkv"><span>거시 온도</span><b>'+esc(g.macro||"—")+'</b></div>';
+  if(g.note)h+='<div class="notewarn">'+esc(g.note)+'</div>';
+  h+='</div>';
+  h+='<div class="card"><h2>단기 — 1개월 이내</h2><div class="hz">수급 · 모멘텀 · 돌파 셋업 (모멘텀40 + 수급30 + 셋업30)</div>';
+  h+=table(rec.short,[{t:"총점",k:"score",num:1,m:1},{t:"피벗가",k:"pivot",num:1,m:1},{t:"2N 손절",k:"stop",num:1,m:1},{t:"근거",k:"basis",cls:"basis"},{t:"리스크",k:"risk",cls:"risk"}],multi)+'</div>';
+  h+='<div class="card"><h2>중기 — 1개월 ~ 1년</h2><div class="hz">실적 모멘텀 · 주도주 (CANSLIM 총점 + 포렌식 간이 3축)</div>';
+  h+=table(rec.mid,[{t:"CANSLIM",k:"score",num:1,m:1},{t:"실적발표",k:"earnings_date",m:1},{t:"근거",k:"basis",cls:"basis"},{t:"리스크",k:"risk",cls:"risk"}],multi)+'</div>';
+  h+='<div class="card"><h2>장기 — 1년 이상</h2><div class="hz">펀더멘털 · 밸류에이션 · 주주환원 (100점 + 포렌식 전 6축 통과)</div>';
+  h+=table(rec.long,[{t:"총점",k:"score",num:1,m:1},{t:"논거 훼손 조건",k:"break_conditions",m:1},{t:"근거",k:"basis",cls:"basis"},{t:"리스크",k:"risk",cls:"risk"}],multi)+'</div>';
+  document.getElementById("content").innerHTML=h;
+}
+function msg(t){const m=document.getElementById("datemsg");m.textContent=t||"";m.style.display=t?"block":"none"}
+function showLatest(){msg("");if(!DB||!DB.history.length)return;const rec=DB.history[DB.history.length-1];document.getElementById("datepick").value=rec.date;render(rec)}
+function showDate(){
+  if(!DB||!DB.history.length)return;
+  const d=document.getElementById("datepick").value;if(!d)return;
+  const exact=DB.history.find(h=>h.date===d);
+  if(exact){msg("");render(exact);return}
+  const before=DB.history.filter(h=>h.date<d);
+  if(before.length){const r=before[before.length-1];msg(d+" 데이터 없음 — 직전 게시일 "+r.date+" 표시");render(r)}
+  else msg(d+" 이전 게시 데이터가 없습니다.")
+}
+fetch("data/horizon-picks.json?t="+Date.now()).then(r=>r.json()).then(j=>{
+  DB=j;DB.history=(j.history||[]).sort((a,b)=>a.date<b.date?-1:1);
+  if(!DB.history.length){document.getElementById("content").innerHTML='<div class="empty">아직 게시된 선정 결과가 없습니다.<br>스킬에서 "기간별 종목선정 게시해줘"를 실행하면 이곳에 날짜별로 쌓입니다.</div>';return}
+  showLatest();
+}).catch(()=>{document.getElementById("content").innerHTML='<div class="empty">데이터를 불러오지 못했습니다.</div>'});
+</script>
+</body>
+</html>
