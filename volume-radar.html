@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>거래량 레이더 | Trend Insight</title>
+<meta name="description" content="차트 거래량의 숨은 의미(매집·분산·돌파대량·드라이업)를 판독하고 의미 있는 거래량 종목을 솎아내는 거래량 레이더">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--navy:#0b1f3f;--accent:#2e6ff2;--blue:#2f6db2;--red:#b22f2f;--green:#1b7a3d;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg:#f5f7fb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{text-decoration:none;color:inherit}
+header{background:var(--navy);padding:16px 24px}
+header a{color:#fff;font-weight:800}
+.wrap{max-width:1080px;margin:0 auto;padding:34px 20px 60px}
+h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:.92rem;margin:6px 0 4px}
+.asof{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 16px;font-size:.88rem;font-weight:700;color:var(--navy);margin:10px 8px 10px 0}
+.asof span{color:var(--blue)}
+.datebox{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:.88rem;font-weight:600;color:var(--navy);margin:10px 0}
+.datebox input{font-family:inherit;font-size:.88rem;font-weight:700;color:var(--navy);border:none;outline:none;background:transparent}
+.datebox button{font-family:inherit;font-size:.8rem;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:999px;padding:4px 12px;cursor:pointer}
+.datebox button.ghost{background:#eef2f8;color:#39506e}
+#datemsg{font-size:.8rem;color:var(--red);margin:4px 0 8px;display:none}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 1px 3px rgba(11,31,63,.05);margin-top:22px}
+.card h2{font-size:1.1rem;color:var(--navy);margin-bottom:6px}
+.summary{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.kpi{flex:1;min-width:140px;background:#f8fafd;border:1px solid var(--line);border-radius:10px;padding:12px 16px}
+.kpi b{display:block;font-size:1.5rem;color:var(--navy);line-height:1.2}
+.kpi span{font-size:.78rem;color:var(--muted);font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:12px}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}
+td:first-child{font-weight:600}
+th{color:var(--muted);font-weight:600;font-size:.78rem}
+tr.clickable{cursor:pointer}
+tr.clickable:hover{background:#f8fafd}
+.grade{padding:3px 11px;border-radius:999px;font-size:.76rem;font-weight:800;white-space:nowrap}
+.g-S{background:#e8f0fe;color:#1a4fc4}
+.g-ACC{background:#e6f4ea;color:#1b7a3d}
+.g-DIST{background:#fdecea;color:#c62828}
+.g-VDU{background:#fff3e0;color:#e65100}
+.g-NEU{background:#eef2f8;color:#5b6779}
+.up{color:#c62828;font-weight:700}
+.dn{color:#1a4fc4;font-weight:700}
+.mult{font-weight:800;color:var(--navy)}
+.detail{background:#f8fafd;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-top:10px;font-size:.84rem}
+.detail h3{font-size:.95rem;color:var(--navy);margin-bottom:6px}
+.detail .r{color:var(--muted);margin-top:4px}
+.detail .r b{color:var(--text)}
+.fl{margin-top:8px}
+.fl li{margin-left:18px;color:var(--muted);margin-top:3px}
+.fl li b{color:var(--text)}
+.mnote{background:#eef2f8;color:#39506e;border-radius:10px;padding:11px 15px;font-size:.84rem;font-weight:600;margin-top:12px}
+.empty{text-align:center;color:var(--muted);padding:60px 20px;font-size:.95rem}
+.note{font-size:.78rem;color:#9aa6b6;margin-top:24px;line-height:1.6}
+</style>
+</head>
+<body>
+<header><a href="index.html">← Trend Insight</a></header>
+<div class="wrap">
+<h1>📊 거래량 레이더</h1>
+<p class="sub">차트 거래량의 숨은 의미 판독 — S급 돌파대량(돌파+3배↑) · 매집/분산 · VSA 이벤트 · OBV 다이버전스 · 포켓 피벗 · 드라이업</p>
+<div>
+<span class="asof">기준일 <span id="asof">—</span></span>
+<span class="datebox">📅 <input type="date" id="datepick"><button onclick="showDate()">조회</button><button class="ghost" onclick="showLatest()">최신</button></span>
+</div>
+<div id="datemsg"></div>
+<div id="content"><div class="empty">데이터를 불러오는 중…</div></div>
+<p class="note">점수는 중립 50을 기준으로 매집 신호(+)와 분산 신호(−)를 가감한 0~100 종합값입니다. S급 돌파대량은 60일 박스 상단을 상향 돌파하며 거래량이 20일 평균의 3배 이상 실린 경우로, 점수와 무관하게 최우선 표시됩니다.<br>
+본 자료는 투자 참고용이며 특정 종목의 매수·매도를 권유하지 않습니다. 투자의 최종 판단과 책임은 투자자 본인에게 있습니다.</p>
+</div>
+<script>
+let DB=null,OPEN=null,CUR=null;
+function fmt(n){return n==null?"—":Number(n).toLocaleString("ko-KR")}
+function gcls(v){
+  if(v==="S급 돌파대량")return"g-S";
+  if(v==="매집 우세")return"g-ACC";
+  if(v==="분산 우세")return"g-DIST";
+  if(v==="드라이업 감시")return"g-VDU";
+  return"g-NEU";
+}
+function detail(x){
+  let h='<div class="detail"><h3>'+x.name+' ('+x.ticker+(x.market?' · '+x.market:'')+')</h3>';
+  h+='<div class="r"><b>당일</b> — 종가 '+fmt(x.close)+' ('+(x.chg_pct>=0?'+':'')+x.chg_pct+'%) · 거래량 '+fmt(x.volume)+' (20일평균 대비 <b>'+x.vol_ratio+'배</b>, z='+x.vol_z+') · 유형 '+x.bar_type+' · 종가위치 '+x.close_pos+'</div>';
+  h+='<div class="r"><b>기조</b> — 20일 수익률 '+x.ret20_pct+'% · 상승/하락일 거래량비 '+x.upvol_ratio+' · 분산일 '+x.dist_days+'회'+(x.obv_div?' · OBV '+(x.obv_div==="bullish"?"강세":"약세")+' 다이버전스':'')+'</div>';
+  if(x.breakout_3x)h+='<div class="r"><b>🚀 S급</b> — 60일 박스 상단('+fmt(x.box_hi)+') 상향 돌파 + 거래량 3배 이상</div>';
+  if(x.flags&&x.flags.length){h+='<ul class="fl">'+x.flags.map(function(f){return '<li><b>'+f.label+'</b> — '+f.detail+'</li>';}).join("")+'</ul>';}
+  if(x.claude_note)h+='<div class="r" style="margin-top:8px"><b>해석 노트</b> — '+x.claude_note+'</div>';
+  return h+'</div>';
+}
+function render(rec){
+  CUR=rec;OPEN=null;
+  document.getElementById("asof").textContent=rec.date;
+  const it=rec.items||[];
+  const nS=it.filter(function(x){return x.breakout_3x}).length;
+  const nA=it.filter(function(x){return x.verdict==="매집 우세"}).length;
+  const nD=it.filter(function(x){return x.verdict==="분산 우세"}).length;
+  let h='<div class="card"><h2>'+(rec.mode==="screen"?"전 시장 스크리닝":"종목 분석")+'</h2>';
+  if(rec.market_note)h+='<div class="mnote">'+rec.market_note+'</div>';
+  h+='<div class="summary"><div class="kpi"><b>'+it.length+'</b><span>신호 종목</span></div><div class="kpi"><b>'+nS+'</b><span>🚀 S급 돌파대량</span></div><div class="kpi"><b>'+nA+'</b><span>매집 우세</span></div><div class="kpi"><b>'+nD+'</b><span>분산 우세</span></div></div>';
+  if(!it.length){h+='<div class="empty">의미 있는 거래량 신호가 없습니다</div></div>';}
+  else{
+    h+='<table><thead><tr><th>종목</th><th>종가</th><th>등락</th><th>거래량 배수</th><th>유형</th><th>점수</th><th>판정</th></tr></thead><tbody>';
+    it.forEach(function(x,i){
+      h+='<tr class="clickable" onclick="tog('+i+')"><td>'+(x.breakout_3x?'🚀 ':'')+x.name+'</td><td>'+fmt(x.close)+'</td><td class="'+(x.chg_pct>=0?'up':'dn')+'">'+(x.chg_pct>=0?'+':'')+x.chg_pct+'%</td><td class="mult">'+x.vol_ratio+'배</td><td>'+x.bar_type+'</td><td>'+x.score+'</td><td><span class="grade '+gcls(x.verdict)+'">'+x.verdict+'</span></td></tr>';
+      h+='<tr id="d'+i+'" style="display:none"><td colspan="7" style="text-align:left">'+detail(x)+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+  document.getElementById("content").innerHTML=h;
+}
+function tog(i){
+  const r=document.getElementById("d"+i);
+  if(OPEN!=null&&OPEN!==i){const p=document.getElementById("d"+OPEN);if(p)p.style.display="none";}
+  r.style.display=r.style.display==="none"?"":"none";
+  OPEN=r.style.display===""?i:null;
+}
+function showLatest(){
+  const h=DB.history||[];
+  if(!h.length){document.getElementById("content").innerHTML='<div class="empty">아직 게시된 데이터가 없습니다</div>';return;}
+  render(h[h.length-1]);
+  document.getElementById("datepick").value=h[h.length-1].date;
+  document.getElementById("datemsg").style.display="none";
+}
+function showDate(){
+  const d=document.getElementById("datepick").value;
+  const rec=(DB.history||[]).find(function(r){return r.date===d});
+  const m=document.getElementById("datemsg");
+  if(!rec){m.textContent=d+" 데이터가 없습니다 (게시된 날짜만 조회 가능)";m.style.display="block";return;}
+  m.style.display="none";render(rec);
+}
+fetch("data/volume-radar.json?t="+Date.now()).then(function(r){return r.json()}).then(function(db){DB=db;showLatest();}).catch(function(){
+  document.getElementById("content").innerHTML='<div class="empty">데이터를 불러올 수 없습니다</div>';
+});
+</script>
+</body>
+</html>
