@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>추세 라이더 — Trend Insight</title>
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--line:#252a34;--txt:#e6e9ef;--sub:#9aa4b2;
+        --ride:#12b886;--tight:#f5a524;--part:#f59f00;--exit:#e5484d;--blue:#3e8ef7;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+  header{padding:22px 18px 8px;max-width:1040px;margin:0 auto}
+  h1{font-size:21px;margin:0 0 4px}
+  h2{font-size:15px;margin:22px 0 8px}
+  .sub{color:var(--sub);font-size:13px;line-height:1.6}
+  .wrap{max-width:1040px;margin:0 auto;padding:12px 18px 60px}
+  select{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px}
+  .ctrl{margin:10px 0 2px;font-size:13px;color:var(--sub);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .grid{display:flex;gap:14px;flex-wrap:wrap}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px;flex:1;min-width:300px;max-width:504px}
+  .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .nm{font-size:15px;font-weight:700}
+  .code{color:var(--sub);font-size:12px;font-weight:400;margin-left:6px}
+  .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800;color:#0b0d10}
+  .kv{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:11px;font-size:12px;color:var(--sub)}
+  .kv b{color:var(--txt);font-weight:600}
+  .reason{margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--txt);border-top:1px solid var(--line);padding-top:9px}
+  .bar{position:relative;height:10px;background:#0c0e12;border-radius:6px;overflow:hidden;margin-top:4px}
+  .fill{position:absolute;top:0;bottom:0;left:0;border-radius:6px}
+  .blbl{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-top:4px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+  th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}
+  th{color:var(--sub);font-weight:600;font-size:12px}
+  .doc{margin-top:28px;color:var(--sub);font-size:12px;line-height:1.8;border-top:1px solid var(--line);padding-top:14px}
+  details.guide{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:14px 0 4px}
+  details.guide summary{cursor:pointer;padding:13px 16px;font-size:14px;font-weight:700;list-style:none}
+  details.guide summary::-webkit-details-marker{display:none}
+  details.guide .gbody{padding:0 16px 16px;font-size:13px;line-height:1.85;color:var(--sub);border-top:1px solid var(--line);padding-top:13px}
+  details.guide .gbody b{color:var(--txt)}
+</style>
+</head>
+<body>
+<header>
+  <h1>🏇 추세 라이더</h1>
+  <div class="sub">코벨(추세가 이어지는 한 보유·출구가 전부) × 리버모어(10% 룰·강세에 매도) — 단계·강도·RS·트레일링 스탑 진단 보드</div>
+</header>
+<div class="wrap">
+  <div class="ctrl">
+    종목 <select id="selStock"></select>
+    날짜 <select id="selDate"></select>
+  </div>
+  <div id="latest" class="grid"></div>
+  <h2>판정 이력</h2>
+  <div style="overflow-x:auto"><table id="hist"><thead><tr>
+    <th>날짜</th><th>종가</th><th>판정</th><th>단계</th><th>강도</th><th>RS</th><th>권장 스탑</th><th>고점 대비</th>
+  </tr></thead><tbody></tbody></table></div>
+  <details class="guide"><summary>읽는 법</summary><div class="gbody">
+    <b>단계</b>: 와인스타인 4단계 — 1 바닥 다지기 · 2 상승(편승 구간) · 3 천장권 · 4 하락(보유 금지).
+    기준선은 MA150(봉 부족 시 MA60)의 위치와 20일 기울기로 판정.<br>
+    <b>강도</b>: 정배열·52주 위치·ADX(+DI 우위)·기준선 기울기·MA50 상회일 5요소 100점.
+    70↑ STRONG / 40~69 MODERATE / 40↓ WEAK.<br>
+    <b>RS</b>: 지수 대비 3·6·12개월 초과수익 가중(40/30/30) 0~100점. 70↑ 주도주(LEADER), 45↓ 열위(LAGGARD).<br>
+    <b>권장 스탑</b>: 샹들리에(고점−3×ATR, 천장권·과열 시 2.5×)와 20일(타이트닝 시 10일) 최저가 중 높은 쪽.
+    스탑은 내리지 않고 올리기만 한다.<br>
+    <b>판정</b>: 보유 시 RIDE(유지)/TIGHTEN(경계)/PARTIAL_EXIT(부분익절)/EXIT(청산) ·
+    신규 시 RIDEABLE(편승 가능)/WAIT(관망)/AVOID(회피). 매수/매도 지시가 아닌 규칙 기반 참고 정보.
+  </div></details>
+  <div class="doc">데이터: data/trend-rider-board.json · trend-rider 스킬이 자동 갱신 · Trend Insight</div>
+</div>
+<script>
+const VK={RIDE:["라이드","--ride"],TIGHTEN:["타이트닝","--tight"],PARTIAL_EXIT:["부분익절","--part"],
+  EXIT:["청산","--exit"],RIDEABLE:["편승 가능","--ride"],WAIT:["관망","--tight"],AVOID:["회피","--exit"]};
+const SK={STAGE1:"1단계",STAGE2_EARLY:"2단계 초입",STAGE2:"2단계",STAGE3:"3단계",STAGE4:"4단계"};
+const cv=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let DB=null;
+function fmt(x){return x==null?"-":Number(x).toLocaleString("ko-KR")}
+function badge(v){const [t,c]=VK[v]||[v,"--tight"];return `<span class="badge" style="background:${cv(c)}">${t}</span>`}
+function bar(v,max,color){const p=Math.max(0,Math.min(100,v/max*100));
+  return `<div class="bar"><div class="fill" style="width:${p}%;background:${color}"></div></div>`}
+function render(){
+  const code=document.getElementById("selStock").value;
+  const o=DB.stocks[code]; if(!o)return;
+  const dates=o.history.map(h=>h.date).reverse();
+  const sd=document.getElementById("selDate");
+  const cur=sd.value && dates.includes(sd.value)?sd.value:dates[0];
+  sd.innerHTML=dates.map(d=>`<option ${d===cur?"selected":""}>${d}</option>`).join("");
+  const h=o.history.find(x=>x.date===cur);
+  const pos=h.position;
+  document.getElementById("latest").innerHTML=`<div class="card">
+    <div class="top"><span class="nm">${o.name}<span class="code">${code}</span></span>${badge(pos?pos.action:h.verdict)}</div>
+    <div class="kv"><span>기준일 <b>${h.date}</b></span><span>종가 <b>${fmt(h.price)}</b></span>
+      <span>단계 <b>${SK[h.stage]||h.stage}</b></span>
+      ${pos?`<span>매수가 <b>${fmt(pos.entry)}</b></span><span>수익 <b>${pos.gain_pct>0?"+":""}${pos.gain_pct}%</b></span>`:""}
+      ${h.climax?`<span style="color:${cv("--exit")}">⚠ 클라이맥스 과열</span>`:""}
+      ${h.rs_new_high?`<span style="color:${cv("--ride")}">RS라인 신고가</span>`:""}</div>
+    <div class="kv" style="margin-top:12px"><span style="flex:1;min-width:140px">강도 <b>${h.strength??"-"}점 (${h.strength_grade||"-"})</b>${bar(h.strength||0,100,cv("--blue"))}</span>
+      <span style="flex:1;min-width:140px">RS <b>${h.rs??"-"}점 (${h.rs_grade||"-"})</b>${bar(h.rs||0,100,cv("--ride"))}</span></div>
+    <div class="kv"><span>권장 스탑 <b>${fmt(h.stop)}</b>${h.stop_broken?` <span style="color:${cv("--exit")}">(이탈)</span>`:""}</span>
+      <span>고점 대비 <b>${h.off_peak_pct>0?"+":""}${h.off_peak_pct??"-"}%</b></span></div>
+    <div class="reason">${h.stage_detail||""}${h.verdict_reason?`<br>${h.verdict_reason}`:""}
+      ${pos&&pos.reasons?`<br>${pos.reasons.join(" · ")}`:""}${h.comment?`<br>${h.comment}`:""}</div>
+  </div>`;
+  document.querySelector("#hist tbody").innerHTML=o.history.slice().reverse().map(x=>`<tr>
+    <td>${x.date}</td><td>${fmt(x.price)}</td><td>${badge(x.position?x.position.action:x.verdict)}</td>
+    <td>${SK[x.stage]||x.stage||"-"}</td><td>${x.strength??"-"}</td><td>${x.rs??"-"}</td>
+    <td>${fmt(x.stop)}</td><td>${x.off_peak_pct>0?"+":""}${x.off_peak_pct??"-"}%</td></tr>`).join("");
+}
+fetch("data/trend-rider-board.json?t="+Date.now()).then(r=>r.json()).then(db=>{
+  DB=db;
+  const codes=Object.entries(db.stocks).sort((a,b)=>{
+    const la=a[1].history[a[1].history.length-1].date,lb=b[1].history[b[1].history.length-1].date;
+    return lb.localeCompare(la)});
+  const ss=document.getElementById("selStock");
+  ss.innerHTML=codes.map(([c,o])=>`<option value="${c}">${o.name} (${c})</option>`).join("");
+  ss.onchange=()=>{document.getElementById("selDate").innerHTML="";render()};
+  document.getElementById("selDate").onchange=render;
+  if(codes.length)render();
+  else document.getElementById("latest").innerHTML='<div class="sub">아직 게시된 판정이 없습니다.</div>';
+}).catch(()=>document.getElementById("latest").innerHTML='<div class="sub">데이터 로드 실패</div>');
+</script>
+</body>
+</html>
