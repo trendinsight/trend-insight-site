@@ -42,6 +42,23 @@
   th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}
   th{color:var(--sub);font-weight:600;font-size:12px}
   .doc{margin-top:28px;color:var(--sub);font-size:12px;line-height:1.8;border-top:1px solid var(--line);padding-top:14px}
+  details.guide{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:0;margin:14px 0 4px}
+  details.guide summary{cursor:pointer;padding:13px 16px;font-size:14px;font-weight:700;list-style:none;
+    display:flex;align-items:center;gap:8px}
+  details.guide summary::-webkit-details-marker{display:none}
+  details.guide summary::after{content:'▾';margin-left:auto;color:var(--sub);transition:transform .2s}
+  details.guide[open] summary::after{transform:rotate(180deg)}
+  details.guide .gbody{padding:0 16px 16px;font-size:13px;line-height:1.85;color:var(--sub);
+    border-top:1px solid var(--line);padding-top:13px}
+  details.guide .gbody b{color:var(--txt)}
+  details.guide .gbody .lead{color:var(--txt);font-size:13.5px;margin-bottom:11px}
+  .glist{margin:9px 0 0;padding:0;list-style:none}
+  .glist li{padding:5px 0 5px 0;display:flex;gap:9px;align-items:baseline}
+  .glist .tag{flex:0 0 auto;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;color:#0b0d10}
+  .gscore{display:flex;flex-wrap:wrap;gap:5px 16px;margin-top:8px}
+  .gscore span{font-size:12.5px}
+  .gwarn{margin-top:12px;background:rgba(229,72,77,.09);border-left:3px solid var(--avoid);
+    border-radius:8px;padding:10px 13px;color:var(--txt);font-size:12.5px;line-height:1.75}
   .empty{color:var(--sub);font-size:13px;padding:14px 0}
 </style>
 </head>
@@ -54,6 +71,43 @@
   <div class="ctrl">발굴 기준일 <select id="datesel"></select></div>
 </header>
 <div class="wrap">
+  <details class="guide" open>
+    <summary>🐢 처음이신가요 — 30초 설명</summary>
+    <div class="gbody">
+      <div class="lead"><b>KAME(카메)는 일본어로 '거북이'</b>입니다. 고레가와 긴조가 남긴
+      <b>카메 3칙</b>(거북이 3원칙)에서 따온 이름이지 영어 약자가 아닙니다.
+      토끼처럼 뛰는 주식을 쫓지 말고, 거북이처럼 물속 깊이 가라앉아 있는 멀쩡한 회사를 사서
+      묵묵히 기다리라는 뜻입니다. <b>전제는 2년</b>이고, 빚내서 사지 않습니다.</div>
+
+      <ul class="glist">
+        <li><span class="tag" style="background:var(--kame)">KAME</span>
+          <span>회사는 튼튼한데 아무도 안 보고 있고 가격도 바닥 근처 — <b>나눠서 사 모을 자리</b></span></li>
+        <li><span class="tag" style="background:var(--watch)">관찰</span>
+          <span>좋긴 한데 아직. 더 내려오거나, 걸린 문제가 풀리길 기다리는 중</span></li>
+        <li><span class="tag" style="background:var(--avoid)">제외</span>
+          <span>이 방식의 사냥감이 아님</span></li>
+      </ul>
+
+      <div style="margin-top:13px"><b>점수는 100점 만점, 다섯 항목</b></div>
+      <div class="gscore">
+        <span>💰 <b>저평가 15</b> — 회사 가치보다 주가가 싼가</span>
+        <span>🏭 <b>우량성 30</b> — 꾸준히 벌고 빚이 적은가</span>
+        <span>🌊 <b>소외도 25</b> — 거래가 말라 아무도 안 보나</span>
+        <span>🗻 <b>능선 10</b> — 1년 값폭에서 어디쯤인가</span>
+        <span>🧭 <b>대국관 20</b> — 2년 뒤 변화와 연결되나</span>
+      </div>
+
+      <div style="margin-top:12px"><b>“몇 부 능선”이 뭔가요?</b> 1년 최저가를 0부, 최고가를 10부로 놓고
+      지금 주가의 위치입니다. 후지산에 비유해 고레가와는 <b>2·3부 능선에서 사서 기다리라</b>고 했습니다.
+      8부 능선 위는 쳐다보지 않습니다.</div>
+
+      <div class="gwarn"><b>점수가 높아도 KAME이 안 되는 경우가 있습니다.</b> 아래 넷 중 하나라도 걸리면
+      아무리 점수가 높아도 관찰로 내립니다 —
+      ① 2년 뒤 변화와 연결이 안 됨 ② 빚이 자기자본보다 많음 ③ 아직 떨어지는 중
+      ④ 나중에 쏟아질 물량(전환사채·교환사채)이 대기 중.
+      좋아 보여도 천장이 미리 박혀 있으면 사지 않는다는 뜻입니다.</div>
+    </div>
+  </details>
   <div id="macro"></div>
   <h2>매집 후보</h2>
   <div class="grid" id="cands"></div>
