@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>고레가와 보드 — Trend Insight</title>
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--line:#252a34;--txt:#e6e9ef;--sub:#9aa4b2;
+        --kame:#12b886;--watch:#f5a524;--avoid:#e5484d;--blue:#3e8ef7;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+  header{padding:22px 18px 8px;max-width:1040px;margin:0 auto}
+  h1{font-size:21px;margin:0 0 4px}
+  h2{font-size:15px;margin:22px 0 8px}
+  .sub{color:var(--sub);font-size:13px;line-height:1.6}
+  .wrap{max-width:1040px;margin:0 auto;padding:12px 18px 60px}
+  .ctrl{margin:10px 0 2px;font-size:13px;color:var(--sub)}
+  select{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px}
+  .macro{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--blue);
+         border-radius:10px;padding:13px 15px;font-size:13px;line-height:1.7;color:var(--txt);margin-top:10px}
+  .macro b{color:var(--blue)}
+  .grid{display:flex;gap:14px;flex-wrap:wrap}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px;flex:1;min-width:300px;max-width:504px}
+  .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .nm{font-size:15px;font-weight:700}
+  .code{color:var(--sub);font-size:12px;font-weight:400;margin-left:6px}
+  .score{font-size:22px;font-weight:800}
+  .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800;color:#0b0d10}
+  .ridge{margin:13px 0 4px}
+  .track{position:relative;height:12px;background:#0c0e12;border-radius:7px;overflow:hidden}
+  .zone{position:absolute;top:0;bottom:0;left:10%;width:30%;background:rgba(18,184,134,.28)}
+  .mark{position:absolute;top:-4px;width:3px;height:20px;background:var(--txt);border-radius:2px}
+  .rlbl{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-top:5px}
+  .kv{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:11px;font-size:12px;color:var(--sub)}
+  .kv b{color:var(--txt);font-weight:600}
+  .reason{margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--txt);border-top:1px solid var(--line);padding-top:9px}
+  .chips{margin-top:8px}
+  .chip{display:inline-block;background:var(--card);border:1px solid var(--line);border-radius:9px;
+        padding:6px 10px;margin:5px 7px 0 0;font-size:12px;color:var(--sub)}
+  .chip b{color:var(--txt)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+  th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}
+  th{color:var(--sub);font-weight:600;font-size:12px}
+  .doc{margin-top:28px;color:var(--sub);font-size:12px;line-height:1.8;border-top:1px solid var(--line);padding-top:14px}
+  .empty{color:var(--sub);font-size:13px;padding:14px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>🐢 고레가와 보드</h1>
+  <div class="sub">고레가와 긴조(是川銀蔵)의 <b>카메 3칙</b>과 <b>투자 5개조</b>로 고른 <b>수면 아래 우량주</b>.
+  실적은 멀쩡한데 거래가 한산하고 소외된 종목을 <b>후지산 2·3부 능선</b>에서 사 모아 기다린다.
+  8부 능선 추격과 완력시세(거래량 폭증·급등)는 자동 배제한다.</div>
+  <div class="ctrl">발굴 기준일 <select id="datesel"></select></div>
+</header>
+<div class="wrap">
+  <div id="macro"></div>
+  <h2>매집 후보</h2>
+  <div class="grid" id="cands"></div>
+  <h2>제외 종목 <span style="font-size:12px;color:var(--sub);font-weight:400">— 고가권·완력시세</span></h2>
+  <div class="chips" id="excl"></div>
+  <h2>종목 판정 이력</h2>
+  <div class="ctrl">종목 <select id="stocksel"></select></div>
+  <div id="judge"></div>
+  <div class="doc">
+    <b>읽는 법</b> — 능선 막대의 초록 구간(10~40%)이 고레가와가 말한 “후지산 2·3부 능선”이다.
+    52주 밴드에서 그 위치에 있고 우량성·소외도 점수가 높을 때 카메(매집) 등급이 된다.
+    점수는 저평가 25 + 우량성 30 + 소외도 25 + 능선 10 + 대국관 10 = 100점.<br>
+    <b>보유 전제는 2년</b>이며 신용·미수는 쓰지 않는다(카메 3칙 ③). 매도는 <b>복팔분</b> —
+    목표가의 80% 도달 시점부터 분할한다.<br>
+    거장 논평은 저작·어록에 기반한 해석적 재구성이며 실제 발언이 아니다.
+    이 보드는 자문 자료이지 매수 추천이 아니다.
+  </div>
+</div>
+<script>
+const GC={KAME:'var(--kame)','관찰':'var(--watch)','제외':'var(--avoid)',
+          KAME_BUY:'var(--kame)',WAIT:'var(--watch)',AVOID:'var(--avoid)'};
+const gcolor=g=>GC[g]||'var(--sub)';
+let DATA={screens:[],judgments:{}};
+
+function ridgeBar(pos){
+  const p=Math.max(0,Math.min(1,pos==null?0:pos))*100;
+  return `<div class="ridge">
+    <div class="track"><div class="zone"></div><div class="mark" style="left:calc(${p}% - 1px)"></div></div>
+    <div class="rlbl"><span>0부(52주 저점)</span><span>2·3부 능선</span><span>10부(52주 고점)</span></div>
+  </div>`;
+}
+function num(v,unit,d){return v==null?'—':(typeof v==='number'?v.toFixed(d==null?2:d):v)+(unit||'');}
+
+function renderScreen(rec){
+  document.getElementById('macro').innerHTML = rec.macro
+    ? `<div class="macro"><b>2년 후 대국관</b><br>${rec.macro}</div>` : '';
+  const box=document.getElementById('cands');
+  const cs=(rec.candidates||[]);
+  if(!cs.length){box.innerHTML='<div class="empty">이 날짜의 후보가 없습니다.</div>';}
+  else{
+    box.innerHTML=cs.map(c=>`
+      <div class="card">
+        <div class="top">
+          <div><span class="nm">${c.name||c.ticker}</span><span class="code">${c.ticker||''} · ${c.market||''}</span></div>
+          <div style="text-align:right">
+            <span class="badge" style="background:${gcolor(c.grade)}">${c.grade||'—'}</span>
+            <div class="score">${c.total!=null?c.total:(c.quant_total!=null?c.quant_total+'*':'—')}</div>
+          </div>
+        </div>
+        ${ridgeBar(c.band_pos)}
+        <div style="font-size:12px;color:var(--sub)">현재 <b style="color:var(--txt)">${c.ridge||'—'}</b>
+          ${c.close!=null?' · '+Number(c.close).toLocaleString()+'원':''}</div>
+        <div class="kv">
+          <span>PBR <b>${num(c.pbr)}</b></span><span>PER <b>${num(c.per,'',1)}</b></span>
+          <span>배당 <b>${num(c.div,'%',2)}</b></span><span>간이ROE <b>${num(c.roe_simple,'%',1)}</b></span>
+          <span>회전율 <b>${num(c.turnover_20d_pct,'%',3)}</b></span><span>12개월 <b>${num(c.ret_12m,'%',1)}</b></span>
+        </div>
+        ${c.reason?`<div class="reason">${c.reason}</div>`:''}
+      </div>`).join('');
+  }
+  const ex=document.getElementById('excl');
+  const xs=(rec.excluded||[]);
+  ex.innerHTML = xs.length ? xs.map(x=>`<span class="chip"><b>${x.name||x.ticker}</b> — ${(x.reasons||[]).join(', ')}</span>`).join('')
+                           : '<div class="empty">제외 종목 없음</div>';
+}
+
+function renderJudge(code){
+  const box=document.getElementById('judge');
+  const o=DATA.judgments[code];
+  if(!o||!o.history||!o.history.length){box.innerHTML='<div class="empty">판정 이력이 없습니다.</div>';return;}
+  const rows=[...o.history].reverse().map(h=>`
+    <tr>
+      <td>${h.date||''}</td>
+      <td><span class="badge" style="background:${gcolor(h.verdict)}">${h.verdict||'—'}</span></td>
+      <td>${h.total!=null?h.total:'—'}</td>
+      <td>${h.ridge||'—'}</td>
+      <td>${h.close!=null?Number(h.close).toLocaleString():'—'}</td>
+      <td>${h.bokuhachibu&&h.bokuhachibu['복팔분_분할매도_개시가']?Number(h.bokuhachibu['복팔분_분할매도_개시가']).toLocaleString():'—'}</td>
+      <td style="color:var(--sub)">${h.comment||''}</td>
+    </tr>`).join('');
+  box.innerHTML=`<table><thead><tr><th>일자</th><th>판정</th><th>점수</th><th>능선</th>
+    <th>종가</th><th>복팔분 매도개시</th><th>코멘트</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+fetch('data/korekawa-board.json?'+Date.now()).then(r=>r.json()).then(d=>{
+  DATA=d||DATA;
+  const ds=document.getElementById('datesel');
+  const screens=[...(DATA.screens||[])].reverse();
+  if(screens.length){
+    ds.innerHTML=screens.map((s,i)=>`<option value="${i}">${s.date}</option>`).join('');
+    ds.onchange=()=>renderScreen(screens[+ds.value]);
+    renderScreen(screens[0]);
+  }else{
+    ds.innerHTML='<option>—</option>';
+    document.getElementById('cands').innerHTML='<div class="empty">아직 발굴 기록이 없습니다.</div>';
+  }
+  const ss=document.getElementById('stocksel');
+  const codes=Object.keys(DATA.judgments||{});
+  if(codes.length){
+    ss.innerHTML=codes.map(c=>`<option value="${c}">${(DATA.judgments[c].name||c)} (${c})</option>`).join('');
+    ss.onchange=()=>renderJudge(ss.value);
+    renderJudge(codes[0]);
+  }else{
+    ss.innerHTML='<option>—</option>';
+    document.getElementById('judge').innerHTML='<div class="empty">아직 판정 기록이 없습니다.</div>';
+  }
+}).catch(e=>{
+  document.getElementById('cands').innerHTML='<div class="empty">데이터를 불러오지 못했습니다.</div>';
+});
+</script>
+</body>
+</html>
