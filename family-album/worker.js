@@ -40,6 +40,42 @@ async function getVideos(env) {
   try { return await obj.json(); } catch { return []; }
 }
 
+
+// ===== 방학 체크 (연준·민준) — vacation.html 전용 =====
+const VAC_WHO = ['연준', '민준'];
+const VAC_TASKS = ['read','list','voca','gram','m38','mvoc','sci','wake','mmal','duA','duP','phon','exer'];
+const VAC_FROM = '2026-07-26', VAC_TO = '2026-09-05';
+const VAC_KEYCODE = 'c3ec484ccf17';
+const vacKey = (who) => `meta/vacation-${who}.json`;
+
+function vacHeaders(request) {
+  const o = request.headers.get('origin');
+  return {
+    'content-type': 'application/json; charset=utf-8',
+    'access-control-allow-origin': o || '*',
+    'access-control-allow-methods': 'GET,PUT,OPTIONS',
+    'access-control-allow-headers': 'content-type',
+    'cache-control': 'no-store',
+    'vary': 'origin',
+  };
+}
+const vacRes = (request, data, status = 200) =>
+  new Response(JSON.stringify(data), { status, headers: vacHeaders(request) });
+
+async function vacLoad(env, who) {
+  const obj = await env.PHOTOS.get(vacKey(who));
+  if (!obj) return {};
+  try { return await obj.json(); } catch { return {}; }
+}
+async function vacLoadAll(env) {
+  const out = {};
+  await Promise.all(VAC_WHO.map(async (w) => { out[w] = await vacLoad(env, w); }));
+  return out;
+}
+function vacValidDate(d) {
+  return typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= VAC_FROM && d <= VAC_TO;
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -170,6 +206,38 @@ export default {
           httpMetadata: { contentType: 'application/json' },
         });
         return ok({ ok: true });
+      }
+    }
+
+    // ---- 방학 체크: 조회 / 저장 ----
+    if (p === '/api/vacation') {
+      if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: vacHeaders(request) });
+
+      if (request.method === 'GET') {
+        return vacRes(request, { ok: true, data: await vacLoadAll(env) });
+      }
+
+      if (request.method === 'PUT') {
+        if (url.searchParams.get('k') !== VAC_KEYCODE) return vacRes(request, { error: 'bad key' }, 403);
+        let body;
+        try { body = await request.json(); } catch { return vacRes(request, { error: 'bad json' }, 400); }
+        const who = body && body.who;
+        if (!VAC_WHO.includes(who)) return vacRes(request, { error: 'bad who' }, 400);
+        const ops = Array.isArray(body.ops) ? body.ops.slice(0, 600) : [];
+        const doc = await vacLoad(env, who);
+        let n = 0;
+        for (const op of ops) {
+          if (!op || !vacValidDate(op.d) || !VAC_TASKS.includes(op.t)) continue;
+          if (op.v) { (doc[op.d] = doc[op.d] || {})[op.t] = 1; }
+          else if (doc[op.d]) { delete doc[op.d][op.t]; if (!Object.keys(doc[op.d]).length) delete doc[op.d]; }
+          n++;
+        }
+        if (n) {
+          await env.PHOTOS.put(vacKey(who), JSON.stringify(doc), {
+            httpMetadata: { contentType: 'application/json' },
+          });
+        }
+        return vacRes(request, { ok: true, applied: n, data: doc });
       }
     }
 

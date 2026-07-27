@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0b1020">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="방학 체크">
+<title>연준 · 민준 방학 체크</title>
+<style>
+:root{
+  --bg:#0b1020; --bg2:#131a33; --card:rgba(255,255,255,.055); --line:rgba(255,255,255,.11);
+  --tx:#eef2ff; --tx2:#a8b3d6; --tx3:#6b769b;
+  --acc:#ff9f43; --acc2:#ffd580; --ok:#31d0aa; --no:#ff6b81;
+}
+body.soccer{ --acc:#3ddc84; --acc2:#a8f5c8; }
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(255,159,67,.13), transparent 60%),
+    radial-gradient(1000px 600px at 90% 0%, rgba(61,220,132,.10), transparent 55%),
+    linear-gradient(180deg,#0b1020 0%,#0e1428 40%,#0a0f1e 100%);
+  background-attachment:fixed; color:var(--tx); min-height:100vh;
+  padding:0 0 80px;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+
+/* ===== 헤더 / 격언 ===== */
+header{padding:26px 0 10px}
+.brand{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:16px}
+.brand .dot{width:9px;height:9px;border-radius:50%;background:var(--acc);box-shadow:0 0 14px var(--acc)}
+.brand h1{font-size:15px;letter-spacing:.22em;margin:0;color:var(--tx2);font-weight:600}
+.sync{position:fixed;top:10px;right:12px;z-index:40;font-size:11px;font-weight:700;padding:6px 12px;border-radius:99px;
+  border:1px solid var(--line);background:rgba(12,18,38,.85);backdrop-filter:blur(6px);color:var(--tx3);transition:.25s}
+.sync.ok{color:#9fe8d4;border-color:color-mix(in srgb,var(--ok) 45%,transparent)}
+.sync.busy{color:var(--acc2);border-color:color-mix(in srgb,var(--acc) 45%,transparent)}
+.sync.off{color:#ffc9d1;border-color:color-mix(in srgb,var(--no) 50%,transparent)}
+.quote{
+  position:relative;border-radius:22px;padding:30px 26px 26px;text-align:center;overflow:hidden;
+  background:linear-gradient(135deg,rgba(255,255,255,.09),rgba(255,255,255,.03));
+  border:1px solid var(--line);box-shadow:0 20px 50px rgba(0,0,0,.4);
+}
+.quote::before{content:"";position:absolute;inset:0;background:
+  radial-gradient(600px 200px at 50% -30%, color-mix(in srgb,var(--acc) 26%,transparent), transparent 70%);pointer-events:none}
+.quote .lbl{font-size:11px;letter-spacing:.28em;color:var(--acc2);margin-bottom:14px;font-weight:700}
+.quote .txt{font-size:clamp(20px,3.6vw,32px);font-weight:800;line-height:1.42;margin:0 0 10px;letter-spacing:-.02em;
+  animation:rise .8s cubic-bezier(.2,.8,.2,1) both}
+.quote .sub{font-size:14px;color:var(--tx2);line-height:1.65;margin:0;animation:rise .8s .12s cubic-bezier(.2,.8,.2,1) both}
+.quote .meta{margin-top:18px;font-size:12px;color:var(--tx3);letter-spacing:.05em}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* ===== 탭 ===== */
+.tabs{display:flex;gap:10px;justify-content:center;margin:22px 0 18px}
+.tab{
+  border:1px solid var(--line);background:var(--card);color:var(--tx2);cursor:pointer;
+  padding:12px 26px;border-radius:999px;font-size:15px;font-weight:700;transition:.22s;display:flex;align-items:center;gap:8px;
+  font-family:inherit
+}
+.tab:hover{color:var(--tx);border-color:rgba(255,255,255,.24)}
+.tab.on{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#141a2b;border-color:transparent;box-shadow:0 8px 24px -6px var(--acc)}
+.tab .ic{font-size:17px}
+
+/* ===== 통계 ===== */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+.stat .k{font-size:11px;color:var(--tx3);letter-spacing:.06em;margin-bottom:7px}
+.stat .v{font-size:24px;font-weight:800;letter-spacing:-.02em}
+.stat .v small{font-size:13px;color:var(--tx3);font-weight:600;margin-left:2px}
+.bar{height:5px;border-radius:99px;background:rgba(255,255,255,.1);margin-top:9px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--acc),var(--acc2));transition:width .5s}
+
+/* ===== 섹션 공통 ===== */
+section{margin-bottom:26px}
+.h{display:flex;align-items:baseline;gap:10px;margin:0 0 13px;padding:0 2px}
+.h h2{font-size:17px;margin:0;font-weight:800;letter-spacing:-.01em}
+.h span{font-size:12px;color:var(--tx3)}
+
+/* ===== 오늘 카드 ===== */
+.today{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;display:grid;grid-template-columns:1fr 180px;gap:22px}
+.today .date{font-size:13px;color:var(--acc2);font-weight:700;letter-spacing:.06em;margin-bottom:4px}
+.today .dnum{font-size:22px;font-weight:800;margin-bottom:16px;letter-spacing:-.02em}
+.grp{margin-bottom:14px}
+.grp .gl{font-size:11px;color:var(--tx3);letter-spacing:.14em;margin-bottom:9px;font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{
+  border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--tx2);cursor:pointer;
+  padding:9px 14px;border-radius:12px;font-size:13px;font-weight:600;transition:.16s;display:flex;align-items:center;gap:7px;
+  font-family:inherit
+}
+.chip:hover{border-color:rgba(255,255,255,.3);transform:translateY(-1px)}
+.chip .bx{width:16px;height:16px;border-radius:5px;border:1.5px solid var(--tx3);display:grid;place-items:center;font-size:11px;color:transparent;transition:.16s}
+.chip.on{background:color-mix(in srgb,var(--ok) 17%,transparent);border-color:color-mix(in srgb,var(--ok) 55%,transparent);color:#dffaf1}
+.chip.on .bx{background:var(--ok);border-color:var(--ok);color:#08281f}
+.chip .n{font-size:10px;color:var(--tx3);font-weight:700}
+.ring{display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px}
+.ring .gauge{position:relative;width:120px;height:120px}
+.ring .gauge svg{transform:rotate(-90deg)}
+.ring .gv{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring .pc{font-size:26px;font-weight:800;line-height:1}
+.ring .pl{font-size:11px;color:var(--tx3);margin-top:4px}
+.rewardbox{text-align:center}
+
+/* ===== 선수 카드 ===== */
+.pcard{display:inline-flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer}
+.pcard.anim{animation:pop .55s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes pop{0%{opacity:0;transform:scale(.4) rotate(-14deg)}100%{opacity:1;transform:none}}
+.pcard .nm{font-size:12px;font-weight:800;letter-spacing:-.01em}
+.pcard .tm{font-size:10px;color:var(--tx3)}
+
+/* ===== 최근 5일 ===== */
+.recent{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.rc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.rc.done{border-color:color-mix(in srgb,var(--ok) 45%,transparent);background:color-mix(in srgb,var(--ok) 8%,var(--card))}
+.rc.today{box-shadow:0 0 0 2px var(--acc) inset}
+.rc .rh{display:flex;justify-content:space-between;align-items:center}
+.rc .rd{font-size:13px;font-weight:800}
+.rc .rd em{font-style:normal;color:var(--tx3);font-weight:600;font-size:11px;margin-left:4px}
+.rc .rp{font-size:11px;font-weight:800;color:var(--acc2)}
+.rc .face{display:flex;justify-content:center;padding:4px 0}
+.mini{font-size:11px;line-height:1.6}
+.mini .ttl{color:var(--tx3);font-size:10px;letter-spacing:.1em;font-weight:700;margin-bottom:4px}
+.miss{display:flex;flex-wrap:wrap;gap:4px}
+.miss button{
+  border:1px dashed color-mix(in srgb,var(--no) 55%,transparent);background:color-mix(in srgb,var(--no) 11%,transparent);
+  color:#ffc9d1;font-size:10.5px;padding:4px 8px;border-radius:8px;cursor:pointer;font-weight:600;font-family:inherit;transition:.15s
+}
+.miss button:hover{background:color-mix(in srgb,var(--ok) 22%,transparent);border-color:var(--ok);color:#dffaf1}
+.okline{color:#9fe8d4;font-size:11px}
+.rc .allok{text-align:center;font-size:11px;color:var(--ok);font-weight:700}
+
+/* ===== 전체 표 ===== */
+.tablewrap{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:auto;max-height:620px}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:12px}
+th,td{padding:0;text-align:center;white-space:nowrap}
+thead th{
+  position:sticky;top:0;z-index:3;background:#151c33;border-bottom:1px solid var(--line);
+  padding:9px 6px;font-size:10.5px;font-weight:700;color:var(--tx2);line-height:1.35;vertical-align:bottom
+}
+thead th .cyc{display:block;font-size:9px;color:var(--tx3);font-weight:600;margin-top:2px}
+thead th.g2{color:var(--acc2)}
+tbody td{border-bottom:1px solid rgba(255,255,255,.05);padding:3px 4px}
+tbody tr:hover td{background:rgba(255,255,255,.03)}
+tbody tr.sun td.dt{color:#ff8fa3}
+tbody tr.sat td.dt{color:#8fb8ff}
+tbody tr.today{background:color-mix(in srgb,var(--acc) 11%,transparent)}
+tbody tr.full td{background:color-mix(in srgb,var(--ok) 8%,transparent)}
+td.dt{text-align:left;padding-left:12px;font-weight:700;font-size:11.5px;position:sticky;left:0;background:#111730;z-index:2}
+tbody tr.today td.dt{background:#2a2338}
+td.dt em{font-style:normal;color:var(--tx3);font-weight:600;margin-left:5px;font-size:10px}
+.cell{width:26px;height:26px;border-radius:8px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.03);
+  cursor:pointer;display:inline-grid;place-items:center;font-size:12px;color:transparent;transition:.14s;font-family:inherit}
+.cell:hover{border-color:var(--acc);transform:scale(1.12)}
+.cell.on{background:var(--ok);border-color:var(--ok);color:#08281f;font-weight:900}
+.cell.na{opacity:.16;cursor:default;border-style:dashed}
+.cell.na:hover{transform:none;border-color:rgba(255,255,255,.13)}
+.cell.fut{opacity:.35}
+td.badge{width:56px}
+td.badge .lock{opacity:.22;font-size:15px}
+
+/* ===== 모달 ===== */
+.mask{position:fixed;inset:0;background:rgba(4,7,16,.82);backdrop-filter:blur(7px);display:none;place-items:center;z-index:60;padding:20px}
+.mask.on{display:grid}
+.modal{background:linear-gradient(160deg,#1a2240,#111730);border:1px solid var(--line);border-radius:24px;padding:30px 28px;max-width:400px;width:100%;text-align:center;
+  box-shadow:0 30px 80px rgba(0,0,0,.6);animation:pop .4s cubic-bezier(.2,1.3,.4,1) both}
+.modal h3{margin:16px 0 3px;font-size:23px;letter-spacing:-.02em}
+.modal .team{color:var(--acc2);font-size:12.5px;font-weight:700;letter-spacing:.05em}
+.modal p{color:var(--tx2);font-size:14px;line-height:1.72;margin:16px 0 0}
+.modal .tag{display:inline-block;margin-top:16px;font-size:11px;color:var(--tx3);border:1px solid var(--line);padding:5px 12px;border-radius:99px}
+.modal button{margin-top:20px;width:100%;padding:12px;border-radius:13px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,var(--acc),var(--acc2));color:#141a2b;font-weight:800;font-size:14px;font-family:inherit}
+
+/* ===== 컬렉션 ===== */
+.coll{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:12px;background:var(--card);
+  border:1px solid var(--line);border-radius:18px;padding:18px}
+.slot{display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 4px;border-radius:12px;transition:.15s}
+.slot.got{cursor:pointer;background:rgba(255,255,255,.04)}
+.slot.got:hover{background:rgba(255,255,255,.09);transform:translateY(-2px)}
+.slot .sn{font-size:10.5px;font-weight:700;text-align:center;line-height:1.25}
+.slot .sd{font-size:9px;color:var(--tx3)}
+.slot.empty{opacity:.3}
+.slot.empty .ph{width:52px;height:52px;border-radius:50%;border:1.5px dashed var(--tx3);display:grid;place-items:center;font-size:16px}
+
+.foot{text-align:center;color:var(--tx3);font-size:11.5px;line-height:1.9;margin-top:30px}
+.legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;font-size:11px;color:var(--tx3);margin-top:10px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:4px;margin-right:5px;vertical-align:-1px}
+
+@media(max-width:820px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .today{grid-template-columns:1fr}
+  .recent{grid-template-columns:1fr 1fr;}
+  .quote{padding:24px 18px}
+}
+@media(max-width:520px){ .recent{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="sync" id="sync">연결 중…</div>
+<div class="wrap">
+
+<header>
+  <div class="brand"><span class="dot"></span><h1>V A C A T I O N &nbsp; C H E C K</h1><span class="dot"></span></div>
+  <div class="quote">
+    <div class="lbl">오늘의 한 문장</div>
+    <p class="txt" id="qTxt">—</p>
+    <p class="sub" id="qSub">—</p>
+    <div class="meta" id="qMeta"></div>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab on" data-who="연준"><span class="ic">⚾</span> 연준 <span style="font-size:11px;opacity:.75">야구선수 수집</span></button>
+  <button class="tab" data-who="민준"><span class="ic">⚽</span> 민준 <span style="font-size:11px;opacity:.75">축구선수 수집</span></button>
+</div>
+
+<div class="stats" id="stats"></div>
+
+<section>
+  <div class="h"><h2>오늘 할 일</h2><span id="todayHint"></span></div>
+  <div class="today" id="today"></div>
+</section>
+
+<section>
+  <div class="h"><h2>최근 5일 경과</h2><span>못 한 항목을 누르면 지금이라도 체크됩니다</span></div>
+  <div class="recent" id="recent"></div>
+</section>
+
+<section>
+  <div class="h"><h2>42일 전체표</h2><span id="tableHint"></span></div>
+  <div class="tablewrap"><table id="tbl"></table></div>
+  <div class="legend">
+    <span><i style="background:#31d0aa"></i>완료</span>
+    <span><i style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.2)"></i>미완료</span>
+    <span><i style="background:transparent;border:1px dashed rgba(255,255,255,.3)"></i>해당 없는 날</span>
+    <span>하루를 다 채우면 마지막 칸에 선수 얼굴이 들어옵니다</span>
+  </div>
+</section>
+
+<section>
+  <div class="h"><h2>선수 컬렉션</h2><span id="collHint"></span></div>
+  <div class="coll" id="coll"></div>
+</section>
+
+<div class="foot">
+  체크 기록은 이 브라우저에 자동 저장됩니다 · 언제든 다시 눌러서 켜고 끌 수 있어요<br>
+  <span id="reset" style="cursor:pointer;text-decoration:underline">기록 전체 초기화</span>
+</div>
+
+</div>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+
+<script>
+/* ==== 데이터 ==== */
+const START_DATE = '2026-07-26';   // 방학 시작(일요일)
+const TOTAL_DAYS = 42;
+
+const QUOTES = [
+  ["시간은 가장 공평한 자산이다.", "누구에게나 하루는 똑같이 24시간. 차이는 그걸로 무엇을 했느냐에서 갈린다."],
+  ["오늘 하루는 다시 오지 않는다.", "어제로 돌아갈 수 없고, 내일을 미리 쓸 수도 없다. 쓸 수 있는 건 지금뿐."],
+  ["작은 습관이 큰 실력을 만든다.", "하루 1시간이 42일이면 42시간. 한 달 넘게 붙잡고 있던 셈이 된다."],
+  ["미루는 순간, 시간은 이자를 붙인다.", "오늘 안 한 30분은 내일 1시간이 되어 돌아온다."],
+  ["시작이 반이다.", "책을 펴는 데까지가 가장 어렵다. 펴고 나면 몸이 알아서 따라간다."],
+  ["방학은 격차가 벌어지는 계절이다.", "학기 중엔 모두 같이 달리지만, 방학엔 각자 달린다."],
+  ["계획표는 약속이다.", "누구와의 약속도 아닌, 나 자신과의 약속. 가장 지키기 쉬운 동시에 가장 깨기 쉬운 약속."],
+  ["일찍 일어난 하루는 두 배로 길다.", "7시에 시작한 하루와 10시에 시작한 하루는 결국 다른 하루다."],
+  ["집중한 1시간 > 흘려보낸 3시간.", "책상에 앉아 있던 시간이 아니라, 머리가 돌아간 시간이 실력이 된다."],
+  ["오늘의 체크 하나가 내일의 자신감이다.", "동그라미는 점수가 아니라 증거다. '나는 해낸다'는 증거."],
+  ["꾸준함은 재능을 이긴다.", "잘하는 사람은 매일 하는 사람을 이기지 못한다."],
+  ["하기 싫은 날이 진짜 실력이 쌓이는 날이다.", "기분 좋을 때 하는 건 누구나 한다."],
+  ["시간을 관리하면 인생이 관리된다.", "하루를 다스리는 사람이 결국 한 해를 다스린다."],
+  ["끝내지 않은 일은 계속 힘을 뺏는다.", "미룬 숙제는 머릿속에서 하루 종일 나를 따라다닌다. 그냥 해치우는 게 편하다."],
+  ["휴대폰에 준 시간은 돌려받지 못한다.", "10시에 폰을 내려놓는 건 손해가 아니라 다음 날을 저축하는 일이다."],
+  ["매일 조금씩이 가장 빠른 길이다.", "몰아서 하는 열 시간보다 매일 한 시간이 멀리 간다."],
+  ["오늘 못 한 건 내일 두 배가 된다.", "밀린 건 사라지지 않는다. 쌓일 뿐이다."],
+  ["운동한 몸이 공부도 잘한다.", "머리는 몸 위에 얹혀 있다. 몸이 무거우면 머리도 무겁다."],
+  ["기록하지 않으면 흘러간다.", "체크하지 않은 하루는 기억에서도 사라진다."],
+  ["잘하는 게 아니라 끝내는 게 중요하다.", "완벽하게 하려다 못 끝내는 것보다, 끝내고 다음으로 가는 게 낫다."],
+  ["방학 한 달은 학기 세 달의 힘이 있다.", "온전히 내 것인 시간이기 때문이다."],
+  ["어제의 나와만 경쟁하면 된다.", "남과 비교하면 지치고, 어제와 비교하면 는다."],
+  ["시간은 저축이 안 되지만 습관은 저축된다.", "오늘 만든 습관은 방학이 끝나도 내 것으로 남는다."],
+  ["30분 일찍 시작하면 하루가 여유롭다.", "쫓기는 하루와 여유 있는 하루의 차이는 겨우 30분이다."],
+  ["한 권을 끝낸 경험이 다음 한 권을 쉽게 만든다.", "'끝냈다'는 감각은 근육처럼 붙는다."],
+  ["오늘 하루의 주인이 되자.", "시간에 끌려다니지 말고, 시간을 데리고 다니자."],
+  ["멈춰도 괜찮다, 다시 시작하면 된다.", "하루 빠졌다고 42일이 사라지진 않는다. 다음 칸부터 다시 채우면 된다."],
+  ["실력은 눈에 안 보이게 쌓인다.", "매일은 표가 안 나지만, 42일 뒤엔 확실히 다른 사람이 되어 있다."],
+  ["가장 좋은 때는 지금이다.", "'내일부터'라는 말은 어제도 했던 말이다."],
+  ["체크 칸을 채우는 건 나 자신이다.", "누가 시켜서 하는 방학은 남는 게 없다."],
+  ["집중은 시작하면 따라온다.", "집중이 될 때까지 기다리지 말고, 일단 첫 문제를 풀자."],
+  ["아침의 30분은 밤의 2시간이다.", "머리가 가장 맑을 때 가장 어려운 걸 해치우자."],
+  ["약속을 지킨 날이 쌓이면 신뢰가 된다.", "가장 먼저 나를 믿게 되는 사람은 나 자신이다."],
+  ["잘한 일 하나가 하루를 살린다.", "공부가 안 된 날에도 잘한 일 칸은 채울 수 있다."],
+  ["게으름은 편한 게 아니라 무거운 것이다.", "아무것도 안 한 날의 저녁이 가장 피곤하다."],
+  ["반복이 지루해질 때 실력이 붙는다.", "지루하다는 건 익숙해졌다는 뜻이다."],
+  ["오늘의 목표는 딱 오늘 것만.", "42일을 한꺼번에 생각하면 무겁고, 오늘 하루만 보면 가볍다."],
+  ["시간을 아끼는 사람이 결국 자유롭다.", "할 일을 끝낸 사람만 마음 편히 논다."],
+  ["결과보다 과정이 나를 만든다.", "몇 개 맞혔는지보다, 매일 앉았는지가 남는다."],
+  ["끝이 보일 때 더 조심하자.", "마지막 일주일에 무너지면 앞의 다섯 주가 아깝다."],
+  ["방학의 마지막 날, 웃을 수 있게.", "'그때 할 걸'이라는 말만큼 아까운 말이 없다."],
+  ["해낸 사람은 해낸 이유를 안다.", "42칸을 채운 경험은 평생 무기가 된다."]
+];
+
+/* 야구 선수 42인 (연준) */
+const BASEBALL = [
+  ["이정후","외야수 · 샌프란시스코","키움 시절 KBO 통산 타율 .340. 2022년 타격 5관왕을 차지한 '바람의 손자'."],
+  ["류현진","좌완 투수 · 한화","2006년 데뷔 시즌에 신인왕과 MVP를 동시에 차지. MLB 다저스·토론토를 거쳐 KBO로 복귀."],
+  ["오타니 쇼헤이","투수·타자 · MLB","현대 야구에서 투타 겸업을 성공시킨 선수. 2024년 MLB 최초 50홈런-50도루를 달성."],
+  ["김광현","좌완 투수 · SSG","2008 베이징 올림픽 금메달의 주역. KBO를 대표하는 좌완 에이스."],
+  ["재키 로빈슨","내야수 · 브루클린","MLB의 인종 장벽을 깬 최초의 흑인 선수. 등번호 42는 전 구단 영구결번이다."],
+  ["이승엽","1루수 · 삼성","2003년 아시아 단일시즌 홈런 56개를 기록한 '국민타자'. KBO 통산 467홈런."],
+  ["스즈키 이치로","외야수 · 시애틀","2004년 MLB 단일시즌 최다 안타 262개. 미일 통산 4000안타를 넘긴 안타 기계."],
+  ["양현종","좌완 투수 · KIA","KBO 통산 최다 이닝·최다 탈삼진을 쌓아온 꾸준함의 상징."],
+  ["베이브 루스","외야수 · 뉴욕 양키스","1920년대 홈런의 시대를 연 전설. 통산 714홈런으로 야구를 바꿔놓았다."],
+  ["박찬호","우완 투수 · MLB","한국인 최초 메이저리거. MLB 아시아 투수 최다 124승을 기록했다."],
+  ["행크 애런","외야수 · 애틀랜타","통산 755홈런. 편견과 협박 속에서도 묵묵히 배트를 휘두른 '해머링 행크'."],
+  ["최정","3루수 · SSG","KBO 통산 최다 홈런 기록 보유자. 20년 가까이 한 팀에서 4번을 지켰다."],
+  ["놀란 라이언","우완 투수 · 텍사스","통산 5714탈삼진, 노히트노런 7회. 40대까지 100마일을 던진 강철 어깨."],
+  ["김하성","내야수 · MLB","키움 출신 내야수로 2023년 MLB 골드글러브를 수상했다."],
+  ["그레그 매덕스","우완 투수 · 애틀랜타","구속이 아닌 제구로 타자를 요리한 '교수'. 사이영상 4년 연속 수상."],
+  ["오승환","마무리 · 삼성","KBO·NPB·MLB를 거치며 통산 세이브 500개를 넘긴 '끝판대장'."],
+  ["켄 그리피 주니어","외야수 · 시애틀","야구 역사상 가장 아름다운 스윙으로 불린다. 통산 630홈런."],
+  ["김도영","내야수 · KIA","2024년 최연소 30홈런-30도루를 달성하며 정규시즌 MVP를 차지했다."],
+  ["데릭 지터","유격수 · 뉴욕 양키스","20년간 양키스의 주장. 통산 3465안타, 월드시리즈 5회 우승."],
+  ["이대호","1루수 · 롯데","2010년 타격 7관왕이라는 전무후무한 기록을 세운 '조선의 4번타자'."],
+  ["마리아노 리베라","마무리 · 뉴욕 양키스","통산 652세이브. 명예의 전당에 만장일치로 입성한 유일한 선수."],
+  ["강백호","타자 · KT","2018년 데뷔 첫 타석 홈런으로 시작해 신인왕을 차지했다."],
+  ["윌리 메이스","외야수 · 샌프란시스코","타격·수비·주루 모두 최고였던 완전체. 등을 보이며 잡아낸 '더 캐치'로 유명."],
+  ["추신수","외야수 · MLB/SSG","MLB 통산 200홈런-150도루를 달성한 한국 야수의 개척자."],
+  ["랜디 존슨","좌완 투수 · 애리조나","2m가 넘는 키에서 뿜어져 나온 강속구. 사이영상 5회 수상."],
+  ["박병호","1루수 · KBO","2012년부터 4년 연속 홈런왕에 오른 KBO 대표 거포."],
+  ["페드로 마르티네스","우완 투수 · 보스턴","타고투저 시대에 압도적인 기록을 남긴 작은 체구의 대투수."],
+  ["구자욱","외야수 · 삼성","긴 팔다리에서 나오는 유연한 스윙으로 꾸준히 3할을 쳐온 타자."],
+  ["마이크 트라웃","외야수 · LA 에인절스","2010년대 최고의 야수로 꼽히며 MVP를 3회 차지했다."],
+  ["손아섭","외야수 · NC","KBO 통산 최다 안타 기록 보유자. 작은 체구로 꾸준함을 증명했다."],
+  ["알버트 푸홀스","1루수 · MLB","통산 700홈런 클럽에 가입한 몇 안 되는 타자."],
+  ["문동주","우완 투수 · 한화","KBO 최초로 공식 기록 160km/h를 찍은 강속구 투수."],
+  ["클레이튼 커쇼","좌완 투수 · LA 다저스","사이영상 3회. 커브와 슬라이더로 한 시대를 지배한 좌완."],
+  ["노시환","3루수 · 한화","2023년 홈런왕과 타점왕을 동시에 차지한 차세대 거포."],
+  ["루 게릭","1루수 · 뉴욕 양키스","2130경기 연속 출장의 '철마'. 성실함의 대명사로 남았다."],
+  ["원태인","우완 투수 · 삼성","2024년 다승왕에 오른 국가대표 우완 에이스."],
+  ["샌디 코팩스","좌완 투수 · LA 다저스","노히트노런 4회. 짧지만 가장 눈부셨던 전성기를 남기고 은퇴했다."],
+  ["정우람","좌완 불펜 · 한화","KBO 통산 1000경기 이상 등판. 불펜 투수의 꾸준함이 무엇인지 보여줬다."],
+  ["리키 헨더슨","외야수 · 오클랜드","통산 1406도루. 역사상 가장 빠르고 끈질긴 리드오프."],
+  ["오지환","유격수 · LG","2023년 한국시리즈 MVP. 한 팀에서 성장해 우승을 이끌었다."],
+  ["조니 벤치","포수 · 신시내티","역사상 최고의 포수로 꼽히는 선수. 포수 수비의 기준을 새로 썼다."],
+  ["임찬규","우완 투수 · LG","고졸 입단 후 오랜 부침을 이겨내고 2023년 통합우승의 주역이 되었다."]
+];
+
+/* 축구 선수 42인 (민준) */
+const SOCCER = [
+  ["손흥민","윙어 · 대한민국","2021-22 프리미어리그 득점왕. 아시아 선수 최초로 EPL 골든부트를 들었다."],
+  ["리오넬 메시","공격수 · 아르헨티나","발롱도르 8회 수상. 2022 카타르 월드컵에서 마침내 우승컵을 들었다."],
+  ["박지성","미드필더 · 대한민국","맨유에서 프리미어리그 4회 우승. 지치지 않는 활동량으로 '두 개의 심장'이라 불렸다."],
+  ["크리스티아누 호날두","공격수 · 포르투갈","발롱도르 5회. 역대 A매치 최다 득점 기록을 보유하고 있다."],
+  ["차범근","공격수 · 대한민국","분데스리가 통산 98골, UEFA컵 2회 우승. '차붐'으로 유럽을 놀라게 했다."],
+  ["펠레","공격수 · 브라질","월드컵을 세 번 우승한 유일한 선수. 축구를 세계의 스포츠로 만들었다."],
+  ["김민재","수비수 · 대한민국","2023년 세리에A 최우수 수비수. 바이에른 뮌헨의 중앙 수비를 맡았다."],
+  ["디에고 마라도나","미드필더 · 아르헨티나","1986 멕시코 월드컵에서 팀을 혼자 힘으로 정상에 올린 천재."],
+  ["이강인","미드필더 · 대한민국","정확한 왼발 킥과 탈압박이 강점. 어린 나이에 스페인 무대에서 성장했다."],
+  ["요한 크루이프","공격수 · 네덜란드","토탈풋볼의 상징. 선수와 감독 모두로 축구의 철학을 바꿨다."],
+  ["홍명보","수비수 · 대한민국","월드컵 4회 출전. 2002년 4강 신화의 주장으로 수비를 지휘했다."],
+  ["지네딘 지단","미드필더 · 프랑스","1998 월드컵 우승, 2002 UCL 결승의 왼발 발리슛으로 기억된다."],
+  ["황희찬","공격수 · 대한민국","저돌적인 돌파와 스피드가 무기. 프리미어리그에서 뛰고 있다."],
+  ["호나우두","공격수 · 브라질","2002 한일 월드컵 8골로 득점왕이자 우승. '현상'이라 불린 스트라이커."],
+  ["이영표","풀백 · 대한민국","정확한 오버래핑과 크로스로 2002년 4강을 이끈 왼쪽 풀백."],
+  ["킬리안 음바페","공격수 · 프랑스","19세에 월드컵 우승, 2022년 결승에서 해트트릭을 기록했다."],
+  ["안정환","공격수 · 대한민국","2002년 이탈리아전 골든골로 온 국민을 열광시켰다."],
+  ["호나우지뉴","공격수 · 브라질","2005년 발롱도르. 웃으면서 상대를 무너뜨린 창의성의 상징."],
+  ["기성용","미드필더 · 대한민국","셀틱·스완지·뉴캐슬을 거친 중원 사령관. 긴 패스가 일품이었다."],
+  ["엘링 홀란","공격수 · 노르웨이","2022-23 프리미어리그 단일시즌 최다인 36골을 넣었다."],
+  ["조현우","골키퍼 · 대한민국","2018 러시아 월드컵 독일전에서 선방쇼를 펼치며 이름을 알렸다."],
+  ["케빈 더 브라위너","미드필더 · 벨기에","맨체스터 시티의 플레이메이커. 시야와 패스가 최고 수준."],
+  ["박주영","공격수 · 대한민국","AS모나코·아스날에서 활약. 2012 런던 올림픽 동메달을 이끌었다."],
+  ["루카 모드리치","미드필더 · 크로아티아","2018년 발롱도르. 작은 체구로 레알 마드리드의 중원을 지켰다."],
+  ["이청용","윙어 · 대한민국","'블루 드래곤'. 볼턴과 크리스탈 팰리스에서 프리미어리그를 누볐다."],
+  ["비르힐 반 다이크","수비수 · 네덜란드","리버풀 수비의 중심. 현대 센터백의 기준을 다시 세웠다."],
+  ["조규성","공격수 · 대한민국","2022 카타르 월드컵 가나전에서 헤더 두 골을 기록했다."],
+  ["마누엘 노이어","골키퍼 · 독일","페널티 박스 밖까지 나오는 '스위퍼 키퍼'의 표준을 만들었다."],
+  ["황인범","미드필더 · 대한민국","넓은 시야와 패스로 국가대표 중원을 책임지고 있다."],
+  ["안드레스 이니에스타","미드필더 · 스페인","2010 남아공 월드컵 결승에서 우승 결승골을 넣었다."],
+  ["김영권","수비수 · 대한민국","2018년 독일전 선제골. 오랫동안 대표팀 수비를 지켰다."],
+  ["사비 에르난데스","미드필더 · 스페인","티키타카의 지휘자. 짧은 패스로 경기 전체를 통제했다."],
+  ["이재성","미드필더 · 대한민국","분데스리가에서 뛰며 활동량과 연계 플레이로 인정받았다."],
+  ["파올로 말디니","수비수 · 이탈리아","AC밀란에서만 25년. 수비의 교과서로 불린다."],
+  ["설기현","공격수 · 대한민국","2002년 이탈리아전 극적인 동점골을 넣고 유럽 무대로 진출했다."],
+  ["프란츠 베켄바워","수비수 · 독일","'카이저'. 수비수가 공격을 시작하는 리베로의 개념을 만들었다."],
+  ["김진수","풀백 · 대한민국","날카로운 왼발 크로스가 강점인 대표팀 왼쪽 수비수."],
+  ["티에리 앙리","공격수 · 프랑스","아스날 무패 우승의 주역. 우아한 드리블과 마무리를 겸비했다."],
+  ["최용수","공격수 · 대한민국","K리그 득점왕 출신 '독수리'. 선수와 감독 모두로 성공했다."],
+  ["잔루이지 부폰","골키퍼 · 이탈리아","2006 월드컵 우승 골키퍼. 40대까지 최고 수준을 유지했다."],
+  ["정우영","미드필더 · 대한민국","성실한 수비형 미드필더로 오랫동안 대표팀을 지탱했다."],
+  ["스티븐 제라드","미드필더 · 잉글랜드","2005년 이스탄불의 기적을 이끈 리버풀의 캡틴."]
+];
+
+</script>
+
+<script>
+/* ================= 과제 정의 ================= */
+const TASKS = [
+  {id:'read', name:'리딩튜터',      detail:'읽고 → 풀고 → 강의 → 해설 → 단어', days:[1,2,3,4,5], grp:'학습', cnt:{'연준':'2개','민준':'1개'}, when:'월~금'},
+  {id:'list', name:'듣기평가',      detail:'듣기 풀고 → 쉐도잉 → 해설·답 → 단어', days:[1,2,3,4,5], grp:'학습', cnt:{'연준':'2개','민준':'2개'}, when:'월~금'},
+  {id:'voca', name:'거미줄영단어',  detail:'절반 → 절반 → 문제', days:[1,2,3,4,5], grp:'학습', cnt:{'연준':'절반','민준':'절반'}, when:'월~금'},
+  {id:'gram', name:'포텐 영문법',   detail:'1개씩', days:[2,4,0], grp:'학습', cnt:{'연준':'1개','민준':'1개'}, when:'화·목·일'},
+  {id:'m38',  name:'3800제',        detail:'3800제 + 중간기말', days:[2,4,0], grp:'학습', cnt:{'연준':'','민준':''}, when:'화·목·일'},
+  {id:'mvoc', name:'말해보카',      detail:'매일 꾸준히', days:'all', grp:'학습', cnt:{'연준':'','민준':''}, when:'매일'},
+  {id:'sci',  name:'과학공화국',    detail:'한 권 완독', days:'cycle', grp:'학습', cnt:{'연준':'2일 1권','민준':'3일 1권'}, when:{'연준':'2일에 1권','민준':'3일에 1권'}},
+  {id:'wake', name:'7시 셀프기상',  detail:'알람 없이 스스로', days:'all', grp:'잘한 일'},
+  {id:'mmal', name:'모닝 말보',     detail:'아침에 말해보카', days:'all', grp:'잘한 일'},
+  {id:'duA',  name:'아침 오리',     detail:'아침 듀오링고', days:'all', grp:'잘한 일'},
+  {id:'duP',  name:'저녁 오리',     detail:'저녁 듀오링고', days:'all', grp:'잘한 일'},
+  {id:'phon', name:'10시 폰 놓기',  detail:'밤 10시엔 폰 끝', days:'all', grp:'잘한 일'},
+  {id:'exer', name:'운동',          detail:'몸을 움직이기', days:'all', grp:'잘한 일'}
+];
+const SCI_CYCLE = {'연준':2,'민준':3};
+const DOW = ['일','월','화','수','목','금','토'];
+
+/* ================= 날짜 유틸 ================= */
+function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function addDays(s,n){const d=new Date(s+'T00:00:00');d.setDate(d.getDate()+n);return d;}
+const DAYS = Array.from({length:TOTAL_DAYS},(_,i)=>{
+  const d = addDays(START_DATE,i);
+  return {i, date:ymd(d), dow:d.getDay(), md:(d.getMonth()+1)+'/'+d.getDate()};
+});
+const TODAY = ymd(new Date());
+const todayIdx = DAYS.findIndex(d=>d.date===TODAY);
+const curIdx = todayIdx>=0 ? todayIdx : (TODAY < START_DATE ? -1 : TOTAL_DAYS-1);
+
+function applies(t, day, who){
+  if(t.days==='all') return true;
+  if(t.days==='cycle') return day.i % SCI_CYCLE[who] === 0;
+  return t.days.includes(day.dow);
+}
+function dayTasks(day,who){ return TASKS.filter(t=>applies(t,day,who)); }
+
+/* ================= 저장 ================= */
+const KEY='vacation_check_v1';
+let DB = JSON.parse(localStorage.getItem(KEY)||'{}');
+['연준','민준'].forEach(w=>{ if(!DB[w]) DB[w]={}; });
+function save(){ localStorage.setItem(KEY, JSON.stringify(DB)); }
+function get(who,date,id){ return !!(DB[who][date] && DB[who][date][id]); }
+function toggle(who,date,id){
+  if(!DB[who][date]) DB[who][date]={};
+  let v;
+  if(DB[who][date][id]){ delete DB[who][date][id]; v=0; } else { DB[who][date][id]=1; v=1; }
+  if(!Object.keys(DB[who][date]).length) delete DB[who][date];
+  save(); queueOp(who,date,id,v);
+}
+/* ================= 서버 동기화 (가족 앨범 워커 R2) ================= */
+const API='https://family-album.sungsangkyung77.workers.dev/api/vacation';
+const KEYCODE='c3ec484ccf17';
+const PKEY='vacation_pending_v1';
+let pending = JSON.parse(localStorage.getItem(PKEY)||'[]');
+let flushTimer=null, retryTimer=null, pulling=false;
+
+function setSync(cls,txt){ const e=document.getElementById('sync'); if(e){ e.className='sync '+cls; e.textContent=txt; } }
+function savePending(){ localStorage.setItem(PKEY, JSON.stringify(pending)); }
+
+function queueOp(who,d,t,v){
+  pending.push({who,d,t,v}); savePending();
+  setSync('busy','저장 중…');
+  clearTimeout(flushTimer); flushTimer=setTimeout(flush,600);
+}
+
+async function flush(){
+  if(!pending.length){ setSync('ok','동기화됨'); return; }
+  const batch=pending.slice(); const byWho={};
+  batch.forEach(o=>{ (byWho[o.who]=byWho[o.who]||[]).push({d:o.d,t:o.t,v:o.v}); });
+  try{
+    for(const who of Object.keys(byWho)){
+      const r=await fetch(API+'?k='+KEYCODE,{method:'PUT',headers:{'content-type':'application/json'},
+        body:JSON.stringify({who, ops:byWho[who]})});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      await r.json();
+    }
+    pending = pending.slice(batch.length); savePending();
+    setSync('ok', pending.length? '저장 중…' : '동기화됨');
+    if(pending.length) flush();
+  }catch(e){
+    setSync('off','오프라인 — 이 기기에 저장됨');
+    clearTimeout(retryTimer); retryTimer=setTimeout(flush,8000);
+  }
+}
+
+async function pull(){
+  if(pulling) return; pulling=true;
+  try{
+    const r=await fetch(API,{cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const j=await r.json();
+    ['연준','민준'].forEach(w=>{ DB[w]= (j.data && j.data[w]) ? j.data[w] : {}; });
+    // 아직 서버에 못 보낸 내 변경분은 위에 다시 얹는다
+    pending.forEach(o=>{
+      if(o.v){ (DB[o.who][o.d]=DB[o.who][o.d]||{})[o.t]=1; }
+      else if(DB[o.who][o.d]){ delete DB[o.who][o.d][o.t]; if(!Object.keys(DB[o.who][o.d]).length) delete DB[o.who][o.d]; }
+    });
+    save(); renderAll();
+    setSync(pending.length?'busy':'ok', pending.length?'저장 중…':'동기화됨');
+    if(pending.length) flush();
+  }catch(e){
+    setSync('off','오프라인 — 이 기기에 저장됨');
+  }finally{ pulling=false; }
+}
+
+window.addEventListener('online', ()=>{ pull(); });
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) pull(); });
+setInterval(()=>{ if(!document.hidden) pull(); }, 60000);
+
+function dayDone(who,day){
+  const ts=dayTasks(day,who);
+  const n=ts.filter(t=>get(who,day.date,t.id)).length;
+  return {n, total:ts.length, full: n===ts.length && ts.length>0};
+}
+
+/* ================= SVG 선수 얼굴 ================= */
+const SKIN=['#f2c9a0','#e0aa7c','#c98b5e','#9c6640','#7a4a2c','#ffd9b8'];
+const HAIRC=['#1c1410','#2b1d14','#3f2a18','#6b4423','#8b6b3d','#0f0f12','#4a3728'];
+const JERSEY=[['#0d2b6b','#1b47a8'],['#8b1230','#c9203f'],['#0b5c3a','#128a55'],['#1a1a24','#3a3a4d'],
+  ['#5b1f7a','#8a35b3'],['#c25a00','#f08a1c'],['#0f5f7a','#1a94b8'],['#7a1450','#b02075'],
+  ['#12452b','#1d7a4a'],['#3b2a6b','#5b45a8'],['#a83a12','#d6602a'],['#0a3a5c','#156088']];
+function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return Math.abs(h);}
+function face(seed, sport, size){
+  const h=hash(seed);
+  const sk=SKIN[h%SKIN.length], hc=HAIRC[(h>>3)%HAIRC.length];
+  const jz=JERSEY[(h>>6)%JERSEY.length];
+  const hair=(h>>9)%4, beard=(h>>12)%5===0, num=(h>>15)%99+1;
+  const S=size, id='g'+h.toString(36);
+  let head='';
+  // 헤어
+  if(hair===0) head+=`<path d="M28 40 q0-22 22-22 t22 22 q-6-9-22-9 t-22 9z" fill="${hc}"/>`;
+  if(hair===1) head+=`<path d="M27 42 q1-25 23-25 t23 25 q-4-14-23-14 t-23 14z" fill="${hc}"/><path d="M27 42 q-3 12 1 18 q-6-8-1-18z" fill="${hc}"/><path d="M73 42 q3 12-1 18 q6-8 1-18z" fill="${hc}"/>`;
+  if(hair===2) head+=`<ellipse cx="50" cy="34" rx="24" ry="17" fill="${hc}"/>`;
+  if(hair===3) head+=`<path d="M29 41 q2-23 21-23 t21 23 q-8-11-21-6 t-21 6z" fill="${hc}"/><circle cx="50" cy="16" r="6" fill="${hc}"/>`;
+  const wearCap = sport==='bb' && (h>>18)%5!==0;
+  const sideHair = wearCap ? `<path d="M28 41 q-2 9 0 15 q-4-7-2-15z" fill="${hc}"/><path d="M72 41 q2 9 0 15 q4-7 2-15z" fill="${hc}"/>` : '';
+  const cap = wearCap
+    ? `${sideHair}<path d="M25 41 q2-25 25-25 t25 25 z" fill="${jz[0]}"/><path d="M25 41 q-11 1-13 6 q14 3 38 2 z" fill="${jz[1]}"/><circle cx="50" cy="18" r="3" fill="${jz[1]}"/>`
+    : (sport==='sc' && h%3===0 ? `<path d="M27 40 q23-9 46 0 l0 5 q-23-8-46 0z" fill="${jz[1]}"/>` : '');
+  return `<svg width="${S}" height="${S}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="${jz[1]}"/><stop offset="1" stop-color="${jz[0]}"/></linearGradient>
+  <clipPath id="c${id}"><circle cx="50" cy="50" r="49"/></clipPath></defs>
+  <g clip-path="url(#c${id})">
+    <circle cx="50" cy="50" r="49" fill="url(#${id})"/>
+    <circle cx="50" cy="50" r="49" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="2"/>
+    <path d="M18 100 q4-24 32-28 h0 q28 4 32 28z" fill="${jz[0]}"/>
+    <path d="M40 74 q10 9 20 0 l4 4 q-14 12-28 0z" fill="#fff" opacity=".9"/>
+    <text x="50" y="97" font-size="15" font-weight="900" fill="rgba(255,255,255,.85)" text-anchor="middle" font-family="Arial">${num}</text>
+    <path d="M32 46 q-5 0-5 6 t5 7z" fill="${sk}"/><path d="M68 46 q5 0 5 6 t-5 7z" fill="${sk}"/>
+    <ellipse cx="50" cy="49" rx="21" ry="24" fill="${sk}"/>
+    ${beard?`<path d="M31 52 q1 22 19 25 q18-3 19-25 q-6 16-19 16 t-19-16z" fill="${hc}" opacity=".85"/>`:''}
+    ${head}${cap}
+    <ellipse cx="42" cy="52" rx="2.6" ry="3.2" fill="#231b16"/><ellipse cx="58" cy="52" rx="2.6" ry="3.2" fill="#231b16"/>
+    <circle cx="43" cy="51" r=".9" fill="#fff" opacity=".9"/><circle cx="59" cy="51" r=".9" fill="#fff" opacity=".9"/>
+    <path d="M36.5 46 q5.5-2.8 10.5-1" stroke="${hc}" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <path d="M63.5 46 q-5.5-2.8-10.5-1" stroke="${hc}" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <path d="M42.5 62 q7.5 6 15 0" stroke="#6b3b2c" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <ellipse cx="36" cy="58" rx="3.4" ry="2.2" fill="#e8836b" opacity=".28"/>
+    <ellipse cx="64" cy="58" rx="3.4" ry="2.2" fill="#e8836b" opacity=".28"/>
+  </g></svg>`;
+}
+
+/* ================= 상태 ================= */
+let WHO='연준';
+const roster = ()=> WHO==='연준' ? BASEBALL : SOCCER;
+const sport  = ()=> WHO==='연준' ? 'bb' : 'sc';
+const $=(s)=>document.querySelector(s);
+
+/* ================= 격언 ================= */
+function renderQuote(){
+  const idx = curIdx<0 ? 0 : curIdx;
+  const q = QUOTES[idx % QUOTES.length];
+  $('#qTxt').textContent = '"'+q[0]+'"';
+  $('#qSub').textContent = q[1];
+  const d=new Date();
+  const dd = curIdx<0 ? '방학 시작 전' : ('방학 '+(curIdx+1)+'일차 · 남은 날 '+(TOTAL_DAYS-curIdx-1)+'일');
+  $('#qMeta').textContent = `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일 · ${dd}`;
+}
+
+/* ================= 통계 ================= */
+function renderStats(){
+  let done=0, checked=0, total=0;
+  DAYS.forEach(day=>{
+    const r=dayDone(WHO,day);
+    if(r.full) done++;
+    checked+=r.n; total+=r.total;
+  });
+  // 이번 주 잘한 일
+  const wStart = curIdx<0?0:Math.floor(curIdx/7)*7;
+  let good=0;
+  for(let i=wStart;i<Math.min(wStart+7,TOTAL_DAYS);i++){
+    TASKS.filter(t=>t.grp==='잘한 일').forEach(t=>{ if(get(WHO,DAYS[i].date,t.id)) good++; });
+  }
+  // 연속
+  let streak=0;
+  for(let i=(curIdx<0?-1:curIdx);i>=0;i--){ if(dayDone(WHO,DAYS[i]).full) streak++; else break; }
+  const pct = total? Math.round(checked/total*100):0;
+  $('#stats').innerHTML=`
+   <div class="stat"><div class="k">완료한 날 (선수 획득)</div><div class="v">${done}<small>/42일</small></div>
+     <div class="bar"><i style="width:${done/42*100}%"></i></div></div>
+   <div class="stat"><div class="k">전체 체크율</div><div class="v">${pct}<small>%</small></div>
+     <div class="bar"><i style="width:${pct}%"></i></div>
+     <div style="font-size:10px;color:var(--tx3);margin-top:5px">${checked} / ${total}칸</div></div>
+   <div class="stat"><div class="k">연속 완주</div><div class="v">${streak}<small>일</small></div>
+     <div style="font-size:10px;color:var(--tx3);margin-top:11px">하루라도 빠지면 0부터 다시</div></div>
+   <div class="stat"><div class="k">이번 주 잘한 일 (목표 30)</div><div class="v">${good}<small>/30</small></div>
+     <div class="bar"><i style="width:${Math.min(100,good/30*100)}%"></i></div>
+     <div style="font-size:10px;color:${good>=30?'var(--ok)':'var(--tx3)'};margin-top:5px">${good>=30?'달성! 좋은 일 획득 🎉':'30개 모으면 좋은 일'}</div></div>`;
+}
+
+/* ================= 오늘 ================= */
+function renderToday(){
+  const box=$('#today');
+  if(curIdx<0){ box.innerHTML='<div style="padding:20px;color:var(--tx2)">방학 시작 전입니다. '+START_DATE+'부터 시작해요.</div>'; $('#todayHint').textContent=''; return; }
+  const day=DAYS[curIdx], ts=dayTasks(day,WHO), r=dayDone(WHO,day);
+  const pct = r.total? r.n/r.total : 0;
+  const C=2*Math.PI*46;
+  const groups=['학습','잘한 일'].map(g=>{
+    const items=ts.filter(t=>t.grp===g);
+    if(!items.length) return '';
+    return `<div class="grp"><div class="gl">${g==='학습'?'📚 공부':'⭐ 잘한 일'}</div><div class="chips">`+
+      items.map(t=>{
+        const on=get(WHO,day.date,t.id);
+        const cnt = t.cnt && t.cnt[WHO] ? `<span class="n">${t.cnt[WHO]}</span>`:'';
+        return `<button class="chip ${on?'on':''}" data-d="${day.date}" data-t="${t.id}" title="${t.detail}">
+          <span class="bx">✓</span>${t.name}${cnt}</button>`;
+      }).join('')+'</div></div>';
+  }).join('');
+  const p = roster()[day.i];
+  const reward = r.full
+    ? `<div class="rewardbox"><div class="pcard" data-p="${day.i}">${face(WHO+p[0],sport(),86)}
+         <div class="nm">${p[0]}</div><div class="tm">${p[1]}</div></div>
+       <div style="font-size:10px;color:var(--tx3);margin-top:6px">눌러서 소개 보기</div></div>`
+    : `<div class="rewardbox" style="opacity:.45"><div style="font-size:40px">${sport()==='bb'?'⚾':'⚽'}</div>
+       <div style="font-size:11px;color:var(--tx3);margin-top:6px">남은 ${r.total-r.n}칸을 채우면<br>오늘의 선수가 열립니다</div></div>`;
+  box.innerHTML=`
+    <div>
+      <div class="date">${day.md} (${DOW[day.dow]}) · ${curIdx+1}일차</div>
+      <div class="dnum" id="todayCount">오늘 ${r.n} / ${r.total} 완료</div>
+      ${groups}
+    </div>
+    <div class="ring">
+      <div class="gauge">
+        <svg width="120" height="120"><circle cx="60" cy="60" r="46" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="9"/>
+        <circle id="todayArc" cx="60" cy="60" r="46" fill="none" stroke="${r.full?'var(--ok)':'var(--acc)'}" stroke-width="9" stroke-linecap="round"
+          stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pct)}" style="transition:stroke-dashoffset .5s"/></svg>
+        <div class="gv"><div class="pc" id="todayPct">${Math.round(pct*100)}%</div><div class="pl" id="todayLbl">${r.full?'오늘 완주!':'진행 중'}</div></div>
+      </div>
+      <div id="todayReward">${reward}</div>
+    </div>`;
+  $('#todayHint').textContent = `${day.md} (${DOW[day.dow]}) 기준`;
+}
+
+/* 오늘 카드의 게이지·보상만 갱신 (칩은 그대로 두어 클릭 흐름 유지) */
+function updateToday(){
+  if(curIdx<0 || !$('#todayArc')) return;
+  const day=DAYS[curIdx], r=dayDone(WHO,day);
+  const pct=r.total? r.n/r.total:0, C=2*Math.PI*46;
+  $('#todayCount').textContent=`오늘 ${r.n} / ${r.total} 완료`;
+  $('#todayPct').textContent=Math.round(pct*100)+'%';
+  $('#todayLbl').textContent=r.full?'오늘 완주!':'진행 중';
+  const arc=$('#todayArc');
+  arc.setAttribute('stroke-dashoffset', C*(1-pct));
+  arc.setAttribute('stroke', r.full?'var(--ok)':'var(--acc)');
+  const box=$('#todayReward'), p=roster()[day.i];
+  const has=!!box.querySelector('.pcard');
+  if(r.full && !has){
+    box.innerHTML=`<div class="rewardbox"><div class="pcard anim" data-p="${day.i}">${face(WHO+p[0],sport(),86)}
+      <div class="nm">${p[0]}</div><div class="tm">${p[1]}</div></div>
+      <div style="font-size:10px;color:var(--tx3);margin-top:6px">눌러서 소개 보기</div></div>`;
+  }else if(!r.full && has){
+    box.innerHTML=`<div class="rewardbox" style="opacity:.45"><div style="font-size:40px">${sport()==='bb'?'⚾':'⚽'}</div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:6px">남은 ${r.total-r.n}칸을 채우면<br>오늘의 선수가 열립니다</div></div>`;
+  }else if(!r.full){
+    const t=box.querySelector('div[style*="font-size:11px"]');
+    if(t) t.innerHTML=`남은 ${r.total-r.n}칸을 채우면<br>오늘의 선수가 열립니다`;
+  }
+}
+
+/* 표에서 한 행만 갱신 */
+function updateRow(date){
+  const tr=document.querySelector(`#tbl tr[data-date="${date}"]`); if(!tr) return;
+  const day=DAYS.find(d=>d.date===date), r=dayDone(WHO,day), p=roster()[day.i];
+  tr.classList.toggle('full', r.full);
+  const b=tr.querySelector('td.badge');
+  const has=!!b.querySelector('.pcard');
+  if(r.full && !has) b.innerHTML=`<span class="pcard anim" data-p="${day.i}" title="${p[0]}">${face(WHO+p[0],sport(),40)}</span>`;
+  else if(!r.full && has) b.innerHTML=`<span class="lock">${sport()==='bb'?'⚾':'⚽'}</span>`;
+}
+
+/* ================= 최근 5일 ================= */
+function renderRecent(){
+  const box=$('#recent');
+  if(curIdx<0){ box.innerHTML=''; return; }
+  const start=Math.max(0,curIdx-4);
+  let html='';
+  for(let i=start;i<=curIdx;i++){
+    const day=DAYS[i], ts=dayTasks(day,WHO), r=dayDone(WHO,day);
+    const missed=ts.filter(t=>!get(WHO,day.date,t.id));
+    const p=roster()[i];
+    html+=`<div class="rc ${r.full?'done':''} ${i===curIdx?'today':''}" data-date="${day.date}">
+      <div class="rh"><div class="rd">${day.md}<em>${DOW[day.dow]}${i===curIdx?' · 오늘':''}</em></div>
+        <div class="rp">${r.n}/${r.total}</div></div>
+      ${r.full
+        ? `<div class="face"><div class="pcard" data-p="${i}">${face(WHO+p[0],sport(),58)}<div class="nm">${p[0]}</div></div></div>
+           <div class="allok">✓ 전부 완료 · 선수 획득</div>`
+        : `<div class="mini"><div class="ttl">못 한 것 ${missed.length}개 — 누르면 체크</div>
+           <div class="miss">${missed.map(t=>`<button data-d="${day.date}" data-t="${t.id}">${t.name}</button>`).join('')}</div></div>
+           ${r.n?`<div class="okline">✓ ${ts.filter(t=>get(WHO,day.date,t.id)).map(t=>t.name).join(', ')}</div>`:''}`}
+    </div>`;
+  }
+  box.innerHTML=html;
+}
+
+/* ================= 전체 표 ================= */
+function renderTable(){
+  const t=$('#tbl');
+  let head='<thead><tr><th style="text-align:left;padding-left:12px;position:sticky;left:0;z-index:4;background:#151c33">날짜</th>';
+  TASKS.forEach(k=>{
+    const w = typeof k.when==='object'? k.when[WHO] : k.when;
+    head+=`<th class="${k.grp==='잘한 일'?'g2':''}" title="${k.detail}">${k.name.replace(' ','<br>')}<span class="cyc">${w||'매일'}</span></th>`;
+  });
+  head+='<th>선수</th></tr></thead>';
+  let body='<tbody>';
+  DAYS.forEach(day=>{
+    const r=dayDone(WHO,day);
+    const cls=[day.dow===0?'sun':'',day.dow===6?'sat':'',day.date===TODAY?'today':'',r.full?'full':''].join(' ');
+    body+=`<tr class="${cls}" data-date="${day.date}"><td class="dt">${day.md}<em>${DOW[day.dow]}</em></td>`;
+    TASKS.forEach(k=>{
+      if(!applies(k,day,WHO)){ body+='<td><span class="cell na"></span></td>'; return; }
+      const on=get(WHO,day.date,k.id);
+      const fut = day.i>curIdx ? 'fut':'';
+      body+=`<td><button class="cell ${on?'on':''} ${fut}" data-d="${day.date}" data-t="${k.id}">✓</button></td>`;
+    });
+    const p=roster()[day.i];
+    body+=`<td class="badge">${r.full
+      ? `<span class="pcard" data-p="${day.i}" title="${p[0]}">${face(WHO+p[0],sport(),40)}</span>`
+      : `<span class="lock">${sport()==='bb'?'⚾':'⚽'}</span>`}</td></tr>`;
+  });
+  t.innerHTML=head+body+'</tbody>';
+  $('#tableHint').textContent = `${START_DATE} ~ ${DAYS[41].date} · 지난 날도 언제든 다시 체크 가능`;
+}
+
+/* ================= 컬렉션 ================= */
+function renderColl(){
+  const R=roster();
+  let got=0, html='';
+  DAYS.forEach(day=>{
+    const full=dayDone(WHO,day).full; if(full) got++;
+    const p=R[day.i];
+    html+= full
+      ? `<div class="slot got" data-p="${day.i}">${face(WHO+p[0],sport(),52)}<div class="sn">${p[0]}</div><div class="sd">${day.md}</div></div>`
+      : `<div class="slot empty"><div class="ph">?</div><div class="sn">???</div><div class="sd">${day.md}</div></div>`;
+  });
+  $('#coll').innerHTML=html;
+  $('#collHint').textContent = `${got} / 42명 획득 · 하루를 완주할 때마다 한 명씩 열립니다`;
+}
+
+/* ================= 모달 ================= */
+function openPlayer(i){
+  const p=roster()[i], day=DAYS[i];
+  $('#modal').innerHTML=`${face(WHO+p[0],sport(),132)}
+    <h3>${p[0]}</h3><div class="team">${p[1]}</div><p>${p[2]}</p>
+    <div class="tag">${day.md} (${DOW[day.dow]}) 완주 보상 · ${i+1}번째 카드</div>
+    <button onclick="document.getElementById('mask').classList.remove('on')">닫기</button>`;
+  $('#mask').classList.add('on');
+}
+$('#mask').addEventListener('click',e=>{ if(e.target.id==='mask') e.currentTarget.classList.remove('on'); });
+
+/* ================= 렌더 ================= */
+function renderAll(){ renderStats(); renderToday(); renderRecent(); renderTable(); renderColl(); }
+
+/* 한 칸 토글 — 표를 통째로 다시 그리지 않고 필요한 부분만 갱신 (스크롤 위치 유지) */
+function hit(date,id){
+  toggle(WHO,date,id);
+  const on=get(WHO,date,id);
+  document.querySelectorAll(`.cell[data-d="${date}"][data-t="${id}"], .chip[data-d="${date}"][data-t="${id}"]`)
+    .forEach(el=>el.classList.toggle('on',on));
+  updateRow(date); updateToday(); renderStats(); renderRecent(); renderColl();
+}
+
+document.addEventListener('click',e=>{
+  const cell=e.target.closest('.cell:not(.na), .chip, .miss button');
+  if(cell){ hit(cell.dataset.d,cell.dataset.t); return; }
+  const pc=e.target.closest('.pcard, .slot.got');
+  if(pc){ openPlayer(+pc.dataset.p); return; }
+});
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); WHO=b.dataset.who;
+  document.body.classList.toggle('soccer', WHO==='민준');
+  renderAll(); window.scrollTo({top:0,behavior:'smooth'});
+}));
+$('#reset').addEventListener('click',()=>{
+  if(confirm('연준·민준 모든 체크 기록을 지웁니다. 모든 기기에서 지워집니다. 계속할까요?')){
+    ['연준','민준'].forEach(w=>{
+      Object.keys(DB[w]).forEach(d=>Object.keys(DB[w][d]).forEach(t=>pending.push({who:w,d,t,v:0})));
+    });
+    savePending(); DB={'연준':{},'민준':{}}; save(); renderAll(); flush();
+  }
+});
+
+renderQuote(); renderAll(); pull();
+</script>
+</body>
+</html>
