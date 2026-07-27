@@ -120,8 +120,16 @@ main{max-width:1100px;margin:0 auto;padding:18px 20px 48px}
 <main>
   <div id="detail">
     <div class="empty"><div class="big">🐢</div>
-      <div>종목을 검색하면 <b>후지산 능선(52주 밴드 위치)</b>과<br>
-      수면 아래 여부·완력시세 배제를 판정합니다</div></div>
+      <div style="max-width:520px">
+        <div style="font-size:15px;color:var(--ink);margin-bottom:9px">지금 이 종목, 거북이가 사도 될 자리인가?</div>
+        <div style="line-height:1.85">
+          <b>KAME(카메)는 일본어로 '거북이'</b>입니다. 토끼처럼 뛰는 주식을 쫓지 말고,
+          물속 깊이 가라앉은 멀쩡한 회사를 사서 2년 기다리라는 고레가와의 방식입니다.<br><br>
+          종목을 검색하면 <b>지금 후지산 몇 부 능선에 서 있는지</b>(1년 최저가 0부 ~ 최고가 10부),
+          <b>아무도 안 보고 있는지</b>, <b>힘으로 밀어올린 시세는 아닌지</b>를 판정합니다.
+          고레가와는 <b>2·3부 능선</b>에서 샀고 8부 위는 쳐다보지 않았습니다.
+        </div>
+      </div></div>
   </div>
 </main>
 <script>
@@ -281,7 +289,8 @@ function render(){
 
   <div class="verdict ${v[1]}">
     <span class="tag">${v[0]}</span>
-    <span class="msg">${v[2]}</span>
+    <span class="msg">${v[2]}<br><span style="color:var(--faint);font-size:11.5px">
+      카메 후보 = 사 모으기 시작할 자리 · 관찰 = 더 기다림 · 추격 금지 = 이 방식의 대상 아님</span></span>
     <span class="mono" style="font-size:13px;color:var(--faint)">가격·거래축 ${price}/35${sV?` · 저평가 ${sV}/25 · 합계 ${total}/60`:''}</span>
   </div>
 
