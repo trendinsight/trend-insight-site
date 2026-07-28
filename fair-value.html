@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0c111c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>적정주가 · 4층 밸류에이션 밴드</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+:root{
+  --bg:#0c111c; --panel:#141c2b; --panel2:#1a2336; --line:#26314a;
+  --ink:#e9eef7; --muted:#8896ae; --faint:#5d6b85;
+  --gold:#e6b422; --gold2:#f2ca4c; --buy:#E8621B; --buy2:#f08a4f;
+  --sell:#3b82f6; --sell2:#6ba0f5; --up:#f0454e; --down:#3b82f6; --ok:#2fbf71;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Pretendard',sans-serif;
+  font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+.up{color:var(--up)} .down{color:var(--down)}
+header{display:flex;align-items:center;gap:14px;padding:12px 18px;flex-wrap:wrap;
+  background:linear-gradient(180deg,#101827,#0c111c);border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:30}
+.brand{display:flex;align-items:baseline;gap:9px;white-space:nowrap}
+.brand .ti{font-family:'JetBrains Mono';font-weight:700;font-size:20px;color:var(--gold);
+  letter-spacing:1px;border:1.5px solid var(--gold);border-radius:6px;padding:1px 8px}
+.brand h1{font-size:15px;font-weight:700}
+.brand small{color:var(--faint);font-size:11px;letter-spacing:1.5px;text-transform:uppercase}
+.searchwrap{position:relative;flex:1;min-width:220px;max-width:420px}
+#q{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:9px;
+  color:var(--ink);padding:10px 14px;font-size:14px;font-family:inherit;outline:none}
+#q:focus{border-color:var(--gold)} #q::placeholder{color:var(--faint)}
+#qresults{position:absolute;top:calc(100% + 5px);left:0;right:0;background:var(--panel2);
+  border:1px solid var(--line);border-radius:9px;overflow:hidden;display:none;z-index:50;
+  box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#qresults .qi{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer}
+#qresults .qi:hover,#qresults .qi.hl{background:#232d44}
+#qresults .qi .nm{font-weight:600;font-size:13.5px}
+#qresults .qi .cd{font-family:'JetBrains Mono';font-size:11px;color:var(--faint);margin-left:auto}
+#qresults .qi .mk{font-size:10px;color:var(--gold2);border:1px solid rgba(230,180,34,.4);
+  border-radius:4px;padding:1px 5px}
+main{max-width:1240px;margin:0 auto;padding:18px 22px 40px}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:55vh;
+  color:var(--faint);text-align:center;gap:10px;padding:20px}
+.empty .big{font-size:46px;opacity:.3}
+.dhead{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.dhead .nm{font-size:24px;font-weight:800;letter-spacing:-.4px}
+.dhead .cd{font-size:13px;color:var(--faint);font-family:'JetBrains Mono';margin-bottom:3px}
+.dhead .px{font-size:26px;font-weight:700;margin-left:auto}
+.dhead .px small{font-size:14px;font-weight:600;margin-left:8px}
+.grid2{display:grid;grid-template-columns:1fr 350px;gap:18px}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.box h3{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);
+  margin-bottom:12px;font-weight:700}
+#px-chart{height:380px;width:100%}
+.legend{display:flex;gap:13px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
+.note{font-size:12.5px;color:var(--muted);line-height:1.7;margin-top:4px}
+.note b{color:var(--ink)}
+/* 밴드 카드 */
+.bandnum{display:flex;gap:8px;text-align:center;margin-bottom:12px}
+.bandnum .cell{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 4px}
+.bandnum .cap{font-size:10.5px;letter-spacing:.5px;color:var(--muted);margin-bottom:3px}
+.bandnum .num{font-size:17px;font-weight:800;font-family:'JetBrains Mono';line-height:1.1}
+.bandnum .mid{border-color:rgba(230,180,34,.55)}
+.bandnum .mid .num{color:var(--gold2);font-size:19px}
+.bandbar{position:relative;height:14px;border-radius:7px;margin:20px 6px 30px;
+  background:linear-gradient(90deg,#2fbf71 0 33%,#e6b422 33% 66%,#f0454e 66% 100%);opacity:.9}
+.bandbar .mk{position:absolute;top:-7px;width:3px;height:28px;background:#fff;border-radius:2px;
+  box-shadow:0 0 8px rgba(255,255,255,.8)}
+.bandbar .mklab{position:absolute;top:-24px;transform:translateX(-50%);font-size:10.5px;
+  color:var(--ink);font-weight:700;white-space:nowrap}
+.bandbar .zone{position:absolute;bottom:-18px;font-size:10px;color:var(--faint)}
+.upside{text-align:center;font-size:13px;color:var(--muted);margin-bottom:8px}
+.upside b{font-size:19px;font-family:'JetBrains Mono'}
+.vbadge{display:block;text-align:center;margin:10px 0 4px;font-size:15px;font-weight:800;
+  border-radius:22px;padding:7px 0;letter-spacing:.5px}
+.v-buy{background:rgba(232,98,27,.18);color:var(--buy2);border:1px solid rgba(232,98,27,.55)}
+.v-watch{background:rgba(230,180,34,.14);color:var(--gold2);border:1px solid rgba(230,180,34,.45)}
+.v-hold{background:rgba(47,191,113,.12);color:#5fd398;border:1px solid rgba(47,191,113,.4)}
+.v-neu{background:rgba(136,150,174,.13);color:var(--muted);border:1px solid var(--line)}
+.v-sell{background:rgba(59,130,246,.15);color:var(--sell2);border:1px solid rgba(59,130,246,.5)}
+.gate{font-size:12px;color:var(--muted);text-align:center;margin-top:6px;line-height:1.6}
+.gate b{color:var(--ink)}
+.warn{margin-top:10px;font-size:12px;color:#ffb84d;background:rgba(230,140,30,.08);
+  border:1px solid rgba(230,140,30,.35);border-radius:8px;padding:8px 10px;line-height:1.6}
+/* 4층 분해 */
+.layers .row{padding:12px 0;border-bottom:1px solid var(--line)}
+.layers .row:last-child{border-bottom:0}
+.layers .top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.layers .no{font-family:'JetBrains Mono';font-size:11px;color:var(--gold);border:1px solid rgba(230,180,34,.4);
+  border-radius:4px;padding:1px 6px;font-weight:700}
+.layers .nm{font-size:13.5px;font-weight:700}
+.layers .val{margin-left:auto;font-family:'JetBrains Mono';font-size:12.5px;font-weight:700;color:var(--gold2)}
+.layers .desc{font-size:12px;color:var(--muted);line-height:1.6}
+.layers .expl{font-size:11px;color:var(--faint);line-height:1.55;margin-top:5px;padding-left:8px;
+  border-left:2px solid var(--line)}
+/* 조정 슬라이더 */
+.ctrl{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:12px;color:var(--muted)}
+.ctrl label{width:120px;flex-shrink:0}
+.ctrl input[type=range]{flex:1;accent-color:var(--gold)}
+.ctrl .cv{font-family:'JetBrains Mono';width:46px;text-align:right;color:var(--ink);font-weight:700}
+.ctrl button{background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:6px;
+  padding:3px 8px;font-size:11px;cursor:pointer;font-family:inherit}
+.ctrl button:hover{color:var(--ink);border-color:var(--gold)}
+.lvl{width:100%;border-collapse:collapse;font-size:12.5px}
+.lvl td{padding:6px 0;border-bottom:1px solid var(--line)}
+.lvl tr:last-child td{border-bottom:0}
+.lvl td:last-child{text-align:right;font-family:'JetBrains Mono'}
+.spin{border:2px solid var(--line);border-top-color:var(--gold);border-radius:50%;
+  width:22px;height:22px;animation:sp .7s linear infinite;margin:60px auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:8px} ::-webkit-scrollbar-thumb{background:#243047;border-radius:4px}
+@media(max-width:980px){.grid2{grid-template-columns:1fr} #px-chart{height:300px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="ti">TI</span><h1>적정주가</h1><small>4-Layer Fair Value</small></div>
+  <div class="searchwrap">
+    <input id="q" placeholder="종목명 또는 코드 검색 (예: 삼성전자)" autocomplete="off">
+    <div id="qresults"></div>
+  </div>
+</header>
+<main>
+  <div id="detail">
+    <div class="empty"><div class="big">◈</div>
+      <div>종목을 검색하면 <b>기본적(PER법+RIM) × 산업(RS) × 시장(지수) × 기술적(타이밍)</b><br>
+      4층 구조로 적정주가 밴드를 계산합니다</div></div>
+  </div>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const API='https://trend-insight-site.sungsangkyung77.workers.dev';
+const fmt=(n,d)=>n==null||isNaN(n)?'—':Number(n).toLocaleString('ko-KR',{minimumFractionDigits:d??0,maximumFractionDigits:d??2});
+const pct=(v,d)=>v==null?'—':(v*100).toFixed(d??1)+'%';
+const cls=v=>v>0?'up':(v<0?'down':'');
+const sign=v=>v>0?'▲':(v<0?'▼':'');
+const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+const num=s=>{if(s==null)return null;if(typeof s==='number')return s;
+  const t=String(s).replace(/[,원배%\s]/g,'');return /^-?\d+(\.\d+)?$/.test(t)?parseFloat(t):null;};
+
+/* ── 검색 (시그널 앱과 동일) ── */
+let qTimer=null,qItems=[],qHl=-1;
+const qBox=$('#qresults'),qIn=$('#q');
+function hideQ(){qBox.style.display='none';qHl=-1;}
+function renderQ(){
+  if(!qItems.length){hideQ();return;}
+  qBox.innerHTML=qItems.map((x,i)=>`<div class="qi ${i===qHl?'hl':''}" data-i="${i}">
+    <span class="nm">${x.name}</span><span class="mk">${x.market||''}</span><span class="cd">${x.code}</span></div>`).join('');
+  qBox.style.display='block';
+  qBox.querySelectorAll('.qi').forEach(el=>el.onclick=()=>pickQ(+el.dataset.i));
+}
+function pickQ(i){const x=qItems[i];if(!x)return;hideQ();qIn.value=x.name;qIn.blur();analyze(x.code,x.name,x.market);}
+qIn.addEventListener('input',()=>{
+  clearTimeout(qTimer);const q=qIn.value.trim();
+  if(q.length<1){hideQ();return;}
+  qTimer=setTimeout(async()=>{
+    try{const r=await(await fetch(`${API}/api/cockpit/search?q=${encodeURIComponent(q)}`)).json();
+      qItems=r.data||[];qHl=qItems.length?0:-1;renderQ();}catch(e){hideQ();}
+  },250);
+});
+qIn.addEventListener('keydown',e=>{
+  if(qBox.style.display!=='block')return;
+  if(e.key==='ArrowDown'){e.preventDefault();qHl=Math.min(qHl+1,qItems.length-1);renderQ();}
+  else if(e.key==='ArrowUp'){e.preventDefault();qHl=Math.max(qHl-1,0);renderQ();}
+  else if(e.key==='Enter'){e.preventDefault();pickQ(qHl>=0?qHl:0);}
+  else if(e.key==='Escape'){hideQ();}
+});
+document.addEventListener('click',e=>{if(!e.target.closest('.searchwrap'))hideQ();});
+
+/* ── 지표 유틸 ── */
+function sma(s,n,i){i=i??s.length-1;if(i+1<n)return null;let t=0;for(let j=i-n+1;j<=i;j++)t+=s[j];return t/n;}
+function rsi14(cl,P){P=P||14;if(cl.length<P+1)return null;
+  let g=0,l=0;for(let j=1;j<=P;j++){const d=cl[j]-cl[j-1];g+=Math.max(d,0);l+=Math.max(-d,0);}
+  let ag=g/P,al=l/P;
+  for(let j=P+1;j<cl.length;j++){const d=cl[j]-cl[j-1];
+    ag=(ag*(P-1)+Math.max(d,0))/P;al=(al*(P-1)+Math.max(-d,0))/P;}
+  return 100-100/(1+(al?ag/al:999));}
+
+/* ── 1층: 내재가치 (fair_value.py와 동일 로직 — 한쪽만 고치지 말 것) ── */
+function layerFundamental(f,rReq){
+  const epsT=num(f.eps),epsC=num(f.cnsEps),bps=num(f.bps),perT=num(f.per);
+  if(!bps||bps<=0)throw new Error('BPS 없음 — 내재가치 산출 불가');
+  const cns=!!(epsC&&epsC>0);
+  let warn=null,fwdEps=cns?epsC:epsT;
+  if(cns&&epsT&&epsT>0&&epsC>epsT*1.5){
+    fwdEps=0.5*epsT+0.5*epsC;
+    warn=`컨센서스 EPS가 후행 대비 ${((epsC/epsT-1)*100).toFixed(0)}% 급증 — 후행과 50:50 혼합. 사이클 정점 이익 가능성, 밴드 신뢰도 낮음`;
+  }else if(cns&&epsT&&epsT>0&&epsC<epsT*0.5){
+    warn=`컨센서스 EPS가 후행 대비 ${((epsC/epsT-1)*100).toFixed(0)}% 급감 전망 — 이익 훼손 확인 필요`;
+  }
+  const roeT=epsT?epsT/bps:null,roeF=fwdEps?fwdEps/bps:null;
+  let ev=null,perRoe=null,perBase=null;
+  if(fwdEps&&fwdEps>0){
+    const roeC=clamp(roeF,0,0.35);
+    perRoe=clamp(8+50*(roeC-0.08),6,18);
+    const perMkt=(perT&&perT>0)?clamp(perT,4,30):null;
+    perBase=perMkt?0.6*perRoe+0.4*perMkt:perRoe;
+    ev=fwdEps*perBase;
+  }
+  let roeS=0;
+  if(roeT!=null||roeF!=null){
+    const a=roeT!=null?roeT:roeF,b=roeF!=null?roeF:roeT;
+    roeS=clamp(0.6*a+0.4*b,-0.5,0.30);
+  }
+  const rim=roeS>0?Math.max(bps*roeS/rReq,bps*0.6):bps*0.6;
+  const iv=ev?0.6*ev+0.4*rim:rim;
+  return {epsT,epsF:fwdEps,epsCnsRaw:epsC,consensus:cns,warn,bps,roeT,roeF,roeS,
+    perNow:perT,perRoe,perBase,pbr:num(f.pbr),divYield:num(f.dividendYieldRatio),
+    hi52:num(f.highPriceOf52Weeks),lo52:num(f.lowPriceOf52Weeks),ev,rim,iv};
+}
+/* ── 2층: 산업·상대강도 ── */
+function layerIndustry(clS,clI,override){
+  const n=Math.min(clS.length,clI.length,61);let rs=null;
+  if(n>=21)rs=(clS[clS.length-1]/clS[clS.length-n]-1)-(clI[clI.length-1]/clI[clI.length-n]-1);
+  const auto=clamp(1+(rs||0)*0.5,0.85,1.15);
+  const coef=override!=null?clamp(override,0.80,1.20):auto;
+  return {rs60:rs,coefAuto:Math.round(auto*1000)/1000,coef:Math.round(coef*1000)/1000,manual:override!=null};
+}
+/* ── 3층: 시장(지수) ── */
+function layerMarket(clI,override){
+  const c=clI[clI.length-1],ma20=sma(clI,20),ma60=sma(clI,60),r=rsi14(clI);
+  let regime,coef,gate;
+  if(ma20&&ma60&&c>ma20&&ma20>ma60){regime='강세';coef=1.05;gate='우호 — 정상 진입 가능';}
+  else if(ma20&&ma60&&c<ma20&&ma20<ma60){regime='약세';coef=0.90;gate='역풍 — 신규 매수 보류·비중 축소';}
+  else{regime='중립';coef=1.00;gate='중립 — 선별 진입';}
+  if(r!=null&&r>=70){coef=Math.min(coef,1.00);gate+=' · 지수 과열(RSI 70↑) 주의';}
+  else if(r!=null&&r<=30){coef=Math.max(coef,0.95);gate+=' · 지수 과매도(RSI 30↓) — 역발상 관심';}
+  if(override!=null)coef=clamp(override,0.85,1.10);
+  return {regime,rsi:r!=null?Math.round(r*10)/10:null,ma20,ma60,coef:Math.round(coef*1000)/1000,gate};
+}
+/* ── 4층: 기술적 타이밍 ── */
+function layerTechnical(c,price,band){
+  const cl=c.close,mas={};[5,20,60,120].forEach(n=>mas[n]=sma(cl,n));
+  const pairs=[[5,20],[20,60],[60,120]].filter(([a,b])=>mas[a]&&mas[b]);
+  const aligned=pairs.length>0&&pairs.every(([a,b])=>mas[a]>mas[b]);
+  const reversed_=pairs.length>0&&pairs.every(([a,b])=>mas[a]<mas[b]);
+  const r=rsi14(cl);
+  const setup=(aligned&&(r??50)<70)?'양호':(reversed_?'불량':'중립');
+  const [lo,mid,hi]=band;
+  const pos=price<lo?'저평가':(price>hi?'고평가':'적정');
+  const upside=price?(mid-price)/price:null;
+  let verdict;
+  if(pos==='저평가'&&setup==='양호')verdict='매수 검토';
+  else if(pos==='저평가')verdict='관심 — 바닥 확인 대기';
+  else if(pos==='적정'&&setup==='양호')verdict='보유 — 추세 추종';
+  else if(pos==='적정')verdict='관망';
+  else if(setup==='양호')verdict='보유 — 분할익절·손절선 관리';
+  else verdict='분할매도 검토';
+  return {mas,aligned,reversed:reversed_,rsi:r!=null?Math.round(r*10)/10:null,setup,pos,upside,verdict};
+}
+
+/* ── 분석 & 렌더 ── */
+let cur=null,chart=null;
+async function analyze(code,name,market){
+  $('#detail').innerHTML='<div class="spin"></div>';
+  try{
+    const [dr,fr]=await Promise.all([
+      fetch(`${API}/api/cockpit/analyze/${code}`).then(r=>r.json()),
+      fetch(`${API}/api/masters/fund/${code}`).then(r=>r.json())]);
+    if(!dr.ok){$('#detail').innerHTML=`<div class="empty"><div class="big">⚠</div><div>${dr.error||'분석 불가'}</div></div>`;return;}
+    if(!fr.ok){$('#detail').innerHTML=`<div class="empty"><div class="big">⚠</div><div>재무 정보 없음 — ETF·스팩·리츠는 지원하지 않습니다</div></div>`;return;}
+    if(!market){
+      try{const sr=await(await fetch(`${API}/api/cockpit/search?q=${code}`)).json();
+        market=(sr.data&&sr.data[0]&&sr.data[0].market)||'KOSPI';}catch(e){market='KOSPI';}
+    }
+    const mk=/KOSDAQ|코스닥/i.test(market)?'KOSDAQ':'KOSPI';
+    const ir=await(await fetch(`${API}/api/cockpit/analyze/${mk}`)).json();
+    if(!ir.ok){$('#detail').innerHTML='<div class="empty"><div class="big">⚠</div><div>지수 데이터 로드 실패</div></div>';return;}
+    cur={d:dr.data,f:fr.data.info||{},idx:ir.data,mk,name:dr.data.name||name||code,
+      indOverride:null,r:0.08};
+    render();
+  }catch(e){$('#detail').innerHTML='<div class="empty"><div class="big">⚠</div><div>연결 실패 · 잠시 후 다시 시도하세요<br><small style="color:#5d6b85">'+(e.message||'')+'</small></div></div>';}
+}
+function verdictClass(v){
+  if(v.startsWith('매수'))return 'v-buy';
+  if(v.startsWith('관심'))return 'v-watch';
+  if(v.startsWith('보유'))return 'v-hold';
+  if(v.startsWith('관망'))return 'v-neu';
+  return 'v-sell';
+}
+function narrate(L1,L2,L3,L4,band,name,price){
+  const s=[];
+  s.push(`<b>${name}</b>의 적정주가 중앙값은 <b>${fmt(band[1])}원</b>, 현재가 ${fmt(price)}원은 밴드 기준 <b>${L4.pos}</b> 구간입니다 (중앙 대비 ${pct(L4.upside)}).`);
+  s.push(`가치의 뼈대는 이익가치 ${fmt(L1.ev)}원(예상EPS×기준PER ${L1.perBase?L1.perBase.toFixed(1):'—'})과 자산가치 RIM ${fmt(L1.rim)}원을 6:4로 섞은 <b>내재가치 ${fmt(L1.iv)}원</b>입니다.`);
+  s.push(`여기에 산업·상대강도 계수 <b>×${L2.coef}</b>(최근 60일 지수 대비 ${pct(L2.rs60)})와 시장 계수 <b>×${L3.coef}</b>(${L3.regime} 국면)를 반영했습니다.`);
+  s.push(`기술적으로는 ${L4.aligned?'정배열':'정배열 아님'}·RSI ${L4.rsi??'—'}로 <b>셋업 ${L4.setup}</b> — 밸류 위치와 합쳐 <b>${L4.verdict}</b> 판정입니다.`);
+  if(L3.regime==='약세')s.push(`⚠ 시장이 약세 국면이므로 저평가라도 <b>진입은 보수적으로</b> 접근하세요.`);
+  return s.join(' ');
+}
+function render(){
+  const {d,f,idx,mk,name}=cur;
+  const c=d.chart,q=d.quote||{};
+  const i=c.close.length-1;
+  const price=q.price??c.close[i],rate=q.change_rate||0,chg=q.change||0;
+  let L1;
+  try{L1=layerFundamental(f,cur.r);}catch(e){
+    $('#detail').innerHTML=`<div class="empty"><div class="big">⚠</div><div>${e.message}</div></div>`;return;}
+  const L2=layerIndustry(c.close,idx.chart.close,cur.indOverride);
+  const L3=layerMarket(idx.chart.close,null);
+  const k=L2.coef*L3.coef;
+  const band=[L1.iv*0.85*k,L1.iv*k,L1.iv*1.15*k];
+  const L4=layerTechnical(c,price,band);
+  const vc=verdictClass(L4.verdict);
+  // 밴드바 마커 위치: lower=16.5%, mid=50%, upper=83.5% 스케일로 선형 매핑
+  const lo=band[0],hi=band[2],span=hi-lo;
+  let mpos=span>0?16.5+(price-lo)/span*67:50;mpos=clamp(mpos,2,98);
+  $('#detail').innerHTML=`
+  <div class="dhead">
+    <div class="nm">${name}</div><div class="cd">${d.code} · ${mk} · ${c.date[i]}</div>
+    <div class="px mono ${cls(rate)}">${fmt(price)}<small>${sign(rate)} ${fmt(Math.abs(chg))} (${fmt(Math.abs(rate),2)}%)</small></div>
+  </div>
+  <div class="grid2">
+    <div>
+      <div class="box">
+        <h3>주가 + 적정주가 밴드</h3>
+        <div id="px-chart"></div>
+        <div class="legend">
+          <span><i style="background:#e9eef7"></i>캔들</span>
+          <span><i style="background:#e6b422"></i>적정 중앙</span>
+          <span><i style="background:rgba(47,191,113,.8)"></i>밴드 하단(저평가 경계)</span>
+          <span><i style="background:rgba(240,69,78,.8)"></i>밴드 상단(고평가 경계)</span>
+        </div>
+      </div>
+      <div class="box layers" style="margin-top:16px">
+        <h3>4층 분해</h3>
+        <div class="row"><div class="top"><span class="no">1층</span><span class="nm">기본적 — 내재가치</span>
+          <span class="val">${fmt(L1.iv)}원</span></div>
+          <div class="desc">이익가치 <b>${fmt(L1.ev)}</b> = 예상EPS ${fmt(L1.epsF)} × 기준PER ${L1.perBase?L1.perBase.toFixed(1):'—'}
+            (ROE기반 ${L1.perRoe?L1.perRoe.toFixed(1):'—'} 60% + 시장부여 PER 40%) ·
+            자산가치 RIM <b>${fmt(L1.rim)}</b> = BPS ${fmt(L1.bps)} × 지속ROE ${pct(L1.roeS)} ÷ r ${pct(cur.r,0)} → 6:4 가중</div>
+          <div class="expl">적정가의 '수준'은 이익과 자산이 정합니다. PER법(성장·수익성)과 RIM(자본 대비 초과이익)을 함께 써서 한 방식의 왜곡을 줄입니다.</div></div>
+        <div class="row"><div class="top"><span class="no">2층</span><span class="nm">산업 — 상대강도 계수</span>
+          <span class="val">×${L2.coef}</span></div>
+          <div class="desc">최근 60일 ${mk} 대비 초과수익 <b>${pct(L2.rs60)}</b> → 자동 계수 ${L2.coefAuto}${L2.manual?' (수동 조정 중)':''}</div>
+          <div class="ctrl"><label>산업계수 조정</label>
+            <input type="range" id="indSlide" min="0.80" max="1.20" step="0.01" value="${L2.coef}">
+            <span class="cv" id="indVal">${L2.coef.toFixed(2)}</span>
+            <button id="indReset">자동</button></div>
+          <div class="expl">같은 이익이라도 업황(P·Q·C 방향)에 따라 시장이 주는 멀티플이 다릅니다. 자동값은 상대강도 근사치 — 업황을 아는 종목은 직접 조정하세요(확장기 1.1~1.2, 다운사이클 0.8~0.9).</div></div>
+        <div class="row"><div class="top"><span class="no">3층</span><span class="nm">시장 — ${mk} 국면</span>
+          <span class="val">×${L3.coef}</span></div>
+          <div class="desc"><b>${L3.regime}</b> (지수 ${fmt(idx.chart.close[idx.chart.close.length-1])} · MA20 ${fmt(L3.ma20)} · MA60 ${fmt(L3.ma60)} · RSI ${L3.rsi??'—'}) → 게이트: ${L3.gate}</div>
+          <div class="expl">약세장에서는 적정가를 깎기보다 <b>진입 자체를 보류·축소</b>하는 것이 실전적입니다. 계수는 0.90~1.05로 좁게만 반영합니다.</div></div>
+        <div class="row"><div class="top"><span class="no">4층</span><span class="nm">기술적 — 타이밍</span>
+          <span class="val">${L4.setup}</span></div>
+          <div class="desc">정배열 ${L4.aligned?'<b>충족</b>':'미충족'}(MA5>20>60>120) · RSI ${L4.rsi??'—'} ·
+            MA20 ${fmt(L4.mas[20])} · MA60 ${fmt(L4.mas[60])} → 밴드 위치 <b>${L4.pos}</b></div>
+          <div class="expl">기술적 분석은 적정가 '수준'이 아니라 '시점'을 정합니다 — 가격 지표를 적정가 계산에 넣으면 순환논리가 되기 때문입니다. 밸류 위치 × 셋업의 2차원 매트릭스로 판정합니다.</div></div>
+        <div class="ctrl" style="margin-top:12px"><label>요구수익률 r</label>
+          <input type="range" id="rSlide" min="0.06" max="0.12" step="0.005" value="${cur.r}">
+          <span class="cv" id="rVal">${(cur.r*100).toFixed(1)}%</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="box">
+        <h3>적정주가 밴드</h3>
+        <div class="bandnum">
+          <div class="cell"><div class="cap">하단</div><div class="num">${fmt(band[0])}</div></div>
+          <div class="cell mid"><div class="cap">중앙</div><div class="num">${fmt(band[1])}</div></div>
+          <div class="cell"><div class="cap">상단</div><div class="num">${fmt(band[2])}</div></div>
+        </div>
+        <div class="bandbar">
+          <span class="mk" style="left:${mpos}%"></span>
+          <span class="mklab" style="left:${mpos}%">현재가 ${fmt(price)}</span>
+          <span class="zone" style="left:4%">저평가</span>
+          <span class="zone" style="left:46%">적정</span>
+          <span class="zone" style="right:4%">고평가</span>
+        </div>
+        <div class="upside">중앙 대비 <b class="${cls(L4.upside)}">${pct(L4.upside)}</b></div>
+        <div class="vbadge ${vc}">${L4.verdict}</div>
+        <div class="gate">시장 게이트 · <b>${L3.gate}</b></div>
+        ${L1.warn?`<div class="warn">⚠ ${L1.warn}</div>`:''}
+      </div>
+      <div class="box" style="margin-top:16px">
+        <h3>쉬운 해석</h3>
+        <div class="note">${narrate(L1,L2,L3,L4,band,name,price)}</div>
+      </div>
+      <div class="box" style="margin-top:16px">
+        <h3>핵심 수치</h3>
+        <table class="lvl">
+          <tr><td>EPS (후행 / 컨센서스)</td><td>${fmt(L1.epsT)} / ${fmt(L1.epsCnsRaw)}</td></tr>
+          <tr><td>BPS · PBR</td><td>${fmt(L1.bps)} · ${L1.pbr?L1.pbr.toFixed(2):'—'}배</td></tr>
+          <tr><td>ROE (후행 / 예상)</td><td>${pct(L1.roeT)} / ${pct(L1.roeF)}</td></tr>
+          <tr><td>PER (후행)</td><td>${L1.perNow?L1.perNow.toFixed(1):'—'}배</td></tr>
+          <tr><td>배당수익률</td><td>${L1.divYield!=null?L1.divYield.toFixed(2)+'%':'—'}</td></tr>
+          <tr><td>52주 최고 / 최저</td><td>${fmt(L1.hi52)} / ${fmt(L1.lo52)}</td></tr>
+        </table>
+        <div class="note" style="margin-top:10px">밴드·판정은 규칙 기반 참고치입니다. 매수/매도 지시가 아니며,
+          컨센서스 왜곡·일회성 이익·CB 오버행 등은 별도 확인이 필요합니다.</div>
+      </div>
+    </div>
+  </div>`;
+  $('#indSlide').addEventListener('input',e=>{cur.indOverride=parseFloat(e.target.value);render();});
+  $('#indReset').addEventListener('click',()=>{cur.indOverride=null;render();});
+  $('#rSlide').addEventListener('input',e=>{cur.r=parseFloat(e.target.value);render();});
+  drawChart(c,band);
+}
+/* ── 차트: 캔들 + 밴드 수평선 ── */
+function drawChart(c,band){
+  const P=$('#px-chart');P.innerHTML='';
+  const isM=window.innerWidth<=980;
+  chart=LightweightCharts.createChart(P,{
+    layout:{background:{color:'transparent'},textColor:'#8896ae'},
+    grid:{vertLines:{visible:false},horzLines:{color:'#161f31'}},
+    rightPriceScale:{borderColor:'#26314a'},timeScale:{borderColor:'#26314a',rightOffset:4},
+    crosshair:{mode:0},height:isM?300:380,width:P.clientWidth});
+  const candle=chart.addCandlestickSeries({upColor:'#f0454e',downColor:'#3b82f6',
+    wickUpColor:'#f0454e',wickDownColor:'#3b82f6',borderVisible:false});
+  candle.setData(c.date.map((t,j)=>({time:t,open:c.open[j],high:c.high[j],low:c.low[j],close:c.close[j]})).filter(x=>x.close!=null));
+  const mkLine=(v,color,title,style)=>candle.createPriceLine({price:v,color,lineWidth:1.5,
+    lineStyle:style??LightweightCharts.LineStyle.Dashed,axisLabelVisible:true,title});
+  mkLine(band[1],'#e6b422','적정 중앙',LightweightCharts.LineStyle.Solid);
+  mkLine(band[0],'rgba(47,191,113,.9)','밴드 하단');
+  mkLine(band[2],'rgba(240,69,78,.9)','밴드 상단');
+  chart.timeScale().fitContent();
+}
+window.addEventListener('resize',()=>{if(chart){const P=$('#px-chart');
+  if(P)chart.resize(P.clientWidth,window.innerWidth<=980?300:380);}});
+
+const usp=new URLSearchParams(location.search);
+if(usp.get('code'))analyze(usp.get('code'),usp.get('name')||usp.get('code'),usp.get('market'));
+</script>
+</body>
+</html>
