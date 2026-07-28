@@ -1561,6 +1561,317 @@ async function handleForensic(req, url, env) {
 }
 
 
+/* ═══════════════════ 나의 하루 투두 (/api/todo/*) ═══════════════════
+   todo.html용 백엔드.
+   - GET/POST /api/todo/state?k=KEY  : 할 일·루틴·설정을 KV에 저장 (PC↔폰 동기화)
+   - GET      /api/todo/ics?k=KEY    : 아이폰 캘린더 구독용 ICS 피드 (앱 → 달력)
+   - GET      /api/todo/gcal?k=KEY   : 구글 캘린더 비공개 iCal 주소를 읽어 일정 반환 (달력 → 앱)
+   KEY는 개인 비밀키. 없거나 형식이 틀리면 거부한다. */
+
+const TD_BANDS = { am: 9, pm: 14, eve: 19 };
+const TD_AREA_LABEL = { work: "회사", home: "가정", self: "개인" };
+
+function tdKey(url) {
+  const k = (url.searchParams.get("k") || "").replace(/[^0-9A-Za-z_-]/g, "");
+  return k.length >= 8 && k.length <= 64 ? k : null;
+}
+
+async function tdLoad(env, k) {
+  const raw = await env.GAUGE_KV.get("todo:state:" + k);
+  if (!raw) return { tasks: [], routines: [], settings: {}, lastOpen: null };
+  try { return JSON.parse(raw); } catch (e) { return { tasks: [], routines: [], settings: {}, lastOpen: null }; }
+}
+
+function tdPad(n) { return String(n).padStart(2, "0"); }
+
+// KST 날짜(YYYY-MM-DD) + 시(0~23) → ICS UTC 문자열
+function tdUtcStamp(dateStr, hour, min) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const ms = Date.UTC(y, m - 1, d, hour - 9, min || 0, 0);
+  const t = new Date(ms);
+  return t.getUTCFullYear() + tdPad(t.getUTCMonth() + 1) + tdPad(t.getUTCDate()) + "T"
+    + tdPad(t.getUTCHours()) + tdPad(t.getUTCMinutes()) + "00Z";
+}
+
+function tdEsc(s) {
+  return String(s || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+}
+
+function tdFold(line) {
+  if (line.length <= 73) return line;
+  const out = [];
+  let s = line;
+  out.push(s.slice(0, 73));
+  s = s.slice(73);
+  while (s.length > 72) { out.push(" " + s.slice(0, 72)); s = s.slice(72); }
+  if (s) out.push(" " + s);
+  return out.join("\r\n");
+}
+
+// 루틴을 지정 날짜 범위로 전개 (ICS 피드에서 반복 일정도 보이도록)
+function tdRoutineDates(r, fromStr, toStr) {
+  const out = [];
+  const [fy, fm, fd] = fromStr.split("-").map(Number);
+  const [ty, tm, td2] = toStr.split("-").map(Number);
+  let cur = Date.UTC(fy, fm - 1, fd), end = Date.UTC(ty, tm - 1, td2);
+  while (cur <= end) {
+    const dt = new Date(cur), w = dt.getUTCDay();
+    let hit = false;
+    if (r.days === "all") hit = true;
+    else if (r.days === "weekday") hit = w >= 1 && w <= 5;
+    else if (r.days === "weekend") hit = w === 0 || w === 6;
+    else if (/^w[0-6]$/.test(r.days)) hit = w === Number(r.days[1]);
+    if (hit) out.push(dt.getUTCFullYear() + "-" + tdPad(dt.getUTCMonth() + 1) + "-" + tdPad(dt.getUTCDate()));
+    cur += 86400000;
+  }
+  return out;
+}
+
+function tdBuildIcs(state) {
+  const now = new Date();
+  const stamp = now.getUTCFullYear() + tdPad(now.getUTCMonth() + 1) + tdPad(now.getUTCDate()) + "T"
+    + tdPad(now.getUTCHours()) + tdPad(now.getUTCMinutes()) + tdPad(now.getUTCSeconds()) + "Z";
+  const kstNow = new Date(Date.now() + 9 * 3600e3);
+  const y = kstNow.getUTCFullYear(), m = kstNow.getUTCMonth(), d = kstNow.getUTCDate();
+  const from = new Date(Date.UTC(y, m, d - 30));
+  const to = new Date(Date.UTC(y, m, d + 120));
+  const fromStr = from.toISOString().slice(0, 10), toStr = to.toISOString().slice(0, 10);
+
+  const rows = [];
+  for (const t of (state.tasks || [])) {
+    if (!t.date || t.date < fromStr || t.date > toStr) continue;
+    if (t.routineId) continue;
+    rows.push({ id: t.id, date: t.date, band: t.band, area: t.area, text: t.text, done: t.done });
+  }
+  for (const r of (state.routines || [])) {
+    for (const ds of tdRoutineDates(r, fromStr, toStr)) {
+      rows.push({ id: r.id + "-" + ds.replace(/-/g, ""), date: ds, band: r.band, area: r.area, text: r.text, done: false });
+    }
+  }
+
+  const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Trend Insight//My Day Todo//KO",
+    "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "X-WR-CALNAME:나의 하루", "X-WR-TIMEZONE:Asia/Seoul",
+    "REFRESH-INTERVAL;VALUE=DURATION:PT15M", "X-PUBLISHED-TTL:PT15M"];
+  for (const r of rows) {
+    const h = TD_BANDS[r.band] !== undefined ? TD_BANDS[r.band] : 9;
+    const summary = (r.done ? "✓ " : "") + "[" + (TD_AREA_LABEL[r.area] || "개인") + "] " + r.text;
+    L.push("BEGIN:VEVENT");
+    L.push("UID:todo-" + r.id + "@trend-insight");
+    L.push("DTSTAMP:" + stamp);
+    L.push("DTSTART:" + tdUtcStamp(r.date, h, 0));
+    L.push("DTEND:" + tdUtcStamp(r.date, h, 30));
+    L.push(tdFold("SUMMARY:" + tdEsc(summary)));
+    L.push("CATEGORIES:" + (TD_AREA_LABEL[r.area] || "개인"));
+    L.push("TRANSP:TRANSPARENT");
+    L.push("END:VEVENT");
+  }
+  L.push("END:VCALENDAR");
+  return L.join("\r\n") + "\r\n";
+}
+
+/* ── 구글 캘린더 비공개 iCal 읽기 ── */
+
+function tdUnfold(text) {
+  return text.replace(/\r\n/g, "\n").replace(/\n[ \t]/g, "").split("\n");
+}
+
+function tdParseDt(val, params) {
+  // 반환: {ymd:"YYYY-MM-DD", min: 분(자정부터, KST) | null(종일)}
+  const isDate = /VALUE=DATE(?!-TIME)/.test(params || "");
+  const m = val.match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/);
+  if (!m) return null;
+  if (isDate || !m[4]) return { ymd: m[1] + "-" + m[2] + "-" + m[3], min: null };
+  let ms = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+  const tzm = (params || "").match(/TZID=([^;:]+)/);
+  if (m[7]) {
+    // UTC → KST
+    ms += 9 * 3600e3;
+  } else if (tzm && !/Seoul|Asia\/Seoul/i.test(tzm[1])) {
+    // 다른 타임존은 정확 변환 불가 — UTC로 간주 후 KST 보정
+    ms += 9 * 3600e3;
+  }
+  const d = new Date(ms);
+  return {
+    ymd: d.getUTCFullYear() + "-" + tdPad(d.getUTCMonth() + 1) + "-" + tdPad(d.getUTCDate()),
+    min: d.getUTCHours() * 60 + d.getUTCMinutes(),
+  };
+}
+
+function tdShift(ymd, days) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d + days));
+  return t.getUTCFullYear() + "-" + tdPad(t.getUTCMonth() + 1) + "-" + tdPad(t.getUTCDate());
+}
+function tdDow(ymd) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+function tdAddMonths(ymd, n) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const t = new Date(Date.UTC(y, m - 1 + n, 1));
+  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();
+  return t.getUTCFullYear() + "-" + tdPad(t.getUTCMonth() + 1) + "-" + tdPad(Math.min(d, last));
+}
+
+const TD_DAYNUM = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
+
+// RRULE 전개 (FREQ DAILY/WEEKLY/MONTHLY/YEARLY, INTERVAL, BYDAY, COUNT, UNTIL 지원)
+function tdExpand(startYmd, rrule, fromStr, toStr, exdates) {
+  const p = {};
+  for (const kv of rrule.split(";")) {
+    const i = kv.indexOf("=");
+    if (i > 0) p[kv.slice(0, i).toUpperCase()] = kv.slice(i + 1);
+  }
+  const freq = (p.FREQ || "").toUpperCase();
+  const step = Math.max(1, parseInt(p.INTERVAL || "1", 10) || 1);
+  const count = p.COUNT ? parseInt(p.COUNT, 10) : null;
+  let until = null;
+  if (p.UNTIL) { const u = tdParseDt(p.UNTIL.replace(/[^0-9TZ]/g, ""), ""); if (u) until = u.ymd; }
+  const byday = p.BYDAY ? p.BYDAY.split(",").map(s => TD_DAYNUM[s.replace(/[-+0-9]/g, "").toUpperCase()]).filter(v => v !== undefined) : null;
+  const ex = new Set(exdates || []);
+  const out = [];
+  let cur = startYmd, n = 0, guard = 0;
+  const hardEnd = until && until < toStr ? until : toStr;
+
+  if (freq === "WEEKLY" && byday && byday.length) {
+    let weekStart = tdShift(startYmd, -tdDow(startYmd));
+    while (weekStart <= hardEnd && guard++ < 800) {
+      for (const dw of byday.slice().sort((a, b) => a - b)) {
+        const ymd = tdShift(weekStart, dw);
+        if (ymd < startYmd) continue;
+        if (ymd > hardEnd) continue;
+        n++;
+        if (count && n > count) return out;
+        if (ymd >= fromStr && !ex.has(ymd)) out.push(ymd);
+      }
+      weekStart = tdShift(weekStart, 7 * step);
+    }
+    return out;
+  }
+
+  while (cur <= hardEnd && guard++ < 1200) {
+    n++;
+    if (count && n > count) break;
+    if (cur >= fromStr && !ex.has(cur)) out.push(cur);
+    if (freq === "DAILY") cur = tdShift(cur, step);
+    else if (freq === "WEEKLY") cur = tdShift(cur, 7 * step);
+    else if (freq === "MONTHLY") cur = tdAddMonths(cur, step);
+    else if (freq === "YEARLY") cur = tdAddMonths(cur, 12 * step);
+    else break;
+  }
+  return out;
+}
+
+function tdParseIcs(text, fromStr, toStr, source) {
+  const lines = tdUnfold(text);
+  const events = [];
+  let cur = null;
+  for (const line of lines) {
+    if (line === "BEGIN:VEVENT") { cur = { ex: [] }; continue; }
+    if (line === "END:VEVENT") {
+      if (cur && cur.start) {
+        const dates = cur.rrule
+          ? tdExpand(cur.start.ymd, cur.rrule, fromStr, toStr, cur.ex)
+          : (cur.start.ymd >= fromStr && cur.start.ymd <= toStr ? [cur.start.ymd] : []);
+        for (const ymd of dates) {
+          events.push({
+            date: ymd, min: cur.start.min, allDay: cur.start.min === null,
+            title: cur.summary || "(제목 없음)", loc: cur.loc || "", source,
+            uid: (cur.uid || Math.random().toString(36).slice(2)) + "-" + ymd,
+          });
+        }
+      }
+      cur = null; continue;
+    }
+    if (!cur) continue;
+    const ci = line.indexOf(":");
+    if (ci < 0) continue;
+    const head = line.slice(0, ci), val = line.slice(ci + 1);
+    const name = head.split(";")[0].toUpperCase();
+    const params = head.slice(name.length);
+    if (name === "DTSTART") cur.start = tdParseDt(val, params);
+    else if (name === "SUMMARY") cur.summary = val.replace(/\\n/g, " ").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\");
+    else if (name === "LOCATION") cur.loc = val.replace(/\\,/g, ",");
+    else if (name === "UID") cur.uid = val;
+    else if (name === "RRULE") cur.rrule = val;
+    else if (name === "EXDATE") { for (const v of val.split(",")) { const e = tdParseDt(v, params); if (e) cur.ex.push(e.ymd); } }
+    else if (name === "STATUS" && val === "CANCELLED") cur.start = null;
+  }
+  return events;
+}
+
+async function tdHandle(req, url, env, ctx) {
+  const k = tdKey(url);
+  if (!k) return new Response(JSON.stringify({ ok: false, error: "키가 필요합니다" }), { status: 401, headers: JSON_HEADERS });
+  const p = url.pathname.slice("/api/todo/".length);
+
+  try {
+    if (p === "state") {
+      if (req.method === "POST") {
+        const body = await req.text();
+        if (body.length > 900000) throw new Error("데이터가 너무 큽니다");
+        JSON.parse(body);
+        await env.GAUGE_KV.put("todo:state:" + k, body);
+        return new Response(JSON.stringify({ ok: true, savedAt: Date.now() }), { headers: JSON_HEADERS });
+      }
+      const st = await tdLoad(env, k);
+      return new Response(JSON.stringify({ ok: true, state: st }), { headers: JSON_HEADERS });
+    }
+
+    if (p === "ics") {
+      const st = await tdLoad(env, k);
+      return new Response(tdBuildIcs(st), {
+        headers: {
+          "content-type": "text/calendar; charset=utf-8",
+          "cache-control": "public, max-age=300",
+          "content-disposition": 'inline; filename="my-day.ics"',
+        },
+      });
+    }
+
+    if (p === "gcal") {
+      const st = await tdLoad(env, k);
+      const urls = ((st.settings && st.settings.icalUrls) || []).filter(u => /^https:\/\//.test(u)).slice(0, 5);
+      if (!urls.length) return new Response(JSON.stringify({ ok: true, events: [], note: "등록된 캘린더 주소가 없습니다" }), { headers: JSON_HEADERS });
+
+      const kst = new Date(Date.now() + 9 * 3600e3);
+      const y = kst.getUTCFullYear(), m = kst.getUTCMonth(), d = kst.getUTCDate();
+      const fromStr = new Date(Date.UTC(y, m, d - 14)).toISOString().slice(0, 10);
+      const toStr = new Date(Date.UTC(y, m, d + 90)).toISOString().slice(0, 10);
+
+      const cacheKey = "todo:gcal:" + k;
+      if (url.searchParams.get("refresh") !== "1") {
+        const hit = await env.GAUGE_KV.get(cacheKey);
+        if (hit) {
+          const j = JSON.parse(hit);
+          if (Date.now() - (j.at || 0) < 600000 && j.from === fromStr) return new Response(hit, { headers: JSON_HEADERS });
+        }
+      }
+
+      const all = [];
+      const errs = [];
+      for (let i = 0; i < urls.length; i++) {
+        try {
+          const r = await fetch(urls[i], { headers: { "user-agent": "Mozilla/5.0" }, cf: { cacheTtl: 300 } });
+          if (!r.ok) { errs.push("캘린더" + (i + 1) + ": HTTP " + r.status); continue; }
+          const txt = await r.text();
+          if (!/BEGIN:VCALENDAR/.test(txt)) { errs.push("캘린더" + (i + 1) + ": iCal 형식이 아닙니다"); continue; }
+          const nm = (txt.match(/X-WR-CALNAME:(.+)/) || [])[1];
+          all.push(...tdParseIcs(txt, fromStr, toStr, (nm || ("캘린더" + (i + 1))).trim()));
+        } catch (e) { errs.push("캘린더" + (i + 1) + ": " + e.message); }
+      }
+      all.sort((a, b) => (a.date === b.date ? (a.min || 0) - (b.min || 0) : a.date < b.date ? -1 : 1));
+      const payload = JSON.stringify({ ok: true, at: Date.now(), from: fromStr, to: toStr, events: all, errors: errs });
+      ctx.waitUntil(env.GAUGE_KV.put(cacheKey, payload, { expirationTtl: 3600 }));
+      return new Response(payload, { headers: JSON_HEADERS });
+    }
+
+    return new Response(JSON.stringify({ ok: false, error: "unknown endpoint" }), { status: 404, headers: JSON_HEADERS });
+  } catch (e) {
+    return new Response(JSON.stringify({ ok: false, error: e.message }), { status: 500, headers: JSON_HEADERS });
+  }
+}
+
 export default {
   async scheduled(event, env, ctx) {
     // UTC 4시 = 13:00 KST(장중 참고) / UTC 7시 = 16:00 KST(종가 확정)
@@ -1572,6 +1883,10 @@ export default {
 
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
+
+    if (url.pathname.startsWith("/api/todo/")) {
+      return tdHandle(req, url, env, ctx);
+    }
 
     if (url.pathname.startsWith("/api/risk/")) {
       return handleRisk(req, url, env);
