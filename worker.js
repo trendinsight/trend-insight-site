@@ -1857,7 +1857,9 @@ async function tdHandle(req, url, env, ctx) {
           const txt = await r.text();
           if (!/BEGIN:VCALENDAR/.test(txt)) { errs.push("캘린더" + (i + 1) + ": iCal 형식이 아닙니다"); continue; }
           const nm = (txt.match(/X-WR-CALNAME:(.+)/) || [])[1];
-          all.push(...tdParseIcs(txt, fromStr, toStr, (nm || ("캘린더" + (i + 1))).trim()));
+          const evs = tdParseIcs(txt, fromStr, toStr, (nm || ("캘린더" + (i + 1))).trim());
+          for (const e of evs) e.srcIdx = i;
+          all.push(...evs);
         } catch (e) { errs.push("캘린더" + (i + 1) + ": " + e.message); }
       }
       all.sort((a, b) => (a.date === b.date ? (a.min || 0) - (b.min || 0) : a.date < b.date ? -1 : 1));

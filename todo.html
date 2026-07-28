@@ -368,17 +368,12 @@ async function calLoad(force){
   }catch(e){CAL=[];}
 }
 
-function calArea(src){
-  const urls=S.settings.icalUrls||[], areas=S.settings.calAreas||[];
-  const i=(S.settings.calNames||[]).indexOf(src);
-  if(i>=0&&areas[i])return areas[i];
-  return S.settings.defaultCalArea||"self";
-}
 function calAreaByIdx(ev){
-  const names=S.settings.calNames||[];
-  let i=names.indexOf(ev.source);
-  if(i<0){names.push(ev.source);S.settings.calNames=names;i=names.length-1;}
-  return (S.settings.calAreas||[])[i]||"self";
+  const areas=S.settings.calAreas||[];
+  if(typeof ev.srcIdx==="number"&&areas[ev.srcIdx])return areas[ev.srcIdx];
+  const i=(S.settings.calNames||[]).indexOf(ev.source);
+  if(i>=0&&areas[i])return areas[i];
+  return "self";
 }
 
 function routineMatches(r,ds){
