@@ -71,7 +71,8 @@ h1{font-size:18px; font-weight:600;}
 .task.work{background:var(--work-bg); border-color:#cfe2f6;}
 .task.home{background:var(--home-bg); border-color:#c6e8dc;}
 .task.self{background:var(--self-bg); border-color:#f2d9cf;}
-.task{touch-action:pan-y;}
+.task,.cev{touch-action:pan-y; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
+.task .txt,.cev .txt{-webkit-user-select:none; user-select:none;}
 .task.dragging{opacity:.4;}
 .task.tdrag{opacity:.35;}
 .dragghost{position:fixed; z-index:9999; pointer-events:none; transform:translate(-50%,-50%);
@@ -503,12 +504,13 @@ function openMove(id){
       g.appendChild(btn);
     });
   });
-  document.getElementById("movedlg").showModal();
+  const dlg=document.getElementById("movedlg");
+  if(!dlg.open)dlg.showModal();
 }
 
 /* 터치 드래그 — 길게 눌러 집어서 다른 칸이나 날짜로 끌어다 놓기 */
 function attachTouchDrag(row,id){
-  let timer=null, ghost=null, active=false, sx=0, sy=0, lastEl=null;
+  let timer=null, ghost=null, active=false, sx=0, sy=0, lastEl=null, t0=0, touched=false;
   function clearHi(){
     document.querySelectorAll(".cell.dragover,.daychip.dragover").forEach(e=>e.classList.remove("dragover"));
   }
@@ -522,7 +524,7 @@ function attachTouchDrag(row,id){
   row.addEventListener("touchstart",e=>{
     if(e.touches.length!==1)return;
     if(e.target.closest("input,button"))return;
-    const t=e.touches[0];sx=t.clientX;sy=t.clientY;
+    const t=e.touches[0];sx=t.clientX;sy=t.clientY;t0=Date.now();touched=true;
     timer=setTimeout(()=>{
       active=true;
       if(navigator.vibrate)navigator.vibrate(12);
@@ -549,7 +551,13 @@ function attachTouchDrag(row,id){
   },{passive:false});
 
   row.addEventListener("touchend",e=>{
-    if(!active){clearTimeout(timer);return;}
+    if(!active){
+      clearTimeout(timer);
+      const c=e.changedTouches[0];
+      const still=Math.abs(c.clientX-sx)<12&&Math.abs(c.clientY-sy)<12;
+      if(still&&!e.target.closest("input,button")){e.preventDefault();openMove(id);}
+      return;
+    }
     const t=e.changedTouches[0];
     const el=document.elementFromPoint(t.clientX,t.clientY);
     const cell=el&&el.closest(".cell"), chip=el&&el.closest(".daychip");
@@ -562,7 +570,7 @@ function attachTouchDrag(row,id){
         toast(AREA_LABEL[cell.dataset.area]+" "+BAND_LABEL[cell.dataset.band]+"로 옮겼습니다");
       }
     }
-  });
+  },{passive:false});
   row.addEventListener("touchcancel",stop);
 }
 
