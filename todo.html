@@ -83,6 +83,8 @@ h1{font-size:18px; font-weight:600;}
 .task.done{background:var(--card); border-style:dashed;}
 .task.done .txt{text-decoration:line-through; color:var(--muted);}
 .task .rt{font-size:9.5px; color:var(--muted);}
+.task .ct{font-size:11px; font-weight:600; flex:none; margin-top:1px; opacity:.75;}
+.ovl input[type=time],.ovl input[type=date]{font-size:16px; padding:9px 11px; border:1px solid var(--line); border-radius:9px; font-family:inherit;}
 .task .mv,.task .del{border:none; background:none; color:var(--muted); font-size:14px; cursor:pointer; padding:2px 5px; margin:-2px 0; flex:none; line-height:1.2;}
 .task .mv:active,.task .del:active{color:var(--accent);}
 .cev{display:flex; align-items:flex-start; gap:5px; font-size:12.5px; line-height:1.4; padding:6px 5px; border-radius:8px;
@@ -188,7 +190,7 @@ h1{font-size:18px; font-weight:600;}
 
 <div class="foot">
   <span class="carrynote" id="carrynote"></span>
-  <span style="font-size:11px;color:var(--muted)" id="ver">v5</span>
+  <span style="font-size:11px;color:var(--muted)" id="ver">v6</span>
   <div>
     <button id="routinebtn">루틴</button>
     <button id="clearbtn">완료 정리</button>
@@ -201,6 +203,8 @@ h1{font-size:18px; font-weight:600;}
   <input type="text" id="mvtext" placeholder="할 일 이름">
   <label>날짜</label>
   <div class="mvdate"><input type="date" id="mvdateinput"><button id="mvdatebtn">날짜 이동</button></div>
+  <label>시간 (비워두면 시간 없음)</label>
+  <div class="mvdate"><input type="time" id="mvtime" step="300"><button id="mvtimeclr">시간 지우기</button></div>
   <label>영역 · 시간대</label>
   <div class="mvgrid" id="mvgrid"></div>
   <div class="btnrow"><button id="mvdel" style="color:#A32D2D">삭제</button><button id="mvclose">닫기</button><button id="mvsave" class="pri">저장</button></div>
@@ -491,6 +495,7 @@ function addFromInput(){
 function selectDate(ds){selDate=ds;weekStart=mondayOf(fromStr(ds));ensureRoutines(ds);render();}
 function moveTask(id,patch){
   const t=S.tasks.find(x=>x.id===id);if(!t)return;
+  if(patch.band&&patch.time===undefined&&t.time&&minToBand(tmin(t.time))!==patch.band)patch.time="";
   const jump=patch.date&&patch.date!==selDate;
   Object.assign(t,patch);
   if(jump)t.carried=false;
@@ -498,11 +503,16 @@ function moveTask(id,patch){
   if(jump)selectDate(patch.date);else render();
 }
 
+function tmin(hm){const m=/^(\d{1,2}):(\d{2})$/.exec(hm||"");return m?(+m[1])*60+(+m[2]):null;}
+function closeOvl(el){el.classList.remove("on");uiLock=Date.now();}
+
 function openMove(id){
+  if(Date.now()-uiLock<450)return;
   const t=S.tasks.find(x=>x.id===id);if(!t)return;
   moveId=id;
   document.getElementById("mvtext").value=t.text;
   document.getElementById("mvdateinput").value=t.date;
+  document.getElementById("mvtime").value=t.time||"";
   const g=document.getElementById("mvgrid");g.innerHTML="<div></div>";
   AREAS.forEach(([a,l])=>g.insertAdjacentHTML("beforeend","<div class='h' style='background:"+TAGCOLOR[a][0]+";color:"+TAGCOLOR[a][1]+"'>"+l+"</div>"));
   BANDS.forEach(([b,bl])=>{
@@ -513,8 +523,10 @@ function openMove(id){
       btn.className="t"+(cur?" cur":"");btn.textContent=cur?"현재":"이동";
       if(!cur)btn.addEventListener("click",()=>{
         const nt=document.getElementById("mvtext").value.trim();
-        moveTask(moveId,Object.assign({area:a,band:b},nt?{text:nt}:{}));
-        document.getElementById("movedlg").classList.remove("on");
+        const tv=document.getElementById("mvtime").value;
+        const keep=tv&&minToBand(tmin(tv))===b;
+        moveTask(moveId,Object.assign({area:a,band:b,time:keep?tv:""},nt?{text:nt}:{}));
+        closeOvl(document.getElementById("movedlg"));
         toast(AREA_LABEL[a]+" "+BAND_LABEL[b]+"로 옮겼습니다");
       });
       g.appendChild(btn);
@@ -525,9 +537,10 @@ function openMove(id){
 }
 
 /* 구글 캘린더 일정을 내 할 일로 가져오기 (가져오면 원본 노란 박스는 숨김) */
-let calEv=null;
+let calEv=null, uiLock=0;
 function grabCal(ev,a,b){
-  S.tasks.push({id:uid(),text:ev.title,area:a,band:b,date:ev.date,done:false,fromCal:ev.uid});
+  const tv=(!ev.allDay&&minToBand(ev.min)===b)?hhmm(ev.min):"";
+  S.tasks.push({id:uid(),text:ev.title,area:a,band:b,date:ev.date,done:false,fromCal:ev.uid,time:tv});
   save();render();
   toast(AREA_LABEL[a]+" "+BAND_LABEL[b]+"로 가져왔습니다");
 }
@@ -542,7 +555,7 @@ function openCalEvent(ev){
     AREAS.forEach(([a])=>{
       const btn=document.createElement("button");
       btn.className="t";btn.textContent="가져오기";
-      btn.addEventListener("click",()=>{grabCal(calEv,a,b);document.getElementById("caldlg").classList.remove("on");});
+      btn.addEventListener("click",()=>{grabCal(calEv,a,b);closeOvl(document.getElementById("caldlg"));});
       g.appendChild(btn);
     });
   });
@@ -642,6 +655,7 @@ function render(){
   renderWeek();
 
   const grabbed=new Set(S.tasks.filter(t=>t.fromCal).map(t=>t.fromCal));
+  (S.calDone||[]).forEach(u=>grabbed.add(u));
   const dayCal=CAL.filter(e=>e.date===selDate&&!grabbed.has(e.uid));
   const allday=dayCal.filter(e=>e.allDay);
   const ad=document.getElementById("allday");
@@ -673,12 +687,20 @@ function render(){
       });
 
       const items=S.tasks.filter(t=>t.date===selDate&&t.area===a&&t.band===b);
-      items.sort((x,y)=>(x.done?1:0)-(y.done?1:0));
+      items.sort((x,y)=>{
+        if((x.done?1:0)!==(y.done?1:0))return (x.done?1:0)-(y.done?1:0);
+        const mx=tmin(x.time),my=tmin(y.time);
+        if(mx===null&&my===null)return 0;
+        if(mx===null)return 1;
+        if(my===null)return -1;
+        return mx-my;
+      });
       items.forEach(t=>{
         const row=document.createElement("div");
         row.className="task "+t.area+(t.done?" done":"");
         row.draggable=true;
         row.innerHTML="<input type='checkbox' "+(t.done?"checked":"")+">"
+          +(t.time?"<span class='ct'>"+esc(t.time)+"</span>":"")
           +"<span class='txt'>"+esc(t.text)+(t.routineId?" <span class='rt'>↻</span>":"")+(t.carried?" <span class='rt'>이월</span>":"")+"</span>"
           +"<button class='mv' title='옮기기'>⤢</button><button class='del' title='삭제'>✕</button>";
         row.querySelector("input").addEventListener("change",ev=>{t.done=ev.target.checked;save();render();});
@@ -746,7 +768,7 @@ async function saveSettings(){
   S.settings.calAreas=rows.map(r=>r.querySelector("select").value);
   S.settings.calNames=[];
   save();
-  document.getElementById("setdlg").classList.remove("on");
+  closeOvl(document.getElementById("setdlg"));
   setSync("캘린더 읽는 중…");
   await calLoad(true);
   // 소스명 순서를 URL 순서에 맞춰 정렬
@@ -763,29 +785,43 @@ document.getElementById("prevwk").addEventListener("click",()=>{weekStart=addDay
 document.getElementById("nextwk").addEventListener("click",()=>{weekStart=addDays(weekStart,7);render();});
 document.getElementById("gotoday").addEventListener("click",()=>selectDate(todayStr()));
 document.getElementById("qnext").addEventListener("click",()=>{qOffset++;showQuote();});
-document.getElementById("mvclose").addEventListener("click",()=>document.getElementById("movedlg").classList.remove("on"));
+document.getElementById("mvclose").addEventListener("click",()=>closeOvl(document.getElementById("movedlg")));
 document.getElementById("mvdatebtn").addEventListener("click",()=>{
   const v=document.getElementById("mvdateinput").value;
-  if(v&&moveId){moveTask(moveId,{date:v});document.getElementById("movedlg").classList.remove("on");}
+  if(v&&moveId){moveTask(moveId,{date:v});closeOvl(document.getElementById("movedlg"));}
 });
 document.getElementById("mvsave").addEventListener("click",()=>{
   const nt=document.getElementById("mvtext").value.trim();
   const v=document.getElementById("mvdateinput").value;
-  if(moveId){moveTask(moveId,Object.assign({},nt?{text:nt}:{},v?{date:v}:{}));}
-  document.getElementById("movedlg").classList.remove("on");
+  const tv=document.getElementById("mvtime").value;
+  const patch=Object.assign({time:tv||""},nt?{text:nt}:{},v?{date:v}:{});
+  if(tv)patch.band=minToBand(tmin(tv));
+  if(moveId)moveTask(moveId,patch);
+  closeOvl(document.getElementById("movedlg"));
+  if(tv)toast(tv+"로 설정했습니다");
+});
+document.getElementById("mvtimeclr").addEventListener("click",()=>{
+  document.getElementById("mvtime").value="";
 });
 document.getElementById("mvdel").addEventListener("click",()=>{
   if(moveId){S.tasks=S.tasks.filter(x=>x.id!==moveId);save();render();}
-  document.getElementById("movedlg").classList.remove("on");
+  closeOvl(document.getElementById("movedlg"));
 });
 document.getElementById("routinebtn").addEventListener("click",()=>{renderRoutines();document.getElementById("routinedlg").classList.add("on");});
-document.getElementById("cvclose").addEventListener("click",()=>document.getElementById("caldlg").classList.remove("on"));
-document.getElementById("rclose").addEventListener("click",()=>document.getElementById("routinedlg").classList.remove("on"));
+document.getElementById("cvclose").addEventListener("click",()=>closeOvl(document.getElementById("caldlg")));
+document.getElementById("rclose").addEventListener("click",()=>closeOvl(document.getElementById("routinedlg")));
 document.getElementById("clearbtn").addEventListener("click",()=>{
+  S.calDone=S.calDone||[];
+  S.tasks.forEach(t=>{
+    if(t.date===selDate&&t.done&&!t.routineId&&t.fromCal&&S.calDone.indexOf(t.fromCal)<0)S.calDone.push(t.fromCal);
+  });
+  const cut=fmt(addDays(fromStr(todayStr()),-60));
+  S.calDone=S.calDone.filter(u=>{const m=u.match(/(\d{4}-\d{2}-\d{2})$/);return !m||m[1]>=cut;});
   S.tasks=S.tasks.filter(t=>!(t.date===selDate&&t.done&&!t.routineId));save();render();
+  toast("완료한 항목을 정리했습니다");
 });
 document.getElementById("setbtn").addEventListener("click",openSettings);
-document.getElementById("setclose").addEventListener("click",()=>document.getElementById("setdlg").classList.remove("on"));
+document.getElementById("setclose").addEventListener("click",()=>closeOvl(document.getElementById("setdlg")));
 document.getElementById("setsave").addEventListener("click",saveSettings);
 document.getElementById("subbtn").addEventListener("click",()=>{location.href=icsUrl().replace(/^https?:/,"webcal:");});
 document.getElementById("copyics").addEventListener("click",()=>{
@@ -816,7 +852,7 @@ async function refreshAll(){
 }
 
 document.querySelectorAll(".ovl").forEach(o=>{
-  o.addEventListener("click",e=>{if(e.target===o)o.classList.remove("on");});
+  o.addEventListener("click",e=>{if(e.target===o)closeOvl(o);});
 });
 
 (async function init(){

@@ -1641,7 +1641,7 @@ function tdBuildIcs(state) {
   for (const t of (state.tasks || [])) {
     if (!t.date || t.date < fromStr || t.date > toStr) continue;
     if (t.routineId) continue;
-    rows.push({ id: t.id, date: t.date, band: t.band, area: t.area, text: t.text, done: t.done });
+    rows.push({ id: t.id, date: t.date, band: t.band, area: t.area, text: t.text, done: t.done, time: t.time });
   }
   for (const r of (state.routines || [])) {
     for (const ds of tdRoutineDates(r, fromStr, toStr)) {
@@ -1653,13 +1653,15 @@ function tdBuildIcs(state) {
     "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "X-WR-CALNAME:나의 하루", "X-WR-TIMEZONE:Asia/Seoul",
     "REFRESH-INTERVAL;VALUE=DURATION:PT15M", "X-PUBLISHED-TTL:PT15M"];
   for (const r of rows) {
-    const h = TD_BANDS[r.band] !== undefined ? TD_BANDS[r.band] : 9;
+    let h = TD_BANDS[r.band] !== undefined ? TD_BANDS[r.band] : 9, mi = 0;
+    const tm = /^(\d{1,2}):(\d{2})$/.exec(r.time || "");
+    if (tm) { h = +tm[1]; mi = +tm[2]; }
     const summary = (r.done ? "✓ " : "") + "[" + (TD_AREA_LABEL[r.area] || "개인") + "] " + r.text;
     L.push("BEGIN:VEVENT");
     L.push("UID:todo-" + r.id + "@trend-insight");
     L.push("DTSTAMP:" + stamp);
-    L.push("DTSTART:" + tdUtcStamp(r.date, h, 0));
-    L.push("DTEND:" + tdUtcStamp(r.date, h, 30));
+    L.push("DTSTART:" + tdUtcStamp(r.date, h, mi));
+    L.push("DTEND:" + tdUtcStamp(r.date, h, mi + 30));
     L.push(tdFold("SUMMARY:" + tdEsc(summary)));
     L.push("CATEGORIES:" + (TD_AREA_LABEL[r.area] || "개인"));
     L.push("TRANSP:TRANSPARENT");
