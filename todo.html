@@ -180,13 +180,15 @@ h1{font-size:18px; font-weight:600;}
   <input type="text" id="quickinput" placeholder="예: 내일 오후 회사 세무사 통화">
   <button id="addbtn">추가</button>
 </div>
-<p class="hint">박스를 <b>탭</b>하면 옮기기 창, <b>꾹 눌러 끌면</b> 다른 칸이나 위쪽 날짜로 바로 이동합니다. 날짜(<b>내일·수요일·8/5</b>)·반복(<b>매일·매주 수요일</b>)·영역(<b>회사·가정·개인</b>)을 단어로 인식합니다. 노란 점선은 구글 캘린더 일정입니다.</p>
+<p class="hint"><b>색깔 박스</b>(내 할 일) — 탭하면 옮기기 창, 꾹 눌러 끌면 다른 칸·날짜로 바로 이동.
+<b>노란 점선 박스</b>(구글 캘린더 일정) — 탭해서 원하는 칸으로 가져오면 내 할 일이 되어 자유롭게 옮길 수 있습니다.
+입력창에는 날짜(<b>내일·수요일·8/5</b>)·반복(<b>매일·매주 수요일</b>)·영역(<b>회사·가정·개인</b>)을 함께 쓰면 됩니다.</p>
 
 <div class="grid" id="grid"></div>
 
 <div class="foot">
   <span class="carrynote" id="carrynote"></span>
-  <span style="font-size:11px;color:var(--muted)" id="ver">v4</span>
+  <span style="font-size:11px;color:var(--muted)" id="ver">v5</span>
   <div>
     <button id="routinebtn">루틴</button>
     <button id="clearbtn">완료 정리</button>
@@ -202,6 +204,16 @@ h1{font-size:18px; font-weight:600;}
   <label>영역 · 시간대</label>
   <div class="mvgrid" id="mvgrid"></div>
   <div class="btnrow"><button id="mvdel" style="color:#A32D2D">삭제</button><button id="mvclose">닫기</button><button id="mvsave" class="pri">저장</button></div>
+</div></div>
+
+<div class="ovl" id="caldlg"><div class="box">
+  <h3>구글 캘린더 일정</h3>
+  <div class="sub" id="cvinfo"></div>
+  <div class="steps">이 일정은 구글 캘린더에 있는 것이라 앱에서 시간을 바꿀 수 없습니다.
+    아래 칸을 누르면 <b>내 할 일로 가져와</b> 자유롭게 옮길 수 있습니다. 원래 일정 자체를 바꾸려면 아이폰 캘린더 앱에서 수정하세요.</div>
+  <label>어느 칸으로 가져올까요?</label>
+  <div class="mvgrid" id="cvgrid"></div>
+  <div class="btnrow"><button id="cvclose">닫기</button></div>
 </div></div>
 
 <div class="ovl" id="routinedlg"><div class="box">
@@ -512,6 +524,31 @@ function openMove(id){
   dlg.classList.add("on");
 }
 
+/* 구글 캘린더 일정을 내 할 일로 가져오기 (가져오면 원본 노란 박스는 숨김) */
+let calEv=null;
+function grabCal(ev,a,b){
+  S.tasks.push({id:uid(),text:ev.title,area:a,band:b,date:ev.date,done:false,fromCal:ev.uid});
+  save();render();
+  toast(AREA_LABEL[a]+" "+BAND_LABEL[b]+"로 가져왔습니다");
+}
+function openCalEvent(ev){
+  calEv=ev;
+  const t=ev.allDay?"종일":hhmm(ev.min);
+  document.getElementById("cvinfo").textContent=ev.title+" · "+ev.date.slice(5).replace("-","/")+" "+t+" · "+ev.source;
+  const g=document.getElementById("cvgrid");g.innerHTML="<div></div>";
+  AREAS.forEach(([a,l])=>g.insertAdjacentHTML("beforeend","<div class='h' style='background:"+TAGCOLOR[a][0]+";color:"+TAGCOLOR[a][1]+"'>"+l+"</div>"));
+  BANDS.forEach(([b,bl])=>{
+    g.insertAdjacentHTML("beforeend","<div class='r'>"+bl+"</div>");
+    AREAS.forEach(([a])=>{
+      const btn=document.createElement("button");
+      btn.className="t";btn.textContent="가져오기";
+      btn.addEventListener("click",()=>{grabCal(calEv,a,b);document.getElementById("caldlg").classList.remove("on");});
+      g.appendChild(btn);
+    });
+  });
+  document.getElementById("caldlg").classList.add("on");
+}
+
 /* 터치 드래그 — 길게 눌러 집어서 다른 칸이나 날짜로 끌어다 놓기 */
 function attachTouchDrag(row,id){
   let timer=null, ghost=null, active=false, sx=0, sy=0, lastEl=null, t0=0, touched=false;
@@ -604,7 +641,8 @@ function render(){
   document.getElementById("daybadge").innerHTML=(d.getMonth()+1)+"/"+d.getDate()+" ("+WNAMES[d.getDay()]+") <b>"+rel+"</b>";
   renderWeek();
 
-  const dayCal=CAL.filter(e=>e.date===selDate);
+  const grabbed=new Set(S.tasks.filter(t=>t.fromCal).map(t=>t.fromCal));
+  const dayCal=CAL.filter(e=>e.date===selDate&&!grabbed.has(e.uid));
   const allday=dayCal.filter(e=>e.allDay);
   const ad=document.getElementById("allday");
   if(allday.length){ad.style.display="block";ad.innerHTML="<b>종일</b> · "+allday.map(e=>esc(e.title)).join(" · ");}
@@ -628,11 +666,9 @@ function render(){
       dayCal.filter(e=>!e.allDay&&minToBand(e.min)===b&&calAreaByIdx(e)===a).forEach(e=>{
         const row=document.createElement("div");
         row.className="cev";
-        row.innerHTML="<span class='ct'>"+hhmm(e.min)+"</span><span class='txt'>"+esc(e.title)+"</span><button class='cp' title='할 일로 복사'>＋</button>";
-        row.querySelector(".cp").addEventListener("click",()=>{
-          S.tasks.push({id:uid(),text:e.title,area:a,band:b,date:selDate,done:false});
-          save();render();toast("할 일로 복사했습니다");
-        });
+        row.innerHTML="<span class='ct'>"+hhmm(e.min)+"</span><span class='txt'>"+esc(e.title)+"</span><button class='cp' title='이 칸으로 가져오기'>＋</button>";
+        row.querySelector(".cp").addEventListener("click",ev2=>{ev2.stopPropagation();grabCal(e,a,b);});
+        row.addEventListener("click",ev2=>{if(ev2.target.closest("button"))return;openCalEvent(e);});
         cell.appendChild(row);
       });
 
@@ -743,6 +779,7 @@ document.getElementById("mvdel").addEventListener("click",()=>{
   document.getElementById("movedlg").classList.remove("on");
 });
 document.getElementById("routinebtn").addEventListener("click",()=>{renderRoutines();document.getElementById("routinedlg").classList.add("on");});
+document.getElementById("cvclose").addEventListener("click",()=>document.getElementById("caldlg").classList.remove("on"));
 document.getElementById("rclose").addEventListener("click",()=>document.getElementById("routinedlg").classList.remove("on"));
 document.getElementById("clearbtn").addEventListener("click",()=>{
   S.tasks=S.tasks.filter(t=>!(t.date===selDate&&t.done&&!t.routineId));save();render();
