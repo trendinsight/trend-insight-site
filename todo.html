@@ -95,13 +95,16 @@ h1{font-size:18px; font-weight:600;}
 .foot button{font-size:12px; padding:6px 11px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--sub); cursor:pointer;}
 .carrynote{font-size:11.5px; color:var(--sub);}
 
-dialog{border:none; border-radius:14px; padding:20px; max-width:460px; width:92%; box-shadow:0 12px 40px rgba(0,0,0,.18);}
-dialog::backdrop{background:rgba(0,0,0,.4);}
-dialog h3{font-size:16px; margin-bottom:4px;}
-dialog .sub{font-size:12.5px; color:var(--sub); margin-bottom:12px; line-height:1.6;}
-dialog label{display:block; font-size:12.5px; color:var(--sub); margin:12px 0 5px;}
-dialog input[type=text],dialog input[type=url]{width:100%; font-size:13px; padding:9px 11px; border:1px solid var(--line); border-radius:9px; font-family:inherit;}
-dialog select{font-size:13px; padding:7px 9px; border:1px solid var(--line); border-radius:8px; background:#fff;}
+.ovl{position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,.45); z-index:1000;
+  display:none; align-items:center; justify-content:center; padding:16px;}
+.ovl.on{display:flex;}
+.ovl .box{background:#fff; border-radius:14px; padding:20px; max-width:460px; width:100%;
+  max-height:86vh; overflow-y:auto; box-shadow:0 12px 40px rgba(0,0,0,.25); -webkit-overflow-scrolling:touch;}
+.ovl h3{font-size:16px; margin-bottom:4px;}
+.ovl .sub{font-size:12.5px; color:var(--sub); margin-bottom:12px; line-height:1.6;}
+.ovl label{display:block; font-size:12.5px; color:var(--sub); margin:12px 0 5px;}
+.ovl input[type=text],.ovl input[type=url]{width:100%; font-size:16px; padding:10px 12px; border:1px solid var(--line); border-radius:9px; font-family:inherit;}
+.ovl select{font-size:14px; padding:8px 9px; border:1px solid var(--line); border-radius:8px; background:#fff;}
 .calrow{display:flex; gap:6px; align-items:center; margin-bottom:6px;}
 .calrow input{flex:1; min-width:0;}
 .linkbox{background:var(--bg); border:1px solid var(--line); border-radius:9px; padding:9px 11px; font-size:11.5px; word-break:break-all; color:var(--sub); margin-bottom:6px;}
@@ -183,13 +186,14 @@ dialog select{font-size:13px; padding:7px 9px; border:1px solid var(--line); bor
 
 <div class="foot">
   <span class="carrynote" id="carrynote"></span>
+  <span style="font-size:11px;color:var(--muted)" id="ver">v4</span>
   <div>
     <button id="routinebtn">루틴</button>
     <button id="clearbtn">완료 정리</button>
   </div>
 </div>
 
-<dialog id="movedlg">
+<div class="ovl" id="movedlg"><div class="box">
   <h3>할 일 옮기기</h3>
   <div class="sub">칸을 누르면 그 자리로 이동합니다.</div>
   <input type="text" id="mvtext" placeholder="할 일 이름">
@@ -198,15 +202,15 @@ dialog select{font-size:13px; padding:7px 9px; border:1px solid var(--line); bor
   <label>영역 · 시간대</label>
   <div class="mvgrid" id="mvgrid"></div>
   <div class="btnrow"><button id="mvdel" style="color:#A32D2D">삭제</button><button id="mvclose">닫기</button><button id="mvsave" class="pri">저장</button></div>
-</dialog>
+</div></div>
 
-<dialog id="routinedlg">
+<div class="ovl" id="routinedlg"><div class="box">
   <h3>반복 루틴</h3>
   <div class="rlist" id="rlist"></div>
   <div class="btnrow"><button id="rclose">닫기</button></div>
-</dialog>
+</div></div>
 
-<dialog id="setdlg">
+<div class="ovl" id="setdlg"><div class="box">
   <h3>캘린더 연동</h3>
   <div class="sub">아이폰 달력과 양방향으로 맞춥니다.</div>
 
@@ -225,7 +229,7 @@ dialog select{font-size:13px; padding:7px 9px; border:1px solid var(--line); bor
     <b>캘린더 통합</b> → <b>iCal 형식의 비공개 주소</b>를 복사해 붙여넣으세요. 개인·가족 캘린더를 따로 넣고 영역을 지정하면 됩니다.</div>
 
   <div class="btnrow"><button id="setclose">닫기</button><button id="setsave" class="pri">저장하고 새로고침</button></div>
-</dialog>
+</div></div>
 
 <div class="toast" id="toast"></div>
 
@@ -498,14 +502,14 @@ function openMove(id){
       if(!cur)btn.addEventListener("click",()=>{
         const nt=document.getElementById("mvtext").value.trim();
         moveTask(moveId,Object.assign({area:a,band:b},nt?{text:nt}:{}));
-        document.getElementById("movedlg").close();
+        document.getElementById("movedlg").classList.remove("on");
         toast(AREA_LABEL[a]+" "+BAND_LABEL[b]+"로 옮겼습니다");
       });
       g.appendChild(btn);
     });
   });
   const dlg=document.getElementById("movedlg");
-  if(!dlg.open)dlg.showModal();
+  dlg.classList.add("on");
 }
 
 /* 터치 드래그 — 길게 눌러 집어서 다른 칸이나 날짜로 끌어다 놓기 */
@@ -644,7 +648,7 @@ function render(){
         row.querySelector("input").addEventListener("change",ev=>{t.done=ev.target.checked;save();render();});
         row.querySelector(".mv").addEventListener("click",ev=>{ev.stopPropagation();openMove(t.id);});
         row.querySelector(".del").addEventListener("click",ev=>{ev.stopPropagation();S.tasks=S.tasks.filter(x=>x.id!==t.id);save();render();});
-        row.querySelector(".txt").addEventListener("click",()=>openMove(t.id));
+        row.addEventListener("click",ev=>{if(ev.target.closest("input,button"))return;openMove(t.id);});
         row.addEventListener("dragstart",ev=>{dragId=t.id;row.classList.add("dragging");ev.dataTransfer.effectAllowed="move";});
         row.addEventListener("dragend",()=>{row.classList.remove("dragging");dragId=null;});
         attachTouchDrag(row,t.id);
@@ -698,7 +702,7 @@ function openSettings(){
       +"<select>"+AREAS.map(([a,l])=>"<option value='"+a+"'"+(((S.settings.calAreas||[])[i]||"self")===a?" selected":"")+">"+l+"</option>").join("")+"</select>";
     rows.appendChild(div);
   });
-  document.getElementById("setdlg").showModal();
+  document.getElementById("setdlg").classList.add("on");
 }
 async function saveSettings(){
   const rows=[...document.querySelectorAll("#calrows .calrow")];
@@ -706,7 +710,7 @@ async function saveSettings(){
   S.settings.calAreas=rows.map(r=>r.querySelector("select").value);
   S.settings.calNames=[];
   save();
-  document.getElementById("setdlg").close();
+  document.getElementById("setdlg").classList.remove("on");
   setSync("캘린더 읽는 중…");
   await calLoad(true);
   // 소스명 순서를 URL 순서에 맞춰 정렬
@@ -723,28 +727,28 @@ document.getElementById("prevwk").addEventListener("click",()=>{weekStart=addDay
 document.getElementById("nextwk").addEventListener("click",()=>{weekStart=addDays(weekStart,7);render();});
 document.getElementById("gotoday").addEventListener("click",()=>selectDate(todayStr()));
 document.getElementById("qnext").addEventListener("click",()=>{qOffset++;showQuote();});
-document.getElementById("mvclose").addEventListener("click",()=>document.getElementById("movedlg").close());
+document.getElementById("mvclose").addEventListener("click",()=>document.getElementById("movedlg").classList.remove("on"));
 document.getElementById("mvdatebtn").addEventListener("click",()=>{
   const v=document.getElementById("mvdateinput").value;
-  if(v&&moveId){moveTask(moveId,{date:v});document.getElementById("movedlg").close();}
+  if(v&&moveId){moveTask(moveId,{date:v});document.getElementById("movedlg").classList.remove("on");}
 });
 document.getElementById("mvsave").addEventListener("click",()=>{
   const nt=document.getElementById("mvtext").value.trim();
   const v=document.getElementById("mvdateinput").value;
   if(moveId){moveTask(moveId,Object.assign({},nt?{text:nt}:{},v?{date:v}:{}));}
-  document.getElementById("movedlg").close();
+  document.getElementById("movedlg").classList.remove("on");
 });
 document.getElementById("mvdel").addEventListener("click",()=>{
   if(moveId){S.tasks=S.tasks.filter(x=>x.id!==moveId);save();render();}
-  document.getElementById("movedlg").close();
+  document.getElementById("movedlg").classList.remove("on");
 });
-document.getElementById("routinebtn").addEventListener("click",()=>{renderRoutines();document.getElementById("routinedlg").showModal();});
-document.getElementById("rclose").addEventListener("click",()=>document.getElementById("routinedlg").close());
+document.getElementById("routinebtn").addEventListener("click",()=>{renderRoutines();document.getElementById("routinedlg").classList.add("on");});
+document.getElementById("rclose").addEventListener("click",()=>document.getElementById("routinedlg").classList.remove("on"));
 document.getElementById("clearbtn").addEventListener("click",()=>{
   S.tasks=S.tasks.filter(t=>!(t.date===selDate&&t.done&&!t.routineId));save();render();
 });
 document.getElementById("setbtn").addEventListener("click",openSettings);
-document.getElementById("setclose").addEventListener("click",()=>document.getElementById("setdlg").close());
+document.getElementById("setclose").addEventListener("click",()=>document.getElementById("setdlg").classList.remove("on"));
 document.getElementById("setsave").addEventListener("click",saveSettings);
 document.getElementById("subbtn").addEventListener("click",()=>{location.href=icsUrl().replace(/^https?:/,"webcal:");});
 document.getElementById("copyics").addEventListener("click",()=>{
@@ -773,6 +777,10 @@ async function refreshAll(){
   if(selDate<before)selDate=before;
   render();
 }
+
+document.querySelectorAll(".ovl").forEach(o=>{
+  o.addEventListener("click",e=>{if(e.target===o)o.classList.remove("on");});
+});
 
 (async function init(){
   showQuote();
