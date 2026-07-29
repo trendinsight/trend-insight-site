@@ -190,7 +190,7 @@ h1{font-size:18px; font-weight:600;}
 
 <div class="foot">
   <span class="carrynote" id="carrynote"></span>
-  <span style="font-size:11px;color:var(--muted)" id="ver">v11</span>
+  <span style="font-size:11px;color:var(--muted)" id="ver">v12</span>
   <div>
     <button id="routinebtn">루틴</button>
     <button id="clearbtn">완료 정리</button>
@@ -244,6 +244,17 @@ h1{font-size:18px; font-weight:600;}
   <div id="calrows"></div>
   <div class="steps">구글 캘린더(PC) → 왼쪽에서 캘린더 이름 옆 <b>⋮ → 설정 및 공유</b> → 맨 아래
     <b>캘린더 통합</b> → <b>iCal 형식의 비공개 주소</b>를 복사해 붙여넣으세요. 개인·가족 캘린더를 따로 넣고 영역을 지정하면 됩니다.</div>
+
+  <label>3. 앱에서 만든 일정을 구글 캘린더에 등록 (쓰기)</label>
+  <div id="gstat" class="steps">확인 중…</div>
+  <input type="text" id="gclient" placeholder="클라이언트 ID (....apps.googleusercontent.com)" style="margin-bottom:6px">
+  <input type="text" id="gsecret" placeholder="클라이언트 시크릿 (저장 후 가려짐)">
+  <div class="btnrow" style="margin-top:8px">
+    <button id="gsave">키 저장</button><button id="gconnect" class="pri">구글 연결</button>
+  </div>
+  <label>등록할 캘린더</label>
+  <div class="mvdate"><select id="gcal" style="flex:1"><option value="primary">기본 캘린더</option></select><button id="gcalload">목록</button></div>
+  <div class="btnrow" style="margin-top:8px"><button id="gpushall">지금 전체 내보내기</button><button id="gdisconnect">연결 해제</button></div>
 
   <div class="btnrow"><button id="setclose">닫기</button><button id="setsave" class="pri">저장하고 새로고침</button></div>
 </div></div>
@@ -383,6 +394,7 @@ async function cloudLoad(){
 function save(){
   localStorage.setItem(LSC,JSON.stringify(S));
   dirty=true;
+  gSyncLater();
   if(!KEY){setSync("로컬 저장");return;}
   setSync("저장 중…");
   clearTimeout(saveTimer);
@@ -572,6 +584,7 @@ function openMove(id){
     sp.querySelector("#mvspandel").addEventListener("click",e=>{
       e.preventDefault();
       const sid=t.spanId;
+      S.tasks.filter(x=>x.spanId===sid).forEach(gTrash);
       S.tasks=S.tasks.filter(x=>x.spanId!==sid);
       save();render();closeOvl(document.getElementById("movedlg"));
       toast("기간 일정을 모두 삭제했습니다");
@@ -599,6 +612,50 @@ function openMove(id){
   const dlg=document.getElementById("movedlg");
   dlg.classList.add("on");
 }
+
+/* ── 앱 → 구글 캘린더 쓰기 ── */
+let gConnected=false, gTimer=null;
+function gTrash(t){if(t&&t.gid){S.gtrash=S.gtrash||[];S.gtrash.push(t.gid);}}
+function gsig(t){return [t.text,t.date,t.time||"",t.area].join("|");}
+
+async function gLoadCfg(){
+  if(!KEY)return null;
+  try{
+    const j=await fetch("/api/todo/gcfg?k="+KEY,{cache:"no-store"}).then(r=>r.json());
+    gConnected=!!j.connected;
+    return j;
+  }catch(e){gConnected=false;return null;}
+}
+
+async function gSync(all){
+  if(!gConnected||!KEY)return;
+  const today=todayStr(), limit=fmt(addDays(fromStr(today),90));
+  const ops=[];
+  (S.gtrash||[]).forEach(gid=>ops.push({op:"delete",gid,id:"trash:"+gid}));
+  S.tasks.forEach(t=>{
+    if(t.date<today||t.date>limit)return;
+    const sig=gsig(t);
+    if(!t.gid||t.gsig!==sig||all)ops.push({op:"upsert",id:t.id,gid:t.gid||null,task:{text:t.text,date:t.date,time:t.time||"",area:t.area}});
+  });
+  if(!ops.length)return;
+  setSync("구글 등록 중…");
+  try{
+    const j=await fetch("/api/todo/gsync?k="+KEY,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({ops})}).then(r=>r.json());
+    if(!j.ok)throw new Error(j.error||"실패");
+    let fail=0;
+    (j.results||[]).forEach(r=>{
+      if(String(r.id).indexOf("trash:")===0)return;
+      const t=S.tasks.find(x=>x.id===r.id);
+      if(!t)return;
+      if(r.ok){t.gid=r.gid;t.gsig=gsig(t);}else fail++;
+    });
+    S.gtrash=[];
+    save();
+    setSync(fail?("구글 "+fail+"건 실패"):"동기화됨",fail?"err":"ok");
+    if(all)toast("구글 캘린더로 "+ops.length+"건 내보냈습니다");
+  }catch(e){setSync("구글 등록 실패","err");if(all)toast("구글 등록 실패: "+e.message);}
+}
+function gSyncLater(){clearTimeout(gTimer);gTimer=setTimeout(()=>gSync(false),2500);}
 
 /* 구글 캘린더 일정을 내 할 일로 가져오기 (가져오면 원본 노란 박스는 숨김) */
 let calEv=null, uiLock=0;
@@ -769,7 +826,7 @@ function render(){
           +"<button class='mv' title='옮기기'>⤢</button><button class='del' title='삭제'>✕</button>";
         row.querySelector("input").addEventListener("change",ev=>{t.done=ev.target.checked;save();render();});
         row.querySelector(".mv").addEventListener("click",ev=>{ev.stopPropagation();openMove(t.id);});
-        row.querySelector(".del").addEventListener("click",ev=>{ev.stopPropagation();S.tasks=S.tasks.filter(x=>x.id!==t.id);save();render();});
+        row.querySelector(".del").addEventListener("click",ev=>{ev.stopPropagation();gTrash(t);S.tasks=S.tasks.filter(x=>x.id!==t.id);save();render();});
         row.addEventListener("click",ev=>{if(ev.target.closest("input,button"))return;openMove(t.id);});
         row.addEventListener("dragstart",ev=>{dragId=t.id;row.classList.add("dragging");ev.dataTransfer.effectAllowed="move";});
         row.addEventListener("dragend",()=>{row.classList.remove("dragging");dragId=null;});
@@ -825,6 +882,7 @@ function openSettings(){
     rows.appendChild(div);
   });
   document.getElementById("setdlg").classList.add("on");
+  gRefreshUI();
 }
 async function saveSettings(){
   const rows=[...document.querySelectorAll("#calrows .calrow")];
@@ -868,7 +926,7 @@ document.getElementById("mvtimeclr").addEventListener("click",()=>{
   document.getElementById("mvtime").value="";
 });
 document.getElementById("mvdel").addEventListener("click",()=>{
-  if(moveId){S.tasks=S.tasks.filter(x=>x.id!==moveId);save();render();}
+  if(moveId){const t=S.tasks.find(x=>x.id===moveId);if(t)gTrash(t);S.tasks=S.tasks.filter(x=>x.id!==moveId);save();render();}
   closeOvl(document.getElementById("movedlg"));
 });
 document.getElementById("routinebtn").addEventListener("click",()=>{renderRoutines();document.getElementById("routinedlg").classList.add("on");});
@@ -885,10 +943,53 @@ document.getElementById("clearbtn").addEventListener("click",()=>{
   gone.forEach(t=>{if(t.fromCal&&S.calDone.indexOf(t.fromCal)<0)S.calDone.push(t.fromCal);});
   const cut=fmt(addDays(fromStr(todayStr()),-60));
   S.calDone=S.calDone.filter(u=>{const m=u.match(/(\d{4}-\d{2}-\d{2})$/);return !m||m[1]>=cut;});
+  S.tasks.filter(t=>t.done&&!t.routineId).forEach(gTrash);
   S.tasks=S.tasks.filter(t=>!(t.done&&!t.routineId));
   save();render();
   toast("완료 "+gone.length+"건을 정리했습니다"+(routineDone?" (반복 루틴 "+routineDone+"건 유지)":""));
 });
+async function gRefreshUI(){
+  const el=document.getElementById("gstat");
+  const j=await gLoadCfg();
+  if(!j){el.textContent="키가 없어 구글 연결을 쓸 수 없습니다.";return;}
+  document.getElementById("gclient").value=j.clientId||"";
+  document.getElementById("gsecret").placeholder=j.hasClient?"저장됨 (바꿀 때만 입력)":"클라이언트 시크릿";
+  const sel=document.getElementById("gcal");
+  if(![...sel.options].some(o=>o.value===j.calendarId)){
+    const o=document.createElement("option");o.value=j.calendarId;o.textContent=j.calendarId;sel.appendChild(o);
+  }
+  sel.value=j.calendarId;
+  el.innerHTML=j.connected
+    ? "<b style='color:#0F6E56'>연결됨</b> · 앱에서 만든 일정이 구글 캘린더에 자동 등록됩니다."
+    : "<b>미연결</b> · 구글 클라우드에서 OAuth 클라이언트를 만들고 아래에 입력한 뒤 [구글 연결]을 누르세요.<br>"
+      +"승인된 리디렉션 URI: <b style='word-break:break-all'>"+j.redirectUri+"</b>";
+}
+document.getElementById("gsave").addEventListener("click",async()=>{
+  const body={client_id:document.getElementById("gclient").value.trim(),
+              calendar_id:document.getElementById("gcal").value};
+  const s=document.getElementById("gsecret").value.trim();
+  if(s)body.client_secret=s;
+  await fetch("/api/todo/gcfg?k="+KEY,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
+  document.getElementById("gsecret").value="";
+  toast("저장했습니다");gRefreshUI();
+});
+document.getElementById("gconnect").addEventListener("click",()=>{location.href="/api/todo/oauth/start?k="+KEY;});
+document.getElementById("gcalload").addEventListener("click",async()=>{
+  try{
+    const j=await fetch("/api/todo/gcals?k="+KEY).then(r=>r.json());
+    if(!j.ok)throw new Error(j.error);
+    const sel=document.getElementById("gcal");sel.innerHTML="";
+    (j.calendars||[]).forEach(c=>{const o=document.createElement("option");o.value=c.id;o.textContent=c.summary;sel.appendChild(o);});
+    toast("캘린더 "+(j.calendars||[]).length+"개를 불러왔습니다");
+  }catch(e){toast("불러오기 실패: "+e.message);}
+});
+document.getElementById("gpushall").addEventListener("click",()=>{gSync(true);});
+document.getElementById("gdisconnect").addEventListener("click",async()=>{
+  await fetch("/api/todo/gcfg?k="+KEY,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({disconnect:true})});
+  S.tasks.forEach(t=>{delete t.gid;delete t.gsig;});save();
+  toast("연결을 해제했습니다");gRefreshUI();
+});
+
 document.getElementById("setbtn").addEventListener("click",openSettings);
 document.getElementById("setclose").addEventListener("click",()=>closeOvl(document.getElementById("setdlg")));
 document.getElementById("setsave").addEventListener("click",saveSettings);
@@ -931,6 +1032,7 @@ document.querySelectorAll(".ovl").forEach(o=>{
   render();
   if(!KEY){setSync("로컬 모드","err");}
   await refreshAll();
+  await gLoadCfg();
   setInterval(()=>{if(!document.hidden)render();},60000);
   setInterval(()=>{if(!document.hidden)calLoad(false).then(render);},900000);
 })();

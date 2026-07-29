@@ -1802,7 +1802,149 @@ function tdParseIcs(text, fromStr, toStr, source) {
   return events;
 }
 
+/* ── 구글 캘린더 쓰기 (OAuth, 서버 보관 리프레시 토큰) ── */
+
+async function tdGCfg(env, k) {
+  const raw = await env.GAUGE_KV.get("todo:gcfg:" + k);
+  return raw ? JSON.parse(raw) : {};
+}
+async function tdGCfgPut(env, k, cfg) {
+  await env.GAUGE_KV.put("todo:gcfg:" + k, JSON.stringify(cfg));
+}
+
+async function tdGToken(env, k) {
+  const cfg = await tdGCfg(env, k);
+  if (!cfg.client_id || !cfg.client_secret) throw new Error("구글 클라이언트 정보가 없습니다");
+  if (!cfg.refresh_token) throw new Error("구글 연결이 필요합니다");
+  const body = new URLSearchParams({
+    client_id: cfg.client_id, client_secret: cfg.client_secret,
+    refresh_token: cfg.refresh_token, grant_type: "refresh_token",
+  });
+  const r = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body,
+  });
+  const j = await r.json();
+  if (!j.access_token) throw new Error("토큰 갱신 실패: " + (j.error_description || j.error || r.status));
+  return { token: j.access_token, cfg };
+}
+
+function tdEventBody(t) {
+  const tm = /^(\d{1,2}):(\d{2})$/.exec(t.time || "");
+  const summary = "[" + (TD_AREA_LABEL[t.area] || "개인") + "] " + t.text;
+  if (tm) {
+    const sh = tdPad(+tm[1]), sm = tdPad(+tm[2]);
+    const endMin = (+tm[1]) * 60 + (+tm[2]) + 60;
+    const eh = tdPad(Math.floor(endMin / 60) % 24), em = tdPad(endMin % 60);
+    return {
+      summary,
+      start: { dateTime: t.date + "T" + sh + ":" + sm + ":00", timeZone: "Asia/Seoul" },
+      end: { dateTime: t.date + "T" + eh + ":" + em + ":00", timeZone: "Asia/Seoul" },
+      description: "나의 하루 앱에서 등록",
+    };
+  }
+  const [y, m, d] = t.date.split("-").map(Number);
+  const nx = new Date(Date.UTC(y, m - 1, d + 1));
+  const nxs = nx.getUTCFullYear() + "-" + tdPad(nx.getUTCMonth() + 1) + "-" + tdPad(nx.getUTCDate());
+  return { summary, start: { date: t.date }, end: { date: nxs }, description: "나의 하루 앱에서 등록" };
+}
+
+async function tdGCall(token, calId, method, path, body) {
+  const url = "https://www.googleapis.com/calendar/v3/calendars/" + encodeURIComponent(calId) + "/events" + (path || "");
+  const r = await fetch(url, {
+    method,
+    headers: { authorization: "Bearer " + token, "content-type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (method === "DELETE") return { ok: r.ok || r.status === 410 || r.status === 404 };
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((j.error && j.error.message) || ("HTTP " + r.status));
+  return j;
+}
+
+async function tdGSync(req, url, env, k) {
+  const payload = await req.json();
+  const ops = Array.isArray(payload.ops) ? payload.ops.slice(0, 60) : [];
+  const { token, cfg } = await tdGToken(env, k);
+  const calId = cfg.calendar_id || "primary";
+  const results = [];
+  for (const o of ops) {
+    try {
+      if (o.op === "delete") {
+        if (o.gid) await tdGCall(token, calId, "DELETE", "/" + encodeURIComponent(o.gid));
+        results.push({ id: o.id, gid: null, ok: true });
+      } else if (o.gid) {
+        const j = await tdGCall(token, calId, "PATCH", "/" + encodeURIComponent(o.gid), tdEventBody(o.task));
+        results.push({ id: o.id, gid: j.id || o.gid, ok: true });
+      } else {
+        const j = await tdGCall(token, calId, "POST", "", tdEventBody(o.task));
+        results.push({ id: o.id, gid: j.id, ok: true });
+      }
+    } catch (e) {
+      const msg = String(e.message || e);
+      if (/404|410|Not Found/i.test(msg) && o.op !== "delete") {
+        try {
+          const j = await tdGCall(token, calId, "POST", "", tdEventBody(o.task));
+          results.push({ id: o.id, gid: j.id, ok: true });
+          continue;
+        } catch (e2) { results.push({ id: o.id, ok: false, error: String(e2.message || e2) }); continue; }
+      }
+      results.push({ id: o.id, ok: false, error: msg });
+    }
+  }
+  return new Response(JSON.stringify({ ok: true, results, calendarId: calId }), { headers: JSON_HEADERS });
+}
+
+function tdOAuthStart(url, k, cfg) {
+  const redirect = url.origin + "/api/todo/oauth/callback";
+  const p = new URLSearchParams({
+    client_id: cfg.client_id, redirect_uri: redirect, response_type: "code",
+    scope: "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly",
+    access_type: "offline", prompt: "consent", include_granted_scopes: "true", state: k,
+  });
+  return Response.redirect("https://accounts.google.com/o/oauth2/v2/auth?" + p.toString(), 302);
+}
+
+function tdHtml(title, msg, ok) {
+  return new Response("<!DOCTYPE html><html lang=ko><head><meta charset=UTF-8>"
+    + "<meta name=viewport content='width=device-width,initial-scale=1'><title>" + title + "</title>"
+    + "<style>body{font-family:-apple-system,'Apple SD Gothic Neo',sans-serif;background:#f6f5f1;color:#22211e;"
+    + "display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px}"
+    + ".c{background:#fff;border-radius:14px;padding:28px;max-width:420px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.1)}"
+    + "h1{font-size:19px;margin:0 0 10px;color:" + (ok ? "#0F6E56" : "#A32D2D") + "}"
+    + "p{font-size:14px;line-height:1.7;color:#5f5e5a;margin:0 0 18px}"
+    + "a{display:inline-block;background:#22211e;color:#fff;text-decoration:none;padding:11px 22px;border-radius:9px;font-size:14px}</style>"
+    + "</head><body><div class=c><h1>" + title + "</h1><p>" + msg + "</p><a href='/todo'>앱으로 돌아가기</a></div></body></html>",
+    { headers: { "content-type": "text/html; charset=utf-8" } });
+}
+
+async function tdOAuthCallback(url, env) {
+  const k = (url.searchParams.get("state") || "").replace(/[^0-9A-Za-z_-]/g, "");
+  const code = url.searchParams.get("code");
+  const err = url.searchParams.get("error");
+  if (err) return tdHtml("연결 취소됨", "구글 연결이 취소되었습니다. (" + err + ")", false);
+  if (!k || !code) return tdHtml("연결 실패", "필요한 정보가 없습니다.", false);
+  const cfg = await tdGCfg(env, k);
+  if (!cfg.client_id || !cfg.client_secret) return tdHtml("연결 실패", "클라이언트 정보를 먼저 저장하세요.", false);
+  const body = new URLSearchParams({
+    code, client_id: cfg.client_id, client_secret: cfg.client_secret,
+    redirect_uri: url.origin + "/api/todo/oauth/callback", grant_type: "authorization_code",
+  });
+  const r = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body,
+  });
+  const j = await r.json();
+  if (!j.refresh_token) {
+    return tdHtml("연결 실패", "리프레시 토큰을 받지 못했습니다: " + (j.error_description || j.error || "알 수 없음")
+      + "<br>구글 계정 → 보안 → 서드파티 앱에서 기존 권한을 삭제한 뒤 다시 시도하세요.", false);
+  }
+  cfg.refresh_token = j.refresh_token;
+  cfg.connected_at = Date.now();
+  await tdGCfgPut(env, k, cfg);
+  return tdHtml("구글 캘린더 연결 완료", "이제 앱에서 만든 일정이 구글 캘린더에 자동으로 등록됩니다.", true);
+}
+
 async function tdHandle(req, url, env, ctx) {
+  if (url.pathname === "/api/todo/oauth/callback") return tdOAuthCallback(url, env);
   const k = tdKey(url);
   if (!k) return new Response(JSON.stringify({ ok: false, error: "키가 필요합니다" }), { status: 401, headers: JSON_HEADERS });
   const p = url.pathname.slice("/api/todo/".length);
@@ -1818,6 +1960,45 @@ async function tdHandle(req, url, env, ctx) {
       }
       const st = await tdLoad(env, k);
       return new Response(JSON.stringify({ ok: true, state: st }), { headers: JSON_HEADERS });
+    }
+
+    if (p === "gcfg") {
+      if (req.method === "POST") {
+        const b = await req.json();
+        const cfg = await tdGCfg(env, k);
+        if (b.client_id !== undefined) cfg.client_id = String(b.client_id || "").trim();
+        if (b.client_secret !== undefined && b.client_secret !== "") cfg.client_secret = String(b.client_secret).trim();
+        if (b.calendar_id !== undefined) cfg.calendar_id = String(b.calendar_id || "primary").trim();
+        if (b.disconnect) { delete cfg.refresh_token; delete cfg.connected_at; }
+        await tdGCfgPut(env, k, cfg);
+        return new Response(JSON.stringify({ ok: true }), { headers: JSON_HEADERS });
+      }
+      const cfg = await tdGCfg(env, k);
+      return new Response(JSON.stringify({
+        ok: true, hasClient: !!(cfg.client_id && cfg.client_secret),
+        connected: !!cfg.refresh_token, clientId: cfg.client_id || "",
+        calendarId: cfg.calendar_id || "primary",
+        redirectUri: url.origin + "/api/todo/oauth/callback",
+      }), { headers: JSON_HEADERS });
+    }
+
+    if (p === "oauth/start") {
+      const cfg = await tdGCfg(env, k);
+      if (!cfg.client_id) return tdHtml("설정 필요", "앱 설정에서 클라이언트 ID와 시크릿을 먼저 저장하세요.", false);
+      return tdOAuthStart(url, k, cfg);
+    }
+
+    if (p === "gsync" && req.method === "POST") return tdGSync(req, url, env, k);
+
+    if (p === "gcals") {
+      const { token } = await tdGToken(env, k);
+      const r = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList", {
+        headers: { authorization: "Bearer " + token },
+      });
+      const j = await r.json();
+      const list = (j.items || []).filter(c => c.accessRole === "owner" || c.accessRole === "writer")
+        .map(c => ({ id: c.id, summary: c.summary }));
+      return new Response(JSON.stringify({ ok: true, calendars: list }), { headers: JSON_HEADERS });
     }
 
     if (p === "ics") {
