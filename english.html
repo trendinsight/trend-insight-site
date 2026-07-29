@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="robots" content="noindex">
+<title>English Lab — 영어 학습</title>
+<style>
+:root{
+  --bg:#0f1220; --card:#1a1f35; --card2:#232948; --line:#2e3558;
+  --txt:#eef1ff; --sub:#9aa3c7; --accent:#5b8cff; --green:#3ecf8e; --red:#ff6b6b;
+  --yellow:#ffd166; --purple:#a78bfa; --pink:#f472b6;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Apple SD Gothic Neo','Pretendard','Noto Sans KR',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;padding-bottom:80px}
+.wrap{max-width:560px;margin:0 auto;padding:16px}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 4px}
+header h1{font-size:20px;font-weight:800;background:linear-gradient(90deg,#5b8cff,#a78bfa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.streak{font-size:14px;font-weight:700;color:var(--yellow)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px}
+.tabbar{position:fixed;bottom:0;left:0;right:0;background:rgba(20,24,44,.97);border-top:1px solid var(--line);display:flex;z-index:50;backdrop-filter:blur(8px)}
+.tabbar button{flex:1;background:none;border:none;color:var(--sub);padding:10px 0 max(10px,env(safe-area-inset-bottom));font-size:11px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
+.tabbar button .ic{font-size:20px}
+.tabbar button.on{color:var(--accent);font-weight:700}
+.page{display:none}.page.on{display:block;animation:fade .25s}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.h2{font-size:17px;font-weight:800;margin-bottom:10px}
+.sub{color:var(--sub);font-size:13px;line-height:1.5}
+.btn{display:inline-block;border:none;border-radius:12px;padding:13px 18px;font-size:15px;font-weight:700;cursor:pointer;color:#fff;background:var(--accent);transition:transform .1s}
+.btn:active{transform:scale(.96)}
+.btn.ghost{background:var(--card2);border:1px solid var(--line)}
+.btn.green{background:var(--green);color:#06281a}
+.btn.red{background:var(--red)}
+.btn.full{width:100%;text-align:center}
+.btn.sm{padding:8px 12px;font-size:13px;border-radius:10px}
+.row{display:flex;gap:10px}
+.xpbar{height:10px;background:var(--card2);border-radius:6px;overflow:hidden;margin-top:8px}
+.xpbar i{display:block;height:100%;background:linear-gradient(90deg,#5b8cff,#a78bfa);border-radius:6px;transition:width .4s}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modecard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;cursor:pointer;transition:transform .1s}
+.modecard:active{transform:scale(.97)}
+.modecard .ic{font-size:26px}
+.modecard b{display:block;margin:8px 0 4px;font-size:15px}
+.modecard span{font-size:12px;color:var(--sub)}
+.pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:var(--card2);color:var(--sub);margin-right:6px}
+.pill.g{background:rgba(62,207,142,.15);color:var(--green)}
+.pill.b{background:rgba(91,140,255,.15);color:var(--accent)}
+.pill.p{background:rgba(167,139,250,.15);color:var(--purple)}
+.pill.y{background:rgba(255,209,102,.15);color:var(--yellow)}
+.big-en{font-size:22px;font-weight:800;line-height:1.4;margin:10px 0}
+.big-ko{font-size:15px;color:var(--sub);margin-bottom:14px}
+.diffword{padding:1px 3px;border-radius:5px}
+.diffword.ok{color:var(--green)}
+.diffword.miss{color:var(--red);text-decoration:underline}
+.score-ring{font-size:34px;font-weight:900;text-align:center;margin:8px 0}
+.choice{display:block;width:100%;text-align:left;background:var(--card2);border:1.5px solid var(--line);color:var(--txt);border-radius:12px;padding:14px;font-size:15px;margin-bottom:10px;cursor:pointer}
+.choice.ok{border-color:var(--green);background:rgba(62,207,142,.12)}
+.choice.no{border-color:var(--red);background:rgba(255,107,107,.12)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.chip{background:var(--card2);border:1.5px solid var(--line);color:var(--txt);border-radius:10px;padding:9px 13px;font-size:15px;cursor:pointer}
+.chip.used{opacity:.25;pointer-events:none}
+.answer-line{min-height:46px;border-bottom:2px dashed var(--line);display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:6px 0;margin-bottom:6px}
+.vidcard{display:flex;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px;cursor:pointer;align-items:center}
+.vidcard img{width:110px;border-radius:10px}
+.vidcard b{font-size:14px;display:block;margin-bottom:4px}
+.vidcard span{font-size:12px;color:var(--sub)}
+.videobox{position:relative;padding-top:56.25%;border-radius:14px;overflow:hidden;margin-bottom:14px}
+.videobox iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.expr-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.expr-row:last-child{border-bottom:none}
+.expr-row b{font-size:15px;display:block}
+.expr-row small{color:var(--sub);font-size:12.5px}
+.spk{background:var(--card2);border:1px solid var(--line);color:var(--accent);border-radius:10px;width:38px;height:38px;font-size:16px;cursor:pointer;flex-shrink:0}
+.flashcard{background:linear-gradient(135deg,#232948,#1a1f35);border:1px solid var(--line);border-radius:20px;min-height:230px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:24px;cursor:pointer;margin-bottom:14px}
+.flashcard .front{font-size:24px;font-weight:800}
+.flashcard .back-ko{font-size:19px;font-weight:700;color:var(--purple)}
+.flashcard .ex{margin-top:14px;font-size:14px;color:var(--sub);line-height:1.6}
+.srs-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.mic-status{text-align:center;padding:10px;font-size:14px;color:var(--sub);min-height:40px}
+.mic-btn{width:76px;height:76px;border-radius:50%;border:none;font-size:30px;cursor:pointer;background:var(--accent);color:#fff;display:block;margin:6px auto;transition:all .2s}
+.mic-btn.rec{background:var(--red);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,107,107,.5)}50%{box-shadow:0 0 0 16px rgba(255,107,107,0)}}
+.progress-txt{font-size:12px;color:var(--sub);text-align:center;margin-bottom:8px}
+.toast{position:fixed;top:18px;left:50%;transform:translateX(-50%);background:var(--green);color:#06281a;font-weight:800;padding:10px 20px;border-radius:99px;z-index:99;font-size:14px;animation:fade .3s}
+.center{text-align:center}
+.mt{margin-top:12px}.mb{margin-bottom:12px}
+.stat3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center}
+.stat3 .card{padding:12px;margin:0}
+.stat3 b{font-size:20px;display:block}
+.stat3 span{font-size:11px;color:var(--sub)}
+.dot-progress{display:flex;gap:5px;justify-content:center;margin-bottom:12px}
+.dot-progress i{width:8px;height:8px;border-radius:50%;background:var(--card2)}
+.dot-progress i.done{background:var(--green)}
+.dot-progress i.cur{background:var(--accent)}
+.back-btn{background:none;border:none;color:var(--accent);font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;padding:4px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>🇺🇸 English Lab</h1>
+  <div class="streak">🔥 <span id="streakDays">0</span>일</div>
+</header>
+
+<div class="wrap">
+
+<!-- ============ HOME ============ -->
+<div class="page on" id="page-home">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div><b style="font-size:16px">Lv.<span id="lvl">1</span></b> <span class="sub" id="lvlName">Beginner</span></div>
+      <span class="sub"><span id="xpNow">0</span> / <span id="xpNext">100</span> XP</span>
+    </div>
+    <div class="xpbar"><i id="xpFill" style="width:0%"></i></div>
+    <div class="mt sub">오늘 목표: <b id="todayXp" style="color:var(--txt)">0</b> / 50 XP
+      <span id="goalDone" style="display:none;color:var(--green);font-weight:700"> · 달성! ✅</span>
+    </div>
+  </div>
+
+  <div class="stat3 mb">
+    <div class="card"><b id="stTotal">0</b><span>총 XP</span></div>
+    <div class="card"><b id="stCards">0</b><span>복습 대기 카드</span></div>
+    <div class="card"><b id="stQuiz">0%</b><span>퀴즈 정답률</span></div>
+  </div>
+
+  <div class="grid2">
+    <div class="modecard" onclick="go('speak')"><span class="ic">🎙️</span><b>말하기 연습</b><span>스픽식 · 발음 인식 채점</span></div>
+    <div class="modecard" onclick="go('quiz')"><span class="ic">🧩</span><b>퀴즈</b><span>듀오링고식 · XP 획득</span></div>
+    <div class="modecard" onclick="go('video')"><span class="ic">🎬</span><b>영상 학습</b><span>TED식 · 리스닝</span></div>
+    <div class="modecard" onclick="go('cards')"><span class="ic">🃏</span><b>표현 카드</b><span>케이크식 · 간격 반복</span></div>
+  </div>
+
+  <div class="card mt">
+    <span class="pill p">오늘의 표현</span>
+    <div class="big-en" id="dailyEn" style="font-size:19px"></div>
+    <div class="big-ko" id="dailyKo" style="margin-bottom:6px"></div>
+    <button class="btn sm ghost" onclick="say(document.getElementById('dailyEn').textContent)">🔊 듣기</button>
+  </div>
+</div>
+
+<!-- ============ SPEAK ============ -->
+<div class="page" id="page-speak">
+  <div class="h2">🎙️ 말하기 연습 <span class="pill b">스픽식</span></div>
+  <p class="sub mb">문장을 듣고 소리 내어 따라 말하세요. 음성인식으로 채점합니다.</p>
+  <div class="progress-txt"><span id="spkIdx">1</span> / <span id="spkTotal">30</span></div>
+  <div class="card">
+    <span class="pill y">이 문장을 말해보세요</span>
+    <div class="big-ko" id="spkKo" style="margin-top:10px"></div>
+    <div class="big-en" id="spkEn"></div>
+    <div class="row mb">
+      <button class="btn sm ghost" onclick="speakListen()">🔊 원어민 듣기</button>
+      <button class="btn sm ghost" id="spkToggle" onclick="toggleEn()">🙈 영어 가리기</button>
+    </div>
+    <button class="mic-btn" id="micBtn" onclick="startRec()">🎤</button>
+    <div class="mic-status" id="micStatus">마이크 버튼을 눌러 말하세요</div>
+    <div id="spkResult"></div>
+  </div>
+  <div class="row">
+    <button class="btn ghost full" onclick="prevSpk()">← 이전</button>
+    <button class="btn full" onclick="nextSpk()">다음 →</button>
+  </div>
+</div>
+
+<!-- ============ QUIZ ============ -->
+<div class="page" id="page-quiz">
+  <div class="h2">🧩 퀴즈 <span class="pill g">듀오링고식</span></div>
+  <div id="quizHome">
+    <div class="card center">
+      <div style="font-size:44px">🏁</div>
+      <p class="sub mt mb">객관식·빈칸·문장 배열 10문제가 랜덤 출제됩니다.<br>정답당 +10 XP</p>
+      <button class="btn full" onclick="startQuiz()">퀴즈 시작</button>
+    </div>
+    <div class="card">
+      <b>누적 기록</b>
+      <p class="sub mt">푼 문제 <b id="qTotalN" style="color:var(--txt)">0</b>개 · 정답 <b id="qCorrectN" style="color:var(--txt)">0</b>개</p>
+    </div>
+  </div>
+  <div id="quizPlay" style="display:none">
+    <div class="dot-progress" id="quizDots"></div>
+    <div class="card" id="quizCard"></div>
+    <div id="quizFeedback"></div>
+  </div>
+  <div id="quizEnd" style="display:none">
+    <div class="card center">
+      <div style="font-size:44px">🎉</div>
+      <div class="score-ring"><span id="quizScore"></span></div>
+      <p class="sub mb" id="quizEndMsg"></p>
+      <button class="btn full mb" onclick="startQuiz()">다시 도전</button>
+      <button class="btn ghost full" onclick="quizToHome()">퀴즈 홈으로</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ VIDEO ============ -->
+<div class="page" id="page-video">
+  <div class="h2">🎬 영상 학습 <span class="pill p">TED식</span></div>
+  <div id="vidList"></div>
+  <div id="vidDetail" style="display:none"></div>
+</div>
+
+<!-- ============ CARDS ============ -->
+<div class="page" id="page-cards">
+  <div class="h2">🃏 표현 카드 <span class="pill y">케이크식</span></div>
+  <div id="cardsHome">
+    <div class="card center">
+      <div style="font-size:44px">📚</div>
+      <p class="sub mt">오늘 복습할 카드 <b id="dueCount" style="color:var(--txt);font-size:18px">0</b>장</p>
+      <p class="sub mb">기억 정도에 따라 다음 복습 간격이 자동 조정됩니다 (간격 반복 학습)</p>
+      <button class="btn full" onclick="startCards()">복습 시작</button>
+    </div>
+    <div class="card">
+      <b>전체 덱</b> <span class="sub">— <span id="deckSize">0</span>개 표현</span>
+      <p class="sub mt">새 카드는 매일 자동으로 섞여 추가됩니다.</p>
+    </div>
+  </div>
+  <div id="cardsPlay" style="display:none">
+    <div class="progress-txt">남은 카드 <span id="cardsLeft">0</span>장</div>
+    <div class="flashcard" id="flash" onclick="flipCard()"></div>
+    <div class="center mb"><button class="btn sm ghost" onclick="event.stopPropagation();sayCur()">🔊 발음 듣기</button></div>
+    <div class="srs-btns" id="srsBtns" style="visibility:hidden">
+      <button class="btn red" onclick="grade(0)">🌧️ 다시<br><small>1일 후</small></button>
+      <button class="btn ghost" onclick="grade(1)">🌤️ 애매함<br><small>3일 후</small></button>
+      <button class="btn green" onclick="grade(2)">☀️ 완벽<br><small id="easyIv">7일 후</small></button>
+    </div>
+    <div class="center mt"><button class="back-btn" onclick="endCards()">종료하기</button></div>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<div class="tabbar">
+  <button id="tab-home" class="on" onclick="go('home')"><span class="ic">🏠</span>홈</button>
+  <button id="tab-speak" onclick="go('speak')"><span class="ic">🎙️</span>말하기</button>
+  <button id="tab-quiz" onclick="go('quiz')"><span class="ic">🧩</span>퀴즈</button>
+  <button id="tab-video" onclick="go('video')"><span class="ic">🎬</span>영상</button>
+  <button id="tab-cards" onclick="go('cards')"><span class="ic">🃏</span>표현</button>
+</div>
+
+<script>
+/* ==================== DATA ==================== */
+const SPEAK_SENTENCES=[
+ {ko:"우리 마지막으로 본 지 꽤 됐네요.",en:"It's been a while since we last met."},
+ {ko:"주말이 정말 기대돼요.",en:"I'm really looking forward to the weekend."},
+ {ko:"이것 좀 도와주실래요?",en:"Could you give me a hand with this?"},
+ {ko:"방해할 생각은 아니었어요.",en:"I didn't mean to interrupt you."},
+ {ko:"그거 좋은 생각인 것 같아요.",en:"That sounds like a great idea."},
+ {ko:"제시간에 도착할 수 있을지 모르겠어요.",en:"I'm not sure if I can make it on time."},
+ {ko:"그 건은 제가 다시 연락드릴게요.",en:"Let me get back to you on that."},
+ {ko:"완전히 깜빡했어요.",en:"It totally slipped my mind."},
+ {ko:"그것에 대해 마음이 복잡해요.",en:"I have mixed feelings about it."},
+ {ko:"정말 맞는 말이에요.",en:"You can say that again."},
+ {ko:"행운을 빌게요.",en:"I'll keep my fingers crossed for you."},
+ {ko:"그럴 만한 가치가 없어요.",en:"It's not worth the trouble."},
+ {ko:"막 전화하려던 참이었어요.",en:"I was just about to call you."},
+ {ko:"일이 계획대로 되지 않았어요.",en:"Things didn't go as planned."},
+ {ko:"뭐라 감사해야 할지 모르겠어요.",en:"I can't thank you enough."},
+ {ko:"상황 봐서 정하죠.",en:"Let's play it by ear."},
+ {ko:"이번 달은 예산이 빠듯해요.",en:"I'm on a tight budget this month."},
+ {ko:"일생에 한 번뿐인 기회예요.",en:"It's a once in a lifetime opportunity."},
+ {ko:"성급하게 결론 내리지 마세요.",en:"Don't jump to conclusions."},
+ {ko:"전적으로 동의해요.",en:"I couldn't agree with you more."},
+ {ko:"본론으로 들어갑시다.",en:"Let's get down to business."},
+ {ko:"죄송하지만 동의하기 어렵네요.",en:"I'm afraid I have to disagree."},
+ {ko:"당신에게 달렸어요.",en:"It's up to you."},
+ {ko:"빠를수록 좋아요.",en:"The sooner the better."},
+ {ko:"제가 꼭 보답할게요.",en:"I'll make it up to you."},
+ {ko:"그러니까 이해가 되네요.",en:"That explains a lot."},
+ {ko:"저는 그걸 손바닥 보듯 훤히 알아요.",en:"I know it like the back of my hand."},
+ {ko:"늦더라도 안 하는 것보다 나아요.",en:"Better late than never."},
+ {ko:"오늘은 여기까지 합시다.",en:"Let's call it a day."},
+ {ko:"알고 보니 그가 처음부터 옳았어요.",en:"It turns out he was right all along."}
+];
+
+const QUIZ_BANK=[
+ {t:"mc",q:"'알고 보니 ~이다'라는 뜻의 표현은?",c:["It turns out","In turn","Turn over","By turns"],a:0},
+ {t:"mc",q:"'깜빡했다'를 자연스럽게 표현하면?",c:["It slipped my mind","I lost my mind","My mind went out","I dropped my mind"],a:0},
+ {t:"mc",q:"'상황 봐서 정하자'는?",c:["Let's play it by ear","Let's hear the situation","Let's see the ear","Let's ear it"],a:0},
+ {t:"mc",q:"'전적으로 동의해요'와 같은 뜻은?",c:["I couldn't agree more","I couldn't agree","I can't say more","I agree less"],a:0},
+ {t:"mc",q:"'본론으로 들어갑시다'는?",c:["Let's get down to business","Let's go down the business","Let's business now","Let's fall to business"],a:0},
+ {t:"mc",q:"'오늘은 여기까지 하자'는?",c:["Let's call it a day","Let's day it a call","Let's finish the sun","Let's close a day off"],a:0},
+ {t:"mc",q:"'행운을 빌게'에 해당하는 표현은?",c:["Fingers crossed","Hands crossed","Arms folded","Eyes closed"],a:0},
+ {t:"mc",q:"'~할 가치가 있다'는?",c:["It's worth it","It's worthy to it","It values it","It costs it"],a:0},
+ {t:"mc",q:"'성급히 결론 내리다'는?",c:["Jump to conclusions","Run to endings","Fly to results","Skip to answers"],a:0},
+ {t:"mc",q:"'말이 쉽지 (실제론 어렵다)'는?",c:["Easier said than done","Easy to say hard","Said easy done hard","More say less do"],a:0},
+ {t:"mc",q:"'요점을 말하다'는?",c:["Get to the point","Go to the tip","Touch the point","Point the get"],a:0},
+ {t:"mc",q:"'감이 안 와요 / 전혀 모르겠어요'는?",c:["I have no clue","I have no glue","I lost my hint","No idea to me comes"],a:0},
+ {t:"blank",ko:"나 이 소음 더는 못 참아.",s:"I can't ___ up with this noise anymore.",c:["put","take","get","come"],a:0},
+ {t:"blank",ko:"우리는 결국 그 계획을 취소했다.",s:"We ended ___ canceling the plan.",c:["up","out","off","in"],a:0},
+ {t:"blank",ko:"그 소식을 우연히 알게 됐어.",s:"I found ___ about the news by chance.",c:["out","up","off","for"],a:0},
+ {t:"blank",ko:"난 커피 없이는 못 살아.",s:"I can't ___ without coffee.",c:["live","alive","life","living"],a:0},
+ {t:"blank",ko:"그는 어려운 시기를 잘 헤쳐 나갔다.",s:"He got ___ the difficult times.",c:["through","along","over to","up on"],a:0},
+ {t:"blank",ko:"미루지 마. 지금 해.",s:"Don't put it ___. Do it now.",c:["off","away","down","out"],a:0},
+ {t:"blank",ko:"그 아이디어 한번 시도해 보자.",s:"Let's give it a ___.",c:["try","test","touch","take"],a:0},
+ {t:"blank",ko:"긴장 풀어. 잘될 거야.",s:"Take it ___. It'll be fine.",c:["easy","soft","calm","slow"],a:0},
+ {t:"blank",ko:"나 지금 가는 중이야.",s:"I'm on my ___.",c:["way","road","path","street"],a:0},
+ {t:"blank",ko:"결정을 내리기가 어렵네요.",s:"It's hard to make a ___.",c:["decision","decide","deciding","decisive"],a:0},
+ {t:"order",ko:"그 건은 제가 다시 연락드릴게요.",w:["Let","me","get","back","to","you"],ans:"Let me get back to you"},
+ {t:"order",ko:"제시간에 도착 못 할 것 같아요.",w:["I","don't","think","I","can","make","it","on","time"],ans:"I don't think I can make it on time"},
+ {t:"order",ko:"그게 무슨 뜻인지 모르겠어요.",w:["I","have","no","idea","what","that","means"],ans:"I have no idea what that means"},
+ {t:"order",ko:"막 전화하려던 참이었어요.",w:["I","was","just","about","to","call","you"],ans:"I was just about to call you"},
+ {t:"order",ko:"이것 좀 도와주실래요?",w:["Could","you","give","me","a","hand"],ans:"Could you give me a hand"},
+ {t:"order",ko:"일이 계획대로 되지 않았어요.",w:["Things","didn't","go","as","planned"],ans:"Things didn't go as planned"},
+ {t:"order",ko:"시간 내 주셔서 감사해요.",w:["Thank","you","for","taking","the","time"],ans:"Thank you for taking the time"},
+ {t:"order",ko:"오해가 있었던 것 같아요.",w:["I","think","there","was","a","misunderstanding"],ans:"I think there was a misunderstanding"}
+];
+
+const CARD_DECK=[
+ {en:"No wonder",ko:"어쩐지, 그럴 만하네",ex:"No wonder you're tired. You barely slept.",exKo:"어쩐지 피곤하더라. 거의 못 잤잖아."},
+ {en:"It depends",ko:"상황에 따라 달라",ex:"— Coffee or tea? — It depends on my mood.",exKo:"— 커피 아니면 차? — 기분에 따라 달라."},
+ {en:"I'm down",ko:"나도 좋아, 콜!",ex:"— Pizza tonight? — I'm down!",exKo:"— 오늘 피자 어때? — 콜!"},
+ {en:"That works for me",ko:"난 그거면 돼 / 괜찮아",ex:"3 o'clock? That works for me.",exKo:"3시? 난 괜찮아."},
+ {en:"Long story short",ko:"결론만 말하면",ex:"Long story short, we missed the flight.",exKo:"결론만 말하면, 우리 비행기를 놓쳤어."},
+ {en:"It's a long shot",ko:"가능성은 낮지만",ex:"It's a long shot, but let's apply anyway.",exKo:"가능성은 낮지만 일단 지원해 보자."},
+ {en:"Fair enough",ko:"그 말도 일리 있네",ex:"— I was too busy. — Fair enough.",exKo:"— 너무 바빴어. — 그럴 만하네."},
+ {en:"I'll pass",ko:"난 됐어 / 사양할게",ex:"— Want some cake? — I'll pass, thanks.",exKo:"— 케이크 먹을래? — 난 됐어, 고마워."},
+ {en:"Sounds like a plan",ko:"좋아, 그렇게 하자",ex:"— Dinner at 7? — Sounds like a plan.",exKo:"— 7시에 저녁? — 좋아, 그렇게 하자."},
+ {en:"My bad",ko:"내 잘못이야, 미안",ex:"Oh, my bad. I sent the wrong file.",exKo:"아 미안, 파일 잘못 보냈네."},
+ {en:"You never know",ko:"모르는 일이지",ex:"Buy a ticket. You never know, you might win.",exKo:"표 사봐. 모르잖아, 당첨될 수도."},
+ {en:"It's up in the air",ko:"아직 미정이야",ex:"Our travel plan is still up in the air.",exKo:"여행 계획은 아직 미정이야."},
+ {en:"Off the top of my head",ko:"지금 당장 떠오르는 걸로는",ex:"Off the top of my head, maybe five people are coming.",exKo:"당장 떠오르기로는 다섯 명쯤 올 거야."},
+ {en:"I can't make it",ko:"나 못 가 / 참석 못 해",ex:"Sorry, I can't make it to the meeting.",exKo:"미안, 회의에 못 가."},
+ {en:"What a coincidence",ko:"이런 우연이!",ex:"You're here too? What a coincidence!",exKo:"너도 여기 있어? 이런 우연이!"},
+ {en:"It slipped my mind",ko:"깜빡했어",ex:"The deadline totally slipped my mind.",exKo:"마감일을 완전히 깜빡했어."},
+ {en:"Keep me posted",ko:"소식 계속 알려줘",ex:"Keep me posted on the results.",exKo:"결과 나오면 계속 알려줘."},
+ {en:"I'm on it",ko:"바로 할게 / 처리 중이야",ex:"— Can you fix this? — I'm on it.",exKo:"— 이것 좀 고쳐줄래? — 바로 할게."},
+ {en:"Take your time",ko:"천천히 해",ex:"No rush. Take your time.",exKo:"급할 것 없어. 천천히 해."},
+ {en:"It's not my thing",ko:"내 취향은 아니야",ex:"Karaoke is not my thing.",exKo:"노래방은 내 취향이 아니야."},
+ {en:"Speak of the devil",ko:"호랑이도 제 말 하면 온다더니",ex:"Speak of the devil — here he comes!",exKo:"호랑이도 제 말 하면 온다더니, 쟤 온다!"},
+ {en:"I'm broke",ko:"나 빈털터리야",ex:"I can't eat out. I'm broke this month.",exKo:"외식 못 해. 이번 달 빈털터리야."},
+ {en:"Rings a bell",ko:"들어본 것 같아",ex:"That name rings a bell.",exKo:"그 이름 들어본 것 같아."},
+ {en:"Now you're talking",ko:"이제야 말이 통하네 / 바로 그거지",ex:"— Let's get BBQ. — Now you're talking!",exKo:"— 바비큐 먹자. — 바로 그거지!"},
+ {en:"It's on me",ko:"내가 살게",ex:"Put your wallet away. It's on me.",exKo:"지갑 넣어. 내가 살게."},
+ {en:"Cut to the chase",ko:"본론만 말해",ex:"Cut to the chase — what do you want?",exKo:"본론만 말해. 원하는 게 뭐야?"},
+ {en:"I feel you",ko:"무슨 마음인지 알아",ex:"— Mondays are brutal. — I feel you.",exKo:"— 월요일은 너무 힘들어. — 그 마음 알지."},
+ {en:"Don't get me wrong",ko:"오해하지 마",ex:"Don't get me wrong, I like it. I'm just tired.",exKo:"오해하지 마, 좋아. 그냥 피곤할 뿐이야."},
+ {en:"That's a relief",ko:"다행이다",ex:"You found your phone? That's a relief.",exKo:"폰 찾았어? 다행이다."},
+ {en:"Better safe than sorry",ko:"조심해서 나쁠 것 없지",ex:"Take an umbrella. Better safe than sorry.",exKo:"우산 가져가. 조심해서 나쁠 것 없어."},
+ {en:"I'm in the middle of something",ko:"지금 뭐 하는 중이야",ex:"Can I call you back? I'm in the middle of something.",exKo:"다시 전화해도 돼? 지금 뭐 하는 중이라."},
+ {en:"Way to go",ko:"잘했어!",ex:"You passed the exam? Way to go!",exKo:"시험 붙었어? 잘했어!"},
+ {en:"It's a deal",ko:"그렇게 하기로 한 거다",ex:"You cook, I clean. It's a deal.",exKo:"네가 요리, 내가 설거지. 약속한 거다."},
+ {en:"Under the weather",ko:"몸이 좀 안 좋아",ex:"I'm feeling under the weather today.",exKo:"오늘 몸이 좀 안 좋네."},
+ {en:"Out of the blue",ko:"난데없이, 갑자기",ex:"He called me out of the blue.",exKo:"걔가 난데없이 전화했어."},
+ {en:"On second thought",ko:"다시 생각해 보니",ex:"On second thought, let's stay home.",exKo:"다시 생각해 보니 그냥 집에 있자."},
+ {en:"It's worth a try",ko:"시도해 볼 만해",ex:"It might fail, but it's worth a try.",exKo:"실패할 수도 있지만 해볼 만해."},
+ {en:"I mean it",ko:"진심이야",ex:"You did great. I mean it.",exKo:"정말 잘했어. 진심이야."},
+ {en:"So far so good",ko:"지금까지는 순조로워",ex:"— How's the new job? — So far so good.",exKo:"— 새 직장 어때? — 지금까지는 좋아."},
+ {en:"Let it go",ko:"그냥 잊어버려",ex:"It happened. Just let it go.",exKo:"이미 지난 일이야. 그냥 잊어."},
+ {en:"It's a win-win",ko:"서로 좋은 일이야",ex:"You get help, I get experience. It's a win-win.",exKo:"넌 도움받고 난 경험 쌓고, 서로 좋지."},
+ {en:"Hang in there",ko:"조금만 버텨",ex:"The project is almost done. Hang in there.",exKo:"프로젝트 거의 끝났어. 조금만 버텨."},
+ {en:"That figures",ko:"그럴 줄 알았어",ex:"He's late again? That figures.",exKo:"걔 또 늦어? 그럴 줄 알았어."},
+ {en:"I'm all ears",ko:"잘 듣고 있어, 말해봐",ex:"Tell me what happened. I'm all ears.",exKo:"무슨 일인지 말해봐. 다 듣고 있어."},
+ {en:"For what it's worth",ko:"도움이 될지 모르겠지만",ex:"For what it's worth, I think you did the right thing.",exKo:"도움이 될진 모르겠지만, 네가 옳았다고 생각해."},
+ {en:"It comes down to",ko:"결국 ~의 문제다",ex:"It all comes down to money.",exKo:"결국 다 돈 문제야."},
+ {en:"Get the hang of it",ko:"요령이 생기다",ex:"You'll get the hang of it soon.",exKo:"곧 요령이 생길 거야."},
+ {en:"Call it even",ko:"이걸로 퉁치자",ex:"You paid last time. Let's call it even.",exKo:"저번엔 네가 냈으니 이걸로 퉁치자."}
+];
+
+const VIDEOS=[
+ {id:"arj7oStGLkU",title:"Inside the mind of a master procrastinator",speaker:"Tim Urban",desc:"미루기 대장의 머릿속 — 유머 가득, 발음 명확한 인기 1위급 강연",
+  exprs:[{en:"put off",ko:"미루다"},{en:"due date",ko:"마감일"},{en:"kick in",ko:"작동하기 시작하다"},{en:"stay up all night",ko:"밤을 새다"},{en:"long-term",ko:"장기적인"}],
+  shadow:["I decided to write a thesis.","We need to think about what we're procrastinating on.","The deadlines are getting closer."]},
+ {id:"Ks-_Mh1QhMc",title:"Your body language may shape who you are",speaker:"Amy Cuddy",desc:"자세가 마음을 바꾼다 — 파워 포즈로 유명한 강연",
+  exprs:[{en:"body language",ko:"몸짓 언어"},{en:"fake it till you make it",ko:"될 때까지 그런 척하라"},{en:"take up space",ko:"공간을 차지하다"},{en:"self-confidence",ko:"자신감"},{en:"nonverbal",ko:"비언어적인"}],
+  shadow:["Our bodies change our minds.","Don't fake it till you make it. Fake it till you become it.","Tiny tweaks can lead to big changes."]},
+ {id:"qp0HIF3SfI4",title:"How great leaders inspire action",speaker:"Simon Sinek",desc:"'Why에서 시작하라' — 비즈니스 영어의 교과서 같은 강연",
+  exprs:[{en:"inspire",ko:"영감을 주다"},{en:"believe in",ko:"~을 믿다"},{en:"the reason why",ko:"~한 이유"},{en:"from the inside out",ko:"안에서 밖으로"},{en:"prove to be",ko:"~로 판명되다"}],
+  shadow:["People don't buy what you do. They buy why you do it.","Start with why.","There are leaders and there are those who lead."]},
+ {id:"UNP03fDSj1U",title:"Try something new for 30 days",speaker:"Matt Cutts",desc:"3분 30초 초단편 — 부담 없이 전체 쉐도잉하기 좋은 강연",
+  exprs:[{en:"give it a shot",ko:"한번 시도해 보다"},{en:"stuck in a rut",ko:"틀에 박히다"},{en:"work up the nerve",ko:"용기를 내다"},{en:"sustainable",ko:"지속 가능한"},{en:"memorable",ko:"기억에 남는"}],
+  shadow:["I decided to try something new for thirty days.","The next thirty days are going to pass whether you like it or not.","Small changes were more sustainable."]},
+ {id:"R1vskiVDwl4",title:"10 ways to have a better conversation",speaker:"Celeste Headlee",desc:"대화 잘하는 법 10가지 — 회화 학습자에게 최고의 실용 강연",
+  exprs:[{en:"pay attention",ko:"집중하다"},{en:"go with the flow",ko:"흐름에 맡기다"},{en:"in other words",ko:"다시 말해"},{en:"open-ended question",ko:"열린 질문"},{en:"stay out of",ko:"~에 끼어들지 않다"}],
+  shadow:["Enter every conversation assuming you have something to learn.","If you don't know, say that you don't know.","Be brief. Be interested in other people."]},
+ {id:"fLJsdqxnZb0",title:"The happy secret to better work",speaker:"Shawn Achor",desc:"행복이 먼저다 — 빠르지만 유쾌한 리스닝 도전 강연",
+  exprs:[{en:"in reverse",ko:"거꾸로"},{en:"raise the bar",ko:"기준을 높이다"},{en:"on average",ko:"평균적으로"},{en:"ripple effect",ko:"파급 효과"},{en:"gratitude",ko:"감사"}],
+  shadow:["We're finding it's not necessarily the reality that shapes us.","Your brain works significantly better at positive.","Train your brain to become more positive."]}
+];
+
+/* ==================== STATE ==================== */
+const KEY='engapp_v1';
+let S=load();
+function load(){
+  try{const d=JSON.parse(localStorage.getItem(KEY));if(d)return d;}catch(e){}
+  return {xp:0,todayXp:0,today:dstr(),streak:0,lastActive:null,
+    quizTotal:0,quizCorrect:0,spkIdx:0,cards:{},watched:{}};
+}
+function save(){localStorage.setItem(KEY,JSON.stringify(S));}
+function dstr(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function rollDay(){
+  const t=dstr();
+  if(S.today!==t){S.today=t;S.todayXp=0;save();}
+}
+function addXP(n){
+  rollDay();
+  S.xp+=n;S.todayXp+=n;
+  const t=dstr();
+  if(S.lastActive!==t){
+    const y=new Date();y.setDate(y.getDate()-1);
+    S.streak=(S.lastActive===dstr(y))?S.streak+1:1;
+    S.lastActive=t;
+  }
+  save();renderHome();toast('+'+n+' XP');
+}
+function toast(m){
+  const el=document.createElement('div');el.className='toast';el.textContent=m;
+  document.body.appendChild(el);setTimeout(()=>el.remove(),1400);
+}
+/* level: threshold grows 100,150,200... */
+function lvlInfo(){
+  let lv=1,need=100,acc=0;
+  while(S.xp>=acc+need){acc+=need;lv++;need=100+50*(lv-1);}
+  return {lv,cur:S.xp-acc,need};
+}
+const LVL_NAMES=["Beginner","Elementary","Pre-Inter","Intermediate","Upper-Inter","Advanced","Fluent","Master"];
+
+/* ==================== NAV ==================== */
+function go(p){
+  document.querySelectorAll('.page').forEach(e=>e.classList.remove('on'));
+  document.querySelectorAll('.tabbar button').forEach(e=>e.classList.remove('on'));
+  document.getElementById('page-'+p).classList.add('on');
+  document.getElementById('tab-'+p).classList.add('on');
+  window.scrollTo(0,0);
+  if(p==='home')renderHome();
+  if(p==='speak')renderSpk();
+  if(p==='video')renderVidList();
+  if(p==='cards')renderCardsHome();
+  if(p==='quiz')renderQuizHome();
+}
+
+/* ==================== HOME ==================== */
+function renderHome(){
+  rollDay();
+  const L=lvlInfo();
+  document.getElementById('lvl').textContent=L.lv;
+  document.getElementById('lvlName').textContent=LVL_NAMES[Math.min(L.lv-1,LVL_NAMES.length-1)];
+  document.getElementById('xpNow').textContent=L.cur;
+  document.getElementById('xpNext').textContent=L.need;
+  document.getElementById('xpFill').style.width=Math.min(100,L.cur/L.need*100)+'%';
+  document.getElementById('todayXp').textContent=S.todayXp;
+  document.getElementById('goalDone').style.display=S.todayXp>=50?'inline':'none';
+  document.getElementById('streakDays').textContent=S.streak;
+  document.getElementById('stTotal').textContent=S.xp;
+  document.getElementById('stCards').textContent=dueCards().length;
+  document.getElementById('stQuiz').textContent=(S.quizTotal?Math.round(S.quizCorrect/S.quizTotal*100):0)+'%';
+  /* daily expression: date-seeded */
+  const seed=parseInt(dstr().replace(/-/g,''))%CARD_DECK.length;
+  document.getElementById('dailyEn').textContent=CARD_DECK[seed].en;
+  document.getElementById('dailyKo').textContent=CARD_DECK[seed].ko+' — '+CARD_DECK[seed].ex;
+}
+
+/* ==================== TTS ==================== */
+let voices=[];
+function loadVoices(){voices=speechSynthesis.getVoices();}
+if('speechSynthesis' in window){loadVoices();speechSynthesis.onvoiceschanged=loadVoices;}
+function say(txt){
+  if(!('speechSynthesis' in window)){alert('이 브라우저는 음성 합성을 지원하지 않습니다.');return;}
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(txt);
+  u.lang='en-US';u.rate=0.95;
+  const v=voices.find(v=>v.lang==='en-US'&&/Google|Samantha|Aaron|Natural/.test(v.name))||voices.find(v=>v.lang&&v.lang.startsWith('en'));
+  if(v)u.voice=v;
+  speechSynthesis.speak(u);
+}
+
+/* ==================== SPEAK MODE ==================== */
+let enHidden=false;
+function renderSpk(){
+  const s=SPEAK_SENTENCES[S.spkIdx];
+  document.getElementById('spkIdx').textContent=S.spkIdx+1;
+  document.getElementById('spkTotal').textContent=SPEAK_SENTENCES.length;
+  document.getElementById('spkKo').textContent=s.ko;
+  document.getElementById('spkEn').textContent=enHidden?'● ● ● ● ●':s.en;
+  document.getElementById('spkResult').innerHTML='';
+  document.getElementById('micStatus').textContent='마이크 버튼을 눌러 말하세요';
+}
+function toggleEn(){
+  enHidden=!enHidden;
+  document.getElementById('spkToggle').textContent=enHidden?'👀 영어 보기':'🙈 영어 가리기';
+  renderSpk();
+}
+function speakListen(){say(SPEAK_SENTENCES[S.spkIdx].en);}
+function nextSpk(){S.spkIdx=(S.spkIdx+1)%SPEAK_SENTENCES.length;save();renderSpk();}
+function prevSpk(){S.spkIdx=(S.spkIdx-1+SPEAK_SENTENCES.length)%SPEAK_SENTENCES.length;save();renderSpk();}
+
+function norm(t){return t.toLowerCase().replace(/[^a-z0-9' ]/g,'').replace(/\s+/g,' ').trim();}
+/* LCS alignment for word diff */
+function lcsMatch(a,b){
+  const n=a.length,m=b.length;
+  const dp=Array.from({length:n+1},()=>new Array(m+1).fill(0));
+  for(let i=1;i<=n;i++)for(let j=1;j<=m;j++)
+    dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]+1:Math.max(dp[i-1][j],dp[i][j-1]);
+  const matched=new Array(n).fill(false);
+  let i=n,j=m;
+  while(i>0&&j>0){
+    if(a[i-1]===b[j-1]){matched[i-1]=true;i--;j--;}
+    else if(dp[i-1][j]>=dp[i][j-1])i--;else j--;
+  }
+  return matched;
+}
+let recognizing=false;
+function startRec(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){document.getElementById('micStatus').innerHTML='<span style="color:var(--red)">이 브라우저는 음성인식을 지원하지 않습니다.<br>Chrome(안드로이드/PC) 또는 최신 Safari를 사용해 주세요.</span>';return;}
+  if(recognizing)return;
+  const rec=new SR();
+  rec.lang='en-US';rec.interimResults=false;rec.maxAlternatives=1;
+  recognizing=true;
+  document.getElementById('micBtn').classList.add('rec');
+  document.getElementById('micStatus').textContent='듣고 있어요... 문장을 말하세요 🎧';
+  document.getElementById('spkResult').innerHTML='';
+  rec.onresult=e=>{
+    const heard=e.results[0][0].transcript;
+    showSpkResult(heard);
+  };
+  rec.onerror=e=>{
+    document.getElementById('micStatus').textContent=e.error==='not-allowed'?'마이크 권한을 허용해 주세요':'인식 실패 — 다시 시도해 주세요';
+  };
+  rec.onend=()=>{
+    recognizing=false;
+    document.getElementById('micBtn').classList.remove('rec');
+  };
+  rec.start();
+}
+function showSpkResult(heard){
+  const target=SPEAK_SENTENCES[S.spkIdx].en;
+  const tw=norm(target).split(' ');
+  const hw=norm(heard).split(' ');
+  const matched=lcsMatch(tw,hw);
+  const okN=matched.filter(Boolean).length;
+  const score=Math.round(okN/tw.length*100);
+  const origWords=target.split(' ');
+  let html='<div style="border-top:1px solid var(--line);padding-top:12px">';
+  html+='<div class="score-ring" style="color:'+(score>=80?'var(--green)':score>=50?'var(--yellow)':'var(--red)')+'">'+score+'점</div>';
+  html+='<p style="font-size:17px;line-height:1.7;text-align:center">';
+  origWords.forEach((w,i)=>{html+='<span class="diffword '+(matched[i]?'ok':'miss')+'">'+w+'</span> ';});
+  html+='</p><p class="sub center mt">내가 말한 것: "'+heard+'"</p>';
+  html+='<p class="center sub mt">'+(score>=90?'완벽해요! 🏆':score>=70?'훌륭해요! 조금만 더 🙌':score>=50?'좋아요, 빨간 단어를 다시 연습! 💪':'다시 한번 들어보고 도전! 🎧')+'</p></div>';
+  document.getElementById('spkResult').innerHTML=html;
+  document.getElementById('micStatus').textContent='';
+  addXP(Math.max(2,Math.round(score/10)));
+}
+
+/* ==================== QUIZ MODE ==================== */
+let qz={list:[],idx:0,correct:0,answered:false,order:[]};
+function renderQuizHome(){
+  document.getElementById('quizHome').style.display='block';
+  document.getElementById('quizPlay').style.display='none';
+  document.getElementById('quizEnd').style.display='none';
+  document.getElementById('qTotalN').textContent=S.quizTotal;
+  document.getElementById('qCorrectN').textContent=S.quizCorrect;
+}
+function quizToHome(){renderQuizHome();}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function startQuiz(){
+  qz={list:shuffle(QUIZ_BANK).slice(0,10),idx:0,correct:0,answered:false,order:[]};
+  document.getElementById('quizHome').style.display='none';
+  document.getElementById('quizEnd').style.display='none';
+  document.getElementById('quizPlay').style.display='block';
+  renderQ();
+}
+function renderQ(){
+  const q=qz.list[qz.idx];
+  qz.answered=false;qz.order=[];
+  let dots='';
+  for(let i=0;i<qz.list.length;i++)dots+='<i class="'+(i<qz.idx?'done':i===qz.idx?'cur':'')+'"></i>';
+  document.getElementById('quizDots').innerHTML=dots;
+  document.getElementById('quizFeedback').innerHTML='';
+  let h='';
+  if(q.t==='mc'){
+    h='<span class="pill b">객관식</span><div class="big-en" style="font-size:17px">'+q.q+'</div>';
+    const idxs=shuffle([0,1,2,3]);
+    idxs.forEach(ci=>{h+='<button class="choice" onclick="ansMC(this,'+ci+')">'+q.c[ci]+'</button>';});
+  }else if(q.t==='blank'){
+    h='<span class="pill p">빈칸 채우기</span><div class="big-ko" style="margin-top:10px">'+q.ko+'</div><div class="big-en" style="font-size:19px">'+q.s.replace('___','<u style="color:var(--accent)">___</u>')+'</div>';
+    const idxs=shuffle([0,1,2,3]);
+    idxs.forEach(ci=>{h+='<button class="choice" onclick="ansMC(this,'+ci+')">'+q.c[ci]+'</button>';});
+  }else{
+    h='<span class="pill y">문장 배열</span><div class="big-ko" style="margin-top:10px">'+q.ko+'</div>';
+    h+='<div class="answer-line" id="ansLine"><span class="sub" id="ansPh">단어를 순서대로 탭하세요</span></div>';
+    h+='<div class="chips" id="chipBox">';
+    shuffle(q.w.map((w,i)=>({w,i}))).forEach(o=>{h+='<button class="chip" id="chip'+o.i+'" onclick="pick('+o.i+')">'+o.w+'</button>';});
+    h+='</div><div class="row"><button class="btn sm ghost" onclick="undoPick()">⌫ 지우기</button><button class="btn sm" onclick="checkOrder()">확인</button></div>';
+  }
+  document.getElementById('quizCard').innerHTML=h;
+}
+function ansMC(btn,ci){
+  if(qz.answered)return;qz.answered=true;
+  const q=qz.list[qz.idx];
+  const ok=ci===q.a;
+  btn.classList.add(ok?'ok':'no');
+  if(!ok){
+    document.querySelectorAll('#quizCard .choice').forEach(b=>{
+      if(b.textContent===q.c[q.a])b.classList.add('ok');
+    });
+  }
+  finishQ(ok, q.t==='blank'? q.s.replace('___',q.c[q.a]) : q.c[q.a]);
+}
+function pick(i){
+  const q=qz.list[qz.idx];
+  if(qz.answered||qz.order.includes(i))return;
+  qz.order.push(i);
+  document.getElementById('chip'+i).classList.add('used');
+  drawAns();
+}
+function undoPick(){
+  if(qz.answered||!qz.order.length)return;
+  const i=qz.order.pop();
+  document.getElementById('chip'+i).classList.remove('used');
+  drawAns();
+}
+function drawAns(){
+  const q=qz.list[qz.idx];
+  const line=document.getElementById('ansLine');
+  line.innerHTML=qz.order.length?qz.order.map(i=>'<span class="chip" style="pointer-events:none">'+q.w[i]+'</span>').join(''):'<span class="sub">단어를 순서대로 탭하세요</span>';
+}
+function checkOrder(){
+  if(qz.answered)return;
+  const q=qz.list[qz.idx];
+  const made=qz.order.map(i=>q.w[i]).join(' ');
+  qz.answered=true;
+  finishQ(norm(made)===norm(q.ans), q.ans);
+}
+function finishQ(ok,correctTxt){
+  S.quizTotal++;if(ok){S.quizCorrect++;qz.correct++;}
+  save();
+  if(ok)addXP(10);
+  let fb='<div class="card" style="border-color:'+(ok?'var(--green)':'var(--red)')+'">';
+  fb+='<b style="color:'+(ok?'var(--green)':'var(--red)')+'">'+(ok?'✅ 정답! +10 XP':'❌ 오답')+'</b>';
+  fb+='<p class="mt" style="font-size:15px">정답: <b>'+correctTxt+'</b> <button class="spk" style="width:32px;height:32px;font-size:13px" onclick="say(\''+correctTxt.replace(/'/g,"\\'")+'\')">🔊</button></p>';
+  fb+='<button class="btn full mt" onclick="nextQ()">'+(qz.idx+1<qz.list.length?'다음 문제 →':'결과 보기')+'</button></div>';
+  document.getElementById('quizFeedback').innerHTML=fb;
+}
+function nextQ(){
+  qz.idx++;
+  if(qz.idx>=qz.list.length){
+    document.getElementById('quizPlay').style.display='none';
+    document.getElementById('quizEnd').style.display='block';
+    document.getElementById('quizScore').textContent=qz.correct+' / '+qz.list.length;
+    document.getElementById('quizEndMsg').textContent=qz.correct>=9?'완벽에 가까워요! 🏆':qz.correct>=7?'훌륭해요! 🙌':qz.correct>=5?'좋아요, 오답 표현을 카드에서 복습하세요 💪':'표현 카드로 기초를 다진 후 재도전! 📚';
+  }else renderQ();
+}
+
+/* ==================== VIDEO MODE ==================== */
+function renderVidList(){
+  document.getElementById('vidDetail').style.display='none';
+  const box=document.getElementById('vidList');box.style.display='block';
+  box.innerHTML=VIDEOS.map((v,i)=>
+    '<div class="vidcard" onclick="openVid('+i+')">'+
+    '<img src="https://i.ytimg.com/vi/'+v.id+'/mqdefault.jpg" alt="">'+
+    '<div><b>'+v.title+'</b><span>'+v.speaker+' · '+v.desc+'</span>'+(S.watched[v.id]?'<div class="pill g" style="margin-top:6px">학습 완료 ✓</div>':'')+'</div></div>'
+  ).join('');
+}
+function openVid(i){
+  const v=VIDEOS[i];
+  document.getElementById('vidList').style.display='none';
+  const d=document.getElementById('vidDetail');d.style.display='block';
+  let h='<button class="back-btn" onclick="renderVidList()">← 영상 목록</button>';
+  h+='<div class="videobox"><iframe src="https://www.youtube-nocookie.com/embed/'+v.id+'?cc_load_policy=1&cc_lang_pref=en" allowfullscreen allow="encrypted-media"></iframe></div>';
+  h+='<div class="card"><b>'+v.title+'</b><p class="sub mt">'+v.speaker+' — '+v.desc+'</p><p class="sub mt">💡 유튜브 설정(⚙️)에서 자막(영어)을 켜고 보세요. 처음엔 자막과 함께, 두 번째는 자막 없이!</p></div>';
+  h+='<div class="card"><b>🔑 핵심 표현</b>';
+  v.exprs.forEach(e=>{
+    h+='<div class="expr-row"><div><b>'+e.en+'</b><small>'+e.ko+'</small></div><button class="spk" onclick="say(\''+e.en.replace(/'/g,"\\'")+'\')">🔊</button></div>';
+  });
+  h+='</div><div class="card"><b>🗣️ 쉐도잉 문장</b><p class="sub" style="margin:6px 0 4px">강연 속 문장을 듣고 따라 말해보세요.</p>';
+  v.shadow.forEach(s=>{
+    h+='<div class="expr-row"><div style="flex:1"><b style="font-size:14px;line-height:1.5">'+s+'</b></div><button class="spk" onclick="say(\''+s.replace(/'/g,"\\'")+'\')">🔊</button></div>';
+  });
+  h+='</div>';
+  h+= S.watched[v.id]
+    ? '<button class="btn green full" disabled>학습 완료 ✓</button>'
+    : '<button class="btn full" onclick="markWatched(\''+v.id+'\',this)">✅ 학습 완료 (+20 XP)</button>';
+  d.innerHTML=h;
+  window.scrollTo(0,0);
+}
+function markWatched(id,btn){
+  if(S.watched[id])return;
+  S.watched[id]=true;save();
+  btn.outerHTML='<button class="btn green full" disabled>학습 완료 ✓</button>';
+  addXP(20);
+}
+
+/* ==================== CARDS (SRS) ==================== */
+function cardState(i){
+  if(!S.cards[i])S.cards[i]={due:dstr(),iv:0};
+  return S.cards[i];
+}
+function dueCards(){
+  const t=dstr();const out=[];
+  for(let i=0;i<CARD_DECK.length;i++){
+    const c=S.cards[i];
+    if(!c){if(out.filter(x=>!S.cards[x]).length<8)out.push(i);} /* max 8 new/day view */
+    else if(c.due<=t)out.push(i);
+  }
+  return out;
+}
+let cd={queue:[],cur:-1,flipped:false};
+function renderCardsHome(){
+  document.getElementById('cardsHome').style.display='block';
+  document.getElementById('cardsPlay').style.display='none';
+  document.getElementById('dueCount').textContent=dueCards().length;
+  document.getElementById('deckSize').textContent=CARD_DECK.length;
+}
+function startCards(){
+  cd.queue=shuffle(dueCards());
+  if(!cd.queue.length){toast('오늘 복습할 카드가 없어요!');return;}
+  document.getElementById('cardsHome').style.display='none';
+  document.getElementById('cardsPlay').style.display='block';
+  nextCard();
+}
+function nextCard(){
+  if(!cd.queue.length){endCards();toast('복습 완료! 🎉');return;}
+  cd.cur=cd.queue.shift();cd.flipped=false;
+  document.getElementById('cardsLeft').textContent=cd.queue.length+1;
+  const c=CARD_DECK[cd.cur];
+  document.getElementById('flash').innerHTML='<div class="front">'+c.en+'</div><div class="sub mt">탭해서 뜻 보기</div>';
+  document.getElementById('srsBtns').style.visibility='hidden';
+  const st=cardState(cd.cur);
+  document.getElementById('easyIv').textContent=(st.iv?Math.max(7,st.iv*2):7)+'일 후';
+}
+function flipCard(){
+  if(cd.flipped)return;cd.flipped=true;
+  const c=CARD_DECK[cd.cur];
+  document.getElementById('flash').innerHTML='<div class="front" style="font-size:19px">'+c.en+'</div><div class="back-ko mt">'+c.ko+'</div><div class="ex">"'+c.ex+'"<br>'+c.exKo+'</div>';
+  document.getElementById('srsBtns').style.visibility='visible';
+}
+function sayCur(){if(cd.cur>=0)say(CARD_DECK[cd.cur].en);}
+function grade(g){
+  const st=cardState(cd.cur);
+  if(g===0)st.iv=1;
+  else if(g===1)st.iv=3;
+  else st.iv=st.iv?Math.max(7,st.iv*2):7;
+  const d=new Date();d.setDate(d.getDate()+st.iv);
+  st.due=dstr(d);
+  save();addXP(5);
+  nextCard();
+}
+function endCards(){renderCardsHome();}
+
+/* ==================== INIT ==================== */
+rollDay();renderHome();
+</script>
+</body>
+</html>
