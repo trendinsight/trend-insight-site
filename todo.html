@@ -190,7 +190,7 @@ h1{font-size:18px; font-weight:600;}
 
 <div class="foot">
   <span class="carrynote" id="carrynote"></span>
-  <span style="font-size:11px;color:var(--muted)" id="ver">v12</span>
+  <span style="font-size:11px;color:var(--muted)" id="ver">v13</span>
   <div>
     <button id="routinebtn">루틴</button>
     <button id="clearbtn">완료 정리</button>
@@ -523,37 +523,50 @@ function parse(input){
   for(const[k,v]of Object.entries(AREA_KEY)){const re=new RegExp("(^|\\s)"+k+"(\\s|$)");if(re.test(text)){area=v;text=text.replace(re," ");break;}}
   for(const[k,v]of Object.entries(BAND_KEY)){const re=new RegExp("(^|\\s)"+k+"(\\s|$)");if(re.test(text)){band=v;text=text.replace(re," ");break;}}
   text=text.replace(/\s+/g," ").trim();
+  const areaSet=!!area, bandSet=!!band||!!time, dateSet=!!date;
   if(time)band=minToBand(tmin(time));
-  return {text,time:time||"",span,area:area||"self",band:band||(date&&date!==todayStr()?"am":nowBand()),repeat,date:date||selDate};
+  return {text,time:time||"",span,repeat,areaSet,bandSet,dateSet,
+    area:area||"self",band:band||(date&&date!==todayStr()?"am":nowBand()),date:date||selDate};
+}
+
+function addParsed(raw,def){
+  def=def||{};
+  const p=parse(raw.trim());
+  if(!p.text)return null;
+  const area=p.areaSet?p.area:(def.area||p.area);
+  const band=p.bandSet?p.band:(def.band||p.band);
+  const date=p.dateSet?p.date:(def.date||selDate);
+  if(p.repeat){
+    S.routines.push({id:uid(),text:p.text,area,band,days:p.repeat,time:p.time});
+    ensureRoutines(selDate);ensureRoutines(todayStr());
+    save();render();toast("반복 루틴으로 등록했습니다");
+    return {kind:"routine"};
+  }
+  if(p.span){
+    const sid=uid(); let total=0;
+    for(let x=p.span.from;x<=p.span.to;x=fmt(addDays(fromStr(x),1)))total++;
+    let n=0;
+    for(let d=p.span.from;d<=p.span.to;d=fmt(addDays(fromStr(d),1))){
+      n++;
+      S.tasks.push({id:uid(),text:p.text,area,band,date:d,done:false,time:p.time,spanId:sid,spanN:n,spanT:total});
+    }
+    save();selectDate(p.span.from);
+    toast(p.span.from.slice(5).replace("-","/")+"~"+p.span.to.slice(5).replace("-","/")+" "+total+"일 일정으로 등록했습니다");
+    return {kind:"span"};
+  }
+  S.tasks.push({id:uid(),text:p.text,area,band,date,done:false,time:p.time});
+  save();
+  if(date!==selDate){selectDate(date);toast(date.slice(5).replace("-","/")+"에 추가했습니다");}
+  else render();
+  return {kind:"one",date};
 }
 
 function addFromInput(){
-  const el=document.getElementById("quickinput"),v=el.value.trim();
+  const el=document.getElementById("quickinput");
+  const v=el.value.trim();
   if(!v)return;
-  const p=parse(v);
-  if(!p.text){el.value="";return;}
-  if(p.repeat){
-    S.routines.push({id:uid(),text:p.text,area:p.area,band:p.band,days:p.repeat,time:p.time});
-    ensureRoutines(selDate);ensureRoutines(todayStr());
-    el.value="";save();render();toast("반복 루틴으로 등록했습니다");return;
-  }
-  if(p.span){
-    const sid=uid(); let d=p.span.from, n=0, total=0;
-    for(let x=p.span.from;x<=p.span.to;x=fmt(addDays(fromStr(x),1)))total++;
-    for(d=p.span.from;d<=p.span.to;d=fmt(addDays(fromStr(d),1))){
-      n++;
-      S.tasks.push({id:uid(),text:p.text,area:p.area,band:p.band,date:d,done:false,time:p.time,
-        spanId:sid,spanN:n,spanT:total});
-    }
-    el.value="";save();
-    selectDate(p.span.from);
-    toast(p.span.from.slice(5).replace("-","/")+"~"+p.span.to.slice(5).replace("-","/")+" "+total+"일 일정으로 등록했습니다");
-    return;
-  }
-  S.tasks.push({id:uid(),text:p.text,area:p.area,band:p.band,date:p.date,done:false,time:p.time});
-  el.value="";save();
-  if(p.date!==selDate){selectDate(p.date);toast(p.date.slice(5).replace("-","/")+"에 추가했습니다");}
-  else render();
+  const r=addParsed(v,{});
+  if(r)el.value="";
 }
 
 function selectDate(ds){selDate=ds;weekStart=mondayOf(fromStr(ds));ensureRoutines(ds);render();}
@@ -837,8 +850,8 @@ function render(){
       const add=document.createElement("button");
       add.className="addbtn";add.textContent="+ 추가";
       add.addEventListener("click",()=>{
-        const txt=prompt((isToday?"오늘":(d.getMonth()+1)+"/"+d.getDate())+" · "+AREA_LABEL[a]+" "+BAND_LABEL[b]+" 할 일:");
-        if(txt&&txt.trim()){S.tasks.push({id:uid(),text:txt.trim(),area:a,band:b,date:selDate,done:false});save();render();}
+        const txt=prompt((isToday?"오늘":(d.getMonth()+1)+"/"+d.getDate())+" · "+AREA_LABEL[a]+" "+BAND_LABEL[b]+" 할 일\n(날짜·시각·기간도 함께 쓸 수 있어요: 8/6~8/9 여행, 오후 3시 미팅)");
+        if(txt&&txt.trim())addParsed(txt,{area:a,band:b,date:selDate});
       });
       cell.appendChild(add);
       grid.appendChild(cell);
