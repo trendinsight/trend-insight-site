@@ -184,13 +184,13 @@ h1{font-size:18px; font-weight:600;}
 </div>
 <p class="hint"><b>색깔 박스</b>(내 할 일) — 탭하면 옮기기 창, 꾹 눌러 끌면 다른 칸·날짜로 바로 이동.
 <b>노란 점선 박스</b>(구글 캘린더 일정) — 탭해서 원하는 칸으로 가져오면 내 할 일이 되어 자유롭게 옮길 수 있습니다.
-입력창 한 줄에 날짜·시각·영역을 함께 — 예: <b>내일 오후 3시 회사 세무사 통화</b>, <b>8/5 저녁 7시 가정 외식</b>, <b>매일 8시 시황 체크</b>.</p>
+입력창 한 줄에 날짜·시각·영역을 함께 — 예: <b>내일 오후 3시 회사 세무사 통화</b>, <b>8/5 저녁 7시 가정 외식</b>, <b>매일 8시 시황 체크</b>, <b>8/6~8/9 가정 가족 여행</b>(여러 날).</p>
 
 <div class="grid" id="grid"></div>
 
 <div class="foot">
   <span class="carrynote" id="carrynote"></span>
-  <span style="font-size:11px;color:var(--muted)" id="ver">v10</span>
+  <span style="font-size:11px;color:var(--muted)" id="ver">v11</span>
   <div>
     <button id="routinebtn">루틴</button>
     <button id="clearbtn">완료 정리</button>
@@ -207,6 +207,7 @@ h1{font-size:18px; font-weight:600;}
   <div class="mvdate"><input type="time" id="mvtime" step="300"><button id="mvtimeclr">시간 지우기</button></div>
   <label>영역 · 시간대</label>
   <div class="mvgrid" id="mvgrid"></div>
+  <div id="mvspan" style="display:none; font-size:12.5px; color:var(--sub); margin-top:10px"></div>
   <div class="btnrow"><button id="mvdel" style="color:#A32D2D">삭제</button><button id="mvclose">닫기</button><button id="mvsave" class="pri">저장</button></div>
 </div></div>
 
@@ -461,6 +462,24 @@ function parseDate(text){
   }
   return {date,rest};
 }
+function parseRange(text){
+  const t0=fromStr(todayStr()); let m;
+  function mk(mo,dd){let d=new Date(t0.getFullYear(),mo-1,dd); if(d<t0)d=new Date(t0.getFullYear()+1,mo-1,dd); return fmt(d);}
+  // 8/6~8/9 · 8월6일~8월9일 · 8/6-8/9
+  if(m=text.match(/(\d{1,2})\s*[\/월]\s*(\d{1,2})\s*일?\s*[~\-–]\s*(\d{1,2})\s*[\/월]\s*(\d{1,2})\s*일?/)){
+    return {from:mk(+m[1],+m[2]),to:mk(+m[3],+m[4]),rest:text.replace(m[0]," ")};
+  }
+  // 8/6~9 · 8월 6일~9일
+  if(m=text.match(/(\d{1,2})\s*[\/월]\s*(\d{1,2})\s*일?\s*[~\-–]\s*(\d{1,2})\s*일?(?![\/월\d])/)){
+    return {from:mk(+m[1],+m[2]),to:mk(+m[1],+m[3]),rest:text.replace(m[0]," ")};
+  }
+  // 8월 6일부터 9일까지 · 8/6부터 8/9까지
+  if(m=text.match(/(\d{1,2})\s*[\/월]\s*(\d{1,2})\s*일?\s*부터\s*(?:(\d{1,2})\s*[\/월]\s*)?(\d{1,2})\s*일?\s*까지/)){
+    return {from:mk(+m[1],+m[2]),to:mk(m[3]?+m[3]:+m[1],+m[4]),rest:text.replace(m[0]," ")};
+  }
+  return null;
+}
+
 function parseTime(text){
   const m=text.match(/(오전|오후|저녁|아침|밤|낮)?\s*(\d{1,2})\s*(?::\s*(\d{2})|시\s*(?:(\d{1,2})\s*분|(반))?)/);
   if(!m)return {time:null,rest:text};
@@ -481,15 +500,19 @@ function parse(input){
   else if(/(^|\s)매일(\s|$)/.test(text)){repeat="all";text=text.replace(/(^|\s)매일(\s|$)/," ");}
   else if(text.includes("평일마다")){repeat="weekday";text=text.replace("평일마다"," ");}
   else if(text.includes("주말마다")){repeat="weekend";text=text.replace("주말마다"," ");}
-  let date=null;
-  if(!repeat){const pd=parseDate(text);date=pd.date;text=pd.rest;}
+  let date=null,span=null;
+  if(!repeat){
+    const pr=parseRange(text);
+    if(pr&&pr.from<=pr.to){span=pr;text=pr.rest;date=pr.from;}
+    else{const pd=parseDate(text);date=pd.date;text=pd.rest;}
+  }
   const pt=parseTime(text); const time=pt.time; text=pt.rest;
   let area=null,band=null;
   for(const[k,v]of Object.entries(AREA_KEY)){const re=new RegExp("(^|\\s)"+k+"(\\s|$)");if(re.test(text)){area=v;text=text.replace(re," ");break;}}
   for(const[k,v]of Object.entries(BAND_KEY)){const re=new RegExp("(^|\\s)"+k+"(\\s|$)");if(re.test(text)){band=v;text=text.replace(re," ");break;}}
   text=text.replace(/\s+/g," ").trim();
   if(time)band=minToBand(tmin(time));
-  return {text,time:time||"",area:area||"self",band:band||(date&&date!==todayStr()?"am":nowBand()),repeat,date:date||selDate};
+  return {text,time:time||"",span,area:area||"self",band:band||(date&&date!==todayStr()?"am":nowBand()),repeat,date:date||selDate};
 }
 
 function addFromInput(){
@@ -501,6 +524,19 @@ function addFromInput(){
     S.routines.push({id:uid(),text:p.text,area:p.area,band:p.band,days:p.repeat,time:p.time});
     ensureRoutines(selDate);ensureRoutines(todayStr());
     el.value="";save();render();toast("반복 루틴으로 등록했습니다");return;
+  }
+  if(p.span){
+    const sid=uid(); let d=p.span.from, n=0, total=0;
+    for(let x=p.span.from;x<=p.span.to;x=fmt(addDays(fromStr(x),1)))total++;
+    for(d=p.span.from;d<=p.span.to;d=fmt(addDays(fromStr(d),1))){
+      n++;
+      S.tasks.push({id:uid(),text:p.text,area:p.area,band:p.band,date:d,done:false,time:p.time,
+        spanId:sid,spanN:n,spanT:total});
+    }
+    el.value="";save();
+    selectDate(p.span.from);
+    toast(p.span.from.slice(5).replace("-","/")+"~"+p.span.to.slice(5).replace("-","/")+" "+total+"일 일정으로 등록했습니다");
+    return;
   }
   S.tasks.push({id:uid(),text:p.text,area:p.area,band:p.band,date:p.date,done:false,time:p.time});
   el.value="";save();
@@ -529,6 +565,18 @@ function openMove(id){
   document.getElementById("mvtext").value=t.text;
   document.getElementById("mvdateinput").value=t.date;
   document.getElementById("mvtime").value=t.time||"";
+  const sp=document.getElementById("mvspan");
+  if(t.spanId){
+    sp.style.display="block";
+    sp.innerHTML="여러 날 일정 ("+t.spanN+"/"+t.spanT+"일차) · <a href='#' id='mvspandel' style='color:#A32D2D'>기간 전체 삭제</a>";
+    sp.querySelector("#mvspandel").addEventListener("click",e=>{
+      e.preventDefault();
+      const sid=t.spanId;
+      S.tasks=S.tasks.filter(x=>x.spanId!==sid);
+      save();render();closeOvl(document.getElementById("movedlg"));
+      toast("기간 일정을 모두 삭제했습니다");
+    });
+  }else sp.style.display="none";
   const g=document.getElementById("mvgrid");g.innerHTML="<div></div>";
   AREAS.forEach(([a,l])=>g.insertAdjacentHTML("beforeend","<div class='h' style='background:"+TAGCOLOR[a][0]+";color:"+TAGCOLOR[a][1]+"'>"+l+"</div>"));
   BANDS.forEach(([b,bl])=>{
@@ -716,7 +764,8 @@ function render(){
         row.className="task "+t.area+(t.done?" done":"");
         row.draggable=true;
         row.innerHTML="<input type='checkbox' "+(t.done?"checked":"")+">"
-          +"<span class='txt'>"+(t.time?"<b class='ct'>"+esc(t.time)+"</b> ":"")+esc(t.text)+(t.routineId?" <span class='rt'>↻</span>":"")+(t.carried?" <span class='rt'>이월</span>":"")+"</span>"
+          +"<span class='txt'>"+(t.time?"<b class='ct'>"+esc(t.time)+"</b> ":"")+esc(t.text)+(t.spanId?" <span class='rt'>"+t.spanN+"/"+t.spanT+"일차</span>":"")
+          +(t.routineId?" <span class='rt'>↻</span>":"")+(t.carried?" <span class='rt'>이월</span>":"")+"</span>"
           +"<button class='mv' title='옮기기'>⤢</button><button class='del' title='삭제'>✕</button>";
         row.querySelector("input").addEventListener("change",ev=>{t.done=ev.target.checked;save();render();});
         row.querySelector(".mv").addEventListener("click",ev=>{ev.stopPropagation();openMove(t.id);});
