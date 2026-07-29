@@ -144,7 +144,12 @@ header h1{font-size:20px;font-weight:800;background:linear-gradient(90deg,#ff6b9
     <div class="modecard" onclick="go('cards')"><span class="ic">🃏</span><b>표현 카드</b><span>간격 반복 암기</span></div>
   </div>
 
-  <div class="card mt">
+  <div class="modecard mt" onclick="go('video')" style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+    <span class="ic">🎬</span>
+    <div><b style="margin:0 0 3px">영상 강의</b><span>일단기 가타카나 특강 등 유튜브 강의 모음</span></div>
+  </div>
+
+  <div class="card">
     <span class="pill p">오늘의 한마디</span>
     <div class="big-jp" id="dailyJp" style="font-size:21px"></div>
     <div class="yomi" id="dailyYomi"></div>
@@ -160,7 +165,12 @@ header h1{font-size:20px;font-weight:800;background:linear-gradient(90deg,#ff6b9
     <button id="kt-h" class="on" onclick="setKana('h')">ひらがな 히라가나</button>
     <button id="kt-k" onclick="setKana('k')">カタカナ 가타카나</button>
   </div>
-  <p class="sub mb">글자를 탭하면 발음을 듣고 배울 수 있어요. 퀴즈에서 3번 이상 맞히면 <span style="color:var(--green)">초록</span>(마스터)이 됩니다.</p>
+  <p class="sub mb">글자를 탭하면 <b style="color:var(--yellow)">그림 연상법</b>과 발음이 나옵니다. 퀴즈에서 3번 이상 맞히면 <span style="color:var(--green)">초록</span>(마스터)이 됩니다.</p>
+  <div class="row mb">
+    <button class="btn sm ghost" style="flex:1" onclick="toggleMneList()" id="mneBtn">📖 연상법 한눈에 보기</button>
+    <button class="btn sm ghost" style="flex:1" onclick="go('video')">🎬 강의 영상 보기</button>
+  </div>
+  <div id="mneList" style="display:none"></div>
   <div id="kanaGrid"></div>
   <button class="btn full mt" onclick="go('quiz');startKanaQuiz(kanaMode)">이 가나로 퀴즈 풀기 →</button>
 </div>
@@ -169,6 +179,7 @@ header h1{font-size:20px;font-weight:800;background:linear-gradient(90deg,#ff6b9
     <div class="big" id="kdChar"></div>
     <div class="rd" id="kdRomaji"></div>
     <div class="kr" id="kdKr"></div>
+    <div id="kdMne" style="background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:13.5px;line-height:1.5;margin-bottom:16px;text-align:left"></div>
     <button class="btn full mb" onclick="say(document.getElementById('kdChar').textContent)">🔊 발음 듣기</button>
     <button class="btn ghost full" onclick="document.getElementById('kanaDetail').classList.remove('on')">닫기</button>
   </div>
@@ -210,6 +221,13 @@ header h1{font-size:20px;font-weight:800;background:linear-gradient(90deg,#ff6b9
   <div class="h2">🍜 상황별 회화 <span class="pill a">왕초보</span></div>
   <div id="sitList"></div>
   <div id="sitDetail" style="display:none"></div>
+</div>
+
+<!-- ============ VIDEO ============ -->
+<div class="page" id="page-video">
+  <div class="h2">🎬 영상 강의 <span class="pill b">유튜브</span></div>
+  <div id="vidList"></div>
+  <div id="vidDetail" style="display:none"></div>
 </div>
 
 <!-- ============ CARDS ============ -->
@@ -278,6 +296,29 @@ const ROWKR=[
  ["와",null,null,null,"오"],["응",null,null,null,null]
 ];
 const ROWNAMES=["あ행","か행","さ행","た행","な행","は행","ま행","や행","ら행","わ행","ん"];
+/* 연상 암기법 (글자 모양 → 그림 연상) */
+const MNE={
+ "あ":"📺 안테나 꽂힌 TV — '아!'","い":"💧 이슬 두 방울 — '이'","う":"🎩 모자 쓴 옆얼굴이 '우'","え":"🐦 꼬리 달린 새 — '에'","お":"🤸 팔 벌린 오뚝이 — '오'",
+ "か":"⚔️ 칼 든 팔 모양 — '카'","き":"🔑 열쇠(key) 모양 — '키'","く":"🐤 구부러진 새 부리 — '쿠'","け":"🖇️ 케이블 두 가닥 — '케'","こ":"🛤️ 코스 두 줄 트랙 — '코'",
+ "さ":"🎣 사선으로 던진 낚싯대 — '사'","し":"🪝 시원하게 드리운 낚싯바늘 — '시'","す":"🌀 소용돌이 빨대 — '스'","せ":"🌿 세 갈래 가지 — '세'","そ":"🍦 소프트콘 흘러내린 선 — '소'",
+ "た":"🔡 t+a를 합친 모양 — '타'","ち":"🎀 치어리더 리본 — '치'","つ":"🌊 쓰나미 파도 — '츠'","て":"🪑 테이블 다리 하나 — '테'","と":"🍞 토스트에 꽂힌 포크 — '토'",
+ "な":"✝️ 나무 십자가와 매듭 — '나'","に":"2️⃣ 니(二)처럼 두 줄 — '니'","ぬ":"🍜 누들 면발 매듭 — '누'","ね":"🐱 네코(고양이) 말린 꼬리 — '네'","の":"⛔ 노(No!) 금지 표시 — '노'",
+ "は":"🎈 하늘로 풍선 든 사람 — '하'","ひ":"😄 히죽 웃는 입 — '히'","ふ":"🗻 후지산 위 구름 — '후'","へ":"⛰️ 헤엄치듯 낮은 산 — '헤'","ほ":"🎃 호박 옆 십자 지지대 — '호'",
+ "ま":"🪄 마법 지팡이 매듭 — '마'","み":"🌀 미로 같은 매듭 — '미'","む":"🐮 무소(소)의 뿔 — '무'","め":"👁️ 메기 눈 — '메'","も":"🪱 모기향 갈고리 — '모'",
+ "や":"🐂 야크 뿔 — '야'","ゆ":"👻 유령처럼 흐늘 — '유'","よ":"🪀 요요와 줄 — '요'",
+ "ら":"📻 라디오 안테나 — '라'","り":"🎀 리본 두 가닥 — '리'","る":"➿ 고리(loop) 있는 3 — '루'","れ":"🛤️ 레일 옆의 다리 — '레'","ろ":"3️⃣ 고리 없는 3 — '로' (る와 비교!)",
+ "わ":"🍷 와인잔 옆모습 — '와'","を":"🦆 오리가 파도 타는 모양 — 조사 '오'","ん":"🔤 알파벳 n을 닮은 콧소리 — '응'",
+ "ア":"🏛️ 아치 기둥 — '아'","イ":"🪧 이정표 — '이'","ウ":"🛸 우주선 지붕 — '우'","エ":"🏗️ 에이치(H)빔 — '에'","オ":"🚩 오케이 깃발 — '오'",
+ "カ":"⚔️ か에서 점 뺀 칼 — '카'","キ":"🔑 き의 윗부분 열쇠 — '키'","ク":"🍪 쿠키 한 조각 — '쿠'","ケ":"🚡 케이블카 지지대 — '케'","コ":"📐 코너(모서리) — '코'",
+ "サ":"🌸 사쿠라 가지 — '사'","シ":"💦 시냇물 방울 셋(옆으로) — '시'","ス":"⛷️ 스키 타는 다리 — '스'","セ":"🌿 せ와 닮은꼴 — '세'","ソ":"🌧️ 소나기 한 방울(위에서) — '소'",
+ "タ":"🐦 타조 부리 — '타'","チ":"🍗 치킨 다리 — '치'","ツ":"🌊 쓰나미 방울 셋(위에서) — '츠' (シ와 비교!)","テ":"📡 테이블 위 안테나 — '테'","ト":"🗿 토템 기둥 — '토'",
+ "ナ":"🔪 나이프 십자 — '나'","ニ":"2️⃣ 니(二) 숫자 2 — '니'","ヌ":"🥢 누운 젓가락 교차 — '누'","ネ":"🪧 네온 십자 표지판 — '네'","ノ":"🛶 노 젓는 막대 — '노'",
+ "ハ":"😆 하하 웃는 팔(八)자 — '하'","ヒ":"♨️ 히터 옆모습 — '히'","フ":"🪝 후크 모양 — '후'","ヘ":"⛰️ 헤(へ)와 같은 산 — '헤'","ホ":"🏨 호텔 십자 간판 — '호'",
+ "マ":"😷 마스크 걸이 — '마'","ミ":"🥬 미역 세 가닥 — '미'","ム":"📐 무너진 삼각형 — '무'","メ":"📎 메모 클립 X — '메'","モ":"🪱 も와 닮은꼴 — '모'",
+ "ヤ":"🐂 や와 같은 야크 뿔 — '야'","ユ":"↩️ 유턴 표시 — '유'","ヨ":"🪮 요(E를 뒤집은) 빗 — '요'",
+ "ラ":"🍜 라면 뚜껑 연 모양 — '라'","リ":"🎀 り와 같은 리본 — '리'","ル":"√ 루트 기호 다리 — '루'","レ":"🎚️ 레버 — '레'","ロ":"🤖 로봇 입 네모 — '로'",
+ "ワ":"🧇 와플 지붕 — '와'","ヲ":"🛝 워터 슬라이드 — 조사 '오'","ン":"💧 방울+획, ソ와 비교! — '응'"
+};
 function kanaList(mode){ /* flat list {ch,r,kr} */
   const src=mode==='h'?HIRA:KATA;const out=[];
   src.forEach((row,ri)=>row.forEach((ch,ci)=>{if(ch)out.push({ch,r:ROWR[ri][ci],kr:ROWKR[ri][ci]});}));
@@ -384,13 +425,29 @@ const CARD_DECK=[
  {jp:"さようなら",yomi:"",ro:"sayōnara",ko:"안녕히 가세요"}
 ];
 
+/* ==================== VIDEOS ==================== */
+const JVIDEOS=[
+ {id:"TOaNd-rjaQg",step:"STEP 1",title:"히라가나 가볍게 암기하는 비법 공개!",channel:"일단기 (일본어교육 1위)",
+  desc:"히라가나를 그림 연상법으로 외우는 첫 강의. 여기서 시작하세요.",
+  tip:"영상을 본 뒤 [가나] 탭에서 글자를 탭하면 같은 방식의 연상법 힌트가 나옵니다. 바로 퀴즈로 확인하세요."},
+ {id:"4RQPw3EL-Gw",step:"STEP 2",title:"히라가나 특강 3탄!",channel:"일단기 (일본어교육 1위)",
+  desc:"히라가나 심화 — 헷갈리는 글자와 탁음·요음까지.",
+  tip:"る/ろ, さ/ち, ね/れ/わ 처럼 닮은 글자를 집중해서 구분해 보세요."},
+ {id:"vNGkH1ayAHE",step:"STEP 3",title:"가타카나 특강 1탄!",channel:"일단기 (일본어교육 1위)",
+  desc:"히라가나를 뗀 후 도전하는 가타카나 기초 강의.",
+  tip:"가타카나는 외래어 간판·메뉴에 많이 쓰여요. メニュー(메뉴)·タクシー(택시) 읽기에 필수!"},
+ {id:"qgX-H7j1m0s",step:"STEP 4",title:"가타카나 특강 2탄!",channel:"일단기 (일본어교육 1위)",
+  desc:"가타카나 심화 — 장음(ー)과 외래어 표기 규칙.",
+  tip:"シ/ツ, ソ/ン 구분이 최대 관문입니다. 획의 방향(옆↔위)으로 기억하세요."}
+];
+
 /* ==================== STATE ==================== */
 const KEY='japapp_v1';
 let S=load();
 function load(){
   try{const d=JSON.parse(localStorage.getItem(KEY));if(d)return d;}catch(e){}
   return {xp:0,todayXp:0,today:dstr(),streak:0,lastActive:null,
-    quizTotal:0,quizCorrect:0,kana:{},cards:{}};
+    quizTotal:0,quizCorrect:0,kana:{},cards:{},watched:{}};
 }
 function save(){localStorage.setItem(KEY,JSON.stringify(S));}
 function dstr(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -421,13 +478,49 @@ function go(p){
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('on'));
   document.querySelectorAll('.tabbar button').forEach(e=>e.classList.remove('on'));
   document.getElementById('page-'+p).classList.add('on');
-  document.getElementById('tab-'+p).classList.add('on');
+  const tb=document.getElementById('tab-'+p);
+  if(tb)tb.classList.add('on');else document.getElementById('tab-home').classList.add('on');
   window.scrollTo(0,0);
   if(p==='home')renderHome();
   if(p==='kana')renderKana();
   if(p==='talk')renderSitList();
   if(p==='cards')renderCardsHome();
   if(p==='quiz')renderQuizHome();
+  if(p==='video')renderVidList();
+}
+
+/* ==================== VIDEO PAGE ==================== */
+function renderVidList(){
+  S.watched=S.watched||{};
+  document.getElementById('vidDetail').style.display='none';
+  const box=document.getElementById('vidList');box.style.display='block';
+  box.innerHTML='<p class="sub mb">STEP 순서대로 보면 가장 효과적입니다. 학습 완료 시 +20 XP</p>'+
+    JVIDEOS.map((v,i)=>
+    '<div class="sitcard" onclick="openVid('+i+')" style="align-items:flex-start">'+
+    '<img src="https://i.ytimg.com/vi/'+v.id+'/mqdefault.jpg" alt="" style="width:110px;border-radius:10px;flex-shrink:0">'+
+    '<div><span class="pill a">'+v.step+'</span><b style="margin-top:6px">'+v.title+'</b><span>'+v.channel+'</span>'+(S.watched[v.id]?'<div class="pill g" style="margin-top:6px">학습 완료 ✓</div>':'')+'</div></div>'
+  ).join('');
+}
+function openVid(i){
+  const v=JVIDEOS[i];
+  document.getElementById('vidList').style.display='none';
+  const d=document.getElementById('vidDetail');d.style.display='block';
+  let h='<button class="back-btn" onclick="renderVidList()">← 영상 목록</button>';
+  h+='<div style="position:relative;padding-top:56.25%;border-radius:14px;overflow:hidden;margin-bottom:14px"><iframe src="https://www.youtube-nocookie.com/embed/'+v.id+'" style="position:absolute;inset:0;width:100%;height:100%;border:0" allowfullscreen allow="encrypted-media"></iframe></div>';
+  h+='<div class="card"><b>'+v.title+'</b><p class="sub mt">'+v.channel+' — '+v.desc+'</p></div>';
+  h+='<div class="card"><b>💡 학습 팁</b><p class="sub mt">'+v.tip+'</p></div>';
+  h+= S.watched[v.id]
+    ? '<button class="btn green full" disabled>학습 완료 ✓</button>'
+    : '<button class="btn full" onclick="markWatched(\''+v.id+'\',this)">✅ 학습 완료 (+20 XP)</button>';
+  d.innerHTML=h;
+  window.scrollTo(0,0);
+}
+function markWatched(id,btn){
+  S.watched=S.watched||{};
+  if(S.watched[id])return;
+  S.watched[id]=true;save();
+  btn.outerHTML='<button class="btn green full" disabled>학습 완료 ✓</button>';
+  addXP(20);
 }
 
 /* ==================== HOME ==================== */
@@ -477,7 +570,34 @@ function setKana(m){
   document.getElementById('kt-k').classList.toggle('on',m==='k');
   renderKana();
 }
+let mneOpen=false;
+function toggleMneList(){
+  mneOpen=!mneOpen;
+  document.getElementById('mneBtn').textContent=mneOpen?'✕ 연상법 닫기':'📖 연상법 한눈에 보기';
+  const el=document.getElementById('mneList');
+  el.style.display=mneOpen?'block':'none';
+  document.getElementById('kanaGrid').style.display=mneOpen?'none':'block';
+  if(mneOpen)renderMneList();
+}
+function renderMneList(){
+  const src=kanaMode==='h'?HIRA:KATA;
+  let h='<div class="card">';
+  src.forEach((row,ri)=>{
+    h+='<div class="rowlabel">'+ROWNAMES[ri]+'</div>';
+    row.forEach((ch,ci)=>{
+      if(!ch)return;
+      h+='<div class="phrase" style="padding:9px 0"><div class="meta"><div style="flex:1;display:flex;gap:12px;align-items:center">'+
+         '<span style="font-size:30px;font-weight:800;font-family:\'Noto Sans JP\',sans-serif;width:42px;text-align:center">'+ch+'</span>'+
+         '<div><div style="font-size:13px;color:var(--purple);font-weight:700">'+ROWR[ri][ci]+' · '+ROWKR[ri][ci]+'</div>'+
+         '<div class="sub" style="font-size:12.5px">'+(MNE[ch]||'')+'</div></div></div>'+
+         '<button class="spk" onclick="say(\''+ch+'\')">🔊</button></div></div>';
+    });
+  });
+  h+='</div>';
+  document.getElementById('mneList').innerHTML=h;
+}
 function renderKana(){
+  if(mneOpen){renderMneList();return;}
   const src=kanaMode==='h'?HIRA:KATA;
   let h='';
   src.forEach((row,ri)=>{
@@ -496,6 +616,7 @@ function openKana(ch,r,kr){
   document.getElementById('kdChar').textContent=ch;
   document.getElementById('kdRomaji').textContent=r;
   document.getElementById('kdKr').textContent='한글 발음: '+kr;
+  document.getElementById('kdMne').innerHTML='<b style="color:var(--yellow)">연상법</b> · '+(MNE[ch]||'');
   document.getElementById('kanaDetail').classList.add('on');
   say(ch);
 }
@@ -593,7 +714,7 @@ function ansKana(btn,i){
   btn.classList.add(ok?'ok':'no');
   if(!ok)document.querySelectorAll('#quizCard .choice').forEach((b,bi)=>{if(q.choices[bi].r===q.ans)b.classList.add('ok');});
   bumpKana(q.ch,ok);
-  finishQ(ok,q.ch+' = '+q.ans+' ('+q.kr+')',q.ch);
+  finishQ(ok,q.ch+' = '+q.ans+' ('+q.kr+')',q.ch,MNE[q.ch]);
 }
 function ansKana2(btn,i){
   if(qz.answered)return;qz.answered=true;
@@ -602,7 +723,7 @@ function ansKana2(btn,i){
   btn.classList.add(ok?'ok':'no');
   if(!ok)document.querySelectorAll('#quizCard .choice').forEach((b,bi)=>{if(q.choices[bi].ch===q.ch)b.classList.add('ok');});
   bumpKana(q.ch,ok);
-  finishQ(ok,q.r+' = '+q.ch+' ('+q.kr+')',q.ch);
+  finishQ(ok,q.r+' = '+q.ch+' ('+q.kr+')',q.ch,MNE[q.ch]);
 }
 function ansPhrase(btn,i){
   if(qz.answered)return;qz.answered=true;
@@ -612,13 +733,14 @@ function ansPhrase(btn,i){
   if(!ok)document.querySelectorAll('#quizCard .choice').forEach((b,bi)=>{if(q.choices[bi].jp===q.p.jp)b.classList.add('ok');});
   finishQ(ok,q.p.jp+(q.p.yomi?' ('+q.p.yomi+')':'')+' — '+q.p.ko,q.p.jp);
 }
-function finishQ(ok,correctTxt,sayTxt){
+function finishQ(ok,correctTxt,sayTxt,mne){
   S.quizTotal++;if(ok){S.quizCorrect++;qz.correct++;}
   save();
   if(ok)addXP(10);
   let fb='<div class="card" style="border-color:'+(ok?'var(--green)':'var(--red)')+'">';
   fb+='<b style="color:'+(ok?'var(--green)':'var(--red)')+'">'+(ok?'✅ 정답! +10 XP':'❌ 오답')+'</b>';
   fb+='<p class="mt" style="font-size:15px;font-family:\'Noto Sans JP\',sans-serif">정답: <b>'+correctTxt+'</b> <button class="spk" style="width:32px;height:32px;font-size:13px" onclick="say(\''+sayTxt.replace(/'/g,"\\'")+'\')">🔊</button></p>';
+  if(mne)fb+='<p class="sub mt" style="background:var(--card2);border-radius:10px;padding:10px"><b style="color:var(--yellow)">연상법</b> · '+mne+'</p>';
   fb+='<button class="btn full mt" onclick="nextQ()">'+(qz.idx+1<qz.list.length?'다음 문제 →':'결과 보기')+'</button></div>';
   document.getElementById('quizFeedback').innerHTML=fb;
 }
