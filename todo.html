@@ -179,18 +179,18 @@ h1{font-size:18px; font-weight:600;}
 </div>
 
 <div class="inputrow">
-  <input type="text" id="quickinput" placeholder="예: 내일 오후 회사 세무사 통화">
+  <input type="text" id="quickinput" placeholder="예: 내일 오후 3시 회사 세무사 통화">
   <button id="addbtn">추가</button>
 </div>
 <p class="hint"><b>색깔 박스</b>(내 할 일) — 탭하면 옮기기 창, 꾹 눌러 끌면 다른 칸·날짜로 바로 이동.
 <b>노란 점선 박스</b>(구글 캘린더 일정) — 탭해서 원하는 칸으로 가져오면 내 할 일이 되어 자유롭게 옮길 수 있습니다.
-입력창에는 날짜(<b>내일·수요일·8/5</b>)·반복(<b>매일·매주 수요일</b>)·영역(<b>회사·가정·개인</b>)을 함께 쓰면 됩니다.</p>
+입력창 한 줄에 날짜·시각·영역을 함께 — 예: <b>내일 오후 3시 회사 세무사 통화</b>, <b>8/5 저녁 7시 가정 외식</b>, <b>매일 8시 시황 체크</b>.</p>
 
 <div class="grid" id="grid"></div>
 
 <div class="foot">
   <span class="carrynote" id="carrynote"></span>
-  <span style="font-size:11px;color:var(--muted)" id="ver">v9</span>
+  <span style="font-size:11px;color:var(--muted)" id="ver">v10</span>
   <div>
     <button id="routinebtn">루틴</button>
     <button id="clearbtn">완료 정리</button>
@@ -427,7 +427,7 @@ function ensureRoutines(ds){
   (S.routines||[]).forEach(r=>{
     if(!routineMatches(r,ds))return;
     if(!S.tasks.some(t=>t.routineId===r.id&&t.date===ds)){
-      S.tasks.push({id:uid(),text:r.text,area:r.area,band:r.band,date:ds,done:false,routineId:r.id});ch=true;
+      S.tasks.push({id:uid(),text:r.text,area:r.area,band:r.band,date:ds,done:false,routineId:r.id,time:r.time||""});ch=true;
     }
   });
   if(ch)save();
@@ -461,6 +461,20 @@ function parseDate(text){
   }
   return {date,rest};
 }
+function parseTime(text){
+  const m=text.match(/(오전|오후|저녁|아침|밤|낮)?\s*(\d{1,2})\s*(?::\s*(\d{2})|시\s*(?:(\d{1,2})\s*분|(반))?)/);
+  if(!m)return {time:null,rest:text};
+  let h=+m[2];
+  const mi=m[3]?+m[3]:(m[4]?+m[4]:(m[5]?30:0));
+  const mer=m[1];
+  if(mer==="오후"||mer==="저녁"||mer==="밤"){if(h<12)h+=12;}
+  else if(mer==="오전"||mer==="아침"){if(h===12)h=0;}
+  else if(mer==="낮"){if(h>=1&&h<=6)h+=12;}
+  else if(!m[3]&&h>=1&&h<=7){h+=12;}
+  if(h>23||mi>59)return {time:null,rest:text};
+  return {time:String(h).padStart(2,"0")+":"+String(mi).padStart(2,"0"), rest:text.replace(m[0]," ")};
+}
+
 function parse(input){
   let text=input.trim(),repeat=null,m;
   if(m=text.match(/매주\s*([월화수목금토일])(요일)?/)){repeat="w"+WNAMES.indexOf(m[1]);text=text.replace(m[0]," ");}
@@ -469,11 +483,13 @@ function parse(input){
   else if(text.includes("주말마다")){repeat="weekend";text=text.replace("주말마다"," ");}
   let date=null;
   if(!repeat){const pd=parseDate(text);date=pd.date;text=pd.rest;}
+  const pt=parseTime(text); const time=pt.time; text=pt.rest;
   let area=null,band=null;
   for(const[k,v]of Object.entries(AREA_KEY)){const re=new RegExp("(^|\\s)"+k+"(\\s|$)");if(re.test(text)){area=v;text=text.replace(re," ");break;}}
   for(const[k,v]of Object.entries(BAND_KEY)){const re=new RegExp("(^|\\s)"+k+"(\\s|$)");if(re.test(text)){band=v;text=text.replace(re," ");break;}}
   text=text.replace(/\s+/g," ").trim();
-  return {text,area:area||"self",band:band||(date&&date!==todayStr()?"am":nowBand()),repeat,date:date||selDate};
+  if(time)band=minToBand(tmin(time));
+  return {text,time:time||"",area:area||"self",band:band||(date&&date!==todayStr()?"am":nowBand()),repeat,date:date||selDate};
 }
 
 function addFromInput(){
@@ -482,11 +498,11 @@ function addFromInput(){
   const p=parse(v);
   if(!p.text){el.value="";return;}
   if(p.repeat){
-    S.routines.push({id:uid(),text:p.text,area:p.area,band:p.band,days:p.repeat});
+    S.routines.push({id:uid(),text:p.text,area:p.area,band:p.band,days:p.repeat,time:p.time});
     ensureRoutines(selDate);ensureRoutines(todayStr());
     el.value="";save();render();toast("반복 루틴으로 등록했습니다");return;
   }
-  S.tasks.push({id:uid(),text:p.text,area:p.area,band:p.band,date:p.date,done:false});
+  S.tasks.push({id:uid(),text:p.text,area:p.area,band:p.band,date:p.date,done:false,time:p.time});
   el.value="";save();
   if(p.date!==selDate){selectDate(p.date);toast(p.date.slice(5).replace("-","/")+"에 추가했습니다");}
   else render();
