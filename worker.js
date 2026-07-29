@@ -1977,6 +1977,10 @@ export default {
       if (v) return new Response(v, { headers: JSON_HEADERS });
     }
 
+    if (url.pathname.startsWith("/api/receipts/")) {
+      return handleReceipts(req, url, env, ctx);
+    }
+
     if (url.pathname.startsWith("/api/reports/")) {
       return handleReports(req, url, env, ctx);
     }
@@ -2346,3 +2350,107 @@ async function handleReports(req, url, env, ctx) {
 }
 
 // redeploy trigger: force build of HEAD (tolerant inflater)
+
+/* ═══════════════ 영수증 가계부 (/api/receipts/*) ═══════════════
+   receipt-upload.html: 핸드폰에서 영수증 사진 업로드 → KV 큐 적재.
+   로컬 Claude(receipt-ledger 스킬)가 큐를 수거해 판독 후 save로 D1
+   receipts 테이블에 기입하고 큐·이미지를 제거한다. 인증은 report_secret 재사용. */
+
+const RCPT_Q = "receipt-queue";
+
+async function rcptQueue(env) {
+  try { return JSON.parse((await env.GAUGE_KV.get(RCPT_Q)) || "[]"); } catch (e) { return []; }
+}
+
+async function rcptAuth(env, s) {
+  if (!s) return false;
+  const row = await env.RISK_DB.prepare("SELECT v FROM app_config WHERE k='report_secret'").first();
+  return !!(row && s === row.v);
+}
+
+async function handleReceipts(req, url, env, ctx) {
+  const p = url.pathname.slice("/api/receipts/".length);
+  const bad = (msg, code) => new Response(JSON.stringify({ ok: false, error: msg }), { status: code || 400, headers: JSON_HEADERS });
+  try {
+    if (p === "upload" && req.method === "POST") {
+      const b = await req.json();
+      const img = String(b.image || "");
+      if (!img.startsWith("data:image/") || img.length > 8000000) return bad("이미지 형식 오류 또는 8MB 초과");
+      const list = await rcptQueue(env);
+      if (list.length >= 60) return bad("대기 큐가 가득 찼습니다(60건). 먼저 처리해 주세요.", 429);
+      const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+      await env.GAUGE_KV.put("receipt:img:" + id, img, { expirationTtl: 2592000 });
+      list.push({ id, note: String(b.note || "").slice(0, 80), card: String(b.card || "").slice(0, 20), uploaded_at: kstNow() });
+      await env.GAUGE_KV.put(RCPT_Q, JSON.stringify(list));
+      if (b.notify !== false && list.length === 1) {
+        ctx.waitUntil(slTelegram(env,
+          `🧾 <b>영수증 업로드</b>\n대기 ${list.length}건. Cowork에서 "영수증 큐 처리해줘"라고 말하면 원장에 기입됩니다.`));
+      }
+      return new Response(JSON.stringify({ ok: true, id, queued: list.length }), { headers: JSON_HEADERS });
+    }
+    if (p === "queue") {
+      return new Response(JSON.stringify({ ok: true, requests: await rcptQueue(env) }), { headers: JSON_HEADERS });
+    }
+    if (p.startsWith("img/")) {
+      if (!(await rcptAuth(env, url.searchParams.get("s")))) return bad("인증 실패", 403);
+      const v = await env.GAUGE_KV.get("receipt:img:" + p.slice(4));
+      if (!v) return bad("이미지 없음", 404);
+      return new Response(v, { headers: { "content-type": "text/plain; charset=utf-8" } });
+    }
+    if (p === "save" && req.method === "POST") {
+      const b = await req.json();
+      if (!(await rcptAuth(env, b.secret))) return bad("인증 실패", 403);
+      const rows = Array.isArray(b.rows) ? b.rows : [];
+      const now = kstNow();
+      const stmts = rows.map(r =>
+        env.RISK_DB.prepare("INSERT INTO receipts(date,merchant,amount,account,memo,card,img_id,created_at) VALUES(?,?,?,?,?,?,?,?)")
+          .bind(String(r.date || "").slice(0, 10), String(r.merchant || "").slice(0, 60), Math.round(+r.amount || 0),
+                String(r.account || "기타").slice(0, 20), String(r.memo || "").slice(0, 120),
+                String(r.card || "").slice(0, 20), String(r.img_id || ""), now));
+      if (stmts.length) await env.RISK_DB.batch(stmts);
+      const done = new Set(rows.map(r => String(r.img_id || "")).filter(Boolean));
+      for (const x of (Array.isArray(b.clear_ids) ? b.clear_ids : [])) done.add(String(x));
+      if (done.size) {
+        const list = (await rcptQueue(env)).filter(x => !done.has(x.id));
+        await env.GAUGE_KV.put(RCPT_Q, JSON.stringify(list));
+        for (const id of done) ctx.waitUntil(env.GAUGE_KV.delete("receipt:img:" + id));
+      }
+      return new Response(JSON.stringify({ ok: true, inserted: rows.length }), { headers: JSON_HEADERS });
+    }
+    if (p === "ledger") {
+      const from = (url.searchParams.get("from") || "0000-01-01").slice(0, 10);
+      const to = (url.searchParams.get("to") || "9999-12-31").slice(0, 10);
+      const r = await env.RISK_DB.prepare(
+        "SELECT id,date,merchant,amount,account,memo,card FROM receipts WHERE date>=? AND date<=? ORDER BY date DESC, id DESC LIMIT 2000")
+        .bind(from, to).all();
+      return new Response(JSON.stringify({ ok: true, rows: r.results }), { headers: JSON_HEADERS });
+    }
+    if (p === "update" && req.method === "POST") {
+      const b = await req.json();
+      if (!(await rcptAuth(env, b.secret))) return bad("인증 실패", 403);
+      const allowed = ["date", "merchant", "amount", "account", "memo", "card"];
+      const sets = [], vals = [];
+      for (const k of allowed) if (b[k] !== undefined) { sets.push(k + "=?"); vals.push(k === "amount" ? Math.round(+b[k] || 0) : String(b[k])); }
+      if (!sets.length || !b.id) return bad("수정할 필드/id 없음");
+      vals.push(+b.id);
+      await env.RISK_DB.prepare("UPDATE receipts SET " + sets.join(",") + " WHERE id=?").bind(...vals).run();
+      return new Response(JSON.stringify({ ok: true }), { headers: JSON_HEADERS });
+    }
+    if (p === "delete" && req.method === "POST") {
+      const b = await req.json();
+      if (!(await rcptAuth(env, b.secret))) return bad("인증 실패", 403);
+      if (b.img_id) {
+        const list = (await rcptQueue(env)).filter(x => x.id !== String(b.img_id));
+        await env.GAUGE_KV.put(RCPT_Q, JSON.stringify(list));
+        ctx.waitUntil(env.GAUGE_KV.delete("receipt:img:" + String(b.img_id)));
+        return new Response(JSON.stringify({ ok: true, scope: "queue" }), { headers: JSON_HEADERS });
+      }
+      if (!b.id) return bad("id 없음");
+      await env.RISK_DB.prepare("DELETE FROM receipts WHERE id=?").bind(+b.id).run();
+      return new Response(JSON.stringify({ ok: true, scope: "ledger" }), { headers: JSON_HEADERS });
+    }
+    return bad("unknown endpoint", 404);
+  } catch (e) {
+    return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
+  }
+}

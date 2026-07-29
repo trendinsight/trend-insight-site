@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>영수증 가계부 | Trend Insight</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--navy:#0b1f3f;--blue:#2e6ff2;--line:#e4e9f1;--muted:#5b6779;--bg:#f5f7fb}
+*{box-sizing:border-box}
+body{font-family:'Pretendard',sans-serif;margin:0;background:var(--bg);color:#1c2533;line-height:1.6}
+header{background:var(--navy);padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
+header a{color:#fff;text-decoration:none;font-weight:800}
+header .sub{color:#9fb3d8;font-size:.8rem}
+main{max-width:760px;margin:0 auto;padding:20px 14px 60px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+h2{font-size:1.05rem;color:var(--navy);margin:0 0 12px}
+.pickbtn{display:flex;gap:10px}
+.pickbtn label{flex:1;text-align:center;background:var(--blue);color:#fff;border-radius:10px;padding:14px 8px;font-weight:700;cursor:pointer;font-size:.95rem}
+.pickbtn label.alt{background:#eef3fc;color:var(--blue);border:1px solid #c9dafc}
+.pickbtn input{display:none}
+#previews{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px;margin-top:12px}
+#previews .p{position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden;aspect-ratio:3/4;background:#fafbfd}
+#previews img{width:100%;height:100%;object-fit:cover}
+#previews .x{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer}
+.row{display:flex;gap:8px;margin-top:12px}
+.row input,.row select{flex:1;border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:.92rem;font-family:inherit}
+#upbtn{width:100%;margin-top:12px;background:var(--navy);color:#fff;border:none;border-radius:10px;padding:14px;font-size:1rem;font-weight:800;cursor:pointer}
+#upbtn:disabled{background:#b8c2d4}
+#upmsg{font-size:.86rem;margin-top:10px;color:var(--muted);white-space:pre-line}
+.qbadge{display:inline-block;background:#fff3e0;color:#b26a00;border-radius:20px;padding:2px 12px;font-size:.82rem;font-weight:700;margin-left:8px}
+.qlist{font-size:.85rem;color:var(--muted)}
+.qlist li{margin:2px 0}
+.mnav{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.mnav button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:.9rem}
+.mnav .mon{font-weight:800;color:var(--navy);font-size:1.02rem;min-width:110px;text-align:center}
+.total{font-size:1.5rem;font-weight:800;color:var(--navy);margin:4px 0 14px}
+.total small{font-size:.85rem;color:var(--muted);font-weight:500;margin-left:8px}
+.bar{margin:7px 0}
+.bar .lbl{display:flex;justify-content:space-between;font-size:.85rem;margin-bottom:2px}
+.bar .lbl b{color:#2c3a52}
+.bar .track{background:#eef1f7;border-radius:6px;height:10px;overflow:hidden}
+.bar .fill{background:var(--blue);height:100%;border-radius:6px}
+table{border-collapse:collapse;width:100%;font-size:.85rem;margin-top:6px}
+th,td{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left;white-space:nowrap}
+th{color:var(--muted);font-weight:600;font-size:.78rem}
+td.amt,th.amt{text-align:right}
+.tag{display:inline-block;background:#eef3fc;color:var(--blue);border-radius:6px;padding:1px 7px;font-size:.75rem;font-weight:700}
+.empty{color:var(--muted);font-size:.9rem;text-align:center;padding:18px 0}
+.note{font-size:.78rem;color:#9aa6b6;margin-top:14px}
+</style>
+</head>
+<body>
+<header><a href="index.html">← Trend Insight</a><span class="sub">영수증 가계부</span></header>
+<main>
+
+<div class="card">
+  <h2>🧾 영수증 올리기 <span id="qbadge" class="qbadge" style="display:none"></span></h2>
+  <div class="pickbtn">
+    <label>📷 촬영<input type="file" accept="image/*" capture="environment" id="cam"></label>
+    <label class="alt">🖼 갤러리에서 선택<input type="file" accept="image/*" multiple id="gal"></label>
+  </div>
+  <div id="previews"></div>
+  <div class="row">
+    <select id="cardSel">
+      <option value="">카드 선택(선택사항)</option>
+      <option>법인카드</option><option>개인카드1</option><option>개인카드2</option><option>현금</option>
+    </select>
+    <input id="noteIn" placeholder="메모 (예: 거래처 미팅)" maxlength="80">
+  </div>
+  <button id="upbtn" disabled>업로드</button>
+  <div id="upmsg"></div>
+  <ul class="qlist" id="qlist"></ul>
+  <div class="note">업로드된 사진은 처리 대기 큐에 쌓입니다. 데스크탑 Cowork에서 "영수증 큐 처리해줘"라고 말하면 자동 판독되어 아래 원장에 기입됩니다.</div>
+</div>
+
+<div class="card">
+  <h2>📊 월별 지출 현황</h2>
+  <div class="mnav">
+    <button id="prevM">◀</button><span class="mon" id="monLbl"></span><button id="nextM">▶</button>
+  </div>
+  <div class="total" id="monTotal">-</div>
+  <div id="bars"></div>
+  <h2 style="margin-top:20px">최근 내역</h2>
+  <div style="overflow-x:auto"><table id="tbl">
+    <thead><tr><th>날짜</th><th>사용처</th><th class="amt">금액</th><th>계정과목</th><th>카드</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+  <div class="empty" id="empty" style="display:none">이 달의 내역이 없습니다.</div>
+</div>
+
+</main>
+<script>
+const $=s=>document.querySelector(s);
+let files=[]; // {blob,url}
+
+async function compress(file){
+  const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=URL.createObjectURL(file);});
+  const MAX=1600;let w=img.width,h=img.height;
+  if(Math.max(w,h)>MAX){const r=MAX/Math.max(w,h);w=Math.round(w*r);h=Math.round(h*r);}
+  const c=document.createElement('canvas');c.width=w;c.height=h;
+  c.getContext('2d').drawImage(img,0,0,w,h);
+  URL.revokeObjectURL(img.src);
+  return c.toDataURL('image/jpeg',0.82);
+}
+function renderPreviews(){
+  const box=$('#previews');box.innerHTML='';
+  files.forEach((f,i)=>{
+    const d=document.createElement('div');d.className='p';
+    d.innerHTML=`<img src="${f.dataUrl}"><button class="x" data-i="${i}">✕</button>`;
+    box.appendChild(d);
+  });
+  box.querySelectorAll('.x').forEach(b=>b.onclick=()=>{files.splice(+b.dataset.i,1);renderPreviews();});
+  $('#upbtn').disabled=!files.length;
+}
+async function addFiles(list){
+  $('#upmsg').textContent='사진 압축 중...';
+  for(const f of list){try{files.push({dataUrl:await compress(f)});}catch(e){}}
+  $('#upmsg').textContent='';renderPreviews();
+}
+$('#cam').onchange=e=>{addFiles(e.target.files);e.target.value='';};
+$('#gal').onchange=e=>{addFiles(e.target.files);e.target.value='';};
+
+$('#upbtn').onclick=async()=>{
+  const btn=$('#upbtn');btn.disabled=true;
+  let okc=0,fail=0;
+  for(let i=0;i<files.length;i++){
+    $('#upmsg').textContent=`업로드 중... (${i+1}/${files.length})`;
+    try{
+      const r=await fetch('/api/receipts/upload',{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({image:files[i].dataUrl,note:$('#noteIn').value,card:$('#cardSel').value})});
+      const j=await r.json();j.ok?okc++:fail++;
+    }catch(e){fail++;}
+  }
+  files=[];renderPreviews();
+  $('#upmsg').textContent=`✅ ${okc}건 업로드 완료`+(fail?` / ❌ ${fail}건 실패`:'')+'\n데스크탑에서 "영수증 큐 처리해줘"로 원장에 기입하세요.';
+  loadQueue();
+};
+
+async function loadQueue(){
+  try{
+    const j=await (await fetch('/api/receipts/queue')).json();
+    const n=(j.requests||[]).length;
+    const b=$('#qbadge');
+    b.style.display=n?'inline-block':'none';b.textContent=`처리 대기 ${n}건`;
+    $('#qlist').innerHTML=(j.requests||[]).slice(-5).map(q=>`<li>${q.uploaded_at||''} ${q.card?'['+q.card+'] ':''}${q.note||'(메모 없음)'}</li>`).join('');
+  }catch(e){}
+}
+
+let cur=new Date();
+const fmtWon=n=>n.toLocaleString('ko-KR')+'원';
+function ym(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+async function loadMonth(){
+  const y=cur.getFullYear(),m=cur.getMonth();
+  $('#monLbl').textContent=y+'년 '+(m+1)+'월';
+  const from=ym(cur)+'-01', to=ym(cur)+'-31';
+  let rows=[];
+  try{rows=(await (await fetch(`/api/receipts/ledger?from=${from}&to=${to}`)).json()).rows||[];}catch(e){}
+  const total=rows.reduce((s,r)=>s+r.amount,0);
+  $('#monTotal').innerHTML=fmtWon(total)+`<small>${rows.length}건</small>`;
+  const by={};rows.forEach(r=>{by[r.account]=(by[r.account]||0)+r.amount;});
+  const cats=Object.entries(by).sort((a,b)=>b[1]-a[1]);
+  $('#bars').innerHTML=cats.map(([k,v])=>`<div class="bar"><div class="lbl"><b>${k}</b><span>${fmtWon(v)} (${total?Math.round(v/total*100):0}%)</span></div><div class="track"><div class="fill" style="width:${total?v/total*100:0}%"></div></div></div>`).join('')||'';
+  const tb=$('#tbl tbody');
+  tb.innerHTML=rows.slice(0,30).map(r=>`<tr><td>${r.date.slice(5)}</td><td>${r.merchant}</td><td class="amt">${r.amount.toLocaleString()}</td><td><span class="tag">${r.account}</span></td><td>${r.card||''}</td></tr>`).join('');
+  $('#empty').style.display=rows.length?'none':'block';
+  $('#tbl').style.display=rows.length?'table':'none';
+}
+$('#prevM').onclick=()=>{cur.setMonth(cur.getMonth()-1);loadMonth();};
+$('#nextM').onclick=()=>{cur.setMonth(cur.getMonth()+1);loadMonth();};
+
+loadQueue();loadMonth();
+</script>
+</body>
+</html>
