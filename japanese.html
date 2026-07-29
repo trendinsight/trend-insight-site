@@ -78,6 +78,11 @@ header h1{font-size:20px;font-weight:800;background:linear-gradient(90deg,#ff6b9
 .kana-pop .kr{font-size:17px;color:var(--txt);margin-bottom:14px}
 .mne-box{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:14px;font-size:15px;line-height:1.55;margin-bottom:14px;text-align:left}
 .mne-emoji{font-size:44px;display:block;text-align:center;margin-bottom:6px}
+.word-box{background:rgba(255,107,157,.1);border:1.5px solid var(--accent);border-radius:14px;padding:14px;margin-bottom:14px}
+.word-box .wjp{font-size:27px;font-weight:800;font-family:'Noto Sans JP','Hiragino Sans',sans-serif;line-height:1.3}
+.word-box .wro{font-size:13px;color:var(--purple);font-style:italic}
+.word-box .wko{font-size:14px;color:var(--txt);margin-top:3px}
+.word-box .hl{color:var(--accent)}
 .speed-row{display:flex;gap:8px;margin-bottom:10px}
 .speed-row button{flex:1;background:var(--card2);border:1.5px solid var(--line);color:var(--sub);border-radius:10px;padding:8px 0;font-size:12px;font-weight:700;cursor:pointer}
 .speed-row button.on{border-color:var(--accent);color:var(--accent);background:rgba(255,107,157,.12)}
@@ -186,6 +191,7 @@ header h1{font-size:20px;font-weight:800;background:linear-gradient(90deg,#ff6b9
     <div class="rd" id="kdRomaji"></div>
     <div class="kr" id="kdKr"></div>
     <div class="mne-box" id="kdMne"></div>
+    <div class="word-box" id="kdWord"></div>
     <div class="speed-row">
       <button id="sp-slow" onclick="setRate(0.4)">🐢 아주 느리게</button>
       <button id="sp-mid" class="on" onclick="setRate(0.6)">🚶 느리게</button>
@@ -210,6 +216,7 @@ header h1{font-size:20px;font-weight:800;background:linear-gradient(90deg,#ff6b9
       <div class="modecard" onclick="startKanaQuiz('k')"><span class="ic">ア</span><b>가타카나</b><span>글자 → 발음 10문제</span></div>
       <div class="modecard" onclick="startKanaQuiz2()"><span class="ic">🔤</span><b>반대 퀴즈</b><span>발음 → 글자 찾기</span></div>
       <div class="modecard" onclick="startPhraseQuiz()"><span class="ic">💬</span><b>회화 퀴즈</b><span>상황별 표현 10문제</span></div>
+      <div class="modecard" onclick="startWordQuiz()" style="grid-column:1/-1"><span class="ic">🍎</span><b>가나 단어 퀴즈</b><span>가나로 된 단어의 뜻 맞히기 (りんご = ?)</span></div>
     </div>
     <div class="card">
       <b>누적 기록</b>
@@ -441,6 +448,30 @@ const CARD_DECK=[
  {jp:"さようなら",yomi:"",ro:"sayōnara",ko:"안녕히 가세요"}
 ];
 
+/* 가나별 대표 단어 [단어, 로마자, 뜻] */
+const EXW={
+ "あ":["あめ","ame","비 / 사탕"],"い":["いぬ","inu","개"],"う":["うみ","umi","바다"],"え":["えき","eki","역(기차역)"],"お":["おかね","okane","돈"],
+ "か":["かさ","kasa","우산"],"き":["きのこ","kinoko","버섯"],"く":["くつ","kutsu","신발"],"け":["けいたい","keitai","휴대폰"],"こ":["こども","kodomo","아이"],
+ "さ":["さかな","sakana","생선"],"し":["しお","shio","소금"],"す":["すし","sushi","초밥"],"せ":["せんせい","sensei","선생님"],"そ":["そら","sora","하늘"],
+ "た":["たまご","tamago","계란"],"ち":["ちず","chizu","지도"],"つ":["つくえ","tsukue","책상"],"て":["てがみ","tegami","편지"],"と":["とけい","tokei","시계"],
+ "な":["なつ","natsu","여름"],"に":["にく","niku","고기"],"ぬ":["ぬの","nuno","천(옷감)"],"ね":["ねこ","neko","고양이"],"の":["のり","nori","김(해조)"],
+ "は":["はな","hana","꽃"],"ひ":["ひと","hito","사람"],"ふ":["ふゆ","fuyu","겨울"],"へ":["へや","heya","방"],"ほ":["ほし","hoshi","별"],
+ "ま":["まど","mado","창문"],"み":["みず","mizu","물"],"む":["むし","mushi","벌레"],"め":["めがね","megane","안경"],"も":["もも","momo","복숭아"],
+ "や":["やま","yama","산"],"ゆ":["ゆき","yuki","눈(snow)"],"よ":["よる","yoru","밤"],
+ "ら":["らいねん","rainen","내년"],"り":["りんご","ringo","사과"],"る":["るす","rusu","부재중"],"れ":["れきし","rekishi","역사"],"ろ":["ろく","roku","숫자 6"],
+ "わ":["わたし","watashi","나, 저"],"を":["みずをのむ","mizu o nomu","물을 마시다 (を는 목적격 조사)"],"ん":["みかん","mikan","귤 (ん은 첫 글자로 안 씀)"],
+ "ア":["アイス","aisu","아이스크림"],"イ":["イタリア","Itaria","이탈리아"],"ウ":["ウイルス","uirusu","바이러스"],"エ":["エアコン","eakon","에어컨"],"オ":["オレンジ","orenji","오렌지"],
+ "カ":["カメラ","kamera","카메라"],"キ":["キムチ","kimuchi","김치"],"ク":["クリスマス","kurisumasu","크리스마스"],"ケ":["ケーキ","kēki","케이크"],"コ":["コーヒー","kōhī","커피"],
+ "サ":["サラダ","sarada","샐러드"],"シ":["シャツ","shatsu","셔츠"],"ス":["スマホ","sumaho","스마트폰"],"セ":["セール","sēru","세일(할인)"],"ソ":["ソウル","Souru","서울"],
+ "タ":["タクシー","takushī","택시"],"チ":["チキン","chikin","치킨"],"ツ":["ツアー","tsuā","투어"],"テ":["テレビ","terebi","TV"],"ト":["トイレ","toire","화장실"],
+ "ナ":["ナイフ","naifu","나이프"],"ニ":["ニュース","nyūsu","뉴스"],"ヌ":["ヌードル","nūdoru","누들(면)"],"ネ":["ネクタイ","nekutai","넥타이"],"ノ":["ノート","nōto","노트"],
+ "ハ":["ハンバーガー","hanbāgā","햄버거"],"ヒ":["ヒーター","hītā","히터"],"フ":["フランス","Furansu","프랑스"],"ヘ":["ヘルメット","herumetto","헬멧"],"ホ":["ホテル","hoteru","호텔"],
+ "マ":["マスク","masuku","마스크"],"ミ":["ミルク","miruku","우유"],"ム":["ゲーム","gēmu","게임 (ム이 들어간 단어)"],"メ":["メニュー","menyū","메뉴"],"モ":["モデル","moderu","모델"],
+ "ヤ":["タイヤ","taiya","타이어 (ヤ가 들어간 단어)"],"ユ":["ユーチューブ","yūchūbu","유튜브"],"ヨ":["ヨガ","yoga","요가"],
+ "ラ":["ラーメン","rāmen","라면"],"リ":["リモコン","rimokon","리모컨"],"ル":["ルール","rūru","룰(규칙)"],"レ":["レストラン","resutoran","레스토랑"],"ロ":["ロボット","robotto","로봇"],
+ "ワ":["ワイン","wain","와인"],"ヲ":["—","—","거의 쓰지 않아요 (히라가나 を를 씁니다)"],"ン":["パン","pan","빵 (ン은 첫 글자로 안 씀)"]
+};
+
 /* ==================== VIDEOS ==================== */
 const JVIDEOS=[
  {id:"TOaNd-rjaQg",step:"STEP 1",title:"히라가나 가볍게 암기하는 비법 공개!",channel:"일단기 (일본어교육 1위)",
@@ -638,7 +669,9 @@ function renderMneList(){
       h+='<div class="phrase" style="padding:12px 0"><div class="meta"><div style="flex:1;display:flex;gap:14px;align-items:center">'+
          '<span style="font-size:46px;line-height:1;font-weight:800;font-family:\'Noto Sans JP\',sans-serif;width:56px;text-align:center;cursor:pointer" onclick="openKana(\''+ch+'\',\''+ROWR[ri][ci]+'\',\''+ROWKR[ri][ci]+'\')">'+ch+'</span>'+
          '<div><div style="font-size:14px;color:var(--purple);font-weight:800">'+ROWR[ri][ci]+' · '+ROWKR[ri][ci]+'</div>'+
-         '<div class="sub" style="font-size:14px;line-height:1.5">'+(MNE[ch]||'')+'</div></div></div>'+
+         '<div class="sub" style="font-size:14px;line-height:1.5">'+(MNE[ch]||'')+'</div>'+
+         (EXW[ch]?'<div style="font-size:13.5px;margin-top:3px"><b style="font-family:\'Noto Sans JP\',sans-serif">'+EXW[ch][0]+'</b> <span class="sub">'+EXW[ch][2]+'</span></div>':'')+
+         '</div></div>'+
          '<button class="spk" onclick="say(\''+ch+'\')">🔊</button></div></div>';
     });
   });
@@ -709,8 +742,28 @@ function openKana(ch,r,kr){
   const emoji=em?em[0]:'💡';
   const text=em?m.slice(em[0].length).trim():m;
   document.getElementById('kdMne').innerHTML='<span class="mne-emoji">'+emoji+'</span><b style="color:var(--yellow)">연상법</b> · '+text;
+  /* 이 가나가 들어간 대표 단어 */
+  const w=EXW[ch];
+  const wb=document.getElementById('kdWord');
+  if(w){
+    const hl=w[0].split('').map(c=>c===ch?'<span class="hl">'+c+'</span>':c).join('');
+    wb.style.display='block';
+    wb.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">'+
+      '<div style="text-align:left"><div class="wjp">'+hl+'</div><div class="wro">'+w[1]+'</div><div class="wko">'+w[2]+'</div></div>'+
+      (w[0]==='—'?'':'<button class="spk" style="width:46px;height:46px;font-size:19px" onclick="sayWord()">🔊</button>')+
+      '</div>';
+  }else wb.style.display='none';
   document.getElementById('kanaDetail').classList.add('on');
   sayKana(2);
+}
+function sayWord(){
+  stopSay();
+  const w=EXW[kdCur];if(!w||w[0]==='—')return;
+  const u=new SpeechSynthesisUtterance(w[0]);
+  u.lang='ja-JP';u.rate=Math.min(0.8,kdRate+0.15);
+  const v=voices.find(v=>v.lang==='ja-JP'&&/Google|Kyoko|Natural|O-Ren/.test(v.name))||voices.find(v=>v.lang&&v.lang.startsWith('ja'));
+  if(v)u.voice=v;
+  speechSynthesis.speak(u);
 }
 /* move to previous/next kana within current mode */
 function stepKana(d){
@@ -772,6 +825,27 @@ function startKanaQuiz2(){
   });
   beginQuiz(list,'kana2');
 }
+/* word quiz: kana word -> meaning */
+function startWordQuiz(){
+  lastQuizStarter=startWordQuiz;
+  const pool=Object.keys(EXW).map(k=>({ch:k,w:EXW[k]})).filter(o=>o.w[0]!=='—'&&!/조사|안 씀/.test(o.w[2]));
+  const picks=shuffle(pool).slice(0,10);
+  const list=picks.map(o=>{
+    const wrong=shuffle(pool.filter(x=>x.w[2]!==o.w[2])).slice(0,3);
+    return {t:'word',o,choices:shuffle([o].concat(wrong))};
+  });
+  beginQuiz(list,'word');
+}
+function ansWord(btn,i){
+  if(qz.answered)return;qz.answered=true;
+  const q=qz.list[qz.idx];
+  const ok=q.choices[i].w[2]===q.o.w[2];
+  btn.classList.add(ok?'ok':'no');
+  if(!ok)document.querySelectorAll('#quizCard .choice').forEach((b,bi)=>{if(q.choices[bi].w[2]===q.o.w[2])b.classList.add('ok');});
+  say(q.o.w[0]);
+  finishQ(ok,q.o.w[0]+' ('+q.o.w[1]+') — '+q.o.w[2],q.o.w[0]);
+}
+
 /* phrase quiz: ko -> jp */
 function startPhraseQuiz(){
   lastQuizStarter=startPhraseQuiz;
@@ -798,6 +872,10 @@ function renderQ(){
     h='<span class="pill p">'+(q.mode==='h'?'히라가나':'가타카나')+'에서 찾으세요</span><div class="big-jp" style="text-align:center;font-size:20px">발음: <b style="color:var(--accent)">'+q.r+'</b> ('+q.kr+')</div><div class="row" style="flex-wrap:wrap;gap:10px">';
     q.choices.forEach((c,i)=>{h+='<button class="choice" style="flex:1;text-align:center;font-size:28px;min-width:60px" onclick="ansKana2(this,'+i+')">'+c.ch+'</button>';});
     h+='</div>';
+  }else if(q.t==='word'){
+    h='<span class="pill y">이 단어의 뜻은?</span><div class="big-jp" style="text-align:center;font-size:34px">'+q.o.w[0]+'</div>'+
+      '<p class="center mb"><button class="btn sm ghost" onclick="say(\''+q.o.w[0]+'\')">🔊 발음 듣기</button></p>';
+    q.choices.forEach((c,i)=>{h+='<button class="choice" onclick="ansWord(this,'+i+')">'+c.w[2]+'</button>';});
   }else{
     h='<span class="pill a">회화</span><div class="big-ko" style="margin-top:10px;font-size:16px;color:var(--txt)">"'+q.p.ko+'"</div><p class="sub mb">일본어로 어떻게 말할까요?</p>';
     q.choices.forEach((c,i)=>{h+='<button class="choice" onclick="ansPhrase(this,'+i+')">'+c.jp+'</button>';});
@@ -842,6 +920,12 @@ function finishQ(ok,correctTxt,sayTxt,mne){
   fb+='<b style="color:'+(ok?'var(--green)':'var(--red)')+'">'+(ok?'✅ 정답! +10 XP':'❌ 오답')+'</b>';
   fb+='<p class="mt" style="font-size:15px;font-family:\'Noto Sans JP\',sans-serif">정답: <b>'+correctTxt+'</b> <button class="spk" style="width:32px;height:32px;font-size:13px" onclick="say(\''+sayTxt.replace(/'/g,"\\'")+'\')">🔊</button></p>';
   if(mne)fb+='<p class="sub mt" style="background:var(--card2);border-radius:10px;padding:10px"><b style="color:var(--yellow)">연상법</b> · '+mne+'</p>';
+  if(qz.kind!=='phrase'&&EXW[sayTxt]){
+    const w=EXW[sayTxt];
+    fb+='<p class="mt" style="background:rgba(255,107,157,.1);border:1px solid var(--accent);border-radius:10px;padding:10px;font-size:14px">'+
+        '<b style="font-family:\'Noto Sans JP\',sans-serif;font-size:17px">'+w[0]+'</b> <span class="sub">'+w[1]+' — '+w[2]+'</span> '+
+        (w[0]==='—'?'':'<button class="spk" style="width:30px;height:30px;font-size:13px;vertical-align:middle" onclick="say(\''+w[0]+'\')">🔊</button>')+'</p>';
+  }
   fb+='<button class="btn full mt" onclick="nextQ()">'+(qz.idx+1<qz.list.length?'다음 문제 →':'결과 보기')+'</button></div>';
   document.getElementById('quizFeedback').innerHTML=fb;
 }
