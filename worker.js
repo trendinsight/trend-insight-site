@@ -1944,7 +1944,10 @@ async function tdOAuthCallback(url, env) {
 }
 
 async function tdHandle(req, url, env, ctx) {
-  if (url.pathname === "/api/todo/oauth/callback") return tdOAuthCallback(url, env);
+  if (url.pathname === "/api/todo/oauth/callback") {
+    try { return await tdOAuthCallback(url, env); }
+    catch (e) { return tdHtml("연결 실패", String(e.message || e), false); }
+  }
   const k = tdKey(url);
   if (!k) return new Response(JSON.stringify({ ok: false, error: "키가 필요합니다" }), { status: 401, headers: JSON_HEADERS });
   const p = url.pathname.slice("/api/todo/".length);
@@ -1988,7 +1991,7 @@ async function tdHandle(req, url, env, ctx) {
       return tdOAuthStart(url, k, cfg);
     }
 
-    if (p === "gsync" && req.method === "POST") return tdGSync(req, url, env, k);
+    if (p === "gsync" && req.method === "POST") return await tdGSync(req, url, env, k);
 
     if (p === "gcals") {
       const { token } = await tdGToken(env, k);
