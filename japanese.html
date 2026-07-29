@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="robots" content="noindex">
+<title>Nihongo Lab — 일본어 학습</title>
+<style>
+:root{
+  --bg:#160f1e; --card:#241a30; --card2:#2f2340; --line:#453357;
+  --txt:#f5efff; --sub:#b3a4cc; --accent:#ff6b9d; --green:#3ecf8e; --red:#ff6b6b;
+  --yellow:#ffd166; --purple:#a78bfa; --blue:#5b8cff;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Apple SD Gothic Neo','Pretendard','Noto Sans KR','Noto Sans JP',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;padding-bottom:80px}
+.wrap{max-width:560px;margin:0 auto;padding:16px}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 4px}
+header h1{font-size:20px;font-weight:800;background:linear-gradient(90deg,#ff6b9d,#a78bfa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.streak{font-size:14px;font-weight:700;color:var(--yellow)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px}
+.tabbar{position:fixed;bottom:0;left:0;right:0;background:rgba(30,20,42,.97);border-top:1px solid var(--line);display:flex;z-index:50;backdrop-filter:blur(8px)}
+.tabbar button{flex:1;background:none;border:none;color:var(--sub);padding:10px 0 max(10px,env(safe-area-inset-bottom));font-size:11px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
+.tabbar button .ic{font-size:20px}
+.tabbar button.on{color:var(--accent);font-weight:700}
+.page{display:none}.page.on{display:block;animation:fade .25s}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.h2{font-size:17px;font-weight:800;margin-bottom:10px}
+.sub{color:var(--sub);font-size:13px;line-height:1.5}
+.btn{display:inline-block;border:none;border-radius:12px;padding:13px 18px;font-size:15px;font-weight:700;cursor:pointer;color:#fff;background:var(--accent);transition:transform .1s}
+.btn:active{transform:scale(.96)}
+.btn.ghost{background:var(--card2);border:1px solid var(--line)}
+.btn.green{background:var(--green);color:#06281a}
+.btn.red{background:var(--red)}
+.btn.full{width:100%;text-align:center}
+.btn.sm{padding:8px 12px;font-size:13px;border-radius:10px}
+.row{display:flex;gap:10px}
+.xpbar{height:10px;background:var(--card2);border-radius:6px;overflow:hidden;margin-top:8px}
+.xpbar i{display:block;height:100%;background:linear-gradient(90deg,#ff6b9d,#a78bfa);border-radius:6px;transition:width .4s}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modecard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;cursor:pointer;transition:transform .1s}
+.modecard:active{transform:scale(.97)}
+.modecard .ic{font-size:26px}
+.modecard b{display:block;margin:8px 0 4px;font-size:15px}
+.modecard span{font-size:12px;color:var(--sub)}
+.pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;background:var(--card2);color:var(--sub);margin-right:6px}
+.pill.g{background:rgba(62,207,142,.15);color:var(--green)}
+.pill.b{background:rgba(91,140,255,.15);color:var(--blue)}
+.pill.p{background:rgba(167,139,250,.15);color:var(--purple)}
+.pill.y{background:rgba(255,209,102,.15);color:var(--yellow)}
+.pill.a{background:rgba(255,107,157,.15);color:var(--accent)}
+.big-jp{font-size:24px;font-weight:800;line-height:1.5;margin:10px 0;font-family:'Noto Sans JP','Hiragino Sans','Yu Gothic',sans-serif}
+.yomi{font-size:14px;color:var(--purple);margin-bottom:2px}
+.romaji{font-size:13px;color:var(--sub);font-style:italic}
+.big-ko{font-size:15px;color:var(--sub);margin-bottom:14px}
+.diffword{padding:1px 2px;border-radius:5px}
+.diffword.ok{color:var(--green)}
+.diffword.miss{color:var(--red);text-decoration:underline}
+.score-ring{font-size:34px;font-weight:900;text-align:center;margin:8px 0}
+.choice{display:block;width:100%;text-align:left;background:var(--card2);border:1.5px solid var(--line);color:var(--txt);border-radius:12px;padding:14px;font-size:16px;margin-bottom:10px;cursor:pointer;font-family:'Noto Sans JP','Hiragino Sans',sans-serif}
+.choice.ok{border-color:var(--green);background:rgba(62,207,142,.12)}
+.choice.no{border-color:var(--red);background:rgba(255,107,107,.12)}
+.kana-tabs{display:flex;gap:8px;margin-bottom:12px}
+.kana-tabs button{flex:1;background:var(--card2);border:1.5px solid var(--line);color:var(--sub);border-radius:12px;padding:10px;font-size:14px;font-weight:700;cursor:pointer}
+.kana-tabs button.on{border-color:var(--accent);color:var(--accent);background:rgba(255,107,157,.1)}
+.kana-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:8px}
+.kana-cell{aspect-ratio:1;background:var(--card2);border:1.5px solid var(--line);border-radius:12px;display:flex;flex-direction:column;justify-content:center;align-items:center;cursor:pointer;font-family:'Noto Sans JP',sans-serif}
+.kana-cell .k{font-size:21px;font-weight:700}
+.kana-cell .r{font-size:9.5px;color:var(--sub)}
+.kana-cell.lv1{border-color:var(--blue)}
+.kana-cell.lv2{border-color:var(--green);background:rgba(62,207,142,.1)}
+.kana-cell.empty{visibility:hidden}
+.kana-detail{position:fixed;inset:0;background:rgba(10,6,16,.85);z-index:60;display:none;justify-content:center;align-items:center;backdrop-filter:blur(4px)}
+.kana-detail.on{display:flex}
+.kana-pop{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:30px;text-align:center;width:270px}
+.kana-pop .big{font-size:78px;font-weight:800;font-family:'Noto Sans JP',sans-serif}
+.kana-pop .rd{font-size:19px;color:var(--purple);margin:6px 0 2px}
+.kana-pop .kr{font-size:14px;color:var(--sub);margin-bottom:16px}
+.rowlabel{font-size:12px;color:var(--sub);font-weight:700;margin:10px 0 6px}
+.sitcard{display:flex;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px;cursor:pointer;align-items:center}
+.sitcard .ic{font-size:30px}
+.sitcard b{font-size:15px;display:block;margin-bottom:3px}
+.sitcard span{font-size:12px;color:var(--sub)}
+.phrase{padding:14px 0;border-bottom:1px solid var(--line)}
+.phrase:last-child{border-bottom:none}
+.phrase .jp{font-size:17px;font-weight:700;font-family:'Noto Sans JP',sans-serif;line-height:1.5}
+.phrase .meta{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+.phrase .btns{display:flex;gap:8px;flex-shrink:0}
+.spk{background:var(--card2);border:1px solid var(--line);color:var(--accent);border-radius:10px;width:38px;height:38px;font-size:16px;cursor:pointer;flex-shrink:0}
+.spk.rec{background:var(--red);color:#fff;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,107,107,.5)}50%{box-shadow:0 0 0 12px rgba(255,107,107,0)}}
+.mic-result{margin-top:10px;font-size:14px;line-height:1.7}
+.flashcard{background:linear-gradient(135deg,#2f2340,#241a30);border:1px solid var(--line);border-radius:20px;min-height:230px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:24px;cursor:pointer;margin-bottom:14px}
+.flashcard .front{font-size:26px;font-weight:800;font-family:'Noto Sans JP',sans-serif;line-height:1.5}
+.flashcard .back-ko{font-size:19px;font-weight:700;color:var(--purple)}
+.srs-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.progress-txt{font-size:12px;color:var(--sub);text-align:center;margin-bottom:8px}
+.toast{position:fixed;top:18px;left:50%;transform:translateX(-50%);background:var(--green);color:#06281a;font-weight:800;padding:10px 20px;border-radius:99px;z-index:99;font-size:14px;animation:fade .3s}
+.center{text-align:center}
+.mt{margin-top:12px}.mb{margin-bottom:12px}
+.stat3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center}
+.stat3 .card{padding:12px;margin:0}
+.stat3 b{font-size:20px;display:block}
+.stat3 span{font-size:11px;color:var(--sub)}
+.dot-progress{display:flex;gap:5px;justify-content:center;margin-bottom:12px}
+.dot-progress i{width:8px;height:8px;border-radius:50%;background:var(--card2)}
+.dot-progress i.done{background:var(--green)}
+.dot-progress i.cur{background:var(--accent)}
+.back-btn{background:none;border:none;color:var(--accent);font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;padding:4px 0}
+.qmode{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.kana-big-q{font-size:64px;font-weight:800;text-align:center;font-family:'Noto Sans JP',sans-serif;margin:10px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>🇯🇵 Nihongo Lab</h1>
+  <div class="streak">🔥 <span id="streakDays">0</span>일</div>
+</header>
+
+<div class="wrap">
+
+<!-- ============ HOME ============ -->
+<div class="page on" id="page-home">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div><b style="font-size:16px">Lv.<span id="lvl">1</span></b> <span class="sub" id="lvlName">입문</span></div>
+      <span class="sub"><span id="xpNow">0</span> / <span id="xpNext">100</span> XP</span>
+    </div>
+    <div class="xpbar"><i id="xpFill" style="width:0%"></i></div>
+    <div class="mt sub">오늘 목표: <b id="todayXp" style="color:var(--txt)">0</b> / 50 XP
+      <span id="goalDone" style="display:none;color:var(--green);font-weight:700"> · 달성! ✅</span>
+    </div>
+  </div>
+
+  <div class="stat3 mb">
+    <div class="card"><b id="stKana">0%</b><span>가나 마스터</span></div>
+    <div class="card"><b id="stCards">0</b><span>복습 대기 카드</span></div>
+    <div class="card"><b id="stQuiz">0%</b><span>퀴즈 정답률</span></div>
+  </div>
+
+  <div class="grid2">
+    <div class="modecard" onclick="go('kana')"><span class="ic">🈁</span><b>가나 외우기</b><span>히라가나 · 가타카나</span></div>
+    <div class="modecard" onclick="go('quiz')"><span class="ic">🧩</span><b>퀴즈</b><span>가나 · 회화 랜덤 출제</span></div>
+    <div class="modecard" onclick="go('talk')"><span class="ic">🍜</span><b>상황별 회화</b><span>식당 · 호텔 · 쇼핑 · 교통</span></div>
+    <div class="modecard" onclick="go('cards')"><span class="ic">🃏</span><b>표현 카드</b><span>간격 반복 암기</span></div>
+  </div>
+
+  <div class="card mt">
+    <span class="pill p">오늘의 한마디</span>
+    <div class="big-jp" id="dailyJp" style="font-size:21px"></div>
+    <div class="yomi" id="dailyYomi"></div>
+    <div class="big-ko" id="dailyKo" style="margin-bottom:8px"></div>
+    <button class="btn sm ghost" onclick="say(DAILY_JP)">🔊 듣기</button>
+  </div>
+</div>
+
+<!-- ============ KANA ============ -->
+<div class="page" id="page-kana">
+  <div class="h2">🈁 가나 외우기</div>
+  <div class="kana-tabs">
+    <button id="kt-h" class="on" onclick="setKana('h')">ひらがな 히라가나</button>
+    <button id="kt-k" onclick="setKana('k')">カタカナ 가타카나</button>
+  </div>
+  <p class="sub mb">글자를 탭하면 발음을 듣고 배울 수 있어요. 퀴즈에서 3번 이상 맞히면 <span style="color:var(--green)">초록</span>(마스터)이 됩니다.</p>
+  <div id="kanaGrid"></div>
+  <button class="btn full mt" onclick="go('quiz');startKanaQuiz(kanaMode)">이 가나로 퀴즈 풀기 →</button>
+</div>
+<div class="kana-detail" id="kanaDetail" onclick="this.classList.remove('on')">
+  <div class="kana-pop" onclick="event.stopPropagation()">
+    <div class="big" id="kdChar"></div>
+    <div class="rd" id="kdRomaji"></div>
+    <div class="kr" id="kdKr"></div>
+    <button class="btn full mb" onclick="say(document.getElementById('kdChar').textContent)">🔊 발음 듣기</button>
+    <button class="btn ghost full" onclick="document.getElementById('kanaDetail').classList.remove('on')">닫기</button>
+  </div>
+</div>
+
+<!-- ============ QUIZ ============ -->
+<div class="page" id="page-quiz">
+  <div class="h2">🧩 퀴즈</div>
+  <div id="quizHome">
+    <div class="qmode">
+      <div class="modecard" onclick="startKanaQuiz('h')"><span class="ic">あ</span><b>히라가나</b><span>글자 → 발음 10문제</span></div>
+      <div class="modecard" onclick="startKanaQuiz('k')"><span class="ic">ア</span><b>가타카나</b><span>글자 → 발음 10문제</span></div>
+      <div class="modecard" onclick="startKanaQuiz2()"><span class="ic">🔤</span><b>반대 퀴즈</b><span>발음 → 글자 찾기</span></div>
+      <div class="modecard" onclick="startPhraseQuiz()"><span class="ic">💬</span><b>회화 퀴즈</b><span>상황별 표현 10문제</span></div>
+    </div>
+    <div class="card">
+      <b>누적 기록</b>
+      <p class="sub mt">푼 문제 <b id="qTotalN" style="color:var(--txt)">0</b>개 · 정답 <b id="qCorrectN" style="color:var(--txt)">0</b>개 · 정답당 +10 XP</p>
+    </div>
+  </div>
+  <div id="quizPlay" style="display:none">
+    <div class="dot-progress" id="quizDots"></div>
+    <div class="card" id="quizCard"></div>
+    <div id="quizFeedback"></div>
+  </div>
+  <div id="quizEnd" style="display:none">
+    <div class="card center">
+      <div style="font-size:44px">🎉</div>
+      <div class="score-ring"><span id="quizScore"></span></div>
+      <p class="sub mb" id="quizEndMsg"></p>
+      <button class="btn full mb" onclick="repeatQuiz()">다시 도전</button>
+      <button class="btn ghost full" onclick="quizToHome()">퀴즈 홈으로</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ TALK (situations) ============ -->
+<div class="page" id="page-talk">
+  <div class="h2">🍜 상황별 회화 <span class="pill a">왕초보</span></div>
+  <div id="sitList"></div>
+  <div id="sitDetail" style="display:none"></div>
+</div>
+
+<!-- ============ CARDS ============ -->
+<div class="page" id="page-cards">
+  <div class="h2">🃏 표현 카드 <span class="pill y">간격 반복</span></div>
+  <div id="cardsHome">
+    <div class="card center">
+      <div style="font-size:44px">📚</div>
+      <p class="sub mt">오늘 복습할 카드 <b id="dueCount" style="color:var(--txt);font-size:18px">0</b>장</p>
+      <p class="sub mb">기억 정도에 따라 다음 복습 간격이 자동 조정됩니다</p>
+      <button class="btn full" onclick="startCards()">복습 시작</button>
+    </div>
+    <div class="card">
+      <b>전체 덱</b> <span class="sub">— <span id="deckSize">0</span>개 필수 표현</span>
+      <p class="sub mt">새 카드는 하루 최대 8장씩 추가됩니다.</p>
+    </div>
+  </div>
+  <div id="cardsPlay" style="display:none">
+    <div class="progress-txt">남은 카드 <span id="cardsLeft">0</span>장</div>
+    <div class="flashcard" id="flash" onclick="flipCard()"></div>
+    <div class="center mb"><button class="btn sm ghost" onclick="event.stopPropagation();sayCur()">🔊 발음 듣기</button></div>
+    <div class="srs-btns" id="srsBtns" style="visibility:hidden">
+      <button class="btn red" onclick="grade(0)">🌧️ 다시<br><small>1일 후</small></button>
+      <button class="btn ghost" onclick="grade(1)">🌤️ 애매함<br><small>3일 후</small></button>
+      <button class="btn green" onclick="grade(2)">☀️ 완벽<br><small id="easyIv">7일 후</small></button>
+    </div>
+    <div class="center mt"><button class="back-btn" onclick="endCards()">종료하기</button></div>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<div class="tabbar">
+  <button id="tab-home" class="on" onclick="go('home')"><span class="ic">🏠</span>홈</button>
+  <button id="tab-kana" onclick="go('kana')"><span class="ic">🈁</span>가나</button>
+  <button id="tab-quiz" onclick="go('quiz')"><span class="ic">🧩</span>퀴즈</button>
+  <button id="tab-talk" onclick="go('talk')"><span class="ic">🍜</span>회화</button>
+  <button id="tab-cards" onclick="go('cards')"><span class="ic">🃏</span>카드</button>
+</div>
+
+<script>
+/* ==================== KANA DATA ==================== */
+/* rows of 5 (null = empty cell) */
+const HIRA=[
+ ["あ","い","う","え","お"],["か","き","く","け","こ"],["さ","し","す","せ","そ"],
+ ["た","ち","つ","て","と"],["な","に","ぬ","ね","の"],["は","ひ","ふ","へ","ほ"],
+ ["ま","み","む","め","も"],["や",null,"ゆ",null,"よ"],["ら","り","る","れ","ろ"],
+ ["わ",null,null,null,"を"],["ん",null,null,null,null]
+];
+const KATA=[
+ ["ア","イ","ウ","エ","オ"],["カ","キ","ク","ケ","コ"],["サ","シ","ス","セ","ソ"],
+ ["タ","チ","ツ","テ","ト"],["ナ","ニ","ヌ","ネ","ノ"],["ハ","ヒ","フ","ヘ","ホ"],
+ ["マ","ミ","ム","メ","モ"],["ヤ",null,"ユ",null,"ヨ"],["ラ","リ","ル","レ","ロ"],
+ ["ワ",null,null,null,"ヲ"],["ン",null,null,null,null]
+];
+const ROWR=[
+ ["a","i","u","e","o"],["ka","ki","ku","ke","ko"],["sa","shi","su","se","so"],
+ ["ta","chi","tsu","te","to"],["na","ni","nu","ne","no"],["ha","hi","fu","he","ho"],
+ ["ma","mi","mu","me","mo"],["ya",null,"yu",null,"yo"],["ra","ri","ru","re","ro"],
+ ["wa",null,null,null,"wo"],["n",null,null,null,null]
+];
+const ROWKR=[
+ ["아","이","우","에","오"],["카","키","쿠","케","코"],["사","시","스","세","소"],
+ ["타","치","츠","테","토"],["나","니","누","네","노"],["하","히","후","헤","호"],
+ ["마","미","무","메","모"],["야",null,"유",null,"요"],["라","리","루","레","로"],
+ ["와",null,null,null,"오"],["응",null,null,null,null]
+];
+const ROWNAMES=["あ행","か행","さ행","た행","な행","は행","ま행","や행","ら행","わ행","ん"];
+function kanaList(mode){ /* flat list {ch,r,kr} */
+  const src=mode==='h'?HIRA:KATA;const out=[];
+  src.forEach((row,ri)=>row.forEach((ch,ci)=>{if(ch)out.push({ch,r:ROWR[ri][ci],kr:ROWKR[ri][ci]});}));
+  return out;
+}
+
+/* ==================== SITUATION PHRASES ==================== */
+const SITS=[
+ {ic:"🙇",name:"인사·기본",desc:"만남 · 감사 · 부탁 — 모든 상황의 기본",ph:[
+  {jp:"こんにちは",yomi:"",ro:"konnichiwa",ko:"안녕하세요 (낮 인사)"},
+  {jp:"おはようございます",yomi:"",ro:"ohayō gozaimasu",ko:"좋은 아침입니다"},
+  {jp:"ありがとうございます",yomi:"",ro:"arigatō gozaimasu",ko:"감사합니다"},
+  {jp:"すみません",yomi:"",ro:"sumimasen",ko:"실례합니다 / 저기요 / 죄송해요 (만능)"},
+  {jp:"お願いします",yomi:"おねがいします",ro:"onegai shimasu",ko:"부탁합니다"},
+  {jp:"大丈夫です",yomi:"だいじょうぶです",ro:"daijōbu desu",ko:"괜찮아요"},
+  {jp:"わかりません",yomi:"",ro:"wakarimasen",ko:"모르겠어요"},
+  {jp:"日本語が少しだけ話せます",yomi:"にほんごが すこしだけ はなせます",ro:"nihongo ga sukoshi dake hanasemasu",ko:"일본어를 조금밖에 못해요"},
+  {jp:"もう一度お願いします",yomi:"もういちど おねがいします",ro:"mō ichido onegai shimasu",ko:"다시 한번 말해 주세요"},
+  {jp:"はい / いいえ",yomi:"",ro:"hai / iie",ko:"네 / 아니요"}
+ ]},
+ {ic:"🍜",name:"식당",desc:"주문 · 추천 · 계산",ph:[
+  {jp:"二人です",yomi:"ふたりです",ro:"futari desu",ko:"두 명이에요"},
+  {jp:"メニューをください",yomi:"",ro:"menyū o kudasai",ko:"메뉴판 주세요"},
+  {jp:"おすすめは何ですか",yomi:"おすすめは なんですか",ro:"osusume wa nan desu ka",ko:"추천 메뉴가 뭐예요?"},
+  {jp:"これをください",yomi:"",ro:"kore o kudasai",ko:"이거 주세요"},
+  {jp:"水をください",yomi:"みずをください",ro:"mizu o kudasai",ko:"물 주세요"},
+  {jp:"とてもおいしいです",yomi:"",ro:"totemo oishii desu",ko:"아주 맛있어요"},
+  {jp:"持ち帰りできますか",yomi:"もちかえり できますか",ro:"mochikaeri dekimasu ka",ko:"포장 되나요?"},
+  {jp:"お会計お願いします",yomi:"おかいけい おねがいします",ro:"okaikei onegai shimasu",ko:"계산해 주세요"}
+ ]},
+ {ic:"🏨",name:"호텔",desc:"체크인 · 조식 · 요청",ph:[
+  {jp:"チェックインをお願いします",yomi:"ちぇっくいんを おねがいします",ro:"chekku-in o onegai shimasu",ko:"체크인 부탁합니다"},
+  {jp:"予約しています",yomi:"よやくしています",ro:"yoyaku shite imasu",ko:"예약했어요"},
+  {jp:"荷物を預かってもらえますか",yomi:"にもつを あずかって もらえますか",ro:"nimotsu o azukatte moraemasu ka",ko:"짐을 맡길 수 있나요?"},
+  {jp:"朝食は何時からですか",yomi:"ちょうしょくは なんじからですか",ro:"chōshoku wa nanji kara desu ka",ko:"조식은 몇 시부터예요?"},
+  {jp:"Wi-Fiのパスワードは何ですか",yomi:"わいふぁいの ぱすわーどは なんですか",ro:"waifai no pasuwādo wa nan desu ka",ko:"와이파이 비밀번호가 뭐예요?"},
+  {jp:"部屋に鍵を忘れました",yomi:"へやに かぎを わすれました",ro:"heya ni kagi o wasuremashita",ko:"방에 열쇠를 두고 왔어요"},
+  {jp:"チェックアウトは何時ですか",yomi:"ちぇっくあうとは なんじですか",ro:"chekku-auto wa nanji desu ka",ko:"체크아웃은 몇 시예요?"},
+  {jp:"タクシーを呼んでもらえますか",yomi:"たくしーを よんで もらえますか",ro:"takushī o yonde moraemasu ka",ko:"택시를 불러 주시겠어요?"}
+ ]},
+ {ic:"🛍️",name:"쇼핑",desc:"가격 · 시착 · 면세",ph:[
+  {jp:"これはいくらですか",yomi:"",ro:"kore wa ikura desu ka",ko:"이거 얼마예요?"},
+  {jp:"ちょっと見ているだけです",yomi:"ちょっと みている だけです",ro:"chotto mite iru dake desu",ko:"그냥 구경하는 거예요"},
+  {jp:"試着できますか",yomi:"しちゃく できますか",ro:"shichaku dekimasu ka",ko:"입어 봐도 되나요?"},
+  {jp:"もう少し安いものはありますか",yomi:"もうすこし やすいものは ありますか",ro:"mō sukoshi yasui mono wa arimasu ka",ko:"좀 더 싼 거 있나요?"},
+  {jp:"カードで払えますか",yomi:"かーどで はらえますか",ro:"kādo de haraemasu ka",ko:"카드로 계산되나요?"},
+  {jp:"これを二つください",yomi:"これを ふたつ ください",ro:"kore o futatsu kudasai",ko:"이거 두 개 주세요"},
+  {jp:"袋をください",yomi:"ふくろをください",ro:"fukuro o kudasai",ko:"봉투 주세요"},
+  {jp:"免税できますか",yomi:"めんぜい できますか",ro:"menzei dekimasu ka",ko:"면세 되나요?"}
+ ]},
+ {ic:"🚃",name:"교통",desc:"길찾기 · 전철 · 택시",ph:[
+  {jp:"駅はどこですか",yomi:"えきは どこですか",ro:"eki wa doko desu ka",ko:"역이 어디예요?"},
+  {jp:"この電車は新宿に行きますか",yomi:"このでんしゃは しんじゅくに いきますか",ro:"kono densha wa Shinjuku ni ikimasu ka",ko:"이 전철 신주쿠에 가나요?"},
+  {jp:"切符はどこで買えますか",yomi:"きっぷは どこで かえますか",ro:"kippu wa doko de kaemasu ka",ko:"표는 어디서 사요?"},
+  {jp:"乗り換えが必要ですか",yomi:"のりかえが ひつようですか",ro:"norikae ga hitsuyō desu ka",ko:"환승해야 하나요?"},
+  {jp:"どのくらいかかりますか",yomi:"",ro:"dono kurai kakarimasu ka",ko:"얼마나 걸려요?"},
+  {jp:"ここで降ります",yomi:"ここで おります",ro:"koko de orimasu",ko:"여기서 내려요"},
+  {jp:"ここまでお願いします",yomi:"ここまで おねがいします",ro:"koko made onegai shimasu",ko:"(택시에서 지도 보여주며) 여기까지 가 주세요"},
+  {jp:"まっすぐ行ってください",yomi:"まっすぐ いってください",ro:"massugu itte kudasai",ko:"직진해 주세요"}
+ ]},
+ {ic:"✈️",name:"공항·긴급",desc:"입국 · 환전 · 위급 상황",ph:[
+  {jp:"パスポートです",yomi:"ぱすぽーとです",ro:"pasupōto desu",ko:"여권입니다"},
+  {jp:"観光で来ました",yomi:"かんこうで きました",ro:"kankō de kimashita",ko:"관광하러 왔어요"},
+  {jp:"三日間滞在します",yomi:"みっかかん たいざいします",ro:"mikkakan taizai shimasu",ko:"3일 동안 머물러요"},
+  {jp:"両替はどこでできますか",yomi:"りょうがえは どこで できますか",ro:"ryōgae wa doko de dekimasu ka",ko:"환전은 어디서 해요?"},
+  {jp:"荷物が出てきません",yomi:"にもつが でてきません",ro:"nimotsu ga dete kimasen",ko:"짐이 안 나와요"},
+  {jp:"道に迷いました",yomi:"みちに まよいました",ro:"michi ni mayoimashita",ko:"길을 잃었어요"},
+  {jp:"病院はどこですか",yomi:"びょういんは どこですか",ro:"byōin wa doko desu ka",ko:"병원이 어디예요?"},
+  {jp:"助けてください",yomi:"たすけてください",ro:"tasukete kudasai",ko:"도와주세요!"}
+ ]}
+];
+
+/* ==================== CARD DECK (SRS) ==================== */
+const CARD_DECK=[
+ {jp:"こんにちは",yomi:"",ro:"konnichiwa",ko:"안녕하세요"},
+ {jp:"ありがとうございます",yomi:"",ro:"arigatō gozaimasu",ko:"감사합니다"},
+ {jp:"すみません",yomi:"",ro:"sumimasen",ko:"실례합니다 / 저기요"},
+ {jp:"お願いします",yomi:"おねがいします",ro:"onegai shimasu",ko:"부탁합니다"},
+ {jp:"〜をください",yomi:"",ro:"~ o kudasai",ko:"~을 주세요"},
+ {jp:"いくらですか",yomi:"",ro:"ikura desu ka",ko:"얼마예요?"},
+ {jp:"どこですか",yomi:"",ro:"doko desu ka",ko:"어디예요?"},
+ {jp:"何ですか",yomi:"なんですか",ro:"nan desu ka",ko:"뭐예요?"},
+ {jp:"わかりました",yomi:"",ro:"wakarimashita",ko:"알겠습니다"},
+ {jp:"わかりません",yomi:"",ro:"wakarimasen",ko:"모르겠어요"},
+ {jp:"大丈夫です",yomi:"だいじょうぶです",ro:"daijōbu desu",ko:"괜찮아요"},
+ {jp:"ちょっと待ってください",yomi:"ちょっと まってください",ro:"chotto matte kudasai",ko:"잠깐만 기다려 주세요"},
+ {jp:"ゆっくり話してください",yomi:"ゆっくり はなしてください",ro:"yukkuri hanashite kudasai",ko:"천천히 말해 주세요"},
+ {jp:"トイレはどこですか",yomi:"といれは どこですか",ro:"toire wa doko desu ka",ko:"화장실이 어디예요?"},
+ {jp:"おいしい",yomi:"",ro:"oishii",ko:"맛있다"},
+ {jp:"きれい",yomi:"",ro:"kirei",ko:"예쁘다 / 깨끗하다"},
+ {jp:"高い",yomi:"たかい",ro:"takai",ko:"비싸다 / 높다"},
+ {jp:"安い",yomi:"やすい",ro:"yasui",ko:"싸다"},
+ {jp:"いいですね",yomi:"",ro:"ii desu ne",ko:"좋네요"},
+ {jp:"だめです",yomi:"",ro:"dame desu",ko:"안 돼요"},
+ {jp:"はじめまして",yomi:"",ro:"hajimemashite",ko:"처음 뵙겠습니다"},
+ {jp:"私は韓国人です",yomi:"わたしは かんこくじんです",ro:"watashi wa kankokujin desu",ko:"저는 한국인이에요"},
+ {jp:"英語を話せますか",yomi:"えいごを はなせますか",ro:"eigo o hanasemasu ka",ko:"영어 할 수 있나요?"},
+ {jp:"写真を撮ってもいいですか",yomi:"しゃしんを とっても いいですか",ro:"shashin o tottemo ii desu ka",ko:"사진 찍어도 되나요?"},
+ {jp:"これは何ですか",yomi:"これは なんですか",ro:"kore wa nan desu ka",ko:"이건 뭐예요?"},
+ {jp:"また来ます",yomi:"また きます",ro:"mata kimasu",ko:"또 올게요"},
+ {jp:"楽しかったです",yomi:"たのしかったです",ro:"tanoshikatta desu",ko:"즐거웠어요"},
+ {jp:"気をつけて",yomi:"きをつけて",ro:"ki o tsukete",ko:"조심하세요"},
+ {jp:"お疲れ様でした",yomi:"おつかれさまでした",ro:"otsukaresama deshita",ko:"수고하셨습니다"},
+ {jp:"さようなら",yomi:"",ro:"sayōnara",ko:"안녕히 가세요"}
+];
+
+/* ==================== STATE ==================== */
+const KEY='japapp_v1';
+let S=load();
+function load(){
+  try{const d=JSON.parse(localStorage.getItem(KEY));if(d)return d;}catch(e){}
+  return {xp:0,todayXp:0,today:dstr(),streak:0,lastActive:null,
+    quizTotal:0,quizCorrect:0,kana:{},cards:{}};
+}
+function save(){localStorage.setItem(KEY,JSON.stringify(S));}
+function dstr(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function rollDay(){const t=dstr();if(S.today!==t){S.today=t;S.todayXp=0;save();}}
+function addXP(n){
+  rollDay();S.xp+=n;S.todayXp+=n;
+  const t=dstr();
+  if(S.lastActive!==t){
+    const y=new Date();y.setDate(y.getDate()-1);
+    S.streak=(S.lastActive===dstr(y))?S.streak+1:1;
+    S.lastActive=t;
+  }
+  save();renderHome();toast('+'+n+' XP');
+}
+function toast(m){
+  const el=document.createElement('div');el.className='toast';el.textContent=m;
+  document.body.appendChild(el);setTimeout(()=>el.remove(),1400);
+}
+function lvlInfo(){
+  let lv=1,need=100,acc=0;
+  while(S.xp>=acc+need){acc+=need;lv++;need=100+50*(lv-1);}
+  return {lv,cur:S.xp-acc,need};
+}
+const LVL_NAMES=["입문","가나 견습","가나 마스터","여행 초급","여행 중급","회화 도전","회화 중급","달인"];
+
+/* ==================== NAV ==================== */
+function go(p){
+  document.querySelectorAll('.page').forEach(e=>e.classList.remove('on'));
+  document.querySelectorAll('.tabbar button').forEach(e=>e.classList.remove('on'));
+  document.getElementById('page-'+p).classList.add('on');
+  document.getElementById('tab-'+p).classList.add('on');
+  window.scrollTo(0,0);
+  if(p==='home')renderHome();
+  if(p==='kana')renderKana();
+  if(p==='talk')renderSitList();
+  if(p==='cards')renderCardsHome();
+  if(p==='quiz')renderQuizHome();
+}
+
+/* ==================== HOME ==================== */
+let DAILY_JP='';
+function renderHome(){
+  rollDay();
+  const L=lvlInfo();
+  document.getElementById('lvl').textContent=L.lv;
+  document.getElementById('lvlName').textContent=LVL_NAMES[Math.min(L.lv-1,LVL_NAMES.length-1)];
+  document.getElementById('xpNow').textContent=L.cur;
+  document.getElementById('xpNext').textContent=L.need;
+  document.getElementById('xpFill').style.width=Math.min(100,L.cur/L.need*100)+'%';
+  document.getElementById('todayXp').textContent=S.todayXp;
+  document.getElementById('goalDone').style.display=S.todayXp>=50?'inline':'none';
+  document.getElementById('streakDays').textContent=S.streak;
+  const all=kanaList('h').concat(kanaList('k'));
+  const mastered=all.filter(k=>(S.kana[k.ch]||0)>=3).length;
+  document.getElementById('stKana').textContent=Math.round(mastered/all.length*100)+'%';
+  document.getElementById('stCards').textContent=dueCards().length;
+  document.getElementById('stQuiz').textContent=(S.quizTotal?Math.round(S.quizCorrect/S.quizTotal*100):0)+'%';
+  const seed=parseInt(dstr().replace(/-/g,''))%CARD_DECK.length;
+  const c=CARD_DECK[seed];DAILY_JP=c.jp;
+  document.getElementById('dailyJp').textContent=c.jp;
+  document.getElementById('dailyYomi').textContent=(c.yomi?c.yomi+' · ':'')+c.ro;
+  document.getElementById('dailyKo').textContent=c.ko;
+}
+
+/* ==================== TTS ==================== */
+let voices=[];
+function loadVoices(){voices=speechSynthesis.getVoices();}
+if('speechSynthesis' in window){loadVoices();speechSynthesis.onvoiceschanged=loadVoices;}
+function say(txt){
+  if(!('speechSynthesis' in window)){alert('이 브라우저는 음성 합성을 지원하지 않습니다.');return;}
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(txt);
+  u.lang='ja-JP';u.rate=0.85;
+  const v=voices.find(v=>v.lang==='ja-JP'&&/Google|Kyoko|Natural|O-Ren/.test(v.name))||voices.find(v=>v.lang&&v.lang.startsWith('ja'));
+  if(v)u.voice=v;
+  speechSynthesis.speak(u);
+}
+
+/* ==================== KANA PAGE ==================== */
+let kanaMode='h';
+function setKana(m){
+  kanaMode=m;
+  document.getElementById('kt-h').classList.toggle('on',m==='h');
+  document.getElementById('kt-k').classList.toggle('on',m==='k');
+  renderKana();
+}
+function renderKana(){
+  const src=kanaMode==='h'?HIRA:KATA;
+  let h='';
+  src.forEach((row,ri)=>{
+    h+='<div class="rowlabel">'+ROWNAMES[ri]+'</div><div class="kana-grid">';
+    row.forEach((ch,ci)=>{
+      if(!ch){h+='<div class="kana-cell empty"></div>';return;}
+      const n=S.kana[ch]||0;
+      const cls=n>=3?'lv2':n>=1?'lv1':'';
+      h+='<div class="kana-cell '+cls+'" onclick="openKana(\''+ch+'\',\''+ROWR[ri][ci]+'\',\''+ROWKR[ri][ci]+'\')"><span class="k">'+ch+'</span><span class="r">'+ROWR[ri][ci]+'</span></div>';
+    });
+    h+='</div>';
+  });
+  document.getElementById('kanaGrid').innerHTML=h;
+}
+function openKana(ch,r,kr){
+  document.getElementById('kdChar').textContent=ch;
+  document.getElementById('kdRomaji').textContent=r;
+  document.getElementById('kdKr').textContent='한글 발음: '+kr;
+  document.getElementById('kanaDetail').classList.add('on');
+  say(ch);
+}
+
+/* ==================== QUIZ ==================== */
+let qz={list:[],idx:0,correct:0,answered:false,kind:''};
+let lastQuizStarter=null;
+function renderQuizHome(){
+  document.getElementById('quizHome').style.display='block';
+  document.getElementById('quizPlay').style.display='none';
+  document.getElementById('quizEnd').style.display='none';
+  document.getElementById('qTotalN').textContent=S.quizTotal;
+  document.getElementById('qCorrectN').textContent=S.quizCorrect;
+}
+function quizToHome(){renderQuizHome();}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function beginQuiz(list,kind){
+  qz={list,idx:0,correct:0,answered:false,kind};
+  document.getElementById('quizHome').style.display='none';
+  document.getElementById('quizEnd').style.display='none';
+  document.getElementById('quizPlay').style.display='block';
+  go('quiz');
+  document.getElementById('quizHome').style.display='none';
+  document.getElementById('quizPlay').style.display='block';
+  renderQ();
+}
+function repeatQuiz(){if(lastQuizStarter)lastQuizStarter();}
+/* kana quiz: char -> sound */
+function startKanaQuiz(mode){
+  lastQuizStarter=()=>startKanaQuiz(mode);
+  const pool=kanaList(mode);
+  /* prioritize unmastered */
+  const sorted=shuffle(pool).sort((a,b)=>(S.kana[a.ch]||0)-(S.kana[b.ch]||0));
+  const picks=shuffle(sorted.slice(0,16)).slice(0,10);
+  const list=picks.map(k=>{
+    const wrong=shuffle(pool.filter(x=>x.r!==k.r)).slice(0,3);
+    const choices=shuffle([k].concat(wrong));
+    return {t:'kana',ch:k.ch,ans:k.r,kr:k.kr,choices};
+  });
+  beginQuiz(list,'kana');
+}
+/* reverse: sound -> char (mixed h/k) */
+function startKanaQuiz2(){
+  lastQuizStarter=startKanaQuiz2;
+  const mode=Math.random()<0.5?'h':'k';
+  const pool=kanaList(mode);
+  const picks=shuffle(pool).slice(0,10);
+  const list=picks.map(k=>{
+    const wrong=shuffle(pool.filter(x=>x.ch!==k.ch)).slice(0,3);
+    const choices=shuffle([k].concat(wrong));
+    return {t:'kana2',ch:k.ch,r:k.r,kr:k.kr,choices,mode};
+  });
+  beginQuiz(list,'kana2');
+}
+/* phrase quiz: ko -> jp */
+function startPhraseQuiz(){
+  lastQuizStarter=startPhraseQuiz;
+  const pool=[];SITS.forEach(s=>s.ph.forEach(p=>pool.push(p)));
+  const picks=shuffle(pool).slice(0,10);
+  const list=picks.map(p=>{
+    const wrong=shuffle(pool.filter(x=>x.jp!==p.jp)).slice(0,3);
+    const choices=shuffle([p].concat(wrong));
+    return {t:'phrase',p,choices};
+  });
+  beginQuiz(list,'phrase');
+}
+function renderQ(){
+  const q=qz.list[qz.idx];qz.answered=false;
+  let dots='';
+  for(let i=0;i<qz.list.length;i++)dots+='<i class="'+(i<qz.idx?'done':i===qz.idx?'cur':'')+'"></i>';
+  document.getElementById('quizDots').innerHTML=dots;
+  document.getElementById('quizFeedback').innerHTML='';
+  let h='';
+  if(q.t==='kana'){
+    h='<span class="pill b">이 글자의 발음은?</span><div class="kana-big-q">'+q.ch+'</div>';
+    q.choices.forEach((c,i)=>{h+='<button class="choice center" style="text-align:center" onclick="ansKana(this,'+i+')">'+c.r+' ('+c.kr+')</button>';});
+  }else if(q.t==='kana2'){
+    h='<span class="pill p">'+(q.mode==='h'?'히라가나':'가타카나')+'에서 찾으세요</span><div class="big-jp" style="text-align:center;font-size:20px">발음: <b style="color:var(--accent)">'+q.r+'</b> ('+q.kr+')</div><div class="row" style="flex-wrap:wrap;gap:10px">';
+    q.choices.forEach((c,i)=>{h+='<button class="choice" style="flex:1;text-align:center;font-size:28px;min-width:60px" onclick="ansKana2(this,'+i+')">'+c.ch+'</button>';});
+    h+='</div>';
+  }else{
+    h='<span class="pill a">회화</span><div class="big-ko" style="margin-top:10px;font-size:16px;color:var(--txt)">"'+q.p.ko+'"</div><p class="sub mb">일본어로 어떻게 말할까요?</p>';
+    q.choices.forEach((c,i)=>{h+='<button class="choice" onclick="ansPhrase(this,'+i+')">'+c.jp+'</button>';});
+  }
+  document.getElementById('quizCard').innerHTML=h;
+}
+function bumpKana(ch,ok){
+  if(ok)S.kana[ch]=(S.kana[ch]||0)+1;
+  else S.kana[ch]=Math.max(0,(S.kana[ch]||0)-1);
+}
+function ansKana(btn,i){
+  if(qz.answered)return;qz.answered=true;
+  const q=qz.list[qz.idx];
+  const ok=q.choices[i].r===q.ans;
+  btn.classList.add(ok?'ok':'no');
+  if(!ok)document.querySelectorAll('#quizCard .choice').forEach((b,bi)=>{if(q.choices[bi].r===q.ans)b.classList.add('ok');});
+  bumpKana(q.ch,ok);
+  finishQ(ok,q.ch+' = '+q.ans+' ('+q.kr+')',q.ch);
+}
+function ansKana2(btn,i){
+  if(qz.answered)return;qz.answered=true;
+  const q=qz.list[qz.idx];
+  const ok=q.choices[i].ch===q.ch;
+  btn.classList.add(ok?'ok':'no');
+  if(!ok)document.querySelectorAll('#quizCard .choice').forEach((b,bi)=>{if(q.choices[bi].ch===q.ch)b.classList.add('ok');});
+  bumpKana(q.ch,ok);
+  finishQ(ok,q.r+' = '+q.ch+' ('+q.kr+')',q.ch);
+}
+function ansPhrase(btn,i){
+  if(qz.answered)return;qz.answered=true;
+  const q=qz.list[qz.idx];
+  const ok=q.choices[i].jp===q.p.jp;
+  btn.classList.add(ok?'ok':'no');
+  if(!ok)document.querySelectorAll('#quizCard .choice').forEach((b,bi)=>{if(q.choices[bi].jp===q.p.jp)b.classList.add('ok');});
+  finishQ(ok,q.p.jp+(q.p.yomi?' ('+q.p.yomi+')':'')+' — '+q.p.ko,q.p.jp);
+}
+function finishQ(ok,correctTxt,sayTxt){
+  S.quizTotal++;if(ok){S.quizCorrect++;qz.correct++;}
+  save();
+  if(ok)addXP(10);
+  let fb='<div class="card" style="border-color:'+(ok?'var(--green)':'var(--red)')+'">';
+  fb+='<b style="color:'+(ok?'var(--green)':'var(--red)')+'">'+(ok?'✅ 정답! +10 XP':'❌ 오답')+'</b>';
+  fb+='<p class="mt" style="font-size:15px;font-family:\'Noto Sans JP\',sans-serif">정답: <b>'+correctTxt+'</b> <button class="spk" style="width:32px;height:32px;font-size:13px" onclick="say(\''+sayTxt.replace(/'/g,"\\'")+'\')">🔊</button></p>';
+  fb+='<button class="btn full mt" onclick="nextQ()">'+(qz.idx+1<qz.list.length?'다음 문제 →':'결과 보기')+'</button></div>';
+  document.getElementById('quizFeedback').innerHTML=fb;
+}
+function nextQ(){
+  qz.idx++;
+  if(qz.idx>=qz.list.length){
+    document.getElementById('quizPlay').style.display='none';
+    document.getElementById('quizEnd').style.display='block';
+    document.getElementById('quizScore').textContent=qz.correct+' / '+qz.list.length;
+    document.getElementById('quizEndMsg').textContent=qz.correct>=9?'완벽에 가까워요! 🏆':qz.correct>=7?'훌륭해요! 🙌':qz.correct>=5?'좋아요, 틀린 것만 다시 확인! 💪':'가나 표를 다시 보고 재도전! 📚';
+  }else renderQ();
+}
+
+/* ==================== SITUATIONS ==================== */
+function renderSitList(){
+  document.getElementById('sitDetail').style.display='none';
+  const box=document.getElementById('sitList');box.style.display='block';
+  box.innerHTML='<p class="sub mb">여행에서 바로 쓰는 문장들입니다. 🔊 듣고 → 🎤 따라 말해 보세요.</p>'+
+    SITS.map((s,i)=>'<div class="sitcard" onclick="openSit('+i+')"><span class="ic">'+s.ic+'</span><div><b>'+s.name+'</b><span>'+s.desc+' · '+s.ph.length+'문장</span></div></div>').join('');
+}
+function openSit(i){
+  const s=SITS[i];
+  document.getElementById('sitList').style.display='none';
+  const d=document.getElementById('sitDetail');d.style.display='block';
+  let h='<button class="back-btn" onclick="renderSitList()">← 상황 목록</button>';
+  h+='<div class="card"><b style="font-size:16px">'+s.ic+' '+s.name+'</b><p class="sub" style="margin-top:4px">'+s.desc+'</p></div><div class="card">';
+  s.ph.forEach((p,pi)=>{
+    h+='<div class="phrase"><div class="meta"><div style="flex:1">';
+    h+='<div class="jp">'+p.jp+'</div>';
+    if(p.yomi)h+='<div class="yomi">'+p.yomi+'</div>';
+    h+='<div class="romaji">'+p.ro+'</div>';
+    h+='<div class="sub" style="margin-top:3px">'+p.ko+'</div>';
+    h+='</div><div class="btns">';
+    h+='<button class="spk" onclick="say(SITS['+i+'].ph['+pi+'].jp)">🔊</button>';
+    h+='<button class="spk" id="mic-'+i+'-'+pi+'" onclick="recPhrase('+i+','+pi+')">🎤</button>';
+    h+='</div></div><div class="mic-result" id="res-'+i+'-'+pi+'"></div></div>';
+  });
+  h+='</div>';
+  d.innerHTML=h;
+  window.scrollTo(0,0);
+}
+
+/* speech recognition (char-level LCS for Japanese) */
+function normJa(t){return t.replace(/[\s、。！？!?.,・「」『』〜ー]/g,'');}
+function lcsMatch(a,b){
+  const n=a.length,m=b.length;
+  const dp=Array.from({length:n+1},()=>new Array(m+1).fill(0));
+  for(let i=1;i<=n;i++)for(let j=1;j<=m;j++)
+    dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]+1:Math.max(dp[i-1][j],dp[i][j-1]);
+  const matched=new Array(n).fill(false);
+  let i=n,j=m;
+  while(i>0&&j>0){
+    if(a[i-1]===b[j-1]){matched[i-1]=true;i--;j--;}
+    else if(dp[i-1][j]>=dp[i][j-1])i--;else j--;
+  }
+  return matched;
+}
+let recBusy=false;
+function recPhrase(si,pi){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const resEl=document.getElementById('res-'+si+'-'+pi);
+  if(!SR){resEl.innerHTML='<span style="color:var(--red)">이 브라우저는 음성인식을 지원하지 않아요. Chrome을 사용해 주세요.</span>';return;}
+  if(recBusy)return;recBusy=true;
+  const micEl=document.getElementById('mic-'+si+'-'+pi);
+  micEl.classList.add('rec');
+  resEl.innerHTML='<span class="sub">듣고 있어요... 일본어로 말하세요 🎧</span>';
+  const rec=new SR();
+  rec.lang='ja-JP';rec.interimResults=false;rec.maxAlternatives=1;
+  rec.onresult=e=>{
+    const heard=e.results[0][0].transcript;
+    const target=SITS[si].ph[pi].jp;
+    const tN=normJa(target),hN=normJa(heard);
+    /* also compare against yomi (recognizer may return kana or kanji) */
+    const alt=SITS[si].ph[pi].yomi?normJa(SITS[si].ph[pi].yomi):'';
+    const m1=lcsMatch(tN.split(''),hN.split(''));
+    const s1=m1.filter(Boolean).length/tN.length;
+    let matched=m1,score=s1,shown=tN;
+    if(alt){
+      const m2=lcsMatch(alt.split(''),hN.split(''));
+      const s2=m2.filter(Boolean).length/alt.length;
+      if(s2>s1){matched=m2;score=s2;shown=alt;}
+    }
+    const pct=Math.round(score*100);
+    let html='<b style="color:'+(pct>=80?'var(--green)':pct>=50?'var(--yellow)':'var(--red)')+'">'+pct+'점</b> — ';
+    shown.split('').forEach((c,ci)=>{html+='<span class="diffword '+(matched[ci]?'ok':'miss')+'">'+c+'</span>';});
+    html+='<br><span class="sub">내가 말한 것: "'+heard+'"</span>';
+    resEl.innerHTML=html;
+    addXP(Math.max(2,Math.round(pct/10)));
+  };
+  rec.onerror=e=>{resEl.innerHTML='<span class="sub">'+(e.error==='not-allowed'?'마이크 권한을 허용해 주세요':'인식 실패 — 다시 시도해 주세요')+'</span>';};
+  rec.onend=()=>{recBusy=false;micEl.classList.remove('rec');};
+  rec.start();
+}
+
+/* ==================== CARDS (SRS) ==================== */
+function cardState(i){
+  if(!S.cards[i])S.cards[i]={due:dstr(),iv:0};
+  return S.cards[i];
+}
+function dueCards(){
+  const t=dstr();const out=[];
+  for(let i=0;i<CARD_DECK.length;i++){
+    const c=S.cards[i];
+    if(!c){if(out.filter(x=>!S.cards[x]).length<8)out.push(i);}
+    else if(c.due<=t)out.push(i);
+  }
+  return out;
+}
+let cd={queue:[],cur:-1,flipped:false};
+function renderCardsHome(){
+  document.getElementById('cardsHome').style.display='block';
+  document.getElementById('cardsPlay').style.display='none';
+  document.getElementById('dueCount').textContent=dueCards().length;
+  document.getElementById('deckSize').textContent=CARD_DECK.length;
+}
+function startCards(){
+  cd.queue=shuffle(dueCards());
+  if(!cd.queue.length){toast('오늘 복습할 카드가 없어요!');return;}
+  document.getElementById('cardsHome').style.display='none';
+  document.getElementById('cardsPlay').style.display='block';
+  nextCard();
+}
+function nextCard(){
+  if(!cd.queue.length){endCards();toast('복습 완료! 🎉');return;}
+  cd.cur=cd.queue.shift();cd.flipped=false;
+  document.getElementById('cardsLeft').textContent=cd.queue.length+1;
+  const c=CARD_DECK[cd.cur];
+  document.getElementById('flash').innerHTML='<div class="front">'+c.jp+'</div><div class="sub mt">탭해서 뜻 보기</div>';
+  document.getElementById('srsBtns').style.visibility='hidden';
+  const st=cardState(cd.cur);
+  document.getElementById('easyIv').textContent=(st.iv?Math.max(7,st.iv*2):7)+'일 후';
+}
+function flipCard(){
+  if(cd.flipped)return;cd.flipped=true;
+  const c=CARD_DECK[cd.cur];
+  document.getElementById('flash').innerHTML='<div class="front" style="font-size:21px">'+c.jp+'</div>'+
+    (c.yomi?'<div class="yomi mt">'+c.yomi+'</div>':'')+
+    '<div class="romaji">'+c.ro+'</div><div class="back-ko mt">'+c.ko+'</div>';
+  document.getElementById('srsBtns').style.visibility='visible';
+}
+function sayCur(){if(cd.cur>=0)say(CARD_DECK[cd.cur].jp);}
+function grade(g){
+  const st=cardState(cd.cur);
+  if(g===0)st.iv=1;
+  else if(g===1)st.iv=3;
+  else st.iv=st.iv?Math.max(7,st.iv*2):7;
+  const d=new Date();d.setDate(d.getDate()+st.iv);
+  st.due=dstr(d);
+  save();addXP(5);
+  nextCard();
+}
+function endCards(){renderCardsHome();}
+
+/* ==================== INIT ==================== */
+rollDay();renderHome();
+</script>
+</body>
+</html>
