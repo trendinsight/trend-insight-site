@@ -1,6 +1,316 @@
 [
  {
   "date": "2026-07-30",
+  "code": "018880",
+  "name": "한온시스템",
+  "market": "코스피",
+  "price": 3310,
+  "base": {
+   "value": 4179.0,
+   "source": "broker",
+   "detail": "한경 컨센서스 목표주가 평균 4,179원(2026-07-21 기준, 투자의견 보유) · 개별 목표가 키움6,500/교보6,100/한투5,200/한화5,100/BNK5,000/하나4,400/KB3,700/DB3,000"
+  },
+  "vars": [
+   {
+    "id": "next_q_earnings",
+    "name": "다음분기 예상실적",
+    "group": "실적·성장",
+    "w": 3.0,
+    "verdict": "0",
+    "basis": "판정 없음(중립 처리)",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "eps_growth",
+    "name": "EPS 성장률",
+    "group": "실적·성장",
+    "w": 3.0,
+    "verdict": "P",
+    "basis": "흑자전환 예상 (후행 -130 -> 컨센 236)",
+    "auto": true,
+    "selected": true,
+    "contrib": 3.0
+   },
+   {
+    "id": "revenue_growth",
+    "name": "매출성장률·지속성",
+    "group": "실적·성장",
+    "w": 3.0,
+    "verdict": "0",
+    "basis": "1Q26 매출 2조7,482억(+5.0% YoY), 2026 가이던스 11조(+7%) — 회복이나 성장 모멘텀은 제한적(삼성증권 1Q26 리뷰)",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "opm_trend",
+    "name": "영업이익률 추이",
+    "group": "실적·성장",
+    "w": 3.0,
+    "verdict": "0",
+    "basis": "1Q26 OPM 3.5%(전년 0.8%), 가이던스 4%+ — 개선 명확하나 컨센서스 목표가에 이미 반영(중복계상 배제)",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "roe",
+    "name": "ROE",
+    "group": "실적·성장",
+    "w": 3.0,
+    "verdict": "0",
+    "basis": "예상ROE 6.1% (컨센EPS/BPS)",
+    "auto": true,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "fcf",
+    "name": "FCF 창출력",
+    "group": "재무·주주환원",
+    "w": 1.5,
+    "verdict": "N",
+    "basis": "1Q26 순이자비용이 영업이익의 36% — 영업 개선분이 금융비용으로 유출, 잉여현금 창출력 제약",
+    "auto": false,
+    "selected": true,
+    "contrib": -1.5
+   },
+   {
+    "id": "debt_ratio",
+    "name": "부채비율·이자보상배율",
+    "group": "재무·주주환원",
+    "w": 1.5,
+    "verdict": "N",
+    "basis": "차입약정상 부채비율 225% 이하 유지 조건. 2026년 6·9월 만기 채무증권 3,700억 차환 시 금리 2.3%→4%+ 상승 예상",
+    "auto": false,
+    "selected": true,
+    "contrib": -1.5
+   },
+   {
+    "id": "dividend",
+    "name": "배당성향·주주환원",
+    "group": "재무·주주환원",
+    "w": 1.5,
+    "verdict": "0",
+    "basis": "배당 데이터 부족",
+    "auto": true,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "asset_value",
+    "name": "유·무형 자산가치",
+    "group": "재무·주주환원",
+    "w": 1.5,
+    "verdict": "P",
+    "basis": "BPS 3,866원 대비 주가 3,320원(PBR 0.86배) — 순자산 하회 구간",
+    "auto": false,
+    "selected": true,
+    "contrib": 1.5
+   },
+   {
+    "id": "cb_issue",
+    "name": "CB/BW 발행",
+    "group": "이벤트·공시",
+    "w": 3.0,
+    "verdict": "0",
+    "basis": "판정 없음(중립 처리)",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "bonus_issue",
+    "name": "무상증자",
+    "group": "이벤트·공시",
+    "w": 3.0,
+    "verdict": "0",
+    "basis": "판정 없음(중립 처리)",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "positive_disclosure",
+    "name": "호재성 공시",
+    "group": "이벤트·공시",
+    "w": 3.0,
+    "verdict": "0",
+    "basis": "판정 없음(중립 처리)",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "owner_governance",
+    "name": "최대주주 지분율·지배구조",
+    "group": "이벤트·공시",
+    "w": 1.5,
+    "verdict": "P",
+    "basis": "최대주주 한국타이어(54.77%)가 2025.12 유상증자 배정분 100%(1억5,229만주) 청약 — 책임경영 의지 확인",
+    "auto": false,
+    "selected": true,
+    "contrib": 1.5
+   },
+   {
+    "id": "industry_trend",
+    "name": "산업 동향",
+    "group": "산업·경쟁",
+    "w": 3.0,
+    "verdict": "P",
+    "basis": "VW·BMW·벤츠 등 유럽 고객사 전동화·HEV 확대, xEV 매출비중 27%→29%(1Q26)",
+    "auto": false,
+    "selected": true,
+    "contrib": 3.0
+   },
+   {
+    "id": "competitive_edge",
+    "name": "경쟁사 대비 강점 우월성",
+    "group": "산업·경쟁",
+    "w": 3.0,
+    "verdict": "0",
+    "basis": "글로벌 열관리 상위권·내연~수소 풀라인업이나 덴소·발레오 대비 수익성 열위",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "competition_share",
+    "name": "경쟁강도·시장점유율 변화",
+    "group": "산업·경쟁",
+    "w": 1.5,
+    "verdict": "0",
+    "basis": "판정 없음(중립 처리)",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "orderbook",
+    "name": "전방산업·수주잔고",
+    "group": "산업·경쟁",
+    "w": 3.0,
+    "verdict": "0",
+    "basis": "판정 없음(중립 처리)",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "regulation",
+    "name": "규제·정책 환경",
+    "group": "산업·경쟁",
+    "w": 1.5,
+    "verdict": "N",
+    "basis": "미국 자동차·부품 관세 부담 지속 — 사측도 1Q26 실적발표에서 '관세 영향 등 대외 불확실성' 명시",
+    "auto": false,
+    "selected": true,
+    "contrib": -1.5
+   },
+   {
+    "id": "per_band",
+    "name": "시장부여 PER 역사적 밴드",
+    "group": "밸류·수급·기술",
+    "w": 1.5,
+    "verdict": "0",
+    "basis": "컨센PER 14.1배 — 중립 (52주 위치 17%)",
+    "auto": true,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "float_structure",
+    "name": "유통주식수·수급구조",
+    "group": "밸류·수급·기술",
+    "w": 1.5,
+    "verdict": "N",
+    "basis": "2025.12 유상증자 신주 3.475억주(기존 발행주식 51.2%) 2026.1.12 상장 — 발행가 2,830원 대비 현재가 상회로 오버행 잔존",
+    "auto": false,
+    "selected": true,
+    "contrib": -1.5
+   },
+   {
+    "id": "volume",
+    "name": "거래량",
+    "group": "밸류·수급·기술",
+    "w": 1.5,
+    "verdict": "0",
+    "basis": "거래량 비율 0.2배 — 특이 없음",
+    "auto": true,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "tech_rebound",
+    "name": "차트 기술적 반등 시점",
+    "group": "밸류·수급·기술",
+    "w": 1.5,
+    "verdict": "N",
+    "basis": "MA20 하회, 역배열성 흐름 (RSI 42.9)",
+    "auto": true,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "rates",
+    "name": "금리",
+    "group": "거시",
+    "w": 1.5,
+    "verdict": "N",
+    "basis": "한은 7/16 기준금리 2.50%→2.75% 인상(3년6개월 만) — 고차입 구조에 직접 역풍",
+    "auto": false,
+    "selected": true,
+    "contrib": -1.5
+   },
+   {
+    "id": "fx",
+    "name": "환율",
+    "group": "거시",
+    "w": 1.5,
+    "verdict": "P",
+    "basis": "원/달러 1,470원대 고환율 지속 — 해외 매출·생산 비중이 절대적이어서 환산 효과 우호",
+    "auto": false,
+    "selected": true,
+    "contrib": 1.5
+   },
+   {
+    "id": "market_regime",
+    "name": "시장 국면·유동성",
+    "group": "거시",
+    "w": 1.5,
+    "verdict": "N",
+    "basis": "KOSPI 역배열 — 약세 국면",
+    "auto": true,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "inflation",
+    "name": "인플레이션·원자재",
+    "group": "거시",
+    "w": 1.5,
+    "verdict": "N",
+    "basis": "구리·알루미늄 등 원자재 강세 지속 — 열교환기·압축기 원가 부담",
+    "auto": false,
+    "selected": true,
+    "contrib": -1.5
+   }
+  ],
+  "adj_pct": 1.5,
+  "adjusted": 4240.0,
+  "upside_pct": 28.1,
+  "cap": 25.0,
+  "entry": {
+   "verdict": "NO_SETUP",
+   "pivot": 3545,
+   "stop": 2830,
+   "note": "MA5/20/60/120 모두 하회(역배열, 정배열 1/4단계), 일목 구름 아래. N(ATR20)=247원 → 2N 손절 2,830원(유증 발행가와 동일). 재점검 트리거: MA20(3,545원) 거래량 동반 회복"
+  }
+ },
+ {
+  "date": "2026-07-30",
   "code": "005930",
   "name": "삼성전자",
   "market": "코스피",
