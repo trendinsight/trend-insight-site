@@ -24,6 +24,18 @@ header{display:flex;align-items:center;gap:14px;padding:12px 18px;flex-wrap:wrap
 .brand h1{font-size:15px;font-weight:700}
 .brand small{color:var(--faint);font-size:11px;letter-spacing:1.5px;text-transform:uppercase}
 header a.home{margin-left:auto;color:var(--muted);font-size:12px;text-decoration:none}
+.searchwrap{position:relative;flex:1;min-width:200px;max-width:420px}
+#q{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:9px;color:var(--ink);padding:9px 34px 9px 14px;font-size:14px;font-family:inherit;outline:none}
+#q:focus{border-color:var(--gold)} #q::placeholder{color:var(--faint)}
+#qclear{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--faint);cursor:pointer;font-size:15px;display:none;background:none;border:none;padding:2px}
+#qresults{position:absolute;top:calc(100% + 5px);left:0;right:0;background:var(--panel2);border:1px solid var(--line);border-radius:9px;overflow:hidden;display:none;z-index:50;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#qresults .qi{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer}
+#qresults .qi:hover,#qresults .qi.hl{background:#232d44}
+#qresults .qi .nm{font-weight:600;font-size:13.5px}
+#qresults .qi .onb{font-size:10px;color:var(--ok);border:1px solid rgba(47,191,113,.4);border-radius:4px;padding:1px 5px}
+#qresults .qi .cd{font-family:'JetBrains Mono';font-size:11px;color:var(--faint);margin-left:auto}
+.nodata{background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:26px 20px;text-align:center;color:var(--muted);font-size:13.5px;line-height:1.8}
+.nodata b{color:var(--gold2)}
 header a.home:hover{color:var(--gold2)}
 .filters{display:flex;gap:8px;flex-wrap:wrap;padding:14px 22px 0;max-width:1240px;margin:0 auto}
 .filters select{background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:8px 12px;font-size:13px;font-family:inherit;outline:none}
@@ -94,10 +106,14 @@ main{max-width:1240px;margin:0 auto;padding:14px 22px 50px;display:flex;flex-dir
 <body>
 <header>
   <div class="brand"><span class="ti">TI</span><h1>조정 적정주가</h1><small>Adjusted Fair Value Board</small></div>
+  <div class="searchwrap">
+    <input id="q" placeholder="종목 검색 (이름 또는 코드)…" autocomplete="off">
+    <button id="qclear" title="선택 해제">✕</button>
+    <div id="qresults"></div>
+  </div>
   <a class="home" href="/">← Trend Insight 홈</a>
 </header>
 <div class="filters">
-  <select id="fStock"><option value="">전체 종목</option></select>
   <select id="fDate"><option value="">전체 날짜</option></select>
 </div>
 <main id="board"><div class="empty">데이터 로딩 중…</div></main>
@@ -119,15 +135,23 @@ async function load(){
     const r=await fetch('data/adjusted-value.json?t='+Date.now());
     DATA=r.ok?await r.json():[];
   }catch(e){DATA=[];}
-  buildFilters(); render();
+  buildFilters();
+  const pc=new URLSearchParams(location.search).get('code');
+  if(pc){
+    selCode=pc;
+    const hit=DATA.find(d=>d.code===pc);
+    selName=hit?hit.name:'';
+    const qi=document.getElementById('q'), qc=document.getElementById('qclear');
+    qi.value=selName?`${selName} (${pc})`:pc; qc.style.display='block';
+  }
+  render();
 }
+let selCode='', selName='';
 function buildFilters(){
-  const ss=document.getElementById('fStock'), ds=document.getElementById('fDate');
-  const stocks=[...new Map(DATA.map(d=>[d.code,d.name])).entries()];
+  const ds=document.getElementById('fDate');
   const dates=[...new Set(DATA.map(d=>d.date))].sort().reverse();
-  ss.innerHTML='<option value="">전체 종목</option>'+stocks.map(([c,n])=>`<option value="${c}">${n} (${c})</option>`).join('');
   ds.innerHTML='<option value="">전체 날짜</option>'+dates.map(d=>`<option>${d}</option>`).join('');
-  ss.onchange=render; ds.onchange=render;
+  ds.onchange=render;
 }
 function key(d){return d.code+'|'+d.date;}
 function getSel(d){
@@ -146,13 +170,79 @@ function calc(d){
   return {adj,adjusted,upside};
 }
 function render(){
-  const fc=document.getElementById('fStock').value, fd=document.getElementById('fDate').value;
-  const rows=DATA.filter(d=>(!fc||d.code===fc)&&(!fd||d.date===fd));
+  const fd=document.getElementById('fDate').value;
+  const rows=DATA.filter(d=>(!selCode||d.code===selCode)&&(!fd||d.date===fd));
   const el=document.getElementById('board');
-  if(!rows.length){el.innerHTML='<div class="empty">게시된 분석이 없습니다.<br>스킬에서 "조정 적정주가 분석해서 보드에 올려줘"라고 요청하면 여기에 누적됩니다.</div>';return;}
+  if(!rows.length){
+    if(selCode){
+      el.innerHTML=`<div class="nodata"><b>${selName||selCode}</b> 의 게시된 조정 적정주가 분석이 아직 없습니다.<br>
+      Claude에서 <b>"${selName||selCode} 조정 적정주가 분석해서 보드에 올려줘"</b> 라고 요청하면 여기에 게시됩니다.</div>`;
+    }else{
+      el.innerHTML='<div class="empty">게시된 분석이 없습니다.<br>스킬에서 "조정 적정주가 분석해서 보드에 올려줘"라고 요청하면 여기에 누적됩니다.</div>';
+    }
+    return;
+  }
   el.innerHTML=rows.map(cardHTML).join('');
   rows.forEach(d=>bindCard(d));
 }
+
+/* ── 종목 검색 (보드 내 종목 + 전체 상장종목 API) ── */
+const qEl=document.getElementById('q'), qRes=document.getElementById('qresults'), qClr=document.getElementById('qclear');
+let qTimer=null, qItems=[], qHl=-1;
+function boardStocks(){return [...new Map(DATA.map(d=>[d.code,d.name])).entries()];}
+function showResults(items){
+  qItems=items; qHl=-1;
+  if(!items.length){qRes.style.display='none';return;}
+  qRes.innerHTML=items.map((it,i)=>`<div class="qi" data-i="${i}">
+    <span class="nm">${it.name}</span>${it.on?'<span class="onb">보드 게시됨</span>':''}
+    <span class="cd">${it.code}</span></div>`).join('');
+  qRes.style.display='block';
+  qRes.querySelectorAll('.qi').forEach(el=>{el.onclick=()=>pick(+el.dataset.i);});
+}
+function pick(i){
+  const it=qItems[i]; if(!it)return;
+  selCode=it.code; selName=it.name;
+  qEl.value=`${it.name} (${it.code})`;
+  qRes.style.display='none'; qClr.style.display='block';
+  render();
+}
+function clearSel(){
+  selCode=''; selName=''; qEl.value=''; qClr.style.display='none';
+  qRes.style.display='none'; render();
+}
+qClr.onclick=clearSel;
+qEl.addEventListener('input',()=>{
+  const t=qEl.value.trim();
+  if(selCode){selCode='';selName='';qClr.style.display='none';render();}
+  clearTimeout(qTimer);
+  if(!t){qRes.style.display='none';return;}
+  const onboard=new Set(DATA.map(d=>d.code));
+  const local=boardStocks().filter(([c,n])=>n.includes(t)||c.startsWith(t))
+    .map(([c,n])=>({code:c,name:n,on:true}));
+  showResults(local.slice(0,8));
+  qTimer=setTimeout(async()=>{
+    try{
+      const r=await fetch('/api/cockpit/search?q='+encodeURIComponent(t));
+      const j=await r.json();
+      const api=(j.data||[]).map(x=>({code:x.code,name:x.name,on:onboard.has(x.code)}));
+      const merged=[...local,...api.filter(a=>!local.some(l=>l.code===a.code))].slice(0,8);
+      if(qEl.value.trim()===t) showResults(merged);
+    }catch(e){}
+  },250);
+});
+qEl.addEventListener('keydown',e=>{
+  if(qRes.style.display!=='block')return;
+  if(e.key==='ArrowDown'){qHl=Math.min(qHl+1,qItems.length-1);}
+  else if(e.key==='ArrowUp'){qHl=Math.max(qHl-1,0);}
+  else if(e.key==='Enter'){pick(qHl>=0?qHl:0);return;}
+  else if(e.key==='Escape'){qRes.style.display='none';return;}
+  else return;
+  e.preventDefault();
+  qRes.querySelectorAll('.qi').forEach((el,i)=>el.classList.toggle('hl',i===qHl));
+});
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.searchwrap')) qRes.style.display='none';
+});
 function cardHTML(d){
   const k=key(d), st=getSel(d), c=calc(d);
   const srcLabel=d.base.source==='broker'?'브로커 목표주가 컨센서스':'4층 적정주가 밴드(폴백)';
