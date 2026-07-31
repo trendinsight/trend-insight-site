@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>위대한 기업 보드 — Trend Insight</title>
+<style>
+:root{--bg:#0f1115;--card:#171a21;--card2:#1c202a;--line:#252a34;--txt:#e6e9ef;--sub:#9aa4b2;
+      --faint:#6b7583;--good:#12b886;--warn:#f5a524;--bad:#e5484d;--blue:#3e8ef7;--gold:#c9a227;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+header{padding:22px 18px 8px;max-width:1060px;margin:0 auto}
+h1{font-size:21px;margin:0 0 5px}
+h2{font-size:15px;margin:22px 0 8px}
+.sub{color:var(--sub);font-size:13px;line-height:1.65}
+.wrap{max-width:1060px;margin:0 auto;padding:12px 18px 64px}
+.ctrl{margin:12px 0 2px;font-size:13px;color:var(--sub);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+select{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px}
+.tabs{display:flex;gap:6px;margin:14px 0 4px;flex-wrap:wrap}
+.tab{padding:7px 14px;border:1px solid var(--line);border-radius:999px;font-size:13px;color:var(--sub);
+  cursor:pointer;background:var(--card);user-select:none}
+.tab.on{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700}
+.grid{display:flex;gap:14px;flex-wrap:wrap}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px;flex:1;min-width:320px;max-width:516px}
+.wide{max-width:none;width:100%}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.nm{font-size:15px;font-weight:700}
+.code{color:var(--sub);font-size:12px;font-weight:400;margin-left:6px}
+.score{font-size:22px;font-weight:800}
+.badge{display:inline-block;padding:2px 11px;border-radius:999px;font-size:11px;font-weight:800;color:#0b0d10}
+.pts{display:grid;grid-template-columns:repeat(15,1fr);gap:3px;margin:13px 0 6px}
+.pt{height:26px;border-radius:5px;display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:800;color:#0b0d10;cursor:default}
+.ptl{display:flex;justify-content:space-between;font-size:10px;color:var(--faint);margin-top:2px}
+.kv{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:11px;font-size:12px;color:var(--sub)}
+.kv b{color:var(--txt);font-weight:600}
+.axes{margin-top:11px}
+.rowbar{display:grid;grid-template-columns:78px 1fr 46px;gap:9px;align-items:center;font-size:11.5px;color:var(--sub);margin-top:6px}
+.bar{height:8px;background:#0c0e12;border-radius:5px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:5px}
+.reason{margin-top:10px;font-size:12.5px;line-height:1.65;border-top:1px solid var(--line);padding-top:9px}
+.note{margin-top:9px;font-size:12px;padding:8px 11px;border-radius:9px;background:var(--card2);
+  border-left:3px solid var(--warn);line-height:1.65;color:var(--sub)}
+.note.bad{border-left-color:var(--bad)}
+.note b{color:var(--txt)}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--sub);font-weight:600;font-size:11.5px}
+td.r,th.r{text-align:right}
+.empty{color:var(--faint);font-size:13px;padding:18px 0}
+.doc{margin-top:26px;color:var(--faint);font-size:11.5px;line-height:1.8;border-top:1px solid var(--line);padding-top:14px}
+details.guide{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:14px 0 4px}
+details.guide summary{cursor:pointer;padding:13px 16px;font-size:14px;font-weight:700;list-style:none;display:flex;gap:8px;align-items:center}
+details.guide summary::-webkit-details-marker{display:none}
+details.guide summary::after{content:'▾';margin-left:auto;color:var(--sub);transition:transform .2s}
+details.guide[open] summary::after{transform:rotate(180deg)}
+details.guide .gb{padding:0 16px 16px;font-size:12.5px;line-height:1.85;color:var(--sub);border-top:1px solid var(--line);padding-top:12px}
+details.guide .gb b{color:var(--txt)}
+.glist{margin:9px 0 0;padding:0;list-style:none}
+.glist li{padding:5px 0;display:flex;gap:9px;align-items:baseline}
+.glist .tag{flex:0 0 auto;font-size:11px;font-weight:800;padding:2px 9px;border-radius:999px;color:#0b0d10}
+.gwarn{margin-top:12px;background:rgba(229,72,77,.09);border-left:3px solid var(--bad);border-radius:8px;
+  padding:10px 13px;color:var(--txt);font-size:12.5px;line-height:1.75}
+</style>
+</head>
+<body>
+<header>
+  <h1>🏛 위대한 기업 보드 — 필립 피셔 15포인트</h1>
+  <div class="sub">싼 주식이 아니라 <b>비범한 기업</b>을 찾는 채점표입니다.
+  15개 질문 중 숫자로 답할 수 있는 것은 6개뿐이고, 나머지는 사람·조직·정직성에 관한 것이라
+  사업보고서를 읽고 사람에게 물어야(<b>스커틀벗</b>) 답이 나옵니다.
+  <b>15번(경영진의 진실성)에 의문이 있으면 나머지 14개가 좋아도 투자하지 않습니다.</b></div>
+  <div class="ctrl">기준일 <select id="datesel"></select><span id="meta"></span></div>
+</header>
+<div class="wrap">
+  <details class="guide" open>
+    <summary>🏛 처음이신가요 — 30초 설명</summary>
+    <div class="gb">
+      각 포인트는 <b>0~3점</b>, 확인 못 한 항목은 점수 대신 <b>미확인</b>으로 남깁니다.
+      그래서 이 보드에는 점수(<b>환산 %</b>)와 함께 <b>확인율</b>이 늘 붙어 다닙니다 —
+      "몇 점인가"만큼 "얼마나 알고 있는가"가 중요하기 때문입니다.
+      <ul class="glist">
+        <li><span class="tag" style="background:var(--good)">위대한 기업</span>
+          <span>환산 80%↑·확인율 70%↑·15번 3점 — <b>3분할로 사서 무기한 보유</b>가 전제</span></li>
+        <li><span class="tag" style="background:var(--warn)">후보</span>
+          <span>점수는 되나 확인이 덜 됐거나 상한 규칙에 걸림 — 스커틀벗 더 하고 재채점</span></li>
+        <li><span class="tag" style="background:var(--bad)">제외</span>
+          <span>10·13·15번 0점(회계·희석·진실성)은 다른 점수와 무관하게 자동 제외</span></li>
+      </ul>
+      <b>파는 이유는 셋뿐</b>입니다 — ①판단이 틀렸을 때 ②회사가 15포인트에서 이탈했을 때
+      ③명백히 더 나은 대안이 있을 때. "많이 올라서"는 매도 사유가 아닙니다.
+      <div class="gwarn"><b>모르는 항목이 많다는 것은 나쁜 기업이라는 뜻이 아니라 아직 모른다는 뜻입니다.</b>
+      그리고 이 방법론에서 모르면 사지 않습니다 — 확인율이 낮은 채로 등급을 신뢰하지 마세요.</div>
+    </div>
+  </details>
+
+  <div class="tabs">
+    <div class="tab on" data-tab="score">채점</div>
+    <div class="tab" data-tab="screen">후보 풀 발굴</div>
+    <div class="tab" data-tab="hist">채점 이력</div>
+  </div>
+  <div id="body"><div class="empty">불러오는 중…</div></div>
+
+  <div class="doc">
+    데이터: <code>data/philip-fisher-board.json</code> — philip-fisher-method 스킬이 갱신합니다.
+    매출 성장·이익률·근속연수·희석은 스크립트가, 나머지 9개 항목은 DART 원문과 스커틀벗으로
+    Claude가 판정합니다. 15포인트·매도 3사유는 피셔 저작의 공개 요약 기준이며,
+    채점은 자문이지 매수 추천이 아닙니다.
+  </div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const fmt=(n,d)=>n==null||isNaN(n)?'—':Number(n).toLocaleString('ko-KR',{minimumFractionDigits:d??0,maximumFractionDigits:d??2});
+let DATA={scores:{},screens:[]}, TAB='score', DATE=null, HCODE=null;
+
+const AXES=['성장 엔진','수익성','사람과 조직','통제와 시야','진실성'];
+const AXMAP={1:0,2:0,3:0,4:0,5:1,6:1,7:2,8:2,9:2,10:3,11:3,12:3,13:3,14:4,15:4};
+const gColor=g=>g==='위대한 기업'?'var(--good)':g==='후보'?'var(--warn)':g==='제외'?'var(--bad)':'var(--faint)';
+const sColor=s=>s==null?'var(--faint)':s===3?'var(--good)':s===2?'var(--warn)':s===1?'#8a6d2f':'var(--bad)';
+
+function ptGrid(points){
+  const by={};(points||[]).forEach(p=>by[p.n]=p);
+  let h='<div class="pts">';
+  for(let n=1;n<=15;n++){
+    const p=by[n],s=p?p.score:null;
+    const tip=(p?(p.title||''):'')+(p&&p.basis?' — '+p.basis:'');
+    h+=`<div class="pt" style="background:${sColor(s)};${s==null?'opacity:.45':''}" title="${n}번 ${tip.replace(/"/g,'')}">${s==null?'·':s}</div>`;
+  }
+  return h+'</div><div class="ptl"><span>1 성장</span><span>7 사람</span><span>10 통제</span><span>15 진실성</span></div>';
+}
+function axBars(points){
+  const sums=[[0,0],[0,0],[0,0],[0,0],[0,0]];
+  (points||[]).forEach(p=>{if(p.score!=null){const a=AXMAP[p.n];sums[a][0]+=p.score;sums[a][1]++;}});
+  let h='<div class="axes">';
+  AXES.forEach((ax,i)=>{
+    const v=sums[i][1]?sums[i][0]/(sums[i][1]*3)*100:null;
+    h+=`<div class="rowbar"><span>${ax}</span><span class="bar">
+      <i style="width:${v==null?0:v}%;background:${v==null?'var(--faint)':v>=80?'var(--good)':v>=60?'var(--warn)':'var(--bad)'}"></i></span>
+      <span style="text-align:right;color:var(--txt)">${v==null?'—':fmt(v,0)+'%'}</span></div>`;
+  });
+  return h+'</div>';
+}
+
+function cardScore(code,name,r){
+  const sells=(r.sell_check||[]).filter(s=>s.checked);
+  let h=`<div class="card"><div class="top">
+    <div><span class="nm">${name||code}</span><span class="code">${code}</span></div>
+    <div style="text-align:right"><div class="score">${r.pct==null?'—':fmt(r.pct,1)+'%'}</div>
+    <span class="badge" style="background:${gColor(r.grade)}">${r.grade||'미채점'}</span></div></div>`;
+  h+=ptGrid(r.points)+axBars(r.points);
+  h+=`<div class="kv"><span>확인율 <b>${fmt(r.confidence,0)}%</b></span>
+    <span>원점수 <b>${r.raw??'—'}</b></span>
+    <span>스커틀벗 <b>${r.scuttlebutt_done?r.scuttlebutt_done+'건':'0건'}</b></span>
+    <span>종가 <b>${fmt(r.close)}</b></span>
+    <span>매출CAGR <b>${fmt(r.revenue_cagr,1)}%</b></span>
+    <span>영업이익률 <b>${fmt(r.op_margin_avg,1)}%</b></span>
+    <span>ROE <b>${fmt(r.roe,1)}%</b></span>
+    <span>기준일 <b>${r.date||'—'}</b></span></div>`;
+  if(r.comment)h+=`<div class="reason">${r.comment}</div>`;
+  if((r.notes||[]).length)h+=`<div class="note ${r.grade==='제외'?'bad':''}">${r.notes.map(n=>'· '+n).join('<br>')}</div>`;
+  if(sells.length)h+=`<div class="note bad"><b>매도 점검 — ${sells.map(s=>s.code).join(', ')} 해당</b><br>
+    ${sells.map(s=>s.reason).join('<br>')}</div>`;
+  if(r.buy_plan&&r.buy_plan.legs)h+=`<table><tr><th>분할</th><th class="r">가격</th><th class="r">수량</th></tr>`
+    +r.buy_plan.legs.map(l=>`<tr><td>${l.leg}</td><td class="r">${fmt(l.price)}</td><td class="r">${fmt(l.qty)}</td></tr>`).join('')+`</table>`;
+  return h+'</div>';
+}
+
+function viewScore(){
+  const codes=Object.keys(DATA.scores||{});
+  if(!codes.length)return '<div class="empty">아직 채점된 종목이 없습니다.</div>';
+  const rows=[];
+  codes.forEach(c=>{
+    const o=DATA.scores[c],h=(o.history||[]);
+    let r=null;
+    if(DATE){const f=h.filter(x=>x.date<=DATE);r=f.length?f[f.length-1]:null;}
+    else r=h[h.length-1];
+    if(r)rows.push({code:c,name:o.name,r});
+  });
+  if(!rows.length)return '<div class="empty">이 날짜 기준의 채점이 없습니다.</div>';
+  const ord={'위대한 기업':0,'후보':1,'제외':2};
+  rows.sort((a,b)=>(ord[a.r.grade]??3)-(ord[b.r.grade]??3)||(b.r.pct||0)-(a.r.pct||0));
+  return '<div class="grid">'+rows.map(x=>cardScore(x.code,x.name,x.r)).join('')+'</div>';
+}
+
+function viewScreen(){
+  const ss=DATA.screens||[];
+  if(!ss.length)return '<div class="empty">발굴 기록이 없습니다.</div>';
+  let s=DATE?ss.filter(x=>x.date<=DATE).slice(-1)[0]:ss[ss.length-1];
+  if(!s)return '<div class="empty">이 날짜 기준의 발굴 기록이 없습니다.</div>';
+  let h=`<div class="card wide"><div class="top"><div class="nm">후보 풀 — ${s.date}</div>
+    <span class="code">${(s.counts&&s.counts.scanned)||'—'}종목 스캔 · 통과 ${(s.counts&&s.counts.passed)||0}</span></div>
+    <div class="note">정량 대리지표(1·5·6번 축)만으로 압축한 <b>후보 풀</b>입니다. 등급이 아닙니다 —
+    2·4·8·9·10·11·12·14·15번은 문서와 스커틀벗으로만 채점됩니다.</div>
+    <table><tr><th>종목</th><th class="r">정량</th><th class="r">매출CAGR</th><th class="r">영업이익률</th>
+    <th class="r">이익률추세</th><th class="r">ROE</th><th class="r">부채</th></tr>`;
+  (s.candidates||[]).forEach(c=>{
+    h+=`<tr><td>${c.name||c.code}<span class="code">${c.code}</span></td>
+      <td class="r"><b>${c.quant_total??'—'}</b></td><td class="r">${fmt(c.revenue_cagr,1)}%</td>
+      <td class="r">${fmt(c.op_margin_avg,1)}%</td><td class="r">${fmt(c.op_margin_slope,1)}</td>
+      <td class="r">${fmt(c.roe,1)}%</td><td class="r">${fmt(c.debt_ratio,0)}%</td></tr>`;
+  });
+  h+='</table>';
+  if((s.excluded||[]).length)h+=`<div class="note"><b>배제</b><br>`
+    +s.excluded.map(e=>`${e.name||e.code} — ${e.reason}`).join('<br>')+'</div>';
+  return h+'</div>';
+}
+
+function viewHist(){
+  const codes=Object.keys(DATA.scores||{});
+  if(!codes.length)return '<div class="empty">채점 이력이 없습니다.</div>';
+  if(!HCODE||!DATA.scores[HCODE])HCODE=codes[0];
+  const o=DATA.scores[HCODE],h=(o.history||[]).slice().reverse();
+  let out=`<div class="card wide"><div class="ctrl">종목 <select id="hsel">`
+    +codes.map(c=>`<option value="${c}" ${c===HCODE?'selected':''}>${DATA.scores[c].name||c} (${c})</option>`).join('')
+    +`</select></div><table><tr><th>일자</th><th>등급</th><th class="r">환산</th><th class="r">확인율</th>
+    <th class="r">원점수</th><th>변화</th></tr>`;
+  h.forEach((r,i)=>{
+    const prev=h[i+1];
+    let diff='—';
+    if(prev){
+      const a={},b={};(r.points||[]).forEach(p=>a[p.n]=p.score);(prev.points||[]).forEach(p=>b[p.n]=p.score);
+      const ch=[];
+      for(let n=1;n<=15;n++)if((a[n]??null)!==(b[n]??null))ch.push(`${n}번 ${b[n]??'미확인'}→${a[n]??'미확인'}`);
+      diff=ch.length?ch.join(', '):'변화 없음';
+    }
+    out+=`<tr><td>${r.date}</td><td><span class="badge" style="background:${gColor(r.grade)}">${r.grade||'—'}</span></td>
+      <td class="r">${fmt(r.pct,1)}%</td><td class="r">${fmt(r.confidence,0)}%</td>
+      <td class="r">${r.raw??'—'}</td><td style="color:var(--sub)">${diff}</td></tr>`;
+  });
+  return out+'</table></div>';
+}
+
+function render(){
+  $('#body').innerHTML = TAB==='score'?viewScore():TAB==='screen'?viewScreen():viewHist();
+  const hs=$('#hsel');
+  if(hs)hs.onchange=()=>{HCODE=hs.value;render();};
+}
+
+function allDates(){
+  const s=new Set();
+  Object.values(DATA.scores||{}).forEach(o=>(o.history||[]).forEach(h=>h.date&&s.add(h.date)));
+  (DATA.screens||[]).forEach(x=>x.date&&s.add(x.date));
+  return [...s].sort().reverse();
+}
+
+(async function(){
+  try{
+    const r=await fetch('data/philip-fisher-board.json?t='+Date.now());
+    DATA=await r.json();
+  }catch(e){$('#body').innerHTML='<div class="empty">데이터를 불러오지 못했습니다.</div>';return;}
+  const ds=allDates();
+  DATE=ds[0]||null;
+  $('#datesel').innerHTML=ds.map(d=>`<option value="${d}">${d}</option>`).join('')||'<option>—</option>';
+  $('#datesel').onchange=e=>{DATE=e.target.value;render();};
+  $('#meta').textContent=` · 채점 종목 ${Object.keys(DATA.scores||{}).length}개 · 발굴 ${(DATA.screens||[]).length}회`;
+  document.querySelectorAll('.tab').forEach(el=>el.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+    el.classList.add('on');TAB=el.dataset.tab;render();});
+  render();
+})();
+</script>
+</body>
+</html>
