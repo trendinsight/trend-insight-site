@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LTCM 수렴 차익거래 — 한눈에 보는 비주얼 가이드</title>
+<style>
+:root{--bg:#0d1117;--card:#161b22;--line:#30363d;--txt:#e6edf3;--sub:#8b949e;
+--purple:#a78bfa;--green:#3fb950;--red:#f85149;--amber:#d29922;--blue:#58a6ff;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Malgun Gothic',sans-serif;line-height:1.65;}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 80px;}
+a{color:var(--blue);text-decoration:none;}
+.crumb{font-size:.85rem;color:var(--sub);margin-bottom:14px;}
+h1{font-size:1.6rem;margin:6px 0 12px;line-height:1.35;}
+h1 .accent{color:var(--purple);}
+.lead{color:var(--sub);font-size:.95rem;margin-bottom:30px;}
+.lead b{color:var(--txt);}
+h2{font-size:1.15rem;margin:44px 0 6px;color:var(--purple);}
+.tip{background:#1c2333;border-left:3px solid var(--blue);border-radius:6px;
+padding:10px 14px;font-size:.88rem;margin:10px 0 18px;color:#c9d4e6;}
+.tip b{color:var(--blue);}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:12px;}
+/* timeline */
+.tl{border-left:2px solid var(--line);margin-left:8px;padding-left:20px;}
+.tl .ev{position:relative;margin-bottom:18px;}
+.tl .ev::before{content:'';position:absolute;left:-26px;top:6px;width:10px;height:10px;
+border-radius:50%;background:var(--purple);}
+.tl .when{font-size:.78rem;color:var(--sub);}
+.tl .what{font-weight:700;}
+.tl .how{font-size:.86rem;color:var(--sub);}
+/* cause->guard */
+.vs{display:grid;grid-template-columns:1fr 24px 1fr;gap:8px;align-items:stretch;margin-bottom:10px;}
+.vs .skull,.vs .shield{border-radius:10px;padding:12px 14px;font-size:.85rem;}
+.vs .skull{background:#2b1518;border:1px solid #6e2a2f;}
+.vs .shield{background:#122117;border:1px solid #2e5c3a;}
+.vs .arrow{display:flex;align-items:center;justify-content:center;color:var(--sub);}
+.vs b{display:block;margin-bottom:4px;font-size:.9rem;}
+.skull b{color:var(--red);} .shield b{color:var(--green);}
+/* hunting grounds */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+.hunt{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;}
+.hunt .emoji{font-size:1.5rem;}
+.hunt b{color:var(--purple);}
+.hunt p{font-size:.86rem;color:var(--sub);margin-top:4px;}
+.hunt .ex{font-size:.8rem;color:#c9d4e6;background:#1c2333;border-radius:6px;padding:6px 9px;margin-top:8px;}
+/* z gauge */
+.zbar{position:relative;height:46px;border-radius:10px;margin:22px 0 4px;
+background:linear-gradient(90deg,#2e5c3a 0%,#8b949e33 30%,#8b949e33 55%,#6e5a1e 75%,#6e2a2f 100%);}
+.zbar .mark{position:absolute;top:-20px;font-size:.75rem;color:var(--sub);transform:translateX(-50%);}
+.zbar .lab{position:absolute;bottom:-22px;font-size:.75rem;transform:translateX(-50%);white-space:nowrap;}
+/* steps */
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;}
+.step{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center;}
+.step .n{width:28px;height:28px;border-radius:50%;background:var(--purple);color:#0d1117;
+font-weight:800;display:inline-flex;align-items:center;justify-content:center;margin-bottom:6px;}
+.step b{display:block;font-size:.9rem;}
+.step span{font-size:.78rem;color:var(--sub);}
+/* calc */
+.calc label{font-size:.85rem;color:var(--sub);display:block;margin:10px 0 4px;}
+.calc input{background:#0d1117;color:var(--txt);border:1px solid var(--line);border-radius:8px;
+padding:8px 12px;font-size:1rem;width:200px;}
+.calc button{background:var(--purple);color:#0d1117;font-weight:700;border:none;border-radius:8px;
+padding:9px 18px;font-size:.95rem;cursor:pointer;margin-top:12px;}
+.calc table{width:100%;border-collapse:collapse;font-size:.88rem;margin-top:14px;}
+.calc th,.calc td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right;}
+.calc th{color:var(--sub);} .calc td:first-child,.calc th:first-child{text-align:left;}
+/* glossary */
+.gl{font-size:.88rem;}
+.gl p{margin-bottom:10px;color:var(--sub);}
+.gl b{color:var(--txt);}
+.quote{text-align:center;font-size:1.05rem;font-weight:700;margin:44px 0 10px;color:var(--purple);}
+.foot{font-size:.78rem;color:var(--sub);}
+svg text{font-family:inherit;}
+@media(max-width:600px){.vs{grid-template-columns:1fr;}.vs .arrow{display:none;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="crumb"><a href="index.html">Trend Insight</a> · ltcm-convergence 스킬 가이드 · <a href="ltcm-board.html">📊 데이터 보드 바로가기</a></div>
+
+<h1><span class="accent">LTCM 수렴 차익거래</span> — 벌어진 가격이 돌아올 때 먹는 전략</h1>
+<p class="lead">노벨상 수상자들의 헤지펀드 LTCM은 이 전략으로 <b>4년간 연 21~43%</b>를 벌고도
+<b>1998년 두 달 만에 자본의 90%</b>를 잃었습니다.<br>
+이 스킬은 그들의 "돈 버는 법"은 배우고, 그들을 죽인 "실수"를 막는 안전장치 7개를 붙인 것입니다.</p>
+
+<h2>① 원리 — 고무줄 하나면 이해 끝</h2>
+<div class="tip">💡 <b>쉽게 말하면</b> — 같은 회사의 보통주와 우선주는 고무줄로 묶여 있습니다.
+시장이 요동치면 고무줄이 쭉 늘어나는데(가격이 벌어짐), 역사상 드물게 많이 늘어난 순간
+싼 쪽을 사두면, 고무줄이 제자리로 돌아올 때(수렴) 수익이 납니다.</div>
+<div class="card">
+<svg viewBox="0 0 640 190" width="100%" xmlns="http://www.w3.org/2000/svg">
+  <line x1="40" y1="160" x2="620" y2="160" stroke="#30363d"/>
+  <path d="M40,70 C120,68 180,72 260,60 C340,45 420,40 500,55 C560,64 600,68 620,70"
+        fill="none" stroke="#58a6ff" stroke-width="2.5"/>
+  <path d="M40,90 C120,92 180,95 260,105 C340,120 420,135 500,100 C560,80 600,76 620,74"
+        fill="none" stroke="#a78bfa" stroke-width="2.5"/>
+  <path d="M420,40 L420,137" stroke="#f85149" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <text x="428" y="95" fill="#f85149" font-size="12">역대급으로 벌어짐 (z≥2)</text>
+  <text x="428" y="110" fill="#3fb950" font-size="12">→ 싼 쪽(보라) 매수</text>
+  <path d="M598,72 L598,74" stroke="#3fb950" stroke-width="6"/>
+  <text x="470" y="30" fill="#3fb950" font-size="12">다시 붙으면(수렴) 익절 ✓</text>
+  <text x="44" y="60" fill="#58a6ff" font-size="12">보통주</text>
+  <text x="44" y="108" fill="#a78bfa" font-size="12">우선주</text>
+</svg>
+</div>
+
+<h2>② 무슨 일이 있었나 — 30초 타임라인</h2>
+<div class="tip">💡 <b>쉽게 말하면</b> — 베팅은 결국 다 맞았는데, 빚 25배 때문에
+"맞을 때까지" 버티지 못하고 퇴장당한 이야기입니다.</div>
+<div class="card"><div class="tl">
+<div class="ev"><div class="when">1994년</div><div class="what">펀드 출범</div>
+<div class="how">채권 트레이딩 전설 메리웨더 + 노벨경제학상 머튼·숄즈. "벌어진 스프레드는 언젠가 붙는다"에 베팅</div></div>
+<div class="ev"><div class="when">1994~1997년</div><div class="what">연 21~43% 대성공</div>
+<div class="how">개별 수익이 얇아서(수 bp) 빚을 25~30배로 얹어 수익률을 키움 — 이게 시한폭탄</div></div>
+<div class="ev"><div class="when">1998년 8월</div><div class="what">러시아 국가부도</div>
+<div class="how">전 세계가 안전자산으로 도피 → 전 세계 스프레드가 수렴은커녕 폭발적으로 확대</div></div>
+<div class="ev"><div class="when">1998년 9월</div><div class="what">자본 90% 소실 → 구제금융</div>
+<div class="how">마진콜을 못 버티고 연준 중재로 14개 은행이 인수. 아이러니: 그 포지션들은 결국 수렴해 이익이 났다 — LTCM만 그 자리에 없었다</div></div>
+</div></div>
+
+<h2>③ 왜 죽었나 → 그래서 이 스킬엔 이 안전장치가 있다</h2>
+<div class="tip">💡 <b>핵심</b> — 베팅이 틀려서가 아니라 <b>계좌 구조</b>가 잘못돼 죽었습니다.
+왼쪽(사인)마다 오른쪽(안전장치)이 1:1로 대응합니다.</div>
+<div class="vs"><div class="skull"><b>☠ 빚 25~30배</b>자기자본 47억$로 1,250억$ 운용 — 스프레드가 잠깐만 더 벌어져도 마진콜</div>
+<div class="arrow">→</div>
+<div class="shield"><b>🛡 L1 레버리지 금지</b>신용·미수·차입 전면 금지. 내 현금 안에서만 — 빚만 없으면 버틸 수 있다</div></div>
+<div class="vs"><div class="skull"><b>☠ "이런 폭락은 통계상 없다"</b>정규분포 계산으로 "우주의 수명 동안 없을 일" — 실제로는 일어났다</div>
+<div class="arrow">→</div>
+<div class="shield"><b>🛡 L2 3분할 진입</b>벌어진 고무줄은 더 벌어질 수 있다 — z 2.0 / 2.7 / 3.5에서 3번 나눠 산다</div></div>
+<div class="vs"><div class="skull"><b>☠ 무한정 기다림</b>"언젠가 붙는다"는 맞지만 "언제"는 아무도 모른다 — 잔고가 먼저 바닥</div>
+<div class="arrow">→</div>
+<div class="shield"><b>🛡 L3 시간 손절</b>90거래일(약 4.5개월) 안에 안 붙으면 이유 불문 청산</div></div>
+<div class="vs"><div class="skull"><b>☠ 위기엔 전부 한 방향</b>서로 무관하다던 전 세계 포지션이 위기가 오자 전부 동시에 손실</div>
+<div class="arrow">→</div>
+<div class="shield"><b>🛡 L4 폭락장 진입 금지</b>위기 국면에는 고무줄이 끊어질 듯 늘어난다 — 신규 금지·기존 축소</div></div>
+<div class="vs"><div class="skull"><b>☠ 팔고 싶어도 못 팜</b>청산이 시작되자 모두가 같은 출구로 몰려 헐값 강제 매각</div>
+<div class="arrow">→</div>
+<div class="shield"><b>🛡 L5 유동성 게이트</b>하루 거래대금 3억 미만 종목 제외 — 살 때보다 팔 때가 문제다</div></div>
+<div class="vs"><div class="skull"><b>☠ 안 돌아오는 고무줄</b>구조가 바뀐 괴리는 영영 수렴하지 않는다</div>
+<div class="arrow">→</div>
+<div class="shield"><b>🛡 L6 구조 점검</b>벌어진 데 진짜 이유(실적 악화·오버행 등)가 있는지 뉴스·공시로 확인 후에만 진입</div></div>
+<div class="vs"><div class="skull"><b>☠ 전 재산 노출</b>사실상 자본 전체가 하나의 아이디어에 걸려 있었다</div>
+<div class="arrow">→</div>
+<div class="shield"><b>🛡 L7 자본 상한</b>이 전략 전체에 계좌 30%까지 · 한 후보에 7.5%까지 — 틀려도 계좌가 산다</div></div>
+
+<h2>④ 네 가지 사냥터</h2>
+<div class="grid2">
+<div class="hunt"><span class="emoji">👯</span> <b>보통주-우선주</b>
+<p>같은 회사 두 주식의 할인율이 역사적 극단이면 싼 우선주 매수. 한국에서 가장 검증된 수렴 트레이드.</p>
+<div class="ex">예: 삼성화재우 할인 평소 25% → 40%(z 3.05)로 확대되면 후보</div></div>
+<div class="hunt"><span class="emoji">🏢</span> <b>지주사 할인</b>
+<p>LG(주)는 LG전자·화학 지분을 들고 있는데 그 가치보다 싸게 거래된다. 할인 자체는 늘 있으니 무시하고 <b>평소보다 훨씬 심해진 순간</b>만 노린다.</p>
+<div class="ex">예: LS가 LS일렉트릭 대비 유독 뒤처지면(z↑) 관찰</div></div>
+<div class="hunt"><span class="emoji">🤝</span> <b>섹터 페어</b>
+<p>같이 움직이는 두 회사(KB금융/신한지주 등)의 비율이 극단으로 벌어지면 뒤처진 쪽 매수. 단, 뒤처진 데 실적 악화 같은 진짜 이유가 있으면 제외.</p>
+<div class="ex">예: SK이노베이션이 S-Oil 대비 z −2.0 → 실적 멀쩡 확인 후 후보</div></div>
+<div class="hunt"><span class="emoji">📦</span> <b>ETF 할인</b>
+<p>ETF 시장가격이 실제 자산가치(NAV)보다 1.5% 이상 싸면 매수. 가장 빨리 수렴하지만 폭이 작다.</p>
+<div class="ex">예: NAV 10,000원짜리가 9,840원(−1.6%)에 거래되면 후보</div></div>
+</div>
+
+<h2>⑤ z-score — "얼마나 심하게 벌어졌나"를 숫자 하나로</h2>
+<div class="tip">💡 z = 2란 "지난 2~3년 중 상위 약 2%로 심하게 벌어진 상태"라는 뜻입니다.
+숫자가 클수록 드문 일이 벌어지고 있다는 것.</div>
+<div class="card" style="padding:34px 24px 40px;">
+<div class="zbar">
+  <span class="mark" style="left:12%">z 0.5</span><span class="mark" style="left:38%">z 1.5</span>
+  <span class="mark" style="left:58%">z 2.0</span><span class="mark" style="left:80%">z 3.0</span>
+  <span class="lab" style="left:6%;color:var(--blue)">CONVERGED 익절</span>
+  <span class="lab" style="left:30%;color:var(--sub)">NEUTRAL 관망</span>
+  <span class="lab" style="left:50%;color:var(--amber)">WATCH 주시</span>
+  <span class="lab" style="left:76%;color:var(--green)">ENTRY_ZONE 매수검토</span>
+</div>
+</div>
+
+<h2>⑥ 즉석 계산기 — 내 계좌면 얼마씩 사나 <span style="font-size:.75rem;color:var(--sub)">브라우저에서 바로 계산</span></h2>
+<div class="tip">💡 안전장치 L7(한 후보 최대 7.5%)과 L2(3분할)를 적용한 매수 계획입니다.
+계좌 총액을 넣어보세요.</div>
+<div class="card calc">
+<label>내 계좌 총액 (억원 단위, 예: 1.5 = 1억5천만)</label>
+<input type="number" id="cap" value="1" step="0.1" min="0.1"> 억원
+<button onclick="calc()">▶ 매수 계획 계산</button>
+<div id="calcOut"></div>
+</div>
+
+<h2>⑦ 어려운 말 쉬운 풀이</h2>
+<div class="card gl">
+<p><b>수렴(컨버전스)</b> — 벌어졌던 두 가격이 다시 제자리(평소 간격)로 돌아오는 것.</p>
+<p><b>괴리율</b> — 두 가격이 벌어진 정도. 보통주 10만원·우선주 6만원이면 괴리율 40%.</p>
+<p><b>z-score</b> — 평소 대비 벌어진 정도를 표준화한 숫자. 0=평소, 2=지난 2~3년 상위 2%, 3=극히 드묾.</p>
+<p><b>롱온리</b> — 공매도 없이 "사는 것"만으로 구성한 전략. 개인 공매도 제약이 큰 한국 현실에 맞춘 변형. 대신 시장 전체가 빠지면 같이 빠지므로 폭락장 금지(L4)가 더 중요해진다.</p>
+<p><b>시간 손절</b> — 가격이 아니라 "기간"으로 끊는 손절. 90거래일 안에 수렴 안 하면 청산. LTCM이 안 한 것.</p>
+<p><b>NAV(순자산가치)</b> — 지주사나 ETF가 실제로 들고 있는 자산의 가치. 시장가격이 이보다 싸면 "할인" 상태.</p>
+<p><b>유동성</b> — 팔고 싶을 때 제값에 팔 수 있는 정도. 거래대금 적은 우선주는 급할 때 탈출구가 없다.</p>
+<p><b>마진콜</b> — 빚내서 산 포지션이 손실 나면 "돈 더 넣거나 다 팔아라" 통보. LTCM의 직접 사인.</p>
+</div>
+
+<div class="quote">"LTCM은 베팅이 옳았는데도 죽었다 — 안전장치가 수익보다 먼저다."</div>
+<p class="foot" style="text-align:center;margin-bottom:26px;">베팅(공격)은 수익의 크기를 정하고, 안전장치(방어)는 게임에 남아 있을 수 있는지를 정합니다.</p>
+
+<p class="foot">※ 본 페이지는 ltcm-convergence 스킬의 개념 가이드이며 투자 권유가 아닙니다.<br>
+※ 실전 사용: <b>"수렴 트레이드 찾아줘"</b>(전체 스캔) · <b>"우선주 괴리율 스캔해줘"</b>(모듈별) ·
+<b>"보유 수렴 포지션 점검해줘"</b>(익절/시간손절 판정) · <b>"LTCM 보드 게시해줘"</b>(홈페이지 갱신).<br>
+※ 날짜별 스캔 데이터는 <a href="ltcm-board.html">LTCM 수렴 보드</a>에서 확인.</p>
+</div>
+
+<script>
+function calc(){
+  const capEok = parseFloat(document.getElementById('cap').value)||1;
+  const cap = capEok*1e8;
+  const strat = cap*0.30, pair = cap*0.075, tr = pair/3;
+  const f = n => (n/1e4>=10000? (n/1e8).toFixed(2)+'억' : Math.round(n/1e4).toLocaleString()+'만원');
+  document.getElementById('calcOut').innerHTML =
+  `<table>
+  <tr><th>항목</th><th>금액</th><th>뜻</th></tr>
+  <tr><td>전략 전체 한도 (L7)</td><td><b>${f(strat)}</b></td><td>계좌의 30% — 이 전략에 넣을 수 있는 최대</td></tr>
+  <tr><td>후보 하나당 한도 (L7)</td><td><b>${f(pair)}</b></td><td>계좌의 7.5% — 최대 4개 후보 동시 보유 가능</td></tr>
+  <tr><td>1차 매수 (z 2.0 도달)</td><td><b>${f(tr)}</b></td><td>처음 벌어졌을 때 ⅓만</td></tr>
+  <tr><td>2차 매수 (z 2.7 도달)</td><td><b>${f(tr)}</b></td><td>더 벌어지면 ⅓ 추가</td></tr>
+  <tr><td>3차 매수 (z 3.5 도달)</td><td><b>${f(tr)}</b></td><td>극단까지 벌어지면 마지막 ⅓</td></tr>
+  </table>
+  <p style="font-size:.8rem;color:var(--sub);margin-top:10px;">팔 때: z 0.5 밑으로 수렴하면 익절 ·
+  90거래일 내 미수렴 시 이유 불문 청산 · 손실 −15%면 즉시 청산</p>`;
+}
+calc();
+</script>
+</body>
+</html>
