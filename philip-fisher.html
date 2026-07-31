@@ -270,6 +270,8 @@ function grade(){
     if(!ST.sbDone)  {g='후보';notes.push('스커틀벗 0건 — 문서만으로 최고 등급을 주지 않는다');}
   }
   if(pct!=null&&pct>=80&&conf<70)notes.push('확인율 70% 미만 — 스커틀벗 추가 필요');
+  if(pct!=null&&pct>=80&&g!=='위대한 기업'&&by[15]!=null&&by[15]!==3)
+    notes.push(`15번(진실성) ${by[15]}점 — 최고 등급은 15번 3점이 요건`);
   if(by[15]==null)notes.push('15번(진실성) 미확인 — 이 항목 없이는 등급이 확정되지 않는다');
   return {g,pct,conf,raw,cnt,notes,by};
 }
