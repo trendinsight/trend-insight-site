@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>필립 피셔 — 위대한 기업 15포인트</title>
+<style>
+:root{--bg:#0f1115;--card:#171a21;--card2:#1c202a;--line:#252a34;--txt:#e6e9ef;--sub:#9aa4b2;
+      --faint:#6b7583;--good:#12b886;--warn:#f5a524;--bad:#e5484d;--blue:#3e8ef7;--gold:#c9a227;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+header{padding:22px 18px 6px;max-width:1000px;margin:0 auto}
+h1{font-size:21px;margin:0 0 5px}
+h2{font-size:14px;margin:0 0 10px}
+.sub{color:var(--sub);font-size:13px;line-height:1.65}
+main{max-width:1000px;margin:0 auto;padding:10px 18px 70px}
+.searchwrap{position:relative;margin:16px 0 6px}
+#q{width:100%;padding:13px 15px;font-size:15px;background:var(--card);color:var(--txt);
+   border:1px solid var(--line);border-radius:12px;outline:none}
+#q:focus{border-color:var(--blue)}
+#qresults{display:none;position:absolute;left:0;right:0;top:52px;z-index:30;background:var(--card2);
+  border:1px solid var(--line);border-radius:12px;overflow:hidden;max-height:300px;overflow-y:auto}
+.qi{padding:10px 14px;display:flex;gap:10px;align-items:baseline;cursor:pointer;font-size:14px}
+.qi:hover,.qi.hl{background:#232833}
+.qi .nm{font-weight:600}.qi .mk{color:var(--faint);font-size:11px}
+.qi .cd{color:var(--sub);font-size:12px;margin-left:auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+.top{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}
+.nm2{font-size:19px;font-weight:800}
+.code{color:var(--sub);font-size:12px;margin-left:7px;font-weight:400}
+.badge{font-size:12px;font-weight:800;padding:5px 13px;border-radius:999px;color:#0b0d10}
+.big{font-size:32px;font-weight:800;letter-spacing:-.5px}
+.kv{display:flex;flex-wrap:wrap;gap:7px 18px;margin-top:12px;font-size:12.5px;color:var(--sub)}
+.kv b{color:var(--txt);font-weight:600}
+.axis{margin-top:16px}
+.axis h3{font-size:12px;color:var(--sub);margin:0 0 7px;font-weight:700;letter-spacing:.3px}
+.pt{border-top:1px solid var(--line);padding:11px 0}
+.pt:first-child{border-top:none}
+.pthead{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap}
+.ptn{flex:0 0 auto;font-size:11px;font-weight:800;color:#0b0d10;background:var(--faint);
+  border-radius:999px;padding:2px 9px}
+.pttitle{font-size:13.5px;font-weight:600}
+.ptq{font-size:11.5px;color:var(--faint);line-height:1.6;margin:5px 0 8px}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+.sb{border:1px solid var(--line);background:var(--card2);color:var(--sub);border-radius:9px;
+  padding:6px 13px;font-size:12.5px;cursor:pointer;user-select:none;font-weight:600}
+.sb.on{color:#0b0d10;font-weight:800;border-color:transparent}
+.sb.s0.on{background:var(--bad)}.sb.s1.on{background:#8a6d2f;color:#fff}
+.sb.s2.on{background:var(--warn)}.sb.s3.on{background:var(--good)}
+.sb.sx.on{background:var(--faint);color:#0b0d10}
+.memo{width:100%;margin-top:7px;background:var(--card2);color:var(--txt);border:1px solid var(--line);
+  border-radius:9px;padding:8px 11px;font-size:12.5px;font-family:inherit;outline:none}
+.memo:focus{border-color:var(--blue)}
+.bar{height:9px;background:#0c0e12;border-radius:6px;overflow:hidden;margin-top:5px}
+.bar i{display:block;height:100%;border-radius:6px}
+.rowbar{display:grid;grid-template-columns:86px 1fr 54px;gap:10px;align-items:center;
+  font-size:12px;color:var(--sub);margin-top:8px}
+.gate{margin-top:12px;background:rgba(229,72,77,.1);border-left:3px solid var(--bad);border-radius:9px;
+  padding:10px 13px;font-size:12.5px;line-height:1.7}
+.note{margin-top:10px;background:var(--card2);border-left:3px solid var(--warn);border-radius:9px;
+  padding:10px 13px;font-size:12.5px;line-height:1.7;color:var(--sub)}
+.note b,.gate b{color:var(--txt)}
+.chk{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.chk label{display:flex;gap:9px;align-items:flex-start;background:var(--card2);border:1px solid var(--line);
+  border-radius:10px;padding:10px 12px;font-size:12.5px;cursor:pointer;line-height:1.6}
+.chk input{accent-color:var(--bad);margin-top:2px}
+.chk label.on{border-color:var(--bad)}
+.no{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.no span{font-size:11.5px;color:var(--faint);border:1px dashed var(--line);border-radius:999px;padding:4px 10px}
+.sbq{margin-top:9px;padding:10px 12px;background:var(--card2);border-radius:10px;border-left:3px solid var(--blue);
+  font-size:12.5px;line-height:1.7}
+.sbq b{color:var(--txt)}
+button.act{background:var(--blue);color:#fff;border:none;border-radius:10px;padding:10px 16px;
+  font-size:13px;font-weight:700;cursor:pointer;margin-top:12px}
+button.ghost{background:var(--card2);color:var(--sub);border:1px solid var(--line)}
+pre{white-space:pre-wrap;word-break:break-all;background:#0c0e12;border:1px solid var(--line);
+  border-radius:10px;padding:12px;font-size:11px;color:var(--sub);max-height:220px;overflow:auto;margin-top:10px}
+.empty{color:var(--faint);text-align:center;padding:46px 10px;font-size:13.5px;line-height:1.8}
+.empty .ico{font-size:30px;margin-bottom:10px}
+.spin{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--blue);
+  border-radius:50%;animation:sp .8s linear infinite;margin:36px auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+details.guide{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-top:14px}
+details.guide summary{cursor:pointer;padding:13px 16px;font-size:14px;font-weight:700;list-style:none;
+  display:flex;gap:8px;align-items:center}
+details.guide summary::-webkit-details-marker{display:none}
+details.guide summary::after{content:'▾';margin-left:auto;color:var(--sub);transition:transform .2s}
+details.guide[open] summary::after{transform:rotate(180deg)}
+details.guide .gb{padding:0 16px 16px;font-size:12.5px;line-height:1.85;color:var(--sub)}
+details.guide .gb b{color:var(--txt)}
+.doc{margin-top:24px;color:var(--faint);font-size:11.5px;line-height:1.8;border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🏛 필립 피셔 — 위대한 기업 15포인트</h1>
+  <div class="sub">싼 주식을 찾는 게임이 아니라 <b>몇 안 되는 비범한 기업을 찾아 오래 붙드는 게임</b>입니다.
+  이 화면은 15가지 질문에 하나씩 답을 채우는 곳입니다 — 답을 채우지 못한 항목이 많다면
+  그것은 나쁜 기업이라는 뜻이 아니라 <b>아직 모른다는 뜻</b>이고, 모르면 사지 않는 것이 이 방법론입니다.</div>
+</header>
+<main>
+  <div class="searchwrap">
+    <input id="q" placeholder="종목명 또는 6자리 코드 (예: 삼성전자, 005930)" autocomplete="off">
+    <div id="qresults"></div>
+  </div>
+  <div id="detail">
+    <div class="empty"><div class="ico">🏛</div>종목을 검색하면 15포인트 채점표가 열립니다.<br>
+    채점 내용은 이 브라우저에 종목별로 저장됩니다.</div>
+  </div>
+
+  <details class="guide">
+    <summary>🏛 30초 설명 — 15포인트가 무엇인가</summary>
+    <div class="gb">
+      필립 피셔(1907~2004)는 <b>『위대한 기업에 투자하라』</b>에서 "무엇이 비범한 기업인가"를
+      15개의 질문으로 정리했습니다. 숫자로 답할 수 있는 것은 그중 6개뿐이고,
+      나머지 9개는 <b>사람·조직·정직성</b>에 관한 질문이라 사업보고서를 읽고 사람에게 물어야 답이 나옵니다.
+      그 탐문 과정을 피셔는 <b>스커틀벗(scuttlebutt)</b>이라 불렀습니다.<br><br>
+      <b>15번(경영진의 진실성)은 절대 요건</b>입니다. 여기에 의문이 있으면 나머지 14개가
+      아무리 좋아도 투자하지 않습니다.<br><br>
+      <b>파는 이유는 셋뿐</b>입니다 — ①내 판단이 틀렸을 때 ②회사가 15포인트에서 이탈했을 때
+      ③명백히 더 나은 대안이 있을 때. "많이 올라서"는 매도 사유가 아닙니다.<br><br>
+      <b>보유 전제는 최소 3~5년, 원칙적으로 무기한</b>입니다. 1년 안에 팔 돈이면 이 방법이 아닙니다.
+    </div>
+  </details>
+
+  <div class="doc">
+    이 앱은 가격 데이터만 자동으로 받습니다(약 120거래일). <b>15포인트 채점은 사람이 합니다</b> —
+    매출 성장·이익률 같은 정량 항목의 자동 채점과 DART 원문 확인, 등급 확정은
+    채팅의 <b>philip-fisher-method</b> 스킬이 담당합니다. 이 화면은 판단을 기록하고 빠진 항목을
+    드러내는 작업대이지 매수 판정이 아닙니다. 채점은 자문이지 매수 추천이 아닙니다.
+  </div>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const API='/api/cockpit';
+const fmt=(n,d)=>n==null||isNaN(n)?'—':Number(n).toLocaleString('ko-KR',{minimumFractionDigits:d??0,maximumFractionDigits:d??2});
+
+const POINTS=[
+ {n:1,ax:'성장 엔진',t:'충분한 시장 잠재력을 가진 제품·서비스가 있는가',
+  q:'몇 년간 매출이 크게 늘 수 있는 시장인가? (3=구조적 성장시장·CAGR 15%↑ / 2=성장시장 진입기 / 1=정체 / 0=축소)'},
+ {n:2,ax:'성장 엔진',t:'신제품·신공정을 개발하려는 경영진의 결의가 있는가',
+  q:'지금 제품의 성장이 끝났을 때 팔 것이 준비돼 있는가? (3=신제품이 이미 매출로 / 0=단일 제품 의존)'},
+ {n:3,ax:'성장 엔진',t:'기업 규모 대비 R&D가 효과적인가',
+  q:'금액이 아니라 성과다. R&D가 제품·특허·수주로 바뀌는가? (개발비 자본화 50%↑면 감점)'},
+ {n:4,ax:'성장 엔진',t:'평균 이상의 영업(판매) 조직을 갖고 있는가',
+  q:'생산은 흉내내도 유통은 흉내내기 어렵다. 고객이 재구매하는가? 한 고객 비중 30%↑면 감점'},
+ {n:5,ax:'수익성',t:'영업이익률이 충분히 높은가',
+  q:'절대 수치보다 동종 대비 위치. (3=동종 최상위·3년 평균 10%↑ / 0=2년 이상 적자)'},
+ {n:6,ax:'수익성',t:'이익률을 지키기 위해 무엇을 하고 있는가',
+  q:'높은 이익률은 경쟁을 부른다. 원가절감·믹스개선·판가 전가 이력이 있는가?'},
+ {n:7,ax:'사람과 조직',t:'돋보이는 노사관계를 갖고 있는가',
+  q:'평균 근속 10년↑·쟁의 없음=3. DART 「직원 등의 현황」에서 확인'},
+ {n:8,ax:'사람과 조직',t:'임원 간의 관계가 훌륭한가',
+  q:'핵심 임원 장기 재직·내부 승진이 작동하는가? 경영권 분쟁·임원 집단 이탈=0'},
+ {n:9,ax:'사람과 조직',t:'경영진의 층이 두터운가 — 승계가 가능한가',
+  q:'대표 한 사람이 없어도 굴러가는가? 고령 오너 + 승계 계획 부재=0 (한국 중소형주 대표 지뢰)'},
+ {n:10,ax:'통제와 시야',t:'원가 분석과 회계 관리가 뛰어난가',
+  q:'감사의견 적정 지속·회전일수 안정=양호. 한정·의견거절·계속기업 불확실성=0'},
+ {n:11,ax:'통제와 시야',t:'업종 특유의 경쟁 우위 단서가 있는가',
+  q:'특허·브랜드·인허가·네트워크 등 복제 불가능한 것이 있는가?'},
+ {n:12,ax:'통제와 시야',t:'이익에 대한 시각이 장기적인가',
+  q:'미래를 위해 당분간의 이익 감소를 감수한 이력이 있는가? 밀어내기·일회성 이익=0'},
+ {n:13,ax:'통제와 시야',t:'증자에 의한 주주가치 희석 가능성이 없는가',
+  q:'3년 주식수 증가 0%↓=3 / 10%↓=2 / 30%↓=1 / 30%↑·제3자배정 반복·CB오버행=0'},
+ {n:14,ax:'진실성',t:'문제가 생겼을 때도 입을 다물지 않는가',
+  q:'악재를 먼저 공시하고 설명했는가? 정정공시 반복·쇼크 직전까지 낙관 IR=0'},
+ {n:15,ax:'진실성',t:'의문의 여지 없이 진실한 경영진인가',
+  q:'절대 요건. 횡령·배임·분식·불성실공시=0 → 다른 14개가 좋아도 투자하지 않는다'}
+];
+const AXES=['성장 엔진','수익성','사람과 조직','통제와 시야','진실성'];
+const GATE=[10,13,15], CAPP=[2,9];
+const SB={
+ 1:'업계 전문가에게: 이 시장은 3년 뒤 얼마나 커집니까? 근거는?',
+ 2:'전·현직 임직원에게: 지금 회사가 가장 많이 뽑는 직무는 무엇입니까? (다음 방향의 단서)',
+ 3:'애널리스트에게: 이 회사 R&D는 돈만 쓰는 편입니까, 제품으로 나옵니까?',
+ 4:'경쟁사에게: 이 회사의 영업 방식 중 가장 껄끄러운 점은? / 고객사에게: 왜 계속 이 회사에서 삽니까?',
+ 5:'동종업체 영업이익률 비교표를 만들어 위치를 확인',
+ 6:'고객사에게: 이 회사가 값을 5% 올리면 다른 데로 옮기겠습니까?',
+ 7:'DART 「직원 등의 현황」 근속연수 + 쟁의·산재 뉴스 + 잡플래닛(편향 감안)',
+ 8:'전·현직 임직원에게: 의사결정은 합의로 이뤄집니까, 한 사람이 정합니까?',
+ 9:'전·현직 임직원에게: 대표가 없어도 굴러갑니까? 후계로 거론되는 사람이 있습니까?',
+ 10:'forensic-checklist — 회전일수·감사의견·특수관계자 거래',
+ 11:'경쟁사에게: 이 회사가 갖고 있고 우리는 갖지 못한 것이 있다면?',
+ 12:'애널리스트에게: 장기 투자를 위해 단기 이익을 포기한 적이 있습니까?',
+ 13:'DART 유상증자·CB·BW 공시 + 발행주식총수 추이',
+ 14:'정정공시 이력 + 어닝쇼크 직전 IR 톤 비교',
+ 15:'횡령·배임·불성실공시 이력 + 최대주주 지분 담보 + 배당·자사주 정책'
+};
+const SELL=[
+ {c:'S1',t:'최초 판단이 사실과 달랐음이 드러났다',d:'주가 하락이 아니라 사실의 변화가 근거여야 한다'},
+ {c:'S2',t:'회사가 15포인트 기준에서 이탈했다',d:'경영진 질 저하·성장시장 소진·이익률 방어 실패·진실성 훼손'},
+ {c:'S3',t:'명백히 더 나은 대안이 있다',d:'막연한 기대가 아니라 15포인트 점수 차이로 입증돼야 한다'}
+];
+const NOTSELL=['많이 올랐다','시장이 과열이라','PER이 역사적 고점','전쟁·정치 공포','세금·손익 확정','다른 게 더 오를 것 같다'];
+const DONTS=['판촉 단계(매출 없는 스토리) 기업을 샀다','거래가 얇다는 이유만으로 좋은 기업을 뺐다',
+ '사업보고서 어투가 마음에 들어서 샀다','PER이 높다는 이유만으로 성장이 반영됐다고 봤다',
+ '호가 몇 틱에 집착했다','너무 많은 종목에 나눠 담았다','전쟁·정치 공포로 팔았다',
+ '과거 주가·과거 PER 밴드에 얽매였다','가격만 보고 기업 내부의 시점을 보지 않았다','군중을 따라갔다'];
+
+let CUR=null, ST={};
+const KEY=c=>'pf15_'+c;
+function load(code){try{return JSON.parse(localStorage.getItem(KEY(code)))||{}}catch(e){return{}}}
+function save(){if(CUR)try{localStorage.setItem(KEY(CUR.code),JSON.stringify(ST))}catch(e){}}
+
+/* ── 검색 ── */
+let qTimer=null,qItems=[],qHl=-1;
+const qBox=$('#qresults'),qIn=$('#q');
+function hideQ(){qBox.style.display='none';qHl=-1;}
+function showMsg(h){qBox.innerHTML=`<div class="qi">${h}</div>`;qBox.style.display='block';}
+function renderQ(){
+  if(!qItems.length){showMsg('<span class="nm" style="color:var(--faint)">검색 결과 없음</span>');return;}
+  qBox.innerHTML=qItems.map((x,i)=>`<div class="qi ${i===qHl?'hl':''}" data-i="${i}">
+    <span class="nm">${x.name}</span><span class="mk">${x.market||''}</span><span class="cd">${x.code}</span></div>`).join('');
+  qBox.style.display='block';
+  qBox.querySelectorAll('.qi').forEach(el=>el.onclick=()=>pickQ(+el.dataset.i));
+}
+function pickQ(i){const x=qItems[i];if(!x)return;hideQ();qIn.value=x.name;qIn.blur();analyze(x.code,x.name);}
+qIn.addEventListener('input',()=>{
+  clearTimeout(qTimer);const q=qIn.value.trim();
+  if(q.length<1){hideQ();return;}
+  qTimer=setTimeout(async()=>{
+    try{
+      const res=await fetch(`${API}/search?q=${encodeURIComponent(q)}`);
+      if(!res.ok){showMsg(`<span class="nm" style="color:var(--warn)">검색 API 오류 (${res.status})</span>`);return;}
+      const r=await res.json();qItems=r.data||[];qHl=qItems.length?0:-1;renderQ();
+    }catch(e){showMsg('<span class="nm" style="color:var(--bad)">검색 서버 연결 실패</span>');}
+  },250);
+});
+qIn.addEventListener('keydown',e=>{
+  const raw=qIn.value.trim();
+  if(e.key==='Enter'&&/^\d{6}$/.test(raw)){e.preventDefault();hideQ();qIn.blur();analyze(raw,raw);return;}
+  if(qBox.style.display!=='block')return;
+  if(e.key==='ArrowDown'){e.preventDefault();qHl=Math.min(qHl+1,qItems.length-1);renderQ();}
+  else if(e.key==='ArrowUp'){e.preventDefault();qHl=Math.max(qHl-1,0);renderQ();}
+  else if(e.key==='Enter'){e.preventDefault();pickQ(qHl>=0?qHl:0);}
+  else if(e.key==='Escape'){hideQ();}
+});
+document.addEventListener('click',e=>{if(!e.target.closest('.searchwrap'))hideQ();});
+
+/* ── 가격 ── */
+function sma(a,n,i){let t=0;for(let j=i-n+1;j<=i;j++)t+=a[j];return t/n;}
+function compute(c){
+  const close=c.close,i=close.length-1,cur=close[i],N=close.length;
+  const hi=Math.max(...close),lo=Math.min(...close);
+  const ma=n=>N>=n?sma(close,n,i):null;
+  const maLong=ma(120)??ma(60);
+  return {cur,hi,lo,N,dd:(cur/hi-1)*100,band:hi>lo?(cur-lo)/(hi-lo):.5,
+    ma60:ma(60),maLong,aboveLong:maLong==null?null:cur>maLong,date:c.date?c.date[i]:''};
+}
+
+/* ── 채점 ── */
+function grade(){
+  const sc=POINTS.map(p=>ST['p'+p.n]).filter(v=>v!=null&&v!=='x').map(Number);
+  const cnt=sc.length, raw=sc.reduce((a,b)=>a+b,0);
+  const pct=cnt?raw/(cnt*3)*100:null, conf=cnt/15*100;
+  const by={};POINTS.forEach(p=>{const v=ST['p'+p.n];if(v!=null&&v!=='x')by[p.n]=Number(v);});
+  const notes=[];let g;
+  const gates=GATE.filter(n=>by[n]===0);
+  if(gates.length){
+    gates.forEach(n=>notes.push(`${n}번 0점 — 자동 제외(절대 게이트)`));
+    return {g:'제외',pct,conf,raw,cnt,notes,by};
+  }
+  if(pct==null)g='미채점';
+  else if(pct>=80&&conf>=70&&by[15]===3&&(by[14]??0)>=2)g='위대한 기업';
+  else if(pct>=60)g='후보';
+  else g='제외';
+  if(g==='위대한 기업'){
+    if(conf<50){g='후보';notes.push('확인율 50% 미만 — 정보 부족');}
+    CAPP.forEach(n=>{if(by[n]===0){g='후보';notes.push(`${n}번 0점 — 등급 상한 적용`);}});
+    if(!ST.sbDone)  {g='후보';notes.push('스커틀벗 0건 — 문서만으로 최고 등급을 주지 않는다');}
+  }
+  if(pct!=null&&pct>=80&&conf<70)notes.push('확인율 70% 미만 — 스커틀벗 추가 필요');
+  if(by[15]==null)notes.push('15번(진실성) 미확인 — 이 항목 없이는 등급이 확정되지 않는다');
+  return {g,pct,conf,raw,cnt,notes,by};
+}
+const gColor=g=>g==='위대한 기업'?'var(--good)':g==='후보'?'var(--warn)':g==='제외'?'var(--bad)':'var(--faint)';
+
+function axisScore(ax){
+  const ps=POINTS.filter(p=>p.ax===ax);
+  const sc=ps.map(p=>ST['p'+p.n]).filter(v=>v!=null&&v!=='x').map(Number);
+  if(!sc.length)return null;
+  return sc.reduce((a,b)=>a+b,0)/(sc.length*3)*100;
+}
+
+function render(){
+  if(!CUR)return;
+  const m=CUR.m, G=grade();
+  const gaps=POINTS.filter(p=>ST['p'+p.n]==null||ST['p'+p.n]==='x');
+  const sells=SELL.filter(s=>ST['sell_'+s.c]);
+  const donts=DONTS.filter((_,i)=>ST['d'+i]);
+
+  let h=`<div class="card">
+    <div class="top">
+      <div><span class="nm2">${CUR.name}</span><span class="code">${CUR.code}</span></div>
+      <span class="badge" style="background:${gColor(G.g)}">${G.g}</span>
+    </div>
+    <div class="top" style="margin-top:10px">
+      <div><div class="big">${G.pct==null?'—':fmt(G.pct,1)+'%'}</div>
+      <div class="sub" style="font-size:11.5px">환산 점수 · 원점수 ${G.raw}점 / ${G.cnt*3}점</div></div>
+      <div style="text-align:right"><div class="big" style="font-size:22px">${fmt(G.conf,0)}%</div>
+      <div class="sub" style="font-size:11.5px">확인율 (${G.cnt}/15 항목)</div></div>
+    </div>
+    <div class="kv"><span>현재가 <b>${fmt(m.cur)}</b></span>
+      <span>구간 고점 대비 <b>${fmt(m.dd,1)}%</b></span>
+      <span>장기선(120일) <b>${m.aboveLong==null?'—':m.aboveLong?'위':'아래'}</b></span>
+      <span>기준일 <b>${m.date||'—'}</b></span></div>`;
+  AXES.forEach(ax=>{
+    const v=axisScore(ax);
+    h+=`<div class="rowbar"><span>${ax}</span>
+      <span class="bar"><i style="width:${v==null?0:v}%;background:${v==null?'var(--faint)':v>=80?'var(--good)':v>=60?'var(--warn)':'var(--bad)'}"></i></span>
+      <span style="text-align:right;color:var(--txt)">${v==null?'—':fmt(v,0)+'%'}</span></div>`;
+  });
+  if(G.notes.length)h+=`<div class="${G.g==='제외'?'gate':'note'}">${G.notes.map(n=>'· '+n).join('<br>')}</div>`;
+  h+=`</div>`;
+
+  /* 15포인트 */
+  AXES.forEach(ax=>{
+    h+=`<div class="card"><h2>${ax}</h2>`;
+    POINTS.filter(p=>p.ax===ax).forEach(p=>{
+      const cur=ST['p'+p.n];
+      const btn=(v,lb)=>`<span class="sb s${v} ${String(cur)===String(v)?'on':''}" data-p="${p.n}" data-v="${v}">${lb}</span>`;
+      h+=`<div class="pt">
+        <div class="pthead"><span class="ptn" style="background:${p.n>=14?'var(--gold)':'var(--faint)'}">${p.n}</span>
+          <span class="pttitle">${p.t}</span></div>
+        <div class="ptq">${p.q}</div>
+        <div class="btns">${btn(0,'0 미달')}${btn(1,'1 미흡')}${btn(2,'2 양호')}${btn(3,'3 탁월')}${btn('x','미확인')}</div>
+        <input class="memo" data-memo="${p.n}" placeholder="근거 한 줄 (출처: DART·리포트·탐문)" value="${(ST['m'+p.n]||'').replace(/"/g,'&quot;')}">
+      </div>`;
+    });
+    h+=`</div>`;
+  });
+
+  /* 스커틀벗 */
+  h+=`<div class="card"><h2>스커틀벗 — 아직 답하지 못한 ${gaps.length}개</h2>
+    <div class="sub" style="font-size:12px">피셔 방법론에서 가장 자주 생략되는 단계입니다.
+    독립 정보원 2곳 이상에서 같은 방향이 확인돼야 점수로 옮깁니다.</div>`;
+  if(!gaps.length)h+=`<div class="note">15개 항목이 모두 채워졌습니다. 근거의 출처가 문서인지 탐문인지 구분해 적어두세요.</div>`;
+  gaps.forEach(p=>{h+=`<div class="sbq"><b>${p.n}번 ${p.t}</b><br>${SB[p.n]}</div>`;});
+  h+=`<div class="chk" style="margin-top:12px"><label class="${ST.sbDone?'on':''}">
+    <input type="checkbox" data-sbdone ${ST.sbDone?'checked':''}>
+    <span>스커틀벗을 실제로 1건 이상 수행했다 (체크하지 않으면 최고 등급은 '후보'로 제한됩니다)</span></label></div></div>`;
+
+  /* 매도 3사유 */
+  h+=`<div class="card"><h2>매도 점검 — 피셔가 인정한 세 가지 이유</h2><div class="chk">`;
+  SELL.forEach(s=>{h+=`<label class="${ST['sell_'+s.c]?'on':''}">
+    <input type="checkbox" data-sell="${s.c}" ${ST['sell_'+s.c]?'checked':''}>
+    <span><b>${s.c}. ${s.t}</b><br><span style="color:var(--faint)">${s.d}</span></span></label>`;});
+  h+=`</div>`;
+  h+= sells.length
+    ? `<div class="gate"><b>매도 검토 — ${sells.map(s=>s.c).join(', ')}</b><br>
+       해당 사유의 근거를 문장으로 쓸 수 없다면 그것은 매도 사유가 아닙니다.</div>`
+    : `<div class="note"><b>매도 사유 없음 — 계속 보유가 기본값입니다.</b><br>
+       아래 이유들로는 팔지 않습니다.<div class="no">${NOTSELL.map(x=>'<span>'+x+'</span>').join('')}</div></div>`;
+  h+=`</div>`;
+
+  /* 10 Don'ts */
+  h+=`<div class="card"><h2>하지 말아야 할 10가지 — 내 판단에 섞여 있는가</h2><div class="chk">`;
+  DONTS.forEach((d,i)=>{h+=`<label class="${ST['d'+i]?'on':''}"><input type="checkbox" data-dont="${i}" ${ST['d'+i]?'checked':''}><span>${d}</span></label>`;});
+  h+=`</div>`;
+  if(donts.length)h+=`<div class="gate"><b>${donts.length}개의 금지 논거가 섞여 있습니다.</b>
+    이 논거들을 빼고 다시 판단하세요. 그래도 결론이 같다면 그 결론은 견고합니다.</div>`;
+  h+=`</div>`;
+
+  /* 내보내기 */
+  h+=`<div class="card"><h2>채팅으로 보내기</h2>
+    <div class="sub" style="font-size:12px">아래 JSON을 복사해 채팅에 붙이고
+    "philip-fisher-method로 채점 확정하고 보드에 게시해줘"라고 말하면
+    스킬이 DART 원문으로 검증하고 등급을 확정한 뒤 보드에 올립니다.</div>
+    <pre id="exp"></pre>
+    <button class="act" id="copy">JSON 복사</button>
+    <button class="act ghost" id="reset">이 종목 채점 초기화</button></div>`;
+  $('#detail').innerHTML=h;
+  $('#exp').textContent=JSON.stringify(exportObj(G),null,1);
+  bind();
+}
+
+function exportObj(G){
+  return {skill:'philip-fisher-method',code:CUR.code,name:CUR.name,
+    date:new Date().toISOString().slice(0,10),
+    grade:G.g,pct:G.pct==null?null:+G.pct.toFixed(1),confidence:+G.conf.toFixed(1),raw:G.raw,
+    points:POINTS.map(p=>({n:p.n,title:p.t,axis:p.ax,
+      score:(ST['p'+p.n]==null||ST['p'+p.n]==='x')?null:Number(ST['p'+p.n]),
+      basis:ST['m'+p.n]||''})),
+    scuttlebutt:{done:ST.sbDone?1:0},
+    sell_check:SELL.map(s=>({code:s.c,reason:s.t,checked:!!ST['sell_'+s.c]})),
+    donts_hit:DONTS.filter((_,i)=>ST['d'+i]),
+    notes:G.notes, source:'philip-fisher web app'};
+}
+
+function bind(){
+  document.querySelectorAll('.sb').forEach(el=>el.onclick=()=>{
+    const k='p'+el.dataset.p, v=el.dataset.v;
+    ST[k]=(String(ST[k])===String(v))?null:v; save();render();});
+  document.querySelectorAll('[data-memo]').forEach(el=>el.oninput=()=>{
+    ST['m'+el.dataset.memo]=el.value;save();});
+  document.querySelectorAll('[data-sell]').forEach(el=>el.onchange=()=>{
+    ST['sell_'+el.dataset.sell]=el.checked;save();render();});
+  document.querySelectorAll('[data-dont]').forEach(el=>el.onchange=()=>{
+    ST['d'+el.dataset.dont]=el.checked;save();render();});
+  const sb=document.querySelector('[data-sbdone]');
+  if(sb)sb.onchange=()=>{ST.sbDone=sb.checked;save();render();};
+  const cp=$('#copy');
+  if(cp)cp.onclick=async()=>{
+    try{await navigator.clipboard.writeText($('#exp').textContent);cp.textContent='복사됨 ✓';
+      setTimeout(()=>cp.textContent='JSON 복사',1600);}
+    catch(e){cp.textContent='복사 실패 — 직접 선택하세요';}};
+  const rs=$('#reset');
+  if(rs)rs.onclick=()=>{if(confirm('이 종목의 채점 기록을 지웁니다.')){ST={};save();render();}};
+}
+
+async function analyze(code,name){
+  $('#detail').innerHTML='<div class="spin"></div>';
+  try{
+    const r=await(await fetch(`${API}/analyze/${code}`)).json();
+    if(!r.ok){$('#detail').innerHTML=`<div class="empty"><div class="ico">⚠</div>${r.error||'분석 불가'}</div>`;return;}
+    const d=r.data,c=d.chart;
+    if(!c||!c.close||c.close.length<60){
+      $('#detail').innerHTML='<div class="empty"><div class="ico">⚠</div>일봉 60개 미만 — 가격 정보를 표시할 수 없습니다</div>';return;}
+    CUR={m:compute(c),name:d.name||name||d.code,code:d.code||code};
+    ST=load(CUR.code);
+    render();
+  }catch(e){
+    $('#detail').innerHTML='<div class="empty"><div class="ico">⚠</div>연결 실패 · 잠시 후 다시 시도하세요</div>';
+  }
+}
+</script>
+</body>
+</html>
