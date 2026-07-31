@@ -1,0 +1,13 @@
+{
+  "name": "character-insight",
+  "main": "worker.js",
+  "compatibility_date": "2026-01-01",
+  "assets": { "directory": "public", "binding": "ASSETS" },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "character-insight",
+      "database_id": "5f2f7434-002c-4dfc-809b-8a67144095b1"
+    }
+  ]
+}
