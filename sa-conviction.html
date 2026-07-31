@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SA 컨빅션 — 한눈에 보는 비주얼 가이드</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--navy:#0b1f3f;--navy2:#13294b;--accent:#2e6ff2;--red:#c62828;--orange:#e8830c;--green:#2e7d32;--purple:#5e35b1;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg:#f5f7fb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.65}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px 80px}
+/* hero */
+.hero{background:linear-gradient(135deg,#0b1f3f 0%,#13294b 60%,#1c3a6b 100%);color:#fff;padding:54px 20px 46px;text-align:center}
+.hero h1{font-size:2rem;letter-spacing:-.02em}
+.hero .tag{display:inline-block;background:rgba(46,111,242,.25);border:1px solid rgba(46,111,242,.6);border-radius:999px;padding:4px 16px;font-size:.85rem;font-weight:700;margin-bottom:14px}
+.hero p{color:#c6d3e8;max-width:640px;margin:12px auto 0;font-size:.98rem}
+.hero b{color:#ffd54f}
+/* section */
+h2{color:var(--navy);font-size:1.35rem;margin:52px 0 6px;letter-spacing:-.01em}
+.easy{background:#fffde7;border-left:4px solid #ffd54f;border-radius:0 10px 10px 0;padding:10px 16px;font-size:.92rem;margin:10px 0 18px;color:#5d4c00}
+.easy b{color:#3e3200}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 1px 3px rgba(11,31,63,.05)}
+/* timeline */
+.tl{position:relative;margin:24px 0 8px;padding-left:26px}
+.tl:before{content:"";position:absolute;left:8px;top:6px;bottom:6px;width:3px;border-radius:2px;background:linear-gradient(180deg,#66bb6a 0%,#66bb6a 55%,#ef5350 75%,#7e57c2 100%)}
+.tl .ev{position:relative;padding:0 0 22px 14px}
+.tl .ev:before{content:"";position:absolute;left:-24px;top:7px;width:13px;height:13px;border-radius:50%;background:#fff;border:3px solid var(--accent)}
+.tl .ev.up:before{border-color:#66bb6a}.tl .ev.down:before{border-color:#ef5350}.tl .ev.dead:before{border-color:#7e57c2}
+.tl .d{font-size:.78rem;font-weight:800;color:var(--muted)}
+.tl .t{font-weight:800;color:var(--navy)}
+.tl .s{font-size:.88rem;color:var(--muted)}
+.big{font-size:1.5rem;font-weight:900}
+.up .big{color:#2e7d32}.down .big{color:#c62828}
+/* death->rule mapping */
+.map{display:grid;grid-template-columns:1fr 40px 1fr;gap:10px;align-items:stretch;margin-top:16px}
+.map .death,.map .rule{border-radius:12px;padding:14px 16px;font-size:.9rem}
+.map .death{background:#fdecea;border:1px solid #f5c6c0}
+.map .death b{color:#c62828;display:block}
+.map .rule{background:#e8f5e9;border:1px solid #bfe3c2}
+.map .rule b{color:#2e7d32;display:block}
+.map .arrow{display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:var(--muted)}
+@media(max-width:700px){.map{grid-template-columns:1fr}.map .arrow{transform:rotate(90deg);padding:2px 0}}
+/* steps */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px}
+@media(max-width:860px){.steps{grid-template-columns:repeat(2,1fr)}}
+.step{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center;position:relative}
+.step .n{width:34px;height:34px;border-radius:50%;background:var(--accent);color:#fff;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 8px}
+.step b{color:var(--navy)}
+.step p{font-size:.82rem;color:var(--muted);margin-top:4px}
+/* axes grid */
+.axes{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:16px}
+.axis{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 14px;text-align:center}
+.axis .ico{font-size:1.9rem}
+.axis b{display:block;color:var(--navy);margin:6px 0 2px}
+.axis .why{font-size:.78rem;color:var(--muted);min-height:3em}
+.axis .beta{display:inline-block;margin-top:8px;font-size:.72rem;font-weight:800;border-radius:999px;padding:2px 10px;background:#eef2f8;color:#39506e}
+.axis .beta.hi{background:#fdecea;color:#c62828}
+/* rules */
+.rules{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:16px}
+.rule7{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;border-top:5px solid var(--accent)}
+.rule7.critical{border-top-color:var(--red)}
+.rule7 .rn{font-size:.72rem;font-weight:900;color:#fff;background:var(--navy);border-radius:6px;padding:2px 8px}
+.rule7 h3{color:var(--navy);font-size:1rem;margin:8px 0 2px}
+.rule7 .oneline{font-size:.86rem;color:#5d4c00;background:#fffde7;border-radius:8px;padding:6px 10px;margin:8px 0}
+.rule7 .detail{font-size:.82rem;color:var(--muted)}
+/* demo dashboard */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:16px}
+@media(max-width:860px){.grid2{grid-template-columns:1fr}}
+.badge{display:inline-block;padding:6px 22px;border-radius:999px;font-weight:900;font-size:1.1rem}
+.v-FAIL{background:#fdecea;color:#c62828}.v-WARN{background:#fff3e0;color:#e65100}.v-PASS{background:#e8f5e9;color:#2e7d32}
+.bar{margin:10px 0 2px}
+.bar .lb{display:flex;justify-content:space-between;font-size:.82rem;font-weight:700;color:var(--navy)}
+.bar .tr{height:16px;background:#eef2f8;border-radius:8px;position:relative;overflow:hidden;margin-top:3px}
+.bar .fill{height:100%;border-radius:8px}
+.bar .lim{position:absolute;top:-3px;bottom:-3px;width:3px;background:var(--navy);border-radius:2px}
+.ok .fill{background:#66bb6a}.warn .fill{background:#ffa726}.bad .fill{background:#ef5350}
+.limnote{font-size:.72rem;color:var(--muted);text-align:right}
+.gauge{position:relative;height:14px;border-radius:7px;margin:14px 0 4px;background:linear-gradient(90deg,#66bb6a 0%,#ffa726 55%,#ef5350 100%)}
+.gauge .pin{position:absolute;top:-7px;width:4px;height:28px;background:var(--navy);border-radius:2px}
+.glab{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);font-weight:700}
+.legend{font-size:.78rem;color:var(--muted);margin-top:8px}
+.demo-note{display:inline-block;background:#eef2f8;color:#39506e;border-radius:999px;padding:3px 12px;font-size:.76rem;font-weight:800;margin-left:10px;vertical-align:middle}
+/* glossary */
+.gloss{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-top:16px}
+.gl{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:.86rem}
+.gl b{color:var(--navy)}
+.footer{margin-top:56px;font-size:.78rem;color:#9aa6b6;line-height:1.7}
+.lesson{background:var(--navy);color:#dbe4f3;border-radius:14px;padding:22px 26px;margin-top:40px;font-size:.95rem;text-align:center}
+.lesson b{color:#ffd54f;font-size:1.05rem}
+</style>
+</head>
+<body>
+
+<header style="background:#0b1f3f;padding:16px 24px"><a href="index.html" style="color:#fff;font-weight:800;text-decoration:none">Trend Insight</a></header>
+<div class="hero">
+<span class="tag">sa-conviction 스킬 가이드</span>
+<h1>SA 컨빅션 — AGI 인프라 집중투자 + 리스크 가드레일</h1>
+<p>헤지펀드 Situational Awareness는 <b>반년 만에 +439%</b>를 벌고도 <b>단 며칠 만에 전 재산을 강제 매각</b>당했습니다.<br>
+이 스킬은 그들의 "공격법"은 배우고, 그들을 무너뜨린 "실수 4가지"를 막는 안전장치를 붙인 것입니다.</p>
+</div>
+
+<div class="wrap">
+
+<h2>① 무슨 일이 있었나 — 30초 타임라인</h2>
+<div class="easy">💡 <b>쉽게 말하면</b> — 시험 답은 다 맞혔는데, 답안지를 빚내서 4장 사는 바람에 제출도 못 하고 퇴장당한 이야기입니다.</div>
+<div class="card">
+<div class="tl">
+<div class="ev"><div class="d">2024년 9월</div><div class="t">펀드 출범</div><div class="s">아셴브레너가 "AGI가 온다 → 전력·반도체가 부족해진다"는 논거로 약 $2.2억 규모로 시작</div></div>
+<div class="ev up"><div class="d">2026년 상반기</div><div class="t">논거 적중 <span class="big">+439%</span></div><div class="s">AI 인프라주 집중 베팅 대성공 — 운용자산 $200억 돌파</div></div>
+<div class="ev down"><div class="d">2026년 7월 하순</div><div class="t">AI 테마 동반 급락</div><div class="s">보유 종목이 전부 "AI"라는 한 변수에 걸려 있어 동시에 하락</div></div>
+<div class="ev dead"><div class="d">2026년 7월 30일</div><div class="t">마진콜 → 전량 강제 매각</div><div class="s">4배 레버리지(빚) 때문에 버틸 수 없었고, Citadel이 주식을 통째로 인수. 상반기 수익 소멸</div></div>
+</div>
+</div>
+
+<h2>② 왜 죽었나 → 그래서 이 스킬엔 이 규칙이 있다</h2>
+<div class="easy">💡 <b>핵심</b> — 종목을 잘못 골라서가 아니라, <b>계좌 구조</b>가 잘못돼서 죽었습니다. 왼쪽(사인)마다 오른쪽(가드레일)이 1:1로 대응합니다.</div>
+<div class="map">
+<div class="death"><b>☠ 4배 레버리지</b>빚으로 4배를 샀다 → 테마가 25%만 빠져도 원금 전멸</div><div class="arrow">→</div><div class="rule"><b>🛡 R1 레버리지 금지</b>신용·미수·담보대출 전면 금지. 내 현금 안에서만. 위반 시 다른 점검과 무관하게 즉시 FAIL</div>
+<div class="death"><b>☠ 한 종목에 40%</b>1위 종목 40%, 상위 5종목이 76% — 한 종목이 계좌를 끝낼 수 있는 구조</div><div class="arrow">→</div><div class="rule"><b>🛡 R2 집중 상한</b>한 종목 ≤20% · 같은 테마축 ≤40% · 상위5 ≤60%. 초과하면 "얼마 줄여야 하는지" 금액까지 계산</div>
+<div class="death"><b>☠ 전부 같은 변수</b>종목은 여러 개인데 전부 "AI 캐펙스" 하나에 연동 — 분산이 아니라 숨은 몰빵</div><div class="arrow">→</div><div class="rule"><b>🛡 R3 동시하락 스트레스</b>"테마 전체가 −20% 빠지면 내 계좌는 몇 % 잃나"를 미리 계산. 12% 넘으면 경고</div>
+<div class="death"><b>☠ 팔고 싶어도 못 팜</b>급락장에 대량 물량은 받아줄 사람이 없다 → 헐값 강제 청산</div><div class="arrow">→</div><div class="rule"><b>🛡 R4 유동성 게이트</b>"이 포지션 다 파는 데 며칠 걸리나" 계산 — 3일 넘으면 경고</div>
+</div>
+
+<h2>③ 공격법 — SA 플레이북 4단계</h2>
+<div class="easy">💡 <b>쉽게 말하면</b> — "금광 시대에 금 캐는 회사 말고 <b>곡괭이 파는 회사</b>를 사라." AI 시대의 곡괭이는 전력·반도체·냉각 설비입니다.</div>
+<div class="steps">
+<div class="step"><div class="n">1</div><b>거대 논거</b><p>AGI가 커지면 반드시 부족해지는 것(병목)을 찾는다 — 전기, 메모리, 데이터센터</p></div>
+<div class="step"><div class="n">2</div><b>순수 수혜주</b><p>빅테크 말고, 그 병목으로 매출 대부분을 버는 회사만 고른다</p></div>
+<div class="step"><div class="n">3</div><b>컨센서스 갭</b><p>시장이 아직 폭발적 수요를 덜 반영한(싸게 놔둔) 종목 우선</p></div>
+<div class="step"><div class="n">4</div><b>집중 베팅</b><p>확신 종목에 크게 — 단, ②의 가드레일 안에서만</p></div>
+</div>
+
+<h2>④ 한국판 유니버스 — 6대 병목 축</h2>
+<div class="easy">💡 <b>베타(β)</b>란 — 테마가 흔들릴 때 같이 흔들리는 정도. β 1.2면 테마가 20% 빠질 때 24% 빠진다고 가정하고 위험을 계산합니다.</div>
+<div class="axes">
+<div class="axis"><div class="ico">⚡</div><b>전력기기</b><div class="why">데이터센터는 전기 먹는 하마 → 변압기 수출 호황</div><span class="beta">β 1.0 · 6종목</span></div>
+<div class="axis"><div class="ico">🔌</div><b>전선</b><div class="why">전기를 보내려면 초고압 케이블 증설 필수</div><span class="beta">β 0.9 · 2종목</span></div>
+<div class="axis"><div class="ico">☢️</div><b>원자력·발전</b><div class="why">밤낮없이 도는 AI엔 원전급 기저 전원 필요</div><span class="beta">β 0.9 · 3종목</span></div>
+<div class="axis"><div class="ico">🧠</div><b>HBM·반도체장비</b><div class="why">AI 칩의 메모리 병목 — 한국이 세계 중심</div><span class="beta hi">β 1.2 · 5종목</span></div>
+<div class="axis"><div class="ico">🔧</div><b>기판·네트워크</b><div class="why">AI 가속기용 특수 기판, 데이터 연결망</div><span class="beta hi">β 1.1 · 3종목</span></div>
+<div class="axis"><div class="ico">❄️</div><b>데이터센터·냉각</b><div class="why">뜨거워진 서버를 식히는 수냉각·칠러</div><span class="beta hi">β 1.1 · 3종목</span></div>
+</div>
+
+<h2>⑤ 7개 안전장치 — R1~R7 전체 보기</h2>
+<div class="rules">
+<div class="rule7 critical"><span class="rn">R1</span><h3>레버리지 금지</h3><div class="oneline">💬 빚내서 사지 마라 — SA를 죽인 1번 원인</div><div class="detail">신용융자·미수·주식담보대출·파생 전면 금지. 하나라도 쓰면 종합 판정 무조건 FAIL.</div></div>
+<div class="rule7 critical"><span class="rn">R2</span><h3>집중 상한</h3><div class="oneline">💬 확신해도 한 바구니에 20%까지만</div><div class="detail">단일 종목 ≤20%, 같은 병목축 합산 ≤40%, 상위 5종목 ≤60%. 넘으면 축소할 금액을 자동 계산해 알려준다.</div></div>
+<div class="rule7 critical"><span class="rn">R3</span><h3>동시하락 스트레스</h3><div class="oneline">💬 "다 같이 빠지면?"을 미리 계산</div><div class="detail">AI 캐펙스 쇼크 시나리오(−20%/−35%)에 베타 가중을 곱해 계좌 예상 손실 산출. −20% 시나리오 손실이 계좌의 12%를 넘으면 FAIL. 실제 60일 상관계수도 함께 점검.</div></div>
+<div class="rule7"><span class="rn">R4</span><h3>유동성 게이트</h3><div class="oneline">💬 사기 전에 "팔 수 있는가"부터</div><div class="detail">하루 거래대금의 20%씩 판다고 가정할 때 전량 청산에 걸리는 일수. 3일 초과 경고, 7일 초과 FAIL.</div></div>
+<div class="rule7"><span class="rn">R5</span><h3>논거 훼손 감시</h3><div class="oneline">💬 "AI가 온다"는 전제 자체를 정기 검사</div><div class="detail">빅테크 투자축소, HBM 가격 하락, 수주 취소 등 6개 체크포인트를 웹검색으로 점검. 2개 훼손 시 경고, 3개면 신규 금지.</div></div>
+<div class="rule7"><span class="rn">R6</span><h3>단계 익절</h3><div class="oneline">💬 SA가 안 한 것 — 벌었을 때 일부 챙기기</div><div class="detail">+50%에 1/4 익절, +100%에 원금 회수(이후는 '공짜 포지션'), 고점 대비 −25% 이탈 시 청산 검토.</div></div>
+<div class="rule7"><span class="rn">R7</span><h3>시장 게이트</h3><div class="oneline">💬 시장 전체가 과열이면 신규 매수 잠깐 멈춤</div><div class="detail">시장·거시 온도계 75° 이상이면 신규 진입 보류(보유분은 R6 규칙 적용), 25° 이하 과매도면 진입 우호.</div></div>
+</div>
+
+<h2>⑥ 내 포트폴리오 즉석 감사 <span class="demo-note">브라우저에서 바로 계산</span></h2>
+<div class="easy">💡 <b>AI 종목만 넣지 말고 보유 전 종목을 넣으세요.</b> 비중·손실 계산의 분모가 계좌 전체이기 때문입니다. AI와 무관한 종목은 축을 <b>"비AI (테마무관)"</b>로 선택하면 집중도(R2)에는 포함되고 AI 쇼크 시나리오(R3)에서는 제외됩니다. 금액은 <b>억원</b> 단위(예: 1.5 = 1억5천만원). 시세가 필요한 R4·R5·R7은 스킬 실행 시 제공됩니다.</div>
+<div class="card">
+<div style="display:flex;gap:18px;flex-wrap:wrap;align-items:end;margin-bottom:14px">
+<label style="font-size:.85rem;font-weight:700;color:var(--navy)">총 운용자본(억)<br><input type="number" id="capital" value="5" step="0.1" min="0.1" style="width:110px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:.95rem"></label>
+<label style="font-size:.85rem;font-weight:700;color:var(--navy)">현금(억)<br><input type="number" id="cash" value="0.5" step="0.1" min="0" style="width:110px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:.95rem"></label>
+<label style="font-size:.85rem;font-weight:700;color:var(--red)"><input type="checkbox" id="lev"> 신용·미수·담보대출 사용 중</label>
+</div>
+<div style="overflow-x:auto">
+<table id="postable" style="min-width:760px">
+<thead><tr><th style="text-align:left">종목명</th><th>평가액(억)</th><th>병목 축</th><th>매수가(원·선택)</th><th>현재가(원·선택)</th><th>고점가(원·선택)</th><th></th></tr></thead>
+<tbody id="rows"></tbody>
+</table>
+</div>
+<div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+<button onclick="addRow()" style="font-family:inherit;font-weight:800;font-size:.9rem;padding:9px 18px;border-radius:999px;border:1px solid var(--line);background:#eef2f8;color:#39506e;cursor:pointer">＋ 종목 추가</button>
+<button onclick="runAudit()" style="font-family:inherit;font-weight:800;font-size:.9rem;padding:9px 22px;border-radius:999px;border:none;background:var(--accent);color:#fff;cursor:pointer">▶ 감사 실행</button>
+<button onclick="loadSample()" style="font-family:inherit;font-weight:700;font-size:.85rem;padding:9px 16px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--muted);cursor:pointer">예시 다시 채우기</button>
+</div>
+</div>
+<div id="auditout"></div>
+<h2>⑦ 어려운 말 쉬운 풀이</h2>
+<div class="gloss">
+<div class="gl"><b>레버리지</b> — 빚(신용·미수)까지 얹어 원금보다 크게 사는 것. 수익도 4배, 손실도 4배. SA는 4배였다.</div>
+<div class="gl"><b>마진콜</b> — 빚내서 산 주식이 떨어지면 증권사가 "돈 더 넣거나 다 팔아라" 통보하는 것. 못 넣으면 강제 매각.</div>
+<div class="gl"><b>병목(보틀넥)</b> — 아무리 수요가 커져도 공급이 못 따라가 반드시 부족해지는 지점. 부족한 곳에 돈이 몰린다.</div>
+<div class="gl"><b>picks-and-shovels</b> — 금 캐는 회사(빅테크)가 아니라 곡괭이 파는 회사(장비·전력·소재)에 투자하는 전략.</div>
+<div class="gl"><b>컨센서스 갭</b> — 애널리스트 전망(컨센서스)보다 실제 수요가 훨씬 빠르게 늘 때 생기는 "아직 안 오른 이유".</div>
+<div class="gl"><b>동일팩터 쏠림</b> — 종목은 10개여도 전부 한 변수(예: AI 투자)에 연동되면 사실상 1종목 몰빵과 같다는 뜻.</div>
+<div class="gl"><b>유동성</b> — 팔고 싶을 때 제값에 팔 수 있는 정도. 거래대금이 적은 종목은 급락장에서 탈출구가 없다.</div>
+<div class="gl"><b>트레일링 스탑</b> — 최고점 대비 일정 %(여기선 25%) 빠지면 파는 규칙. 이익을 지키면서 추세는 계속 타는 법.</div>
+</div>
+
+<div class="lesson"><b>"SA는 논거가 옳았는데도 죽었다 — 가드레일이 알파보다 먼저다."</b><br>
+종목 선정(공격)은 수익의 크기를 정하고, 리스크 규칙(방어)은 게임에 남아 있을 수 있는지를 정합니다.</div>
+
+<div class="footer">
+※ 본 페이지는 sa-conviction 스킬의 개념 가이드이며 투자 권유가 아닙니다. ⑥의 수치는 예시 포트폴리오의 데모 계산입니다.<br>
+※ 실전 사용: "AI 인프라주 스크리닝해줘"(발굴) · "SA 리스크 감사해줘"(보유 포트 점검) · 매수 확정 전 forensic-checklist·entry-timer 연계.<br>
+※ 사실관계 출처: CNBC·Bloomberg·FT 보도(2026-07-30 전량 매각, 4배 레버리지, 상반기 +439%, 1종목 40%·상위5 76%).
+</div>
+</div>
+<script>
+var BETA={"전력기기":1.0,"전선":0.9,"원자력발전":0.9,"HBM반도체장비":1.2,"기판네트워크":1.1,"데이터센터냉각":1.1,"기타 AI연관":0.5,"비AI (테마무관)":0.0};
+var NONAI="비AI (테마무관)";
+var AXES=Object.keys(BETA);
+var LIM_SINGLE=0.20,LIM_AXIS=0.40,LIM_TOP5=0.60,STRESS_LIMIT=0.12;
+function esc(x){return String(x==null?"":x).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+function addRow(d){d=d||{};
+ var tb=document.getElementById("rows"),tr=document.createElement("tr");
+ var opts=AXES.map(function(a){return '<option'+(d.axis===a?' selected':'')+'>'+a+'</option>';}).join("");
+ tr.innerHTML='<td style="text-align:left"><input class="f-name" value="'+esc(d.name||"")+'" placeholder="예: HD현대일렉트릭" style="width:150px"></td>'
+ +'<td><input class="f-val" type="number" step="0.01" min="0" value="'+(d.val!=null?d.val:"")+'" style="width:90px"></td>'
+ +'<td><select class="f-axis">'+opts+'</select></td>'
+ +'<td><input class="f-entry" type="number" min="0" value="'+(d.entry!=null?d.entry:"")+'" style="width:100px"></td>'
+ +'<td><input class="f-cur" type="number" min="0" value="'+(d.cur!=null?d.cur:"")+'" style="width:100px"></td>'
+ +'<td><input class="f-peak" type="number" min="0" value="'+(d.peak!=null?d.peak:"")+'" style="width:100px"></td>'
+ +'<td><button onclick="this.closest(\'tr\').remove()" style="border:none;background:none;color:#c62828;font-weight:900;cursor:pointer">✕</button></td>';
+ tr.querySelectorAll("input,select").forEach(function(el){el.style.fontFamily="inherit";el.style.fontSize=".88rem";el.style.padding="6px 8px";el.style.border="1px solid var(--line)";el.style.borderRadius="8px";});
+ tb.appendChild(tr);}
+function loadSample(){document.getElementById("rows").innerHTML="";
+ document.getElementById("capital").value=5;document.getElementById("cash").value=0.5;document.getElementById("lev").checked=false;
+ [{name:"HD현대일렉트릭",val:1.5,axis:"전력기기",entry:200000,cur:410000,peak:480000},
+  {name:"SK하이닉스",val:1.2,axis:"HBM반도체장비",entry:180000,cur:250000},
+  {name:"한미반도체",val:0.9,axis:"HBM반도체장비"},
+  {name:"이수페타시스",val:0.6,axis:"기판네트워크"},
+  {name:"두산에너빌리티",val:0.3,axis:"원자력발전"}].forEach(addRow);}
+function pill(label,v){return '<span class="badge v-'+v+'" style="font-size:.8rem;padding:4px 12px">'+label+' '+v+'</span>';}
+function bar(label,pct,lim){var scale=Math.max(pct*1.15,lim*1.6,1);var cls=pct>lim*100?"bad":(pct>lim*100*0.85?"warn":"ok");
+ return '<div class="bar '+cls+'"><div class="lb"><span>'+esc(label)+'</span><span>'+pct.toFixed(1)+'% / 한도 '+(lim*100)+'%</span></div><div class="tr"><div class="fill" style="width:'+Math.min(pct/scale*100,100)+'%"></div><div class="lim" style="left:'+(lim*100/scale*100)+'%"></div></div></div>';}
+function runAudit(){
+ var cap=parseFloat(document.getElementById("capital").value)||0;
+ var cash=parseFloat(document.getElementById("cash").value)||0;
+ var lev=document.getElementById("lev").checked;
+ var pos=[];
+ document.querySelectorAll("#rows tr").forEach(function(tr){
+  var name=tr.querySelector(".f-name").value.trim();
+  var val=parseFloat(tr.querySelector(".f-val").value);
+  if(!name||!val)return;
+  pos.push({name:name,val:val,axis:tr.querySelector(".f-axis").value,
+   entry:parseFloat(tr.querySelector(".f-entry").value)||null,
+   cur:parseFloat(tr.querySelector(".f-cur").value)||null,
+   peak:parseFloat(tr.querySelector(".f-peak").value)||null});});
+ var out=document.getElementById("auditout");
+ if(cap<=0||!pos.length){out.innerHTML='<div class="card" style="margin-top:16px;color:var(--muted)">자본과 종목을 1개 이상 입력하세요.</div>';return;}
+ var total=pos.reduce(function(a,p){return a+p.val;},0);
+ var verdicts=[];
+ // R1
+ var r1fail=lev||total>cap+1e-9;
+ var r1v=r1fail?"FAIL":"PASS";verdicts.push(r1v);
+ var r1d="포지션합 "+total.toFixed(2)+"억 / 자본 "+cap.toFixed(2)+"억 / 현금 "+cash.toFixed(2)+"억 — "+(r1fail?(lev?"신용·미수 사용 중":"포지션이 자본 초과 (숨은 레버리지)"):"현금 범위 내");
+ // R2
+ var vio=[],trims=[],bars="";
+ pos.forEach(function(p){var w=p.val/cap;bars+=bar(p.name+" (단일)",w*100,LIM_SINGLE);
+  if(w>LIM_SINGLE){vio.push(p.name+" "+(w*100).toFixed(1)+"% > 20%");trims.push(p.name+" 약 "+((w-LIM_SINGLE)*cap).toFixed(2)+"억 축소");}});
+ var ax={};pos.forEach(function(p){ax[p.axis]=(ax[p.axis]||0)+p.val;});
+ for(var a in ax){var w=ax[a]/cap;bars+=bar("축["+a+"] 합산",w*100,LIM_AXIS);if(w>LIM_AXIS)vio.push("축["+a+"] "+(w*100).toFixed(1)+"% > 40%");}
+ var top5=pos.map(function(p){return p.val;}).sort(function(a,b){return b-a;}).slice(0,5).reduce(function(a,b){return a+b;},0);
+ bars+=bar("상위 5종목 합산",top5/cap*100,LIM_TOP5);
+ if(top5/cap>LIM_TOP5)vio.push("top5 "+(top5/cap*100).toFixed(1)+"% > 60%");
+ var r2v=vio.length?"FAIL":"PASS";verdicts.push(r2v);
+ // R3
+ var l20=0,l35=0,aiVal=0;pos.forEach(function(p){var b=BETA[p.axis];if(b==null)b=1;l20+=p.val*0.20*b;l35+=p.val*0.35*b;if(p.axis!==NONAI)aiVal+=p.val;});
+ var aiExp=aiVal/cap;
+ var s20=l20/cap,s35=l35/cap;
+ var r3v=s20>STRESS_LIMIT?"FAIL":(s20>0.10?"WARN":"PASS");verdicts.push(r3v);
+ // R6
+ var r6items=[];pos.forEach(function(p){
+  if(!p.entry||!p.cur)return;var g=p.cur/p.entry-1;var act=null;
+  if(g>=1.0)act="원금 회수 익절 점검 (+100% 도달)";else if(g>=0.5)act="1/4 익절 점검 (+50% 도달)";
+  if(p.peak&&p.cur<p.peak*0.75)act=(act?act+" · ":"")+"트레일링 −25% 발동 — 청산 검토";
+  if(act)r6items.push(p.name+" "+(g>=0?"+":"")+(g*100).toFixed(1)+"% → "+act);});
+ var r6v=r6items.length?"WARN":(pos.some(function(p){return p.entry&&p.cur;})?"PASS":"SKIP");
+ if(r6v!=="SKIP")verdicts.push(r6v);
+ // overall
+ var overall=verdicts.indexOf("FAIL")>=0?"FAIL":(verdicts.indexOf("WARN")>=0?"WARN":"PASS");
+ var msg={PASS:"가드레일 안입니다. 이 구조라면 테마 급락에도 게임에 남습니다.",WARN:"주의 — 주황 항목을 손보면 SA형 사고 확률이 크게 줄어듭니다.",FAIL:"지금 구조는 SA와 닮아 있습니다. 빨간 항목부터 축소하세요."}[overall];
+ var h='<div class="card" style="margin-top:16px">';
+ var expCls=aiExp>0.6?"FAIL":(aiExp>0.4?"WARN":"PASS");
+ h+='<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><span class="badge v-'+overall+'">종합 '+overall+'</span><span class="badge v-'+expCls+'" style="font-size:.85rem;padding:5px 14px">AI 테마 노출 '+(aiExp*100).toFixed(1)+'%</span><span style="color:var(--muted);font-size:.9rem">투자비중 '+(total/cap*100).toFixed(1)+'% · '+esc(msg)+'</span></div>';
+ h+='<div style="font-size:.82rem;color:var(--muted);margin-top:6px">SA는 이 노출도가 사실상 100%였습니다 — 계좌의 몇 %가 AI라는 한 변수에 걸려 있는지가 이 스킬의 핵심 숫자입니다.</div>';
+ h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">'+pill("R1 레버리지",r1v)+pill("R2 집중",r2v)+pill("R3 스트레스",r3v)+(r6v!=="SKIP"?pill("R6 익절",r6v):"")+'</div>';
+ h+='<div class="grid2"><div>';
+ h+='<h3 style="color:var(--navy);font-size:.95rem;margin-top:16px">R1 레버리지 — '+r1v+'</h3><div style="font-size:.86rem;color:var(--muted)">'+esc(r1d)+'</div>';
+ h+='<h3 style="color:var(--navy);font-size:.95rem;margin-top:16px">R2 집중도'+(vio.length?' — <span style="color:var(--red)">✖ 위반 '+vio.length+'건</span>':' — <span style="color:var(--green)">✔ 전부 한도 안</span>')+'</h3>'+bars+'<div class="limnote">▮ 세로선 = 허용 한도</div>';
+ if(trims.length)h+='<div style="background:#fdecea;border-radius:10px;padding:10px 14px;font-size:.86rem;margin-top:10px"><b style="color:var(--red)">→ 축소 권고:</b> '+esc(trims.join(", "))+'</div>';
+ h+='</div><div>';
+ var pin=Math.min(s20/(STRESS_LIMIT*2)*100,97);
+ h+='<h3 style="color:var(--navy);font-size:.95rem;margin-top:16px">R3 동시하락 스트레스 — '+r3v+'</h3>';
+ h+='<div class="gauge"><div class="pin" style="left:'+pin+'%"></div></div><div class="glab"><span>0%</span><span>한도 12%</span><span style="font-weight:900;color:'+(r3v==="FAIL"?"var(--red)":r3v==="WARN"?"var(--orange)":"var(--green)")+'">−20% 시나리오 손실 '+(s20*100).toFixed(1)+'%</span></div>';
+ h+='<div class="legend">−35% 쇼크 시나리오: <b>−'+(s35*100).toFixed(1)+'%</b> (축별 베타 가중). <b>비AI(테마무관)</b>으로 넣은 종목은 이 충격에서 제외되고, R2 집중도 계산에는 포함됩니다.</div>';
+ h+='<h3 style="color:var(--navy);font-size:.95rem;margin-top:20px">R6 단계 익절 — '+r6v+'</h3>';
+ if(r6items.length)r6items.forEach(function(t){h+='<div style="background:#fff3e0;border-radius:10px;padding:10px 14px;font-size:.86rem;margin-top:6px">⚠ '+esc(t)+'</div>';});
+ else h+='<div style="font-size:.84rem;color:var(--muted)">'+(r6v==="SKIP"?"매수가·현재가를 입력하면 익절 시점을 점검합니다.":"익절·트레일링 트리거 없음.")+'</div>';
+ h+='<div style="font-size:.78rem;color:#9aa6b6;margin-top:16px">R4 유동성 · R5 논거 · R7 시장 게이트는 시세·뉴스 조회가 필요해 스킬 실행("SA 리스크 감사해줘") 시 제공됩니다.</div>';
+ h+='</div></div></div>';
+ out.innerHTML=h;}
+loadSample();runAudit();
+</script>
+</body>
+</html>
