@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>켄 피셔 — PSR·글리치·3대 질문</title>
+<style>
+:root{--bg:#0f1115;--card:#171a21;--card2:#1c202a;--line:#252a34;--txt:#e6e9ef;--sub:#9aa4b2;
+      --faint:#6b7583;--good:#12b886;--warn:#f5a524;--bad:#e5484d;--blue:#3e8ef7;--up:#e5484d;--down:#3e8ef7;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+header{padding:22px 18px 6px;max-width:1000px;margin:0 auto}
+h1{font-size:21px;margin:0 0 5px}
+.sub{color:var(--sub);font-size:13px;line-height:1.65}
+main{max-width:1000px;margin:0 auto;padding:10px 18px 70px}
+.searchwrap{position:relative;margin:16px 0 6px}
+#q{width:100%;padding:13px 15px;font-size:15px;background:var(--card);color:var(--txt);
+   border:1px solid var(--line);border-radius:12px;outline:none}
+#q:focus{border-color:var(--blue)}
+#qresults{display:none;position:absolute;left:0;right:0;top:52px;z-index:30;background:var(--card2);
+  border:1px solid var(--line);border-radius:12px;overflow:hidden;max-height:300px;overflow-y:auto}
+.qi{padding:10px 14px;display:flex;gap:10px;align-items:baseline;cursor:pointer;font-size:14px}
+.qi:hover,.qi.hl{background:#232833}
+.qi .nm{font-weight:600}.qi .mk{color:var(--faint);font-size:11px}.qi .cd{color:var(--sub);font-size:12px;margin-left:auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+h2{font-size:14px;margin:0 0 10px;color:var(--txt)}
+.hint{color:var(--faint);font-size:11.5px;font-weight:400;margin-left:6px}
+.top{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}
+.nm2{font-size:19px;font-weight:800}
+.code{color:var(--sub);font-size:12px;margin-left:7px;font-weight:400}
+.verdict{font-size:12px;font-weight:800;padding:5px 13px;border-radius:999px;color:#0b0d10}
+.big{font-size:30px;font-weight:800;letter-spacing:-.5px}
+.kv{display:flex;flex-wrap:wrap;gap:7px 18px;margin-top:12px;font-size:12.5px;color:var(--sub)}
+.kv b{color:var(--txt);font-weight:600}
+.inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px}
+.f label{display:block;font-size:11.5px;color:var(--sub);margin-bottom:4px}
+.f input,.f select{width:100%;padding:9px 11px;font-size:14px;background:var(--card2);color:var(--txt);
+  border:1px solid var(--line);border-radius:9px;outline:none}
+.f input:focus,.f select:focus{border-color:var(--blue)}
+.psrbar{position:relative;height:34px;background:#0c0e12;border-radius:9px;margin:14px 0 6px;overflow:hidden}
+.zone{position:absolute;top:0;bottom:0;display:flex;align-items:center;justify-content:center;
+  font-size:10.5px;color:#0b0d10;font-weight:800}
+.mark{position:absolute;top:-3px;width:3px;height:40px;background:#fff;border-radius:2px;box-shadow:0 0 7px rgba(255,255,255,.6)}
+.zlbl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--faint)}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--sub);font-weight:600;font-size:11.5px}
+td.r,th.r{text-align:right}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:10.5px;font-weight:800;color:#0b0d10}
+.q{margin-top:11px;padding:12px 13px;background:var(--card2);border-radius:11px;border-left:3px solid var(--blue)}
+.q .qt{font-size:13px;font-weight:700;margin-bottom:3px}
+.q .qd{font-size:11.5px;color:var(--faint);line-height:1.6;margin-bottom:8px}
+.q textarea{width:100%;min-height:52px;background:var(--card);color:var(--txt);border:1px solid var(--line);
+  border-radius:9px;padding:9px 11px;font-size:13px;font-family:inherit;resize:vertical;outline:none}
+.q textarea:focus{border-color:var(--blue)}
+.bias{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.bias label{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);
+  border-radius:9px;padding:7px 11px;font-size:12.5px;cursor:pointer;user-select:none}
+.bias input{accent-color:var(--bad)}
+.bias label.on{border-color:var(--bad);color:var(--bad)}
+.myth{display:flex;align-items:flex-start;gap:9px;padding:8px 0;border-bottom:1px solid var(--line);font-size:12.5px;line-height:1.6}
+.myth:last-child{border-bottom:none}
+.myth input{margin-top:3px;accent-color:var(--warn)}
+.myth b{color:var(--warn)}
+.warnbox{margin-top:12px;background:rgba(229,72,77,.09);border-left:3px solid var(--bad);border-radius:9px;
+  padding:11px 13px;font-size:12.5px;line-height:1.7}
+.okbox{margin-top:12px;background:rgba(18,184,134,.09);border-left:3px solid var(--good);border-radius:9px;
+  padding:11px 13px;font-size:12.5px;line-height:1.7}
+.empty{text-align:center;color:var(--faint);padding:44px 10px;font-size:13px}
+.empty .ico{font-size:34px;margin-bottom:8px}
+.spin{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--blue);border-radius:50%;
+  margin:44px auto;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+details.guide{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-top:14px}
+details.guide summary{cursor:pointer;padding:13px 16px;font-size:14px;font-weight:700;list-style:none;display:flex;gap:8px;align-items:center}
+details.guide summary::-webkit-details-marker{display:none}
+details.guide summary::after{content:'▾';margin-left:auto;color:var(--sub);transition:transform .2s}
+details.guide[open] summary::after{transform:rotate(180deg)}
+details.guide .gb{padding:0 16px 16px;font-size:12.5px;line-height:1.85;color:var(--sub);border-top:1px solid var(--line);padding-top:12px}
+details.guide .gb b{color:var(--txt)}
+.doc{margin-top:24px;color:var(--faint);font-size:11.5px;line-height:1.8;border-top:1px solid var(--line);padding-top:13px}
+</style>
+</head>
+<body>
+<header>
+  <h1>📐 켄 피셔 — PSR · 글리치 · 3대 질문</h1>
+  <div class="sub">이익은 일시적으로 사라져도 <b>매출은 잘 사라지지 않는다.</b> 좋은 회사가 일시적 사고(글리치)로
+  적자를 내면 PER은 무한대가 되어 쓸모없어지지만, 그때 <b>PSR(시가총액÷매출)</b>만은 여전히 작동한다.
+  피셔의 슈퍼 스톡은 <b>슈퍼 컴퍼니를 글리치 직후에 산 주식</b>이다.</div>
+</header>
+<main>
+  <div class="searchwrap">
+    <input id="q" placeholder="종목명 또는 6자리 코드 (예: 삼성전자, 005930)" autocomplete="off">
+    <div id="qresults"></div>
+  </div>
+  <div id="detail">
+    <div class="empty"><div class="ico">🔍</div>종목을 검색하면 낙폭·글리치 단계를 자동 판정합니다.<br>
+    매출액만 입력하면 PSR과 매수·매도 구간이 바로 나옵니다.</div>
+  </div>
+
+  <details class="guide">
+    <summary>📐 30초 설명 — PSR이 뭐고 왜 쓰나</summary>
+    <div class="gb">
+      <b>PSR = 시가총액 ÷ 최근 12개월 매출액.</b> "시장이 이 회사 매출 1원을 얼마에 사고 있나"입니다.<br><br>
+      PER은 이익이 사라지면 못 씁니다. 그런데 <b>좋은 회사도 사고를 칩니다</b> — 신제품 지연, 대형 고객 이탈,
+      일회성 손실. 피셔는 이걸 <b>글리치</b>라 부르고, 시장이 이걸 "성장 끝"으로 오해해 주가를 반토막 낼 때가
+      바로 살 자리라고 했습니다. 그때 유일하게 작동하는 자가 PSR입니다.<br><br>
+      <b>피셔의 두 절대 규칙</b> — ① PSR 3 넘으면 절대 사지 않는다 ② (기술주) PRR 15 넘으면 피한다.<br>
+      <b>매수 구간</b> — 슈퍼 컴퍼니는 PSR 0.75 이하, 일반 대형주는 0.4 이하.<br>
+      <b>매도 구간</b> — PSR 3~6. 매출은 그대로인데 시장이 매기는 값만 4~8배가 된 지점입니다.<br>
+      <b>보유 전제는 3~5년</b>입니다(슈퍼 스톡의 정의가 3~5년에 3~10배). 3개월 볼 돈이면 이 방법이 아닙니다.<br><br>
+      <b>싸다는 건 글리치의 증거가 아니라 결과일 뿐입니다.</b> 왜 떨어졌는지 한 문장으로 못 쓰면 사지 마세요.
+    </div>
+  </details>
+
+  <div class="doc">
+    이 앱은 가격 데이터만 자동으로 받습니다(약 120거래일). 매출·마진·부채는 직접 입력해야 합니다 —
+    네이버 금융 종목 페이지의 '기업실적분석' 표에서 그대로 옮기면 됩니다.
+    <b>글리치 원인 판정·슈퍼컴퍼니 정성 4요건·PRR용 R&amp;D 확인은 채팅의 fisher-method 스킬</b>이 합니다.
+    이 화면은 "사지 않을 이유"를 먼저 거르는 1차 필터이지 매수 판정이 아닙니다.
+    채점은 자문이지 매수 추천이 아닙니다.
+  </div>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const API='/api/cockpit';
+const fmt=(n,d)=>n==null||isNaN(n)?'—':Number(n).toLocaleString('ko-KR',{minimumFractionDigits:d??0,maximumFractionDigits:d??2});
+let CUR=null;
+const ST={rev:0,cap:0,margin:0,growth:0,debt:0,rnd:0,kind:'auto',biases:{},myths:{}};
+
+/* ── 검색 ── */
+let qTimer=null,qItems=[],qHl=-1;
+const qBox=$('#qresults'),qIn=$('#q');
+function hideQ(){qBox.style.display='none';qHl=-1;}
+function showMsg(h){qBox.innerHTML=`<div class="qi">${h}</div>`;qBox.style.display='block';}
+function renderQ(){
+  if(!qItems.length){showMsg('<span class="nm" style="color:var(--faint)">검색 결과 없음</span>');return;}
+  qBox.innerHTML=qItems.map((x,i)=>`<div class="qi ${i===qHl?'hl':''}" data-i="${i}">
+    <span class="nm">${x.name}</span><span class="mk">${x.market||''}</span><span class="cd">${x.code}</span></div>`).join('');
+  qBox.style.display='block';
+  qBox.querySelectorAll('.qi').forEach(el=>el.onclick=()=>pickQ(+el.dataset.i));
+}
+function pickQ(i){const x=qItems[i];if(!x)return;hideQ();qIn.value=x.name;qIn.blur();analyze(x.code,x.name);}
+qIn.addEventListener('input',()=>{
+  clearTimeout(qTimer);const q=qIn.value.trim();
+  if(q.length<1){hideQ();return;}
+  qTimer=setTimeout(async()=>{
+    try{
+      const res=await fetch(`${API}/search?q=${encodeURIComponent(q)}`);
+      if(!res.ok){showMsg(`<span class="nm" style="color:var(--warn)">검색 API 오류 (${res.status})</span>`);return;}
+      const r=await res.json();qItems=r.data||[];qHl=qItems.length?0:-1;renderQ();
+    }catch(e){showMsg(`<span class="nm" style="color:var(--bad)">검색 서버 연결 실패</span>
+      <span class="cd">${location.protocol==='file:'?'사이트 주소로 접속하세요':'/api/cockpit 확인'}</span>`);}
+  },250);
+});
+qIn.addEventListener('keydown',e=>{
+  const raw=qIn.value.trim();
+  if(e.key==='Enter'&&/^\d{6}$/.test(raw)){e.preventDefault();hideQ();qIn.blur();analyze(raw,raw);return;}
+  if(qBox.style.display!=='block')return;
+  if(e.key==='ArrowDown'){e.preventDefault();qHl=Math.min(qHl+1,qItems.length-1);renderQ();}
+  else if(e.key==='ArrowUp'){e.preventDefault();qHl=Math.max(qHl-1,0);renderQ();}
+  else if(e.key==='Enter'){e.preventDefault();pickQ(qHl>=0?qHl:0);}
+  else if(e.key==='Escape'){hideQ();}
+});
+document.addEventListener('click',e=>{if(!e.target.closest('.searchwrap'))hideQ();});
+
+/* ── 가격 계산 (fisher_data.price_block과 같은 규칙, 창은 약 120거래일) ── */
+function sma(a,n,i){let t=0;for(let j=i-n+1;j<=i;j++)t+=a[j];return t/n;}
+function compute(c){
+  const close=c.close,i=close.length-1,cur=close[i],N=close.length;
+  const hi=Math.max(...close),lo=Math.min(...close);
+  const iHi=close.lastIndexOf(hi);
+  const trough=Math.min(...close.slice(iHi));
+  const ma=n=>N>=n?sma(close,n,i):null;
+  const maLong=ma(120)??ma(60),longN=ma(120)!=null?120:60;
+  return {cur,hi,lo,N,months:(N/21).toFixed(0),
+    dd:(cur/hi-1)*100, off:trough?(cur/trough-1)*100:null,
+    band:hi>lo?(cur-lo)/(hi-lo):0.5,
+    ma20:ma(20),ma60:ma(60),maLong,longN,
+    aboveMa60:ma(60)!=null&&cur>ma(60), aboveLong:maLong==null?null:cur>maLong,
+    date:c.date?c.date[i]:''};
+}
+/* fisher_screen.glitch_stage와 동일 로직 */
+function glitchStage(m){
+  if(m.dd>-20)return{k:'none',t:'글리치 아님 — 낙폭 부족',c:'var(--faint)',
+    d:'고점 대비 20%도 안 빠졌습니다. 피셔가 말한 "시장의 과잉 비관" 구간이 아닙니다.'};
+  if(m.off<8&&!m.aboveMa60)return{k:'s0',t:'0단계 — 하락 지속',c:'var(--bad)',
+    d:'아직 떨어지는 중입니다. 저점 확인이 안 됐고 60일선 아래입니다. 나눠 사더라도 1차는 소액으로.'};
+  if(m.off>=8&&!m.aboveLong)return{k:'s1',t:'1단계 — 비관의 되돌림',c:'var(--warn)',
+    d:'저점에서 반등이 시작됐지만 장기선 아래입니다. 피셔가 말한 매수 구간의 초입입니다.'};
+  if(m.aboveLong&&m.dd<-15)return{k:'s2',t:'2단계 — 펀더멘털 회복',c:'var(--good)',
+    d:'장기선을 회복했고 아직 고점 대비 여유가 있습니다. 실적이 실제로 돌아오는지 확인하세요.'};
+  return{k:'s3',t:'3단계 — 멀티플 확장 (매도 구간 접근)',c:'var(--blue)',
+    d:'기대가 다시 붙는 구간입니다. PSR이 3을 넘어가면 파는 자리입니다.'};
+}
+/* 채점 — fisher_screen.py와 동일 */
+function scorePSR(psr,kind){
+  if(psr==null||!isFinite(psr))return null;
+  if(kind==='super')return psr<=0.75?30:psr<=1.5?18:psr<=3?6:0;
+  return psr<=0.4?30:psr<=0.8?18:psr<=1.5?8:psr<=3?3:0;
+}
+function scoreMargin(m){if(m==null)return null;return m>=12?15:m>=8?12:m>=5?9:m>=2?4:0;}
+function scoreGrowth(g){if(g==null)return null;return g>=20?15:g>=15?13:g>=10?9:g>=5?5:g>=0?2:0;}
+function scoreFin(d){if(d==null)return null;return d<=50?10:d<=100?8:d<=150?6:d<=250?3:0;}
+function scorePRR(p){if(p==null||!isFinite(p))return null;return p<5?10:p<10?7:p<=15?4:0;}
+function psrZone(psr,kind){
+  if(psr==null)return'산출불가';
+  if(psr>3)return'절대금지 (>3)';
+  if(kind==='super')return psr<=0.75?'적극매수':psr<=1.5?'보유':'매도검토';
+  return psr<=0.4?'적극매수':psr<=0.8?'보유':'매도검토';
+}
+const num=id=>{const v=parseFloat(($('#'+id)||{}).value);return isFinite(v)&&v!==0?v:null;};
+
+function render(){
+  if(!CUR)return;
+  const m=CUR.m, name=CUR.name, code=CUR.code;
+  const cap=num('f_cap'), rev=num('f_rev'), margin=num('f_margin'),
+        growth=num('f_growth'), debt=num('f_debt'), rnd=num('f_rnd');
+  const kindSel=($('#f_kind')||{}).value||'auto';
+  const kind = kindSel!=='auto'?kindSel:(((growth||0)>=10||(margin||0)>=10)?'super':'general');
+  const psr = (cap&&rev)?cap/rev:null;
+  const prr = (cap&&rnd)?cap/rnd:null;
+  const gs = glitchStage(m);
+
+  const sc={P:scorePSR(psr,kind),M:scoreMargin(margin),G:scoreGrowth(growth),F:scoreFin(debt),R:scorePRR(prr)};
+  const MAX={P:30,M:15,G:15,F:10,R:10};
+  let got=0,den=0;
+  for(const k in sc){if(sc[k]!=null){got+=sc[k];den+=MAX[k];}}
+  const pct=den?Math.round(got/den*1000)/10:null;
+
+  const biasCount=Object.values(ST.biases).filter(Boolean).length;
+  const mythCount=Object.values(ST.myths).filter(Boolean).length;
+
+  // 판정
+  let v,vc,vnote;
+  if(psr!=null&&psr>3){v='AVOID';vc='var(--bad)';vnote='PSR 3 초과 — 피셔 절대 규칙 1 위반. 이 종목은 이 방법론의 대상이 아닙니다.';}
+  else if(prr!=null&&prr>15){v='AVOID';vc='var(--bad)';vnote='PRR 15 초과 — 피셔 절대 규칙 2 위반.';}
+  else if(pct==null){v='입력 필요';vc='var(--faint)';vnote='시가총액과 매출액을 넣으면 PSR과 판정이 나옵니다.';}
+  else if(pct>=80&&gs.k!=='none'&&gs.k!=='s3'){v='BUY 검토';vc='var(--good)';vnote='정량 요건과 글리치 단계가 맞습니다. 남은 건 "왜 떨어졌나"에 대한 답입니다.';}
+  else if(pct>=65){v='WAIT';vc='var(--warn)';vnote='요건 일부가 미달이거나 단계가 이릅니다. 관심 등재 후 트리거를 기다리세요.';}
+  else {v='제외';vc='var(--faint)';vnote='피셔 기준의 슈퍼 컴퍼니 요건에 못 미칩니다.';}
+  // Q3 편향 → 한 단계 보수화
+  let downgraded=false;
+  if(biasCount>0&&(v==='BUY 검토')){v='WAIT';vc='var(--warn)';downgraded=true;}
+  else if(biasCount>0&&v==='WAIT'){v='관망';vc='var(--faint)';downgraded=true;}
+
+  // PSR 마일스톤 가격표
+  const miles=[0.4,0.75,1.5,3.0,6.0];
+  const ladder=(psr&&m.cur)?miles.map(x=>({psr:x,price:Math.round(m.cur*x/psr),
+      vs:(x/psr-1)*100,
+      lbl:(kind==='super'?(x<=0.75?'적극매수':x<=1.5?'보유':'매도구간'):(x<=0.4?'적극매수':x<=0.8?'보유':'매도구간'))})):[];
+
+  // PSR 게이지 위치 (0~6 로그성 배치)
+  const buyMax=kind==='super'?0.75:0.4, holdMax=kind==='super'?1.5:0.8;
+  const posOf=x=>Math.min(100,Math.max(0,(Math.log10(Math.max(x,.05))-Math.log10(.05))/(Math.log10(6)-Math.log10(.05))*100));
+
+  $('#detail').innerHTML=`
+  <div class="card">
+    <div class="top">
+      <div><span class="nm2">${name}</span><span class="code">${code}</span></div>
+      <span class="verdict" style="background:${vc}">${v}</span>
+    </div>
+    <div class="kv">
+      <span>종가 <b>${fmt(m.cur)}원</b></span>
+      <span>구간고점대비 <b style="color:${m.dd<=-30?'var(--warn)':'var(--txt)'}">${fmt(m.dd,1)}%</b></span>
+      <span>저점대비 <b>${m.off==null?'—':'+'+fmt(m.off,1)+'%'}</b></span>
+      <span>${m.longN}일선 <b>${m.aboveLong==null?'—':(m.aboveLong?'위':'아래')}</b></span>
+      <span>기업유형 <b>${kind==='super'?'슈퍼 컴퍼니 기준':'일반·저성장 기준'}</b></span>
+      <span>정량점수 <b>${pct==null?'—':pct+'점'}</b> <span class="hint">${den?'('+got+'/'+den+' 환산)':''}</span></span>
+    </div>
+    <div class="warnbox" style="border-color:${gs.c};background:rgba(255,255,255,.03)">
+      <b style="color:${gs.c}">글리치 판정: ${gs.t}</b><br>${gs.d}
+    </div>
+    <div style="margin-top:10px;font-size:12.5px;color:var(--sub);line-height:1.7">${vnote}
+      ${downgraded?'<br><b style="color:var(--bad)">질문 3에서 편향이 잡혀 판정을 한 단계 보수화했습니다.</b>':''}</div>
+  </div>
+
+  <div class="card">
+    <h2>재무 입력 <span class="hint">네이버 금융 → 종목 → 기업실적분석 표에서 옮기세요 (단위: 억원 / %)</span></h2>
+    <div class="inputs">
+      <div class="f"><label>시가총액 (억원)</label><input id="f_cap" type="number" value="${cap??''}" placeholder="예: 45000"></div>
+      <div class="f"><label>최근 12개월 매출액 (억원)</label><input id="f_rev" type="number" value="${rev??''}" placeholder="예: 62000"></div>
+      <div class="f"><label>3년 평균 순이익률 (%)</label><input id="f_margin" type="number" step="0.1" value="${margin??''}" placeholder="피셔 하한 5"></div>
+      <div class="f"><label>EPS 3년 CAGR (%)</label><input id="f_growth" type="number" step="0.1" value="${growth??''}" placeholder="피셔 기준 15"></div>
+      <div class="f"><label>부채비율 (%)</label><input id="f_debt" type="number" step="0.1" value="${debt??''}" placeholder="제조업 150 이하"></div>
+      <div class="f"><label>연구개발비 (억원, 기술주만)</label><input id="f_rnd" type="number" value="${rnd??''}" placeholder="PRR 산출용"></div>
+      <div class="f"><label>기업 유형</label><select id="f_kind">
+        <option value="auto" ${kindSel==='auto'?'selected':''}>자동 판정</option>
+        <option value="super" ${kindSel==='super'?'selected':''}>슈퍼 컴퍼니 (고성장·고마진)</option>
+        <option value="general" ${kindSel==='general'?'selected':''}>일반·저성장 대형</option>
+      </select></div>
+    </div>
+
+    <div class="psrbar">
+      <div class="zone" style="left:0;width:${posOf(buyMax)}%;background:rgba(18,184,134,.5)">적극매수</div>
+      <div class="zone" style="left:${posOf(buyMax)}%;width:${posOf(holdMax)-posOf(buyMax)}%;background:rgba(245,165,36,.4)">보유</div>
+      <div class="zone" style="left:${posOf(holdMax)}%;width:${posOf(3)-posOf(holdMax)}%;background:rgba(62,142,247,.35)">매도검토</div>
+      <div class="zone" style="left:${posOf(3)}%;right:0;background:rgba(229,72,77,.45)">금지 / 매도</div>
+      ${psr!=null?`<div class="mark" style="left:${posOf(psr)}%"></div>`:''}
+    </div>
+    <div class="zlbl"><span>0.05</span><span>${buyMax}</span><span>${holdMax}</span><span>3.0</span><span>6.0</span></div>
+    <div class="kv" style="margin-top:12px">
+      <span>PSR <b style="font-size:16px;color:${psr==null?'var(--faint)':(psr>3?'var(--bad)':psr<=buyMax?'var(--good)':'var(--warn)')}">${psr==null?'—':fmt(psr,2)}</b>
+        <span class="pill" style="background:${psr==null?'var(--faint)':(psr>3?'var(--bad)':psr<=buyMax?'var(--good)':'var(--warn)')}">${psrZone(psr,kind)}</span></span>
+      <span>PRR <b>${prr==null?'—':fmt(prr,1)}</b> ${prr!=null&&prr>15?'<span class="pill" style="background:var(--bad)">규칙 위반</span>':''}</span>
+    </div>
+    <table>
+      <tr><th>축</th><th class="r">점수</th><th class="r">만점</th><th>피셔 기준</th></tr>
+      <tr><td>P — PSR</td><td class="r">${sc.P??'—'}</td><td class="r">30</td><td>${kind==='super'?'≤0.75 적극매수':'≤0.4 적극매수'} · >3 금지</td></tr>
+      <tr><td>M — 순이익률</td><td class="r">${sc.M??'—'}</td><td class="r">15</td><td>3년 평균 5%↑</td></tr>
+      <tr><td>G — 성장</td><td class="r">${sc.G??'—'}</td><td class="r">15</td><td>EPS 성장 15%↑</td></tr>
+      <tr><td>F — 재무</td><td class="r">${sc.F??'—'}</td><td class="r">10</td><td>부채 통제</td></tr>
+      <tr><td>R — PRR <span class="hint">기술주</span></td><td class="r">${sc.R??'—'}</td><td class="r">10</td><td>&lt;5 최상 · >15 금지</td></tr>
+    </table>
+    <div class="hint" style="display:block;margin-top:8px">글리치 10점 · 슈퍼컴퍼니 정성 10점은 채팅 스킬에서만 채점됩니다.</div>
+  </div>
+
+  ${ladder.length?`<div class="card">
+    <h2>PSR 마일스톤 가격표 <span class="hint">매출이 지금과 같다고 볼 때, 시장이 매출에 매기는 값만 바뀌면 주가는 얼마</span></h2>
+    <table>
+      <tr><th>PSR</th><th class="r">주가</th><th class="r">현재 대비</th><th>구간</th></tr>
+      ${ladder.map(x=>`<tr><td>${x.psr.toFixed(2)}</td><td class="r">${fmt(x.price)}원</td>
+        <td class="r" style="color:${x.vs>0?'var(--up)':'var(--down)'}">${x.vs>0?'+':''}${fmt(x.vs,1)}%</td>
+        <td><span class="pill" style="background:${x.lbl==='적극매수'?'var(--good)':x.lbl==='보유'?'var(--warn)':'var(--bad)'}">${x.lbl}</span></td></tr>`).join('')}
+    </table>
+    <div class="okbox">3분할 매수 — 글리치는 바닥을 맞출 수 없습니다.
+      <b>1차 ${fmt(m.cur)}원 (40%) · 2차 ${fmt(Math.round(m.cur*0.9))}원 (30%) · 3차 ${fmt(Math.round(m.cur*0.8))}원 (30%)</b><br>
+      매도 — ${kind==='super'?'PSR 3.0~6.0 구간에서 분할 매도':'PSR 0.8 초과 시 매도 검토'}. 보유 전제는 3~5년.</div>
+  </div>`:''}
+
+  <div class="card">
+    <h2>3대 질문 <span class="hint">『역발상 주식투자』 — 셋 다 답 못 하면 사지 않습니다</span></h2>
+    <div class="q"><div class="qt">Q1. 내가 믿는 것 중 사실이 아닌 것은?</div>
+      <div class="qd">이 종목에 대한 시장의 통념을 하나 적고, 데이터로 반증을 시도하세요.
+      반증되면 베팅 기회입니다. 반증에 실패하면 그 논리로는 돈을 못 법니다 — 이미 가격에 있으니까요.</div>
+      <textarea id="tq1" placeholder="통념 → 검증 데이터 → 결론(참/거짓/미정)">${(ST.q1||'')}</textarea></div>
+    <div class="q"><div class="qt">Q2. 남들이 상상도 못 하는 것 중 내가 알 수 있는 것은?</div>
+      <div class="qd">남들이 안 세는 것을 세세요. 수주 잔고, 부품 단가, 정책의 2차 파급, 통계의 계절조정 왜곡.</div>
+      <textarea id="tq2" placeholder="측정 대상 → 측정 방법 → 현재 값 → 컨센서스와의 차이">${(ST.q2||'')}</textarea></div>
+    <div class="q" style="border-left-color:var(--bad)"><div class="qt">Q3. 지금 내 뇌가 나를 어떻게 속이고 있나?</div>
+      <div class="qd">해당되는 것을 체크하세요. <b>하나라도 걸리면 판정이 한 단계 보수화됩니다.</b></div>
+      <div class="bias">
+        ${[['b1','확증편향 — 같은 논거만 찾고 있다'],['b2','최근성 — 최근에 올라서 사고 싶다'],
+           ['b3','손실회피 — 손절을 미루는 중이다'],['b4','군집 — 다들 사니까'],
+           ['b5','앵커링 — 내 매수가가 기준이 됐다']].map(([k,t])=>
+          `<label class="${ST.biases[k]?'on':''}"><input type="checkbox" data-bias="${k}" ${ST.biases[k]?'checked':''}>${t}</label>`).join('')}
+      </div>
+      <div style="margin-top:9px;font-size:12.5px;color:${biasCount?'var(--bad)':'var(--sub)'}">
+        걸린 편향 <b>${biasCount}개</b>${biasCount?' — 판정 보수화 적용됨':''}</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>바보들의 예측 필터 <span class="hint">내 논거가 이 미신에 기대고 있지 않은지 확인</span></h2>
+    ${[['m1','"PER이 낮으니 안전하다"','PER의 예측력은 약합니다. 낮은 PER이 더 나쁜 경우도 많습니다 — PER 단독 논거는 금지.'],
+       ['m2','"배당이 높으니 안전하다"','배당 재원이 훼손되면 배당과 주가가 함께 빠집니다. 배당성향·FCF 커버리지를 확인하세요.'],
+       ['m3','"Sell in May" 같은 계절성'  ,'계절성은 대체로 통계적 착시입니다. 이걸 근거로 매매 시점을 정하지 마세요.'],
+       ['m4','"다들 강세라 위험하다"','강세론 자체가 아니라 컨센서스 쏠림 정도가 문제입니다. 목표주가 편차가 8% 미만이면 쏠림 경고.'],
+       ['m5','"재정적자·인구감소라 증시가 나쁘다"','시계가 너무 길거나 상관이 약한 논거입니다. 베팅 가능한 시계인지 확인하세요.']]
+      .map(([k,t,d])=>`<label class="myth"><input type="checkbox" data-myth="${k}" ${ST.myths[k]?'checked':''}>
+        <span><b>${t}</b><br><span style="color:var(--sub)">${d}</span></span></label>`).join('')}
+    <div style="margin-top:10px;font-size:12.5px;color:${mythCount?'var(--warn)':'var(--sub)'}">
+      내 논거에 섞인 미신 <b>${mythCount}개</b>${mythCount?' — 해당 논거를 빼고 다시 판단하세요.':''}</div>
+  </div>`;
+
+  // 이벤트 재바인딩
+  ['f_cap','f_rev','f_margin','f_growth','f_debt','f_rnd'].forEach(id=>{
+    const el=$('#'+id);if(!el)return;
+    el.addEventListener('change',render);
+    el.addEventListener('keydown',e=>{if(e.key==='Enter')render();});
+  });
+  const ks=$('#f_kind');if(ks)ks.addEventListener('change',render);
+  document.querySelectorAll('[data-bias]').forEach(el=>el.addEventListener('change',()=>{
+    ST.biases[el.dataset.bias]=el.checked;render();}));
+  document.querySelectorAll('[data-myth]').forEach(el=>el.addEventListener('change',()=>{
+    ST.myths[el.dataset.myth]=el.checked;render();}));
+  ['tq1','tq2'].forEach(id=>{const el=$('#'+id);if(el)el.addEventListener('input',()=>{ST[id.slice(1)]=el.value;});});
+}
+
+async function analyze(code,name){
+  $('#detail').innerHTML='<div class="spin"></div>';
+  try{
+    const r=await(await fetch(`${API}/analyze/${code}`)).json();
+    if(!r.ok){$('#detail').innerHTML=`<div class="empty"><div class="ico">⚠</div>${r.error||'분석 불가'}</div>`;return;}
+    const d=r.data,c=d.chart;
+    if(!c||!c.close||c.close.length<60){
+      $('#detail').innerHTML='<div class="empty"><div class="ico">⚠</div>일봉 60개 미만 — 판정할 수 없습니다</div>';return;}
+    CUR={m:compute(c),name:d.name||name||d.code,code:d.code||code};
+    render();
+  }catch(e){
+    $('#detail').innerHTML='<div class="empty"><div class="ico">⚠</div>연결 실패 · 잠시 후 다시 시도하세요</div>';
+  }
+}
+</script>
+</body>
+</html>
