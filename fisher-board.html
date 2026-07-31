@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>피셔 보드 — Trend Insight</title>
+<style>
+:root{--bg:#0f1115;--card:#171a21;--card2:#1c202a;--line:#252a34;--txt:#e6e9ef;--sub:#9aa4b2;
+      --faint:#6b7583;--super:#12b886;--watch:#f5a524;--avoid:#e5484d;--blue:#3e8ef7;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+header{padding:22px 18px 8px;max-width:1060px;margin:0 auto}
+h1{font-size:21px;margin:0 0 5px}
+h2{font-size:15px;margin:24px 0 8px}
+.sub{color:var(--sub);font-size:13px;line-height:1.65}
+.wrap{max-width:1060px;margin:0 auto;padding:12px 18px 64px}
+.ctrl{margin:12px 0 2px;font-size:13px;color:var(--sub);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+select{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px}
+.tabs{display:flex;gap:6px;margin:14px 0 4px;flex-wrap:wrap}
+.tab{padding:7px 14px;border:1px solid var(--line);border-radius:999px;font-size:13px;color:var(--sub);
+  cursor:pointer;background:var(--card);user-select:none}
+.tab.on{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700}
+.grid{display:flex;gap:14px;flex-wrap:wrap}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px;flex:1;min-width:310px;max-width:512px}
+.wide{max-width:none;width:100%}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.nm{font-size:15px;font-weight:700}
+.code{color:var(--sub);font-size:12px;font-weight:400;margin-left:6px}
+.score{font-size:22px;font-weight:800}
+.badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:800;color:#0b0d10}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:10.5px;font-weight:800;color:#0b0d10}
+.psrbar{position:relative;height:13px;background:#0c0e12;border-radius:7px;overflow:hidden;margin:13px 0 4px}
+.z{position:absolute;top:0;bottom:0}
+.mark{position:absolute;top:-4px;width:3px;height:21px;background:#fff;border-radius:2px}
+.zl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--faint);margin-top:5px}
+.kv{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:11px;font-size:12px;color:var(--sub)}
+.kv b{color:var(--txt);font-weight:600}
+.reason{margin-top:10px;font-size:12.5px;line-height:1.65;color:var(--txt);border-top:1px solid var(--line);padding-top:9px}
+.glitch{margin-top:9px;font-size:12px;padding:8px 11px;border-radius:9px;background:var(--card2);border-left:3px solid var(--blue);line-height:1.6}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--sub);font-weight:600;font-size:11.5px}
+td.r,th.r{text-align:right}
+.chip{display:inline-block;background:var(--card);border:1px solid var(--line);border-radius:9px;
+  padding:6px 10px;margin:5px 7px 0 0;font-size:12px;color:var(--sub)}
+.chip b{color:var(--txt)}
+.alloc{display:flex;height:26px;border-radius:8px;overflow:hidden;margin-top:10px}
+.alloc div{display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:800;color:#0b0d10}
+.empty{color:var(--faint);font-size:13px;padding:16px 0}
+.doc{margin-top:26px;color:var(--faint);font-size:11.5px;line-height:1.8;border-top:1px solid var(--line);padding-top:14px}
+details.guide{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:14px 0 4px}
+details.guide summary{cursor:pointer;padding:13px 16px;font-size:14px;font-weight:700;list-style:none;display:flex;gap:8px;align-items:center}
+details.guide summary::-webkit-details-marker{display:none}
+details.guide summary::after{content:'▾';margin-left:auto;color:var(--sub);transition:transform .2s}
+details.guide[open] summary::after{transform:rotate(180deg)}
+details.guide .gb{padding:0 16px 16px;font-size:12.5px;line-height:1.85;color:var(--sub);border-top:1px solid var(--line);padding-top:12px}
+details.guide .gb b{color:var(--txt)}
+.glist{margin:9px 0 0;padding:0;list-style:none}
+.glist li{padding:5px 0;display:flex;gap:9px;align-items:baseline}
+.glist .tag{flex:0 0 auto;font-size:11px;font-weight:800;padding:2px 9px;border-radius:999px;color:#0b0d10}
+.gwarn{margin-top:12px;background:rgba(229,72,77,.09);border-left:3px solid var(--avoid);border-radius:8px;
+  padding:10px 13px;color:var(--txt);font-size:12.5px;line-height:1.75}
+</style>
+</head>
+<body>
+<header>
+  <h1>📐 피셔 보드</h1>
+  <div class="sub">켄 피셔의 <b>PSR(시가총액÷매출)</b>로 고른 슈퍼 스톡 후보와, <b>70/20/10 탑다운 배분</b>.
+  좋은 회사가 일시적 사고(<b>글리치</b>)로 반토막 났을 때 — 이익이 사라져 PER이 무용지물이 된 그 지점이
+  이 방법론의 사냥터입니다. <b>PSR 3 초과는 자동 배제</b>됩니다.</div>
+  <div class="ctrl">기준일 <select id="datesel"></select><span id="meta"></span></div>
+</header>
+<div class="wrap">
+  <details class="guide" open>
+    <summary>📐 처음이신가요 — 30초 설명</summary>
+    <div class="gb">
+      <b>PSR = 시가총액 ÷ 최근 12개월 매출액.</b> "시장이 이 회사 매출 1원을 얼마에 사고 있나"입니다.
+      이익은 사고 한 번에 사라지지만 매출은 잘 사라지지 않아서, <b>적자 난 우량기업을 재는 유일한 자</b>입니다.
+      <ul class="glist">
+        <li><span class="tag" style="background:var(--super)">SUPER</span>
+          <span>PSR도 싸고 마진·성장·재무도 피셔 기준을 통과 — <b>3분할로 사 모을 자리</b></span></li>
+        <li><span class="tag" style="background:var(--watch)">후보</span>
+          <span>요건 일부 미달이거나 글리치 회복 단계가 이름 — 관심 등재</span></li>
+        <li><span class="tag" style="background:var(--avoid)">제외</span>
+          <span>PSR 3 초과, 3년 연속 매출 감소 등 — 이 방식의 사냥감이 아님</span></li>
+      </ul>
+      <b>글리치 단계</b> — 0단계(하락 지속) → 1단계(비관의 되돌림, 매수 초입) →
+      2단계(펀더멘털 회복) → 3단계(멀티플 확장, <b>파는 자리</b>).<br>
+      <b>보유 전제는 3~5년</b>입니다. 슈퍼 스톡의 정의 자체가 "3~5년에 3~10배"입니다.
+      <div class="gwarn"><b>싸다는 것은 글리치의 증거가 아니라 결과입니다.</b>
+      왜 떨어졌는지 한 문장으로 못 쓰면 그건 글리치가 아니라 쇠퇴입니다 —
+      이 보드의 후보도 그 한 문장이 없으면 사지 마세요.</div>
+    </div>
+  </details>
+
+  <div class="tabs">
+    <div class="tab on" data-tab="screen">발굴</div>
+    <div class="tab" data-tab="topdown">탑다운 배분</div>
+    <div class="tab" data-tab="judge">종목 판정 이력</div>
+  </div>
+  <div id="body"><div class="empty">불러오는 중…</div></div>
+
+  <div class="doc">
+    데이터: <code>data/fisher-board.json</code> — fisher-method 스킬이 갱신합니다.
+    PSR·PRR·마진·성장·재무는 스크립트가, 글리치 원인과 슈퍼컴퍼니 정성 4요건은 Claude가 판정합니다.
+    PSR 3.0 / PRR 15 절대 규칙, 순이익률 5%, EPS 성장 15%는 피셔 저작의 공개 요약 기준입니다.
+    채점은 자문이지 매수 추천이 아닙니다.
+  </div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const fmt=(n,d)=>n==null||isNaN(n)?'—':Number(n).toLocaleString('ko-KR',{minimumFractionDigits:d??0,maximumFractionDigits:d??2});
+let DATA={screens:[],judgments:{},topdowns:[]}, TAB='screen', DATE=null;
+
+const gradeColor=g=>g==='SUPER'?'var(--super)':g==='후보'?'var(--watch)':'var(--faint)';
+const verdictColor=v=>/BUY/i.test(v||'')?'var(--super)':/WAIT|관망/i.test(v||'')?'var(--watch)':'var(--avoid)';
+const stageColor=s=>!s?'var(--faint)':s.startsWith('1')?'var(--watch)':s.startsWith('2')?'var(--super)':
+  s.startsWith('3')?'var(--blue)':'var(--avoid)';
+
+function psrBar(psr,kind){
+  const buyMax=kind==='super'?0.75:0.4, holdMax=kind==='super'?1.5:0.8;
+  const p=x=>Math.min(100,Math.max(0,(Math.log10(Math.max(x,.05))-Math.log10(.05))/(Math.log10(6)-Math.log10(.05))*100));
+  return `<div class="psrbar">
+    <div class="z" style="left:0;width:${p(buyMax)}%;background:rgba(18,184,134,.5)"></div>
+    <div class="z" style="left:${p(buyMax)}%;width:${p(holdMax)-p(buyMax)}%;background:rgba(245,165,36,.4)"></div>
+    <div class="z" style="left:${p(holdMax)}%;width:${p(3)-p(holdMax)}%;background:rgba(62,142,247,.35)"></div>
+    <div class="z" style="left:${p(3)}%;right:0;background:rgba(229,72,77,.45)"></div>
+    ${psr!=null?`<div class="mark" style="left:${p(psr)}%"></div>`:''}
+  </div><div class="zl"><span>0.05</span><span>${buyMax} 매수</span><span>${holdMax}</span><span>3.0 금지</span><span>6.0</span></div>`;
+}
+
+function cardHTML(c){
+  const g=c.grade||'—', color=gradeColor(g);
+  const sc=c.scores||{};
+  return `<div class="card">
+    <div class="top">
+      <div><span class="nm">${c.name||c.ticker}</span><span class="code">${c.ticker||''} ${c.market||''}</span></div>
+      <div style="text-align:right"><span class="badge" style="background:${color}">${g}</span>
+        <div class="score" style="color:${color}">${c.total??c.quant_pct??'—'}</div></div>
+    </div>
+    ${psrBar(c.psr,c.company_type)}
+    <div class="kv">
+      <span>PSR <b style="color:${c.psr==null?'var(--faint)':(c.psr>3?'var(--avoid)':'var(--txt)')}">${fmt(c.psr,2)}</b>
+        ${c.psr_zone?`<span class="pill" style="background:${c.psr_zone==='적극매수'?'var(--super)':c.psr_zone==='보유'?'var(--watch)':'var(--avoid)'}">${c.psr_zone}</span>`:''}</span>
+      ${c.prr!=null?`<span>PRR <b>${fmt(c.prr,1)}</b></span>`:''}
+      <span>종가 <b>${fmt(c.close)}</b></span>
+      <span>순이익률 <b>${fmt(c.net_margin_3y_avg,1)}%</b></span>
+      <span>EPS성장 <b>${fmt(c.eps_cagr,1)}%</b></span>
+      <span>매출성장 <b>${fmt(c.rev_cagr,1)}%</b></span>
+      <span>부채비율 <b>${fmt(c.debt_ratio,1)}%</b></span>
+      <span>고점대비 <b>${fmt(c.drawdown_pct,1)}%</b></span>
+    </div>
+    ${c.glitch_stage?`<div class="glitch" style="border-left-color:${stageColor(c.glitch_stage)}">
+      <b style="color:${stageColor(c.glitch_stage)}">글리치 ${c.glitch_stage}</b>${c.glitch?' — '+c.glitch:''}</div>`:''}
+    ${Object.keys(sc).length?`<div class="kv">${Object.entries(sc).map(([k,v])=>
+      `<span>${k.replace(/_/g,' ')} <b>${v??'—'}</b></span>`).join('')}</div>`:''}
+    ${c.reason?`<div class="reason">${c.reason}</div>`:''}
+  </div>`;
+}
+
+function renderScreen(){
+  const s=DATA.screens.find(x=>x.date===DATE);
+  if(!s){$('#body').innerHTML='<div class="empty">이 날짜의 발굴 기록이 없습니다.</div>';return;}
+  const cands=s.candidates||[];
+  const order={'SUPER':0,'후보':1};
+  cands.sort((a,b)=>(order[a.grade]??2)-(order[b.grade]??2)||((b.total??b.quant_pct??0)-(a.total??a.quant_pct??0)));
+  const ex=s.excluded||[];
+  $('#body').innerHTML=`
+    ${s.params?`<div style="margin-top:6px">${Object.entries(s.params).map(([k,v])=>
+      `<span class="chip">${k} <b>${v}</b></span>`).join('')}</div>`:''}
+    <h2>후보 ${cands.length}종목</h2>
+    ${cands.length?`<div class="grid">${cands.map(cardHTML).join('')}</div>`:'<div class="empty">후보 없음</div>'}
+    ${ex.length?`<h2>자동 배제 ${ex.length}종목</h2>
+      <table><tr><th>종목</th><th class="r">PSR</th><th>배제 사유</th></tr>
+      ${ex.map(e=>`<tr><td>${e.name||e.ticker} <span class="code">${e.ticker||''}</span></td>
+        <td class="r" style="color:var(--avoid)">${fmt(e.psr,2)}</td>
+        <td>${(e.reasons||[]).join(' · ')}</td></tr>`).join('')}</table>`:''}`;
+}
+
+function renderTopdown(){
+  const t=(DATA.topdowns||[]).slice(-1)[0];
+  if(!t){$('#body').innerHTML='<div class="empty">탑다운 기록이 없습니다.</div>';return;}
+  const s1=t.step1_자산배분_70pct||{}, s2=t.step2_하위배분_20pct||{}, s3=t.step3_종목선택_10pct||{};
+  const bar=(obj,c1,c2)=>{const ks=Object.keys(obj);if(ks.length<2)return'';
+    return `<div class="alloc">
+      <div style="width:${obj[ks[0]]}%;background:${c1}">${ks[0]} ${obj[ks[0]]}%</div>
+      <div style="width:${obj[ks[1]]}%;background:${c2}">${ks[1]} ${obj[ks[1]]}%</div></div>`;};
+  $('#body').innerHTML=`
+    <h2>1단계 · 자산배분 <span class="code">수익 기여 70%</span></h2>
+    <div class="card wide">
+      <div class="top"><div class="nm">스탠스 ${s1.스탠스||'—'}</div>
+        <div class="score" style="color:${(s1.주식_pct??0)>=60?'var(--super)':(s1.주식_pct??0)>=40?'var(--watch)':'var(--avoid)'}">
+          주식 ${s1.주식_pct??'—'}%</div></div>
+      ${bar({'주식':s1.주식_pct,'현금':s1.현금_pct},'var(--super)','var(--faint)')}
+      <div class="kv"><span>종합 리스크 R <b>${s1.종합리스크_R??'—'}</b></span>
+        ${t.inputs?Object.entries(t.inputs).map(([k,v])=>`<span>${k} <b>${v}</b></span>`).join(''):''}</div>
+      ${s1.금액?`<div class="kv"><span>주식 <b>${fmt(s1.금액.주식)}원</b></span><span>현금 <b>${fmt(s1.금액.현금)}원</b></span></div>`:''}
+      <div class="reason">${s1.산식||''}</div>
+    </div>
+    <h2>2단계 · 하위 배분 <span class="code">수익 기여 20%</span></h2>
+    <div class="grid">
+      <div class="card"><div class="nm">시장</div>${bar(s2.시장||{},'var(--blue)','var(--watch)')}</div>
+      <div class="card"><div class="nm">스타일</div>${bar(s2.스타일||{},'var(--super)','var(--blue)')}</div>
+      <div class="card"><div class="nm">규모</div>${bar(s2.규모||{},'var(--watch)','var(--faint)')}</div>
+    </div>
+    ${(s2.섹터선호||[]).length?`<div style="margin-top:10px">섹터 선호 ${
+      s2.섹터선호.map(x=>`<span class="chip"><b>${x}</b></span>`).join('')}</div>`:''}
+    <h2>3단계 · 종목 슬롯 <span class="code">수익 기여 10%</span></h2>
+    <div class="card wide">
+      <div class="kv"><span>슬롯 <b>${s3.슬롯수??'—'}개</b></span><span>슬롯당 <b>${s3.슬롯당_비중_pct??'—'}%</b></span></div>
+      <table><tr><th>#</th><th>스타일</th><th>규모</th><th class="r">비중</th><th>종목</th></tr>
+      ${(s3.슬롯||[]).map(x=>`<tr><td>${x.슬롯}</td><td>${x.스타일}</td><td>${x.규모}</td>
+        <td class="r">${x.목표비중_pct}%</td><td>${x.종목||'<span style="color:var(--faint)">비어 있음</span>'}</td></tr>`).join('')}</table>
+      <div class="reason">${s3.지시||''}</div>
+    </div>
+    <div class="gwarn" style="margin-top:14px">${t.note||''}</div>`;
+}
+
+function renderJudge(){
+  const js=DATA.judgments||{};
+  const codes=Object.keys(js);
+  if(!codes.length){$('#body').innerHTML='<div class="empty">종목 판정 기록이 없습니다.</div>';return;}
+  $('#body').innerHTML=codes.map(code=>{
+    const o=js[code], h=(o.history||[]).slice().reverse();
+    const last=h[0]||{};
+    return `<div class="card wide" style="margin-top:12px">
+      <div class="top"><div><span class="nm">${o.name||code}</span><span class="code">${code}</span></div>
+        <span class="badge" style="background:${verdictColor(last.verdict)}">${last.verdict||'—'}</span></div>
+      ${psrBar(last.psr,last.company_type)}
+      <div class="kv">
+        <span>PSR <b>${fmt(last.psr,2)}</b> ${last.psr_zone?`<span class="pill" style="background:${last.psr_zone==='적극매수'?'var(--super)':last.psr_zone==='보유'?'var(--watch)':'var(--avoid)'}">${last.psr_zone}</span>`:''}</span>
+        <span>종가 <b>${fmt(last.close)}</b></span>
+        <span>고점대비 <b>${fmt(last.drawdown_pct,1)}%</b></span>
+        <span>점수 <b>${last.total??last.quant_pct??'—'}</b></span>
+        ${last.glitch_stage?`<span>글리치 <b style="color:${stageColor(last.glitch_stage)}">${last.glitch_stage}</b></span>`:''}
+      </div>
+      ${(last.psr_ladder||[]).length?`<table><tr><th>PSR</th><th class="r">주가</th><th class="r">현재대비</th><th>구간</th></tr>
+        ${last.psr_ladder.map(x=>`<tr><td>${fmt(x.psr,2)}</td><td class="r">${fmt(x.price)}원</td>
+          <td class="r">${x.vs_now_pct>0?'+':''}${fmt(x.vs_now_pct,1)}%</td><td>${x.label||''}</td></tr>`).join('')}</table>`:''}
+      ${last.comment?`<div class="reason">${last.comment}</div>`:''}
+      ${h.length>1?`<div class="kv" style="margin-top:12px">이력 ${h.map(x=>
+        `<span class="chip">${x.date} <b style="color:${verdictColor(x.verdict)}">${x.verdict||'—'}</b> PSR ${fmt(x.psr,2)}</span>`).join('')}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function render(){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===TAB));
+  $('#datesel').style.display=TAB==='screen'?'':'none';
+  if(TAB==='screen')renderScreen();
+  else if(TAB==='topdown')renderTopdown();
+  else renderJudge();
+}
+
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{TAB=t.dataset.tab;render();});
+$('#datesel').onchange=e=>{DATE=e.target.value;render();};
+
+(async()=>{
+  try{
+    const r=await fetch('data/fisher-board.json?t='+Date.now());
+    DATA=await r.json();
+  }catch(e){
+    $('#body').innerHTML='<div class="empty">데이터를 불러오지 못했습니다. 사이트 주소로 접속했는지 확인하세요.</div>';return;}
+  const ds=(DATA.screens||[]).map(s=>s.date).sort().reverse();
+  $('#datesel').innerHTML=ds.map(d=>`<option value="${d}">${d}</option>`).join('')||'<option>없음</option>';
+  DATE=ds[0]||null;
+  $('#meta').textContent=`발굴 ${ (DATA.screens||[]).length }회 · 판정 ${Object.keys(DATA.judgments||{}).length}종목 · 탑다운 ${(DATA.topdowns||[]).length}회`;
+  render();
+})();
+</script>
+</body>
+</html>
