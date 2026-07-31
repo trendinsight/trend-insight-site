@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LTCM 수렴 차익거래 보드 — Trend Insight</title>
+<style>
+:root{--bg:#0d1117;--card:#161b22;--line:#30363d;--txt:#e6edf3;--sub:#8b949e;
+--purple:#a78bfa;--green:#3fb950;--red:#f85149;--amber:#d29922;--blue:#58a6ff;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Malgun Gothic',sans-serif;line-height:1.55;}
+.wrap{max-width:1080px;margin:0 auto;padding:24px 16px 60px;}
+header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px;}
+h1{font-size:1.5rem;}h1 .accent{color:var(--purple);}
+a.home{color:var(--blue);text-decoration:none;font-size:.9rem;}
+.sub{color:var(--sub);font-size:.85rem;margin-bottom:18px;}
+.ctrl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;}
+select,button.tab{background:var(--card);color:var(--txt);border:1px solid var(--line);
+border-radius:8px;padding:7px 14px;font-size:.9rem;cursor:pointer;}
+button.tab.on{border-color:var(--purple);color:var(--purple);font-weight:700;}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px;}
+.card h2{font-size:1.05rem;margin-bottom:10px;color:var(--purple);}
+table{width:100%;border-collapse:collapse;font-size:.86rem;}
+th,td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;}
+th{color:var(--sub);font-weight:600;}
+th:first-child,td:first-child{text-align:left;}
+.g-ENTRY_ZONE{color:var(--green);font-weight:700;}
+.g-WATCH{color:var(--amber);font-weight:600;}
+.g-NEUTRAL,.g-NO_DATA{color:var(--sub);}
+.g-CONVERGED{color:var(--blue);}
+.badge{display:inline-block;padding:1px 8px;border-radius:10px;font-size:.75rem;border:1px solid var(--line);}
+.guard{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;}
+.guard div{background:#0d1117;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:.82rem;}
+.guard b{color:var(--purple);}
+.note{color:var(--sub);font-size:.8rem;margin-top:14px;}
+.empty{color:var(--sub);padding:20px;text-align:center;}
+.summary{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;}
+.summary .box{background:var(--card);border:1px solid var(--line);border-radius:12px;
+padding:14px 20px;text-align:center;min-width:130px;}
+.summary .n{font-size:1.6rem;font-weight:800;}
+.summary .l{font-size:.78rem;color:var(--sub);}
+@media(max-width:640px){th,td{padding:5px 4px;font-size:.78rem;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1><span class="accent">LTCM</span> 수렴 차익거래 보드</h1>
+  <a class="home" href="index.html">← Trend Insight 홈</a>
+</header>
+<div class="sub">보통주-우선주 · 지주사 NAV · 섹터 페어 · ETF 괴리 — 롱온리 수렴 전략 + LTCM 붕괴 역설계 가드레일 L1~L7</div>
+
+<div class="ctrl">
+  <label for="dateSel" style="color:var(--sub);font-size:.85rem;">조회 날짜</label>
+  <select id="dateSel"></select>
+  <span id="updated" style="color:var(--sub);font-size:.8rem;"></span>
+</div>
+
+<div class="summary" id="summary"></div>
+
+<div class="ctrl" id="tabs">
+  <button class="tab on" data-m="prefs">① 보통주-우선주</button>
+  <button class="tab" data-m="holdco">② 지주사 NAV</button>
+  <button class="tab" data-m="pairs">③ 섹터 페어</button>
+  <button class="tab" data-m="etf">④ ETF 괴리</button>
+  <button class="tab" data-m="guard">가드레일</button>
+</div>
+
+<div class="card"><div id="content" class="empty">데이터 로딩 중…</div></div>
+
+<div class="card">
+<h2>LTCM 붕괴 역설계 가드레일</h2>
+<div class="guard">
+<div><b>L1 레버리지 금지</b><br>LTCM은 자기자본 47억$로 1,250억$ 운용(25배+). 현금 범위 내에서만.</div>
+<div><b>L2 팻테일 분할진입</b><br>정규분포 VaR 과신이 LTCM을 죽였다. z 2.0/2.7/3.5 3분할 — 스프레드는 더 벌어질 수 있다.</div>
+<div><b>L3 시간 손절</b><br>수렴은 기한이 없다. 90거래일 내 미수렴 시 무조건 청산.</div>
+<div><b>L4 국면 게이트</b><br>위기 국면(1998 러시아)엔 모든 스프레드가 동시 확대. 시장 온도계 극단 시 신규 금지.</div>
+<div><b>L5 유동성 게이트</b><br>20일 평균 거래대금 3억원 미만 우선주·소형주 제외. 청산 소요 ≤3일.</div>
+<div><b>L6 구조적 괴리 점검</b><br>의결권·오버행·펀더멘털 훼손 등 "수렴 안 하는 이유"가 있으면 제외 (정성 판정).</div>
+<div><b>L7 자본 상한</b><br>전략 전체 계좌의 ≤30% · 단일 페어 ≤7.5% · 동일 모듈 ≤15%.</div>
+</div>
+</div>
+
+<div class="note">본 자료는 참고용이며 매매 실행과 최종 판단은 사용자 책임입니다. z-score는 과거 분포 기준으로, 미래 수렴을 보장하지 않습니다.</div>
+</div>
+
+<script>
+let DB=null, curMod='prefs';
+const $=s=>document.querySelector(s);
+
+fetch('data/ltcm-board.json?t='+Date.now()).then(r=>r.json()).then(d=>{
+  DB=d;
+  const sel=$('#dateSel');
+  const hist=(d.history||[]).slice().reverse();
+  if(!hist.length){$('#content').textContent='아직 게시된 스캔 데이터가 없습니다. 스킬에서 스캔 후 게시하세요.';return;}
+  hist.forEach(h=>{const o=document.createElement('option');o.value=h.date;o.textContent=h.date;sel.appendChild(o);});
+  $('#updated').textContent=d.updated?('갱신: '+d.updated):'';
+  sel.onchange=render; render();
+}).catch(()=>{$('#content').textContent='데이터를 불러오지 못했습니다.';});
+
+document.querySelectorAll('#tabs .tab').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#tabs .tab').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); curMod=b.dataset.m; render();
+});
+
+function rec(){const d=$('#dateSel').value;return (DB.history||[]).find(h=>h.date===d);}
+
+function render(){
+  const r=rec(); if(!r)return;
+  const s=$('#summary');
+  const cnt=m=>(r[m]||[]).length;
+  const ez=m=>(r[m]||[]).filter(x=>x.grade==='ENTRY_ZONE').length;
+  s.innerHTML=['prefs','holdco','pairs','etf'].map((m,i)=>{
+    const lbl=['우선주','지주 NAV','섹터 페어','ETF'][i];
+    return `<div class="box"><div class="n" style="color:${ez(m)?'var(--green)':'var(--txt)'}">${ez(m)}<span style="font-size:.85rem;color:var(--sub)">/${cnt(m)}</span></div><div class="l">${lbl} ENTRY</div></div>`;
+  }).join('');
+  const c=$('#content');
+  if(curMod==='guard'){c.innerHTML='<div class="empty">아래 가드레일 카드를 참고하세요.</div>';return;}
+  const rows=r[curMod]||[];
+  if(!rows.length){c.innerHTML='<div class="empty">해당 모듈 데이터 없음</div>';return;}
+  c.innerHTML=build(curMod,rows);
+}
+
+function g(x){return `<span class="g-${x.grade}">${x.grade}</span>`;}
+function build(m,rows){
+  if(m==='prefs')return tbl(['종목','보통주','우선주','괴리율','3년평균','z','백분위','거래대금(억)','등급'],
+    rows.map(x=>[x.name,fmt(x.common_close),fmt(x.pref_close),x.discount_pct+'%',x.discount_avg_pct+'%',x.z,x.pctile,x['avg_value20_억'],g(x)]));
+  if(m==='holdco')return tbl(['지주사','종가','NAV할인율','3년평균','z','백분위','등급'],
+    rows.map(x=>[x.name,fmt(x.close),x.nav_discount_pct+'%',x.nav_discount_avg_pct+'%',x.z,x.pctile,g(x)]));
+  if(m==='pairs')return tbl(['페어','섹터','비율','z','60일상관','매수 레그','등급'],
+    rows.map(x=>[x.pair,x.sector,x.ratio,x.z,x.corr60,'<b>'+x.long_leg+'</b>',g(x)]));
+  if(m==='etf')return tbl(['ETF','종가','NAV','괴리율','방향','거래대금(억)','등급'],
+    rows.map(x=>[x.name,fmt(x.close),fmt(x.nav),x.deviation_pct+'%',x.direction,x['avg_value_억'],g(x)]));
+  return '';
+}
+function tbl(h,rows){
+  return '<div style="overflow-x:auto"><table><thead><tr>'+h.map(x=>'<th>'+x+'</th>').join('')+
+  '</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('')+
+  '</tbody></table></div>';
+}
+function fmt(n){return n==null?'—':Number(n).toLocaleString();}
+</script>
+</body>
+</html>
