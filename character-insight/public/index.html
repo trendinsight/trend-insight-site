@@ -6,11 +6,12 @@
 <meta name="robots" content="noindex">
 <title>Character Insight — 인물 판별</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="situations.js"></script>
 <style>
 :root{--ink:#1a2340;--sub:#6b7490;--bg:#f4f6fb;--card:#fff;--acc:#3b5bdb;--good:#2b8a3e;--warn:#e8590c;--bad:#c92a2a;--line:#e3e7f0}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:var(--bg);color:var(--ink);line-height:1.55}
-.wrap{max-width:860px;margin:0 auto;padding:16px}
+.wrap{max-width:880px;margin:0 auto;padding:16px}
 header{background:var(--ink);color:#fff;padding:22px 16px;text-align:center}
 header h1{font-size:1.35rem;letter-spacing:.5px}
 header p{color:#aab3d0;font-size:.85rem;margin-top:4px}
@@ -18,9 +19,10 @@ header p{color:#aab3d0;font-size:.85rem;margin-top:4px}
 h2{font-size:1.05rem;margin-bottom:10px}
 button{cursor:pointer;border:none;border-radius:8px;padding:9px 14px;font-size:.9rem;font-weight:600}
 .btn{background:var(--acc);color:#fff}.btn2{background:#e7ecff;color:var(--acc)}.btn3{background:#f1f3f8;color:var(--sub)}.btnD{background:#ffe3e3;color:var(--bad)}
+.btnG{background:#e6f4ea;color:var(--good)}
 input,textarea,select{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;font-size:.92rem;font-family:inherit}
 .row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1}
-.plist .p{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--line);border-radius:10px;margin:8px 0;flex-wrap:wrap}
+.plist .p{display:flex;align-items:center;gap:8px;padding:12px;border:1px solid var(--line);border-radius:10px;margin:8px 0;flex-wrap:wrap}
 .p .nm{font-weight:700}.p .rel{color:var(--sub);font-size:.82rem}
 .badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.78rem;font-weight:700;color:#fff}
 .b-군자형{background:#2b8a3e}.b-신뢰형{background:#3b5bdb}.b-무난형{background:#868e96}.b-주의형{background:#e8590c}.b-경계형{background:#c92a2a}
@@ -28,7 +30,6 @@ input,textarea,select{width:100%;padding:9px;border:1px solid var(--line);border
 .q .qt{font-size:.95rem;margin-bottom:8px}.q .qn{color:var(--acc);font-weight:700;margin-right:6px}
 .opts{display:flex;gap:6px;flex-wrap:wrap}
 .opts label{flex:1;min-width:52px;text-align:center;padding:8px 2px;border:1px solid var(--line);border-radius:8px;font-size:.76rem;cursor:pointer;background:#fafbfe;color:var(--sub)}
-.opts input{display:none}
 .opts label.sel{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:700}
 .score-big{font-size:3rem;font-weight:800;text-align:center}
 .vdesc{text-align:center;color:var(--sub);margin:6px 0 12px}
@@ -41,14 +42,26 @@ input,textarea,select{width:100%;padding:9px;border:1px solid var(--line);border
 .prog{position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5}
 .prog .pbar{height:8px;background:#e3e7f0;border-radius:4px;overflow:hidden}.prog .pfill{height:100%;background:var(--acc);transition:width .2s}
 .hidden{display:none}
-.modeTab{display:flex;gap:8px;margin-bottom:10px}
-.modeTab button{flex:1}
+.modeTab{display:flex;gap:8px;margin-bottom:10px}.modeTab button{flex:1}
 .disclaimer{font-size:.78rem;color:var(--sub);text-align:center;margin:18px 0}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
+.sit{padding:12px;border:1px solid var(--line);border-radius:10px;cursor:pointer;background:#fafbfe;font-size:.88rem;text-align:left}
+.sit:hover{border-color:var(--acc);background:#f2f5ff}
+.sit .ic{font-size:1.2rem;display:block;margin-bottom:4px}
+.ropt{display:block;width:100%;text-align:left;padding:12px;border:1px solid var(--line);border-radius:10px;margin:7px 0;background:#fff;font-size:.9rem;font-weight:500;cursor:pointer;line-height:1.45}
+.ropt:hover{border-color:var(--acc);background:#f7f9ff}
+.inc{padding:10px 0;border-bottom:1px solid var(--line);font-size:.88rem}
+.inc .ih{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.inc .resp{color:var(--acc);font-weight:600;margin-top:3px}
+.pend{background:#fff4e6;color:#e8590c;padding:1px 8px;border-radius:99px;font-size:.72rem;font-weight:700}
+.cmp{display:flex;gap:10px;text-align:center;margin-top:10px}
+.cmp>div{flex:1;padding:10px;border:1px solid var(--line);border-radius:10px}
+.cmp b{display:block;font-size:1.5rem}
 @media(max-width:600px){.opts label{font-size:.68rem;padding:7px 1px}}
 </style>
 </head>
 <body>
-<header><h1>Character Insight</h1><p>행동으로 읽는 사람의 됨됨이 — 26특성 · 5축 · 30문항</p></header>
+<header><h1>Character Insight</h1><p>행동으로 읽는 사람의 됨됨이 — 26특성 · 5축 · 설문 + 행동 관찰</p></header>
 <div class="wrap">
 
 <!-- ===== 인물 목록 ===== -->
@@ -68,7 +81,7 @@ input,textarea,select{width:100%;padding:9px;border:1px solid var(--line);border
     <h2>인물 목록</h2>
     <div id="plist" class="plist"><p class="muted">불러오는 중…</p></div>
   </div>
-  <p class="disclaimer">※ 이 도구는 관찰된 행동을 정리하기 위한 참고용입니다. 사람은 상황에 따라 달라지며, 한 번의 평가로 단정할 수 없습니다.</p>
+  <p class="disclaimer">※ 참고용 도구입니다. 사람은 상황에 따라 달라지며 한 번의 평가로 단정할 수 없습니다.<br>말(설문)보다 행동(관찰 기록)에 더 큰 가중치가 들어갑니다.</p>
 </div>
 
 <!-- ===== 설문 ===== -->
@@ -84,12 +97,53 @@ input,textarea,select{width:100%;padding:9px;border:1px solid var(--line);border
   <div class="prog"><div class="pbar"><div class="pfill" id="pfill" style="width:0%"></div></div><p class="muted" id="ptext" style="text-align:center;margin-top:3px"></p></div>
   <div class="card" id="qbox"></div>
   <div class="card">
-    <textarea id="svNote" rows="2" placeholder="이번 평가 메모 (예: OO 프로젝트 이후, 최근 3개월 기준)"></textarea>
+    <textarea id="svNote" rows="2" placeholder="이번 평가 메모 (예: 최근 3개월 기준)"></textarea>
     <div class="row" style="margin-top:10px">
       <button class="btn3" onclick="showList()">취소</button>
       <button class="btn" onclick="submitSurvey()">결과 보기 & 저장</button>
     </div>
   </div>
+</div>
+
+<!-- ===== 행동 관찰 기록 ===== -->
+<div id="viewIncident" class="hidden">
+  <div class="card">
+    <h2 id="incTitle"></h2>
+    <p class="muted">"이런 일이 있었는데 이렇게 대처하더라"를 기록합니다. 상황 카드를 고르면 즉시 특성 점수로 환산되고, 카드에 없는 일은 아래 자유 서술로 남기면 클로드가 판정합니다.</p>
+  </div>
+
+  <div class="card" id="sitPick">
+    <h2>1. 어떤 상황이었나요?</h2>
+    <div class="sgrid" id="sgrid"></div>
+  </div>
+
+  <div class="card hidden" id="respPick">
+    <h2 id="respTitle"></h2>
+    <div id="ropts"></div>
+    <div class="row" style="margin-top:8px">
+      <input id="incDate" placeholder="언제 있었던 일인가요? (선택, 예: 2026-06)">
+      <button class="btn3" style="flex:0 0 80px" onclick="cancelResp()">취소</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>카드에 없는 일 — 자유 서술</h2>
+    <textarea id="freeText" rows="4" placeholder="예: 공동 프로젝트에서 자기 실수로 일정이 밀렸는데, 회의에서는 협력사 탓을 했다. 나중에 둘이 있을 때는 자기 잘못이라고 인정했다."></textarea>
+    <div class="row" style="margin-top:8px">
+      <input id="freeDate" placeholder="시기 (선택)">
+      <button class="btn" style="flex:0 0 130px" onclick="saveFree()">기록 남기기</button>
+    </div>
+    <p class="muted" style="margin-top:6px">자유 서술은 '판정 대기' 상태로 저장됩니다. 클로드에게 "행동 기록 판정해줘"라고 하면 특성 점수로 환산됩니다.</p>
+  </div>
+
+  <div class="card">
+    <h2>기록된 행동 <span class="muted" id="incCount"></span></h2>
+    <div id="incList"></div>
+  </div>
+  <div class="card"><div class="row">
+    <button class="btn2" onclick="showHistory(curPid)">프로필 보기</button>
+    <button class="btn3" onclick="showList()">목록으로</button>
+  </div></div>
 </div>
 
 <!-- ===== 결과 ===== -->
@@ -99,28 +153,36 @@ input,textarea,select{width:100%;padding:9px;border:1px solid var(--line);border
     <div class="score-big" id="resTotal"></div>
     <div style="text-align:center"><span class="badge" id="resVerdict"></span></div>
     <p class="vdesc" id="resDesc"></p>
+    <div id="resCmp"></div>
     <canvas id="radar" height="260"></canvas>
   </div>
-  <div class="card"><h2>26특성 프로필</h2><p class="muted" style="margin-bottom:8px">모든 특성은 긍정 방향 점수(높을수록 좋음). 부정 특성은 낮은 점수 = 해당 성향 강함.</p><div class="tgrid" id="tgrid"></div></div>
+  <div class="card"><h2>26특성 프로필</h2><p class="muted" style="margin-bottom:8px">모든 특성은 긍정 방향 점수(높을수록 좋음). 부정 특성은 낮은 점수 = 해당 성향이 강함.</p><div class="tgrid" id="tgrid"></div></div>
   <div class="card"><h2>강점 & 위험 신호</h2><ul class="flags" id="flist"></ul></div>
   <div class="card"><div class="row">
-    <button class="btn2" onclick="showHistory(curPid)">이 사람 기록 보기</button>
+    <button class="btn2" onclick="showHistory(curPid)">기록 보기</button>
     <button class="btn3" onclick="showList()">목록으로</button>
   </div></div>
 </div>
 
-<!-- ===== 기록 ===== -->
+<!-- ===== 기록/프로필 ===== -->
 <div id="viewHistory" class="hidden">
   <div class="card">
     <h2 id="hName"></h2>
+    <div id="hSummary"></div>
     <canvas id="trend" height="200"></canvas>
   </div>
-  <div class="card"><h2>평가 기록</h2><div id="hlist"></div></div>
+  <div class="card"><h2>통합 프로필</h2>
+    <p class="muted" style="margin-bottom:8px">설문 40% + 행동 관찰 60% 가중 통합</p>
+    <div id="combBox"></div>
+  </div>
+  <div class="card"><h2>행동 관찰 기록</h2><div id="hIncList"></div>
+    <button class="btn2" style="margin-top:10px" onclick="startIncident(curPid)">행동 기록 추가</button>
+  </div>
+  <div class="card"><h2>설문 기록</h2><div id="hlist"></div></div>
   <div class="card">
     <h2>클로드 심층 판정 리포트</h2>
     <div id="dlist"></div>
     <button class="btn2" style="margin-top:10px" onclick="copyDeepPrompt()">심층 판정 요청 문구 복사</button>
-    <p class="muted" style="margin-top:6px">복사한 문구를 클로드에게 붙여넣고 관찰한 행동·일화를 서술하면, 26특성 심층 판정 리포트가 이 페이지에 게시됩니다.</p>
   </div>
   <div class="card"><button class="btn3" onclick="showList()">목록으로</button></div>
 </div>
@@ -129,138 +191,69 @@ input,textarea,select{width:100%;padding:9px;border:1px solid var(--line);border
 <script>
 // ===== 26특성 · 5축 · 30문항 =====
 const DIMS = {
-  integrity:{label:'신뢰·정직', w:.25},
-  morality:{label:'도덕·됨됨이', w:.20},
-  warmth:{label:'관계·배려', w:.20},
-  temper:{label:'기질·정서', w:.15},
-  conscient:{label:'판단·실행', w:.20}
+  integrity:{label:'신뢰·정직', w:.25, traits:['정직성','신뢰성','표리부동','척하는 행동']},
+  morality:{label:'도덕·됨됨이', w:.20, traits:['도덕성','됨됨이','잔인함','각박함']},
+  warmth:{label:'관계·배려', w:.20, traits:['매너','관계성','친절함','희생','이기심','온후함']},
+  temper:{label:'기질·정서', w:.15, traits:['긍정성','담대함','소심함','경박함','옹졸함','무던함','유연함']},
+  conscient:{label:'판단·실행', w:.20, traits:['냉철함','치밀함','우유부단','성실성','게으름']}
 };
+const TRAIT_DIM={};Object.keys(DIMS).forEach(d=>DIMS[d].traits.forEach(t=>TRAIT_DIM[t]=d));
+const NEG=['표리부동','척하는 행동','잔인함','각박함','이기심','소심함','경박함','옹졸함','우유부단','게으름'];
+const CRITICAL=['표리부동','척하는 행동','이기심','잔인함'];
 const Q = [
- {d:'integrity',t:'정직성',x:'자신에게 불리한 사실도 숨기지 않고 먼저 말한다',r:0},
- {d:'integrity',t:'정직성',x:'작은 거짓말이나 핑계를 습관적으로 하지 않는다',r:0},
- {d:'integrity',t:'신뢰성',x:'약속한 시간과 기한을 거의 어기지 않는다',r:0},
- {d:'integrity',t:'신뢰성',x:'돈이나 물건을 빌리면 말하기 전에 먼저 갚는다',r:0},
- {d:'integrity',t:'표리부동',x:'앞에서 하는 말과 뒤에서 하는 말이 다르다',r:1},
- {d:'integrity',t:'척하는 행동',x:'모르는 것을 아는 척, 없는 것을 있는 척 꾸민다',r:1},
- {d:'morality',t:'도덕성',x:'아무도 보지 않아도 규칙과 순서를 지킨다',r:0},
- {d:'morality',t:'됨됨이',x:'종업원·경비원 등 약한 위치의 사람을 정중하게 대한다',r:0},
- {d:'morality',t:'잔인함',x:'남의 실수나 약점을 여러 사람 앞에서 깎아내린다',r:1},
- {d:'morality',t:'각박함',x:'남의 어려움에 차갑게 선을 긋고 외면한다',r:1},
- {d:'warmth',t:'매너',x:'대화 중 상대의 말을 끊지 않고 끝까지 듣는다',r:0},
- {d:'warmth',t:'관계성',x:'오래된 친구·지인들과 관계가 끊기지 않고 유지된다',r:0},
- {d:'warmth',t:'친절함',x:'부탁받지 않아도 곤란해 보이는 사람을 먼저 돕는다',r:0},
- {d:'warmth',t:'희생',x:'자신이 손해를 보더라도 가족·동료를 위해 양보한다',r:0},
- {d:'warmth',t:'이기심',x:'비용·일·공로를 나눌 때 늘 자기에게 유리하게 계산한다',r:1},
- {d:'warmth',t:'이기심',x:'자기가 필요할 때만 연락한다',r:1},
- {d:'warmth',t:'온후함',x:'화낼 만한 상황에서도 부드럽게 말한다',r:0},
- {d:'temper',t:'긍정성',x:'문제가 생기면 탓하기보다 해결 방법부터 찾는다',r:0},
- {d:'temper',t:'담대함',x:'큰일이 닥쳐도 당황하지 않고 침착하다',r:0},
- {d:'temper',t:'소심함',x:'사소한 말 한마디에 오래 상처받고 되새긴다',r:1},
- {d:'temper',t:'경박함',x:'말과 행동이 가볍고 상황에 맞지 않는 언행을 한다',r:1},
- {d:'temper',t:'옹졸함',x:'작은 손해나 지적을 오래 마음에 담아둔다',r:1},
- {d:'temper',t:'무던함',x:'웬만한 불편은 문제 삼지 않고 넘어간다',r:0},
- {d:'temper',t:'유연함',x:'곤란한 상황에서도 여유 있게 유연하게 넘긴다',r:0},
- {d:'conscient',t:'냉철함',x:'감정이 격한 상황에서도 사실과 논리로 판단한다',r:0},
- {d:'conscient',t:'치밀함',x:'일을 시작하기 전 꼼꼼히 준비하고 확인한다',r:0},
- {d:'conscient',t:'우유부단',x:'결정을 미루다 기회를 놓치는 일이 잦다',r:1},
- {d:'conscient',t:'성실성',x:'맡은 일은 시키지 않아도 끝까지 해낸다',r:0},
- {d:'conscient',t:'성실성',x:'매일의 루틴(운동·업무·공부)을 꾸준히 지킨다',r:0},
- {d:'conscient',t:'게으름',x:'해야 할 일을 미루고 편한 것부터 찾는다',r:1}
+ {t:'정직성',x:'자신에게 불리한 사실도 숨기지 않고 먼저 말한다',r:0},
+ {t:'정직성',x:'작은 거짓말이나 핑계를 습관적으로 하지 않는다',r:0},
+ {t:'신뢰성',x:'약속한 시간과 기한을 거의 어기지 않는다',r:0},
+ {t:'신뢰성',x:'돈이나 물건을 빌리면 말하기 전에 먼저 갚는다',r:0},
+ {t:'표리부동',x:'앞에서 하는 말과 뒤에서 하는 말이 다르다',r:1},
+ {t:'척하는 행동',x:'모르는 것을 아는 척, 없는 것을 있는 척 꾸민다',r:1},
+ {t:'도덕성',x:'아무도 보지 않아도 규칙과 순서를 지킨다',r:0},
+ {t:'됨됨이',x:'종업원·경비원 등 약한 위치의 사람을 정중하게 대한다',r:0},
+ {t:'잔인함',x:'남의 실수나 약점을 여러 사람 앞에서 깎아내린다',r:1},
+ {t:'각박함',x:'남의 어려움에 차갑게 선을 긋고 외면한다',r:1},
+ {t:'매너',x:'대화 중 상대의 말을 끊지 않고 끝까지 듣는다',r:0},
+ {t:'관계성',x:'오래된 친구·지인들과 관계가 끊기지 않고 유지된다',r:0},
+ {t:'친절함',x:'부탁받지 않아도 곤란해 보이는 사람을 먼저 돕는다',r:0},
+ {t:'희생',x:'자신이 손해를 보더라도 가족·동료를 위해 양보한다',r:0},
+ {t:'이기심',x:'비용·일·공로를 나눌 때 늘 자기에게 유리하게 계산한다',r:1},
+ {t:'이기심',x:'자기가 필요할 때만 연락한다',r:1},
+ {t:'온후함',x:'화낼 만한 상황에서도 부드럽게 말한다',r:0},
+ {t:'긍정성',x:'문제가 생기면 탓하기보다 해결 방법부터 찾는다',r:0},
+ {t:'담대함',x:'큰일이 닥쳐도 당황하지 않고 침착하다',r:0},
+ {t:'소심함',x:'사소한 말 한마디에 오래 상처받고 되새긴다',r:1},
+ {t:'경박함',x:'말과 행동이 가볍고 상황에 맞지 않는 언행을 한다',r:1},
+ {t:'옹졸함',x:'작은 손해나 지적을 오래 마음에 담아둔다',r:1},
+ {t:'무던함',x:'웬만한 불편은 문제 삼지 않고 넘어간다',r:0},
+ {t:'유연함',x:'곤란한 상황에서도 여유 있게 유연하게 넘긴다',r:0},
+ {t:'냉철함',x:'감정이 격한 상황에서도 사실과 논리로 판단한다',r:0},
+ {t:'치밀함',x:'일을 시작하기 전 꼼꼼히 준비하고 확인한다',r:0},
+ {t:'우유부단',x:'결정을 미루다 기회를 놓치는 일이 잦다',r:1},
+ {t:'성실성',x:'맡은 일은 시키지 않아도 끝까지 해낸다',r:0},
+ {t:'성실성',x:'매일의 루틴(운동·업무·공부)을 꾸준히 지킨다',r:0},
+ {t:'게으름',x:'해야 할 일을 미루고 편한 것부터 찾는다',r:1}
 ];
-const CRITICAL = ['표리부동','척하는 행동','이기심','잔인함'];
-const OPT = [['1','전혀'],['2','아니다'],['3','보통'],['4','그렇다'],['5','매우'],['0','모름']];
+const OPT=[['1','전혀'],['2','아니다'],['3','보통'],['4','그렇다'],['5','매우'],['0','모름']];
 
-let persons=[], curPid=null, curMode='other', answers={}, radarChart=null, trendChart=null;
-
+let persons=[],curPid=null,curMode='other',answers={},radarChart=null,trendChart=null,curSit=null;
 const $=id=>document.getElementById(id);
-function show(v){['viewList','viewSurvey','viewResult','viewHistory'].forEach(x=>$(x).classList.add('hidden'));$(v).classList.remove('hidden');window.scrollTo(0,0);}
+function show(v){['viewList','viewSurvey','viewIncident','viewResult','viewHistory'].forEach(x=>$(x).classList.add('hidden'));$(v).classList.remove('hidden');window.scrollTo(0,0);}
 async function api(p,opt){const r=await fetch(p,opt);return r.json();}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function jpost(b){return{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)};}
 
-// ---- 인물 목록 ----
-async function loadPersons(){
-  persons=await api('/api/persons');
-  const el=$('plist');
-  if(!persons.length){el.innerHTML='<p class="muted">등록된 인물이 없습니다. 위에서 추가하세요.</p>';return;}
-  el.innerHTML=persons.map(p=>`<div class="p">
-    <div style="flex:1;min-width:120px"><span class="nm">${esc(p.name)}</span> <span class="rel">${esc(p.relation||'')}</span><br>
-    <span class="muted">${p.n_assess}회 평가${p.last_total!=null?` · 최근 ${Math.round(p.last_total)}점`:''}${p.n_deep?` · 심층 ${p.n_deep}건`:''}</span></div>
-    ${p.last_verdict?`<span class="badge b-${p.last_verdict}">${p.last_verdict}</span>`:''}
-    <button class="btn" onclick="startSurvey(${p.id})">평가</button>
-    <button class="btn2" onclick="showHistory(${p.id})">기록</button>
-    <button class="btnD" onclick="delPerson(${p.id})">삭제</button>
-  </div>`).join('');
-}
-async function addPerson(){
-  const name=$('npName').value.trim();if(!name)return alert('이름을 입력하세요');
-  await api('/api/persons',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name,relation:$('npRel').value.trim(),memo:$('npMemo').value.trim()})});
-  $('npName').value=$('npRel').value=$('npMemo').value='';loadPersons();
-}
-async function delPerson(id){
-  const p=persons.find(x=>x.id===id);
-  if(!confirm(`'${p.name}' 및 모든 평가 기록을 삭제할까요?`))return;
-  await api('/api/persons?id='+id,{method:'DELETE'});loadPersons();
-}
-function showList(){show('viewList');loadPersons();}
-
-// ---- 설문 ----
-function startSurvey(pid){
-  curPid=pid;answers={};
-  const p=persons.find(x=>x.id===pid);
-  setMode(p&&(p.name==='나'||p.relation==='본인')?'self':'other');
-  $('svTitle').textContent=`${p.name} — 30문항 행동 평가`;
-  renderQ();show('viewSurvey');
-}
-function setMode(m){
-  curMode=m;
-  $('mOther').className=m==='other'?'btn':'btn3';
-  $('mSelf').className=m==='self'?'btn':'btn3';
-  renderQ();
-}
-function renderQ(){
-  const pre=curMode==='self'?'나는':'이 사람은';
-  $('qbox').innerHTML=Q.map((q,i)=>`<div class="q"><div class="qt"><span class="qn">${i+1}.</span>${pre} ${q.x}.</div>
-    <div class="opts">${OPT.map(o=>`<label class="${answers[i]===o[0]?'sel':''}" onclick="pick(${i},'${o[0]}',this)">${o[1]}</label>`).join('')}</div></div>`).join('');
-  updProg();
-}
-function pick(i,v,el){
-  answers[i]=v;
-  [...el.parentElement.children].forEach(c=>c.classList.remove('sel'));el.classList.add('sel');
-  updProg();
-}
-function updProg(){
-  const n=Object.keys(answers).length;
-  $('pfill').style.width=(n/Q.length*100)+'%';
-  $('ptext').textContent=`${n} / ${Q.length}`;
-}
-
-// ---- 채점 ----
-function scoreAll(){
-  const traits={},dimAgg={},order=[];
-  Q.forEach((q,i)=>{
-    const a=parseInt(answers[i]||'0');
-    if(!traits[q.t]){traits[q.t]={sum:0,n:0,dim:q.d};order.push(q.t);}
-    if(a>=1){
-      const norm=q.r?6-a:a;
-      traits[q.t].sum+=(norm-1)/4*100;traits[q.t].n++;
-    }
-  });
-  const tScores={};
-  order.forEach(t=>{const o=traits[t];tScores[t]=o.n?Math.round(o.sum/o.n):null;
-    if(o.n){if(!dimAgg[o.dim])dimAgg[o.dim]={sum:0,n:0};dimAgg[o.dim].sum+=tScores[t];dimAgg[o.dim].n++;}});
+// ===== 공통 채점 =====
+function gradeFromTraits(tS){
+  const agg={};
+  Object.entries(tS).forEach(([t,s])=>{if(s==null)return;const d=TRAIT_DIM[t];if(!d)return;
+    if(!agg[d])agg[d]={sum:0,n:0};agg[d].sum+=s;agg[d].n++;});
   const dims={};let wSum=0,tot=0;
-  Object.keys(DIMS).forEach(d=>{
-    dims[d]=dimAgg[d]?Math.round(dimAgg[d].sum/dimAgg[d].n):null;
-    if(dims[d]!=null){wSum+=DIMS[d].w;tot+=dims[d]*DIMS[d].w;}
-  });
+  Object.keys(DIMS).forEach(d=>{dims[d]=agg[d]?Math.round(agg[d].sum/agg[d].n):null;
+    if(dims[d]!=null){wSum+=DIMS[d].w;tot+=dims[d]*DIMS[d].w;}});
   const total=wSum?Math.round(tot/wSum):0;
-  // 위험 신호
   const flags=[],strengths=[];let nCrit=0;
-  order.forEach(t=>{const s=tScores[t];if(s==null)return;
-    const isNeg=Q.find(q=>q.t===t).r===1||CRITICAL.includes(t);
-    if(s<40&&(Q.filter(q=>q.t===t).some(q=>q.r))){flags.push(t);if(CRITICAL.includes(t))nCrit++;}
-    if(s>=80&&!Q.filter(q=>q.t===t).every(q=>q.r))strengths.push(t);
-  });
-  // 판정
+  Object.entries(tS).forEach(([t,s])=>{if(s==null)return;
+    if(NEG.includes(t)&&s<40){flags.push(t);if(CRITICAL.includes(t))nCrit++;}
+    if(!NEG.includes(t)&&s>=80)strengths.push(t);});
   let verdict,desc;
   if(nCrit>=2){verdict='경계형';desc='치명적 위험 신호가 겹칩니다. 깊은 신뢰·금전·동업 관계는 피하는 것이 안전합니다.';}
   else if(total>=80&&nCrit===0){verdict='군자형';desc='정직·신뢰·됨됨이를 두루 갖춘 사람. 깊이 믿고 오래 곁에 둘 만합니다.';}
@@ -268,39 +261,156 @@ function scoreAll(){
   else if(total>=50){verdict='무난형';desc='보통 수준. 강점은 취하고 약점은 감안해 대하면 됩니다.';}
   else if(total>=35){verdict='주의형';desc='신뢰에 앞서 검증이 필요합니다. 약속·금전 관계는 신중히.';}
   else{verdict='경계형';desc='위험 신호가 뚜렷합니다. 깊은 신뢰·금전·동업 관계는 피하는 것이 안전합니다.';}
-  return {tScores,dims,total,verdict,desc,flags,strengths};
+  return {tScores:tS,dims,total,verdict,desc,flags,strengths};
 }
 
+// ===== 인물 목록 =====
+async function loadPersons(){
+  persons=await api('/api/persons');
+  const el=$('plist');
+  if(!persons.length){el.innerHTML='<p class="muted">등록된 인물이 없습니다. 위에서 추가하세요.</p>';return;}
+  el.innerHTML=persons.map(p=>`<div class="p">
+    <div style="flex:1;min-width:130px"><span class="nm">${esc(p.name)}</span> <span class="rel">${esc(p.relation||'')}</span><br>
+    <span class="muted">설문 ${p.n_assess}회 · 행동 ${p.n_inc||0}건${p.last_total!=null?` · 최근 ${Math.round(p.last_total)}점`:''}${p.n_deep?` · 심층 ${p.n_deep}건`:''}</span></div>
+    ${p.last_verdict?`<span class="badge b-${p.last_verdict}">${p.last_verdict}</span>`:''}
+    <button class="btn" onclick="startSurvey(${p.id})">설문</button>
+    <button class="btnG" onclick="startIncident(${p.id})">행동기록</button>
+    <button class="btn2" onclick="showHistory(${p.id})">프로필</button>
+    <button class="btnD" onclick="delPerson(${p.id})">삭제</button>
+  </div>`).join('');
+}
+async function addPerson(){
+  const name=$('npName').value.trim();if(!name)return alert('이름을 입력하세요');
+  await api('/api/persons',jpost({name,relation:$('npRel').value.trim(),memo:$('npMemo').value.trim()}));
+  $('npName').value=$('npRel').value=$('npMemo').value='';loadPersons();
+}
+async function delPerson(id){
+  const p=persons.find(x=>x.id===id);
+  if(!confirm(`'${p.name}' 및 모든 기록을 삭제할까요?`))return;
+  await api('/api/persons?id='+id,{method:'DELETE'});loadPersons();
+}
+function showList(){show('viewList');loadPersons();}
+function pname(id){const p=persons.find(x=>x.id===id);return p?p.name:'?';}
+
+// ===== 설문 =====
+function startSurvey(pid){
+  curPid=pid;answers={};
+  const p=persons.find(x=>x.id===pid);
+  setMode(p&&(p.name==='나'||p.relation==='본인'||p.relation==='나')?'self':'other');
+  $('svTitle').textContent=`${p.name} — 30문항 행동 평가`;
+  renderQ();show('viewSurvey');
+}
+function setMode(m){curMode=m;$('mOther').className=m==='other'?'btn':'btn3';$('mSelf').className=m==='self'?'btn':'btn3';renderQ();}
+function renderQ(){
+  const pre=curMode==='self'?'나는':'이 사람은';
+  $('qbox').innerHTML=Q.map((q,i)=>`<div class="q"><div class="qt"><span class="qn">${i+1}.</span>${pre} ${q.x}.</div>
+    <div class="opts">${OPT.map(o=>`<label class="${answers[i]===o[0]?'sel':''}" onclick="pick(${i},'${o[0]}',this)">${o[1]}</label>`).join('')}</div></div>`).join('');
+  updProg();
+}
+function pick(i,v,el){answers[i]=v;[...el.parentElement.children].forEach(c=>c.classList.remove('sel'));el.classList.add('sel');updProg();}
+function updProg(){const n=Object.keys(answers).length;$('pfill').style.width=(n/Q.length*100)+'%';$('ptext').textContent=`${n} / ${Q.length}`;}
+function surveyTraits(){
+  const acc={};
+  Q.forEach((q,i)=>{const a=parseInt(answers[i]||'0');if(a<1)return;
+    const norm=q.r?6-a:a;const v=(norm-1)/4*100;
+    if(!acc[q.t])acc[q.t]={s:0,n:0};acc[q.t].s+=v;acc[q.t].n++;});
+  const out={};Q.forEach(q=>{out[q.t]=acc[q.t]?Math.round(acc[q.t].s/acc[q.t].n):null;});
+  return out;
+}
 async function submitSurvey(){
   const n=Object.keys(answers).length;
   if(n<Q.length&&!confirm(`${Q.length-n}개 문항이 미응답(모름 처리)입니다. 계속할까요?`))return;
-  const r=scoreAll();
-  await api('/api/assessments',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({
-    person_id:curPid,mode:curMode,answers,traits:r.tScores,dims:r.dims,total:r.total,verdict:r.verdict,flags:r.flags,note:$('svNote').value.trim()
-  })});
+  const r=gradeFromTraits(surveyTraits());
+  await api('/api/assessments',jpost({person_id:curPid,mode:curMode,answers,traits:r.tScores,dims:r.dims,
+    total:r.total,verdict:r.verdict,flags:r.flags,note:$('svNote').value.trim()}));
   $('svNote').value='';
-  renderResult(r);
+  renderResult(r,`${pname(curPid)} — ${curMode==='self'?'셀프 체크':'타인 평가'} 결과 (설문)`);
 }
 
-function renderResult(r){
-  const p=persons.find(x=>x.id===curPid);
-  $('resName').textContent=`${p.name} — ${curMode==='self'?'셀프 체크':'타인 평가'} 결과`;
+// ===== 행동 관찰 기록 =====
+function startIncident(pid){
+  curPid=pid;curSit=null;
+  $('incTitle').textContent=`${pname(pid)} — 행동 관찰 기록`;
+  $('sgrid').innerHTML=SITU.map((s,i)=>`<button class="sit" onclick="pickSit(${i})"><span class="ic">${s.ic}</span>${s.t}</button>`).join('');
+  $('respPick').classList.add('hidden');$('sitPick').classList.remove('hidden');
+  loadIncidents();show('viewIncident');
+}
+function pickSit(i){
+  curSit=SITU[i];
+  $('respTitle').textContent=`2. "${curSit.t}" — 어떻게 대처하던가요?`;
+  $('ropts').innerHTML=curSit.opts.map((o,j)=>`<button class="ropt" onclick="saveCard(${j})">${o.x}</button>`).join('');
+  $('respPick').classList.remove('hidden');$('sitPick').classList.add('hidden');
+  $('respPick').scrollIntoView({behavior:'smooth'});
+}
+function cancelResp(){$('respPick').classList.add('hidden');$('sitPick').classList.remove('hidden');}
+async function saveCard(j){
+  const o=curSit.opts[j];
+  await api('/api/incidents',jpost({person_id:curPid,kind:'card',situation:curSit.t,response:o.x,
+    traits:o.s,judged:1,happened_at:$('incDate').value.trim()}));
+  $('incDate').value='';cancelResp();loadIncidents();
+}
+async function saveFree(){
+  const t=$('freeText').value.trim();
+  if(t.length<10)return alert('상황과 대처 방식을 조금 더 구체적으로 적어주세요.');
+  await api('/api/incidents',jpost({person_id:curPid,kind:'free',text:t,judged:0,happened_at:$('freeDate').value.trim()}));
+  $('freeText').value='';$('freeDate').value='';loadIncidents();
+  alert('기록했습니다. 클로드에게 "행동 기록 판정해줘"라고 하면 특성 점수로 환산됩니다.');
+}
+async function loadIncidents(){
+  const list=await api('/api/incidents?person_id='+curPid);
+  $('incCount').textContent=list.length?`(${list.length}건)`:'';
+  $('incList').innerHTML=list.length?list.map(renderInc).join(''):'<p class="muted">아직 기록이 없습니다.</p>';
+}
+function renderInc(i){
+  const tr=JSON.parse(i.traits_json||'{}');
+  const tags=Object.entries(tr).map(([t,v])=>`<span class="muted">${t} ${v}</span>`).join(' · ');
+  return `<div class="inc"><div class="ih">
+    <span class="muted">${(i.happened_at||i.created_at||'').slice(0,10)}</span>
+    <b style="flex:1">${i.kind==='card'?esc(i.situation):'자유 서술'}</b>
+    ${i.judged?'':'<span class="pend">판정 대기</span>'}
+    <button class="btnD" onclick="delInc(${i.id})">삭제</button></div>
+    <div class="resp">${esc(i.kind==='card'?i.response:i.text)}</div>
+    ${i.comment?`<div class="muted">판정: ${esc(i.comment)}</div>`:''}
+    ${tags?`<div style="margin-top:3px">${tags}</div>`:''}</div>`;
+}
+async function delInc(id){if(!confirm('이 기록을 삭제할까요?'))return;await api('/api/incidents?id='+id,{method:'DELETE'});
+  if(!$('viewIncident').classList.contains('hidden'))loadIncidents();else showHistory(curPid);}
+
+function incidentTraits(list){
+  const acc={};
+  list.forEach(i=>{if(!i.judged)return;
+    const tr=JSON.parse(i.traits_json||'{}');
+    Object.entries(tr).forEach(([t,v])=>{if(!TRAIT_DIM[t])return;if(!acc[t])acc[t]={s:0,n:0};acc[t].s+=v;acc[t].n++;});});
+  const out={};Object.keys(acc).forEach(t=>out[t]=Math.round(acc[t].s/acc[t].n));
+  return out;
+}
+function combineTraits(sv,inc){
+  const out={};
+  Object.keys(TRAIT_DIM).forEach(t=>{
+    const a=sv&&sv[t]!=null?sv[t]:null, b=inc&&inc[t]!=null?inc[t]:null;
+    out[t]=(a!=null&&b!=null)?Math.round(a*0.4+b*0.6):(b!=null?b:a);
+  });
+  return out;
+}
+
+// ===== 결과 렌더 =====
+function renderResult(r,title,cmpHtml){
+  $('resName').textContent=title;
   $('resTotal').textContent=r.total;
   $('resVerdict').textContent=r.verdict;$('resVerdict').className='badge b-'+r.verdict;
   $('resDesc').textContent=r.desc;
-  // 레이더
+  $('resCmp').innerHTML=cmpHtml||'';
   if(radarChart)radarChart.destroy();
   radarChart=new Chart($('radar'),{type:'radar',data:{
     labels:Object.keys(DIMS).map(d=>DIMS[d].label),
     datasets:[{label:'점수',data:Object.keys(DIMS).map(d=>r.dims[d]??0),backgroundColor:'rgba(59,91,219,.18)',borderColor:'#3b5bdb',pointBackgroundColor:'#3b5bdb'}]
   },options:{scales:{r:{min:0,max:100,ticks:{stepSize:25}}},plugins:{legend:{display:false}}}});
-  // 특성 그리드
-  $('tgrid').innerHTML=Object.entries(r.tScores).map(([t,s])=>{
-    if(s==null)return `<div class="tr"><span class="tn">${t}</span> <span class="muted">모름</span></div>`;
+  $('tgrid').innerHTML=Object.keys(TRAIT_DIM).map(t=>{
+    const s=r.tScores[t];
+    if(s==null)return `<div class="tr"><span class="tn">${t}</span> <span class="muted">판단불가</span></div>`;
     const c=s>=70?'#2b8a3e':s>=40?'#e8a10c':'#c92a2a';
     return `<div class="tr"><span class="tn">${t}</span> <b style="float:right">${s}</b><div class="bar"><div class="fill" style="width:${s}%;background:${c}"></div></div></div>`;
   }).join('');
-  // 강점/위험
   let fl='';
   r.strengths.forEach(t=>fl+=`<li style="color:var(--good)">강점 — ${t} (${r.tScores[t]}점)</li>`);
   r.flags.forEach(t=>fl+=`<li style="color:var(--bad)">위험 신호 — ${t} 성향 (긍정점수 ${r.tScores[t]}점${CRITICAL.includes(t)?' · 치명 항목':''})</li>`);
@@ -308,41 +418,60 @@ function renderResult(r){
   show('viewResult');
 }
 
-// ---- 기록 ----
+// ===== 기록/프로필 =====
 async function showHistory(pid){
   curPid=pid;
-  const p=persons.find(x=>x.id===pid)||{name:'?'};
-  $('hName').textContent=`${p.name} — 평가 히스토리`;
-  const [as,dr]=await Promise.all([api('/api/assessments?person_id='+pid),api('/api/deep?person_id='+pid)]);
-  // 추이 차트
+  $('hName').textContent=`${pname(pid)} — 프로필 & 기록`;
+  const [as,dr,inc]=await Promise.all([api('/api/assessments?person_id='+pid),api('/api/deep?person_id='+pid),api('/api/incidents?person_id='+pid)]);
+  window._as=as;window._inc=inc;
+  const sv=as.length?JSON.parse(as[as.length-1].traits_json):null;
+  const it=incidentTraits(inc);
+  const hasInc=Object.keys(it).length>0;
+  const comb=combineTraits(sv,hasInc?it:null);
+  const rc=gradeFromTraits(comb);
+  const rs=sv?gradeFromTraits(sv):null, ri=hasInc?gradeFromTraits(it):null;
+  const judged=inc.filter(i=>i.judged).length, pending=inc.length-judged;
+  $('hSummary').innerHTML=`<div class="cmp">
+    <div><span class="muted">설문</span><b>${rs?rs.total:'–'}</b><span class="muted">${as.length}회</span></div>
+    <div><span class="muted">행동 관찰</span><b>${ri?ri.total:'–'}</b><span class="muted">${judged}건 반영${pending?` · ${pending}건 대기`:''}</span></div>
+    <div><span class="muted">통합</span><b style="color:var(--acc)">${rc.total}</b><span class="badge b-${rc.verdict}">${rc.verdict}</span></div></div>`;
   if(trendChart)trendChart.destroy();
-  trendChart=new Chart($('trend'),{type:'line',data:{
-    labels:as.map(a=>a.created_at.slice(0,10)),
-    datasets:[{label:'종합 점수',data:as.map(a=>a.total),borderColor:'#3b5bdb',backgroundColor:'rgba(59,91,219,.1)',fill:true,tension:.3}]
-  },options:{scales:{y:{min:0,max:100}},plugins:{legend:{display:false}}}});
+  trendChart=new Chart($('trend'),{type:'line',data:{labels:as.map(a=>a.created_at.slice(0,10)),
+    datasets:[{label:'설문 점수',data:as.map(a=>a.total),borderColor:'#3b5bdb',backgroundColor:'rgba(59,91,219,.1)',fill:true,tension:.3}]},
+    options:{scales:{y:{min:0,max:100}},plugins:{legend:{display:false}}}});
+  // 통합 프로필 박스
+  let gap='';
+  if(rs&&ri){
+    const diffs=Object.keys(TRAIT_DIM).filter(t=>sv[t]!=null&&it[t]!=null&&Math.abs(sv[t]-it[t])>=25)
+      .map(t=>`${t}(설문 ${sv[t]} vs 행동 ${it[t]})`);
+    const d=ri.total-rs.total;
+    gap=`<p class="muted" style="margin-top:8px">${d>=8?'행동이 말보다 낫습니다 — 겉으로 드러내는 것보다 실제 처신이 나은 편.':d<=-8?'말보다 행동이 못합니다 — 자기 평가·인상보다 실제 처신이 아쉬운 편.':'말과 행동이 대체로 일치합니다.'}
+      ${diffs.length?`<br>괴리가 큰 항목: ${diffs.join(', ')}`:''}</p>`;
+  }
+  $('combBox').innerHTML=`<div class="score-big" style="font-size:2.2rem">${rc.total}</div>
+    <div style="text-align:center"><span class="badge b-${rc.verdict}">${rc.verdict}</span></div>
+    <p class="vdesc">${rc.desc}</p>${gap}
+    <div class="row" style="margin-top:8px"><button class="btn2" onclick="viewCombined()">통합 프로필 자세히 보기</button></div>`;
+  window._comb=rc;
+  // 행동 기록
+  $('hIncList').innerHTML=inc.length?inc.map(renderInc).join(''):'<p class="muted">행동 기록이 없습니다. 아래 버튼으로 추가하세요.</p>';
+  // 설문 기록
   $('hlist').innerHTML=as.length?as.slice().reverse().map(a=>`<div class="hist-item">
-    <span class="muted">${a.created_at.slice(0,16)}</span>
-    <span>${a.mode==='self'?'셀프':'타인'}</span>
-    <b>${Math.round(a.total)}점</b>
-    <span class="badge b-${a.verdict}">${a.verdict}</span>
+    <span class="muted">${a.created_at.slice(0,16)}</span><span>${a.mode==='self'?'셀프':'타인'}</span>
+    <b>${Math.round(a.total)}점</b><span class="badge b-${a.verdict}">${a.verdict}</span>
     <span class="muted" style="flex:1">${esc(a.note||'')}</span>
     <button class="btn2" onclick="viewAssess(${a.id})">보기</button>
-    <button class="btnD" onclick="delAssess(${a.id})">삭제</button>
-  </div>`).join(''):'<p class="muted">평가 기록이 없습니다.</p>';
-  window._as=as;
+    <button class="btnD" onclick="delAssess(${a.id})">삭제</button></div>`).join(''):'<p class="muted">설문 기록이 없습니다.</p>';
   $('dlist').innerHTML=dr.length?dr.map(d=>`<div class="hist-item">
     <span class="muted">${d.created_at.slice(0,10)}</span><span style="flex:1">${esc(d.title)}</span>
     <button class="btn2" onclick="viewDeep(${d.id})">보기</button>
-    <button class="btnD" onclick="delDeep(${d.id})">삭제</button>
-  </div>`).join(''):'<p class="muted">심층 리포트가 없습니다.</p>';
+    <button class="btnD" onclick="delDeep(${d.id})">삭제</button></div>`).join(''):'<p class="muted">심층 리포트가 없습니다.</p>';
   show('viewHistory');
 }
+function viewCombined(){renderResult(window._comb,`${pname(curPid)} — 통합 프로필 (설문 40% + 행동 60%)`);}
 function viewAssess(id){
   const a=window._as.find(x=>x.id===id);if(!a)return;
-  const r={tScores:JSON.parse(a.traits_json),dims:JSON.parse(a.dims_json),total:Math.round(a.total),verdict:a.verdict,
-    desc:'저장된 평가 ('+a.created_at.slice(0,16)+')',flags:JSON.parse(a.flags_json||'[]'),strengths:[]};
-  Object.entries(r.tScores).forEach(([t,s])=>{if(s!=null&&s>=80&&!r.flags.includes(t))r.strengths.push(t);});
-  curMode=a.mode;renderResult(r);
+  renderResult(gradeFromTraits(JSON.parse(a.traits_json)),`${pname(curPid)} — 설문 결과 (${a.created_at.slice(0,16)})`);
 }
 async function delAssess(id){if(!confirm('이 평가를 삭제할까요?'))return;await api('/api/assessments?id='+id,{method:'DELETE'});showHistory(curPid);}
 async function viewDeep(id){
@@ -351,14 +480,10 @@ async function viewDeep(id){
   w.document.write('<html><head><meta charset="utf-8"><title>'+esc(d.title)+'</title><style>body{font-family:sans-serif;max-width:760px;margin:30px auto;padding:0 16px;line-height:1.7;color:#1a2340}h2,h3{margin:18px 0 8px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:6px 8px;font-size:.9rem}</style></head><body>'+d.html+'</body></html>');
 }
 async function delDeep(id){if(!confirm('이 리포트를 삭제할까요?'))return;await api('/api/deep?id='+id,{method:'DELETE'});showHistory(curPid);}
-
 function copyDeepPrompt(){
-  const p=persons.find(x=>x.id===curPid)||{name:'?'};
-  const txt=`character-insight 심층 판정 요청: "${p.name}" (person_id=${curPid}). 사이트의 최근 설문 결과를 참고하고, 아래 관찰 사례를 바탕으로 26특성 심층 판정 리포트를 작성해 사이트에 게시해줘.\n\n[관찰한 행동·일화를 여기에 서술하세요. 예: 약속을 두 번 어겼고, 식당에서 종업원에게 반말을 했다...]`;
-  navigator.clipboard.writeText(txt).then(()=>alert('복사되었습니다. 클로드에게 붙여넣고 관찰 사례를 채워 보내세요.'));
+  const txt=`character-insight 심층 판정 요청: "${pname(curPid)}" (person_id=${curPid}). 사이트의 설문 결과와 행동 관찰 기록을 모두 참고해서 26특성 심층 판정 리포트를 작성해 사이트에 게시해줘.\n\n[추가로 알려줄 관찰 사례가 있으면 여기에 적으세요]`;
+  navigator.clipboard.writeText(txt).then(()=>alert('복사되었습니다. 클로드에게 붙여넣으세요.'));
 }
-
-function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 loadPersons();
 </script>
 </body>
