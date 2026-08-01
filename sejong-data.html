@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>세종기업데이터 | Trend Insight</title>
+<meta name="description" content="세종기업데이터 실적 스크리닝 — 코스피·코스닥 전 종목의 분기 실적 서프라이즈, 저평가+성장(GARP) 교차, 산업 온도, 종목 카드">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--navy:#0b1f3f;--accent:#2e6ff2;--blue:#2f6db2;--red:#c62828;--green:#1b7a3d;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg:#f5f7fb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{text-decoration:none;color:inherit}
+header{background:var(--navy);padding:16px 24px}
+header a{color:#fff;font-weight:800}
+.wrap{max-width:1240px;margin:0 auto;padding:28px 18px 60px}
+h1{color:var(--navy);font-size:1.55rem;letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:.9rem;margin:6px 0 2px}
+.pill{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:.83rem;font-weight:700;color:var(--navy);margin:8px 6px 4px 0}
+.pill span{color:var(--blue)}
+.warn{background:#fff8e1;border-color:#ffe0a3;color:#8a5a00}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 1px 3px rgba(11,31,63,.05);margin-top:16px}
+.ctl{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.f{display:flex;flex-direction:column;gap:3px}
+.f label{font-size:.72rem;color:var(--muted);font-weight:700}
+select,input{font-family:inherit;font-size:.86rem;padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--text);outline:none}
+input[type=search]{min-width:190px}
+select:focus,input:focus{border-color:var(--accent)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:16px}
+.tab{padding:8px 16px;border-radius:999px;font-size:.86rem;font-weight:700;background:#fff;border:1px solid var(--line);color:var(--muted);cursor:pointer}
+.tab.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.kpis{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}
+.kpi{flex:1;min-width:120px;background:#f8fafd;border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.kpi b{display:block;font-size:1.32rem;color:var(--navy);line-height:1.25}
+.kpi span{font-size:.72rem;color:var(--muted);font-weight:600}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:.83rem;margin-top:10px;min-width:760px}
+th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child,th.l,td.l{text-align:left}
+th{color:var(--muted);font-weight:700;font-size:.74rem;cursor:pointer;user-select:none;position:sticky;top:0;background:#fff}
+th:hover{color:var(--accent)}
+th.sorted::after{content:" ▾";color:var(--accent)}
+th.sorted.asc::after{content:" ▴"}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:#f8fafd}
+td.nm{font-weight:700}
+.g{padding:2px 9px;border-radius:999px;font-size:.72rem;font-weight:800;white-space:nowrap}
+.g-SURPRISE,.g-PRIME{background:#e8f0fe;color:#1a4fc4}
+.g-STRONG,.g-CANDIDATE{background:#e6f4ea;color:#1b7a3d}
+.g-WATCH{background:#fff3e0;color:#e65100}
+.g-NEUTRAL{background:#eef2f8;color:#5b6779}
+.g-SHOCK{background:#fdecea;color:#c62828}
+.g-LOSS{background:#f3e5f5;color:#6a1b9a}
+.up{color:var(--red);font-weight:700}
+.dn{color:#1a4fc4;font-weight:700}
+.fl{font-size:.7rem;color:var(--muted)}
+.fl i{font-style:normal;background:#eef2f8;border-radius:5px;padding:1px 6px;margin-right:3px;display:inline-block}
+.fl i.bad{background:#fdecea;color:#c62828}
+.fl i.warnf{background:#fff3e0;color:#e65100}
+.empty{text-align:center;color:var(--muted);padding:50px 20px;font-size:.92rem}
+.note{font-size:.76rem;color:#9aa6b6;margin-top:20px;line-height:1.7}
+#modal{position:fixed;inset:0;background:rgba(11,31,63,.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
+#modal.on{display:flex}
+.sheet{background:#fff;border-radius:16px;max-width:820px;width:100%;max-height:90vh;overflow:auto;padding:22px}
+.sheet h2{color:var(--navy);font-size:1.2rem}
+.sheet .x{float:right;font-size:1.4rem;color:var(--muted);cursor:pointer;line-height:1}
+.mrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.mbox{flex:1;min-width:104px;background:#f8fafd;border:1px solid var(--line);border-radius:9px;padding:8px 12px}
+.mbox b{display:block;font-size:1.05rem;color:var(--navy)}
+.mbox span{font-size:.7rem;color:var(--muted);font-weight:600}
+.chart{margin-top:14px}
+.chart h3{font-size:.9rem;color:var(--navy);margin-bottom:4px}
+svg{width:100%;height:auto;display:block}
+.lg{font-size:.72rem;color:var(--muted);margin-top:2px}
+.lg i{font-style:normal;margin-right:10px}
+.lg .sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:middle}
+@media(max-width:640px){.wrap{padding:20px 12px 44px}h1{font-size:1.3rem}.kpi b{font-size:1.12rem}}
+</style>
+</head>
+<body>
+<header><a href="index.html">← Trend Insight</a></header>
+<div class="wrap">
+  <h1>세종기업데이터 — 실적 스크리닝</h1>
+  <p class="sub">코스피·코스닥 전 종목의 분기 실적을 스코어링한다. 분기를 바꾸면 모든 점수가 그 분기 기준으로 다시 계산된다.</p>
+  <div id="meta"></div>
+
+  <div class="card">
+    <div class="ctl">
+      <div class="f"><label>분석 분기</label><select id="q"></select></div>
+      <div class="f"><label>시장</label><select id="mk"><option value="">전체</option><option>KOSPI</option><option>KOSDAQ</option></select></div>
+      <div class="f"><label>산업(대)</label><select id="ind"><option value="">전체</option></select></div>
+      <div class="f"><label>시총 하한(억)</label><select id="mc">
+        <option value="0">제한 없음</option><option value="500" selected>500</option>
+        <option value="1000">1,000</option><option value="3000">3,000</option>
+        <option value="10000">1조</option><option value="50000">5조</option></select></div>
+      <div class="f"><label>검색 (종목·코드·제품)</label><input type="search" id="kw" placeholder="예: 반도체, 005930, HBM"></div>
+    </div>
+    <div class="tabs">
+      <div class="tab on" data-t="surprise">실적 서프라이즈</div>
+      <div class="tab" data-t="garp">저평가+성장</div>
+      <div class="tab" data-t="shock">실적 쇼크</div>
+      <div class="tab" data-t="sector">산업 온도</div>
+    </div>
+    <div id="kpis" class="kpis"></div>
+    <div id="hint" class="sub" style="margin-top:10px"></div>
+    <div class="scroll"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+    <div id="empty" class="empty" style="display:none">조건에 맞는 종목이 없습니다.</div>
+  </div>
+
+  <p class="note" id="foot"></p>
+</div>
+
+<div id="modal"><div class="sheet" id="sheet"></div></div>
+
+<script>
+const F=(v,d=1)=>v===null||v===undefined||isNaN(v)?'-':Number(v).toLocaleString('ko-KR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const P=v=>v===null||v===undefined||isNaN(v)?'-':`<span class="${v>=0?'up':'dn'}">${v>=0?'+':''}${F(v)}</span>`;
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let DB=null, QI=0, TAB='surprise', SORT={k:'score',asc:false}, ROWS=[];
+
+/* ---- 파이썬 엔진과 동일한 스코어링 (sejong.py score_surprise / score_garp_pool) ---- */
+function interp(x,pts){if(x===null||x===undefined||isNaN(x))return 0;if(x<=pts[0][0])return 0;
+  for(let i=0;i<pts.length-1;i++){const[a,b]=pts[i],[c,d]=pts[i+1];if(x<=c)return b+(d-b)*(x-a)/(c-a);}
+  return pts[pts.length-1][1];}
+const OPY=[[0,0],[10,8],[25,16],[50,24],[100,31],[200,35]],ACC=[[0,0],[20,7],[50,13],[100,17],[200,20]],
+      RVY=[[0,0],[5,6],[10,11],[20,16],[40,20]],OML=[[0,0],[5,3],[10,5],[20,8]],OMI=[[0,0],[2,3],[5,5],[10,7]];
+const sum4=(a,i)=>{let s=0;for(let k=0;k<4;k++){const v=a[i-k];if(v===null||v===undefined)return null;s+=v;}return s;};
+
+function calc(s,qi,isLatest){
+  const rev=s.rev[qi],op=s.op[qi];
+  const o=Object.assign({},s,{qi,rev_q:rev,op_q:op,rev_yoy:s.ry[qi],op_yoy:s.oy[qi],
+    op_yoy_prev:qi>0?s.oy[qi-1]:null,op_yoy_prev2:qi>1?s.oy[qi-2]:null});
+  const yr=qi>=4?{r:s.rev[qi-4],o:s.op[qi-4]}:null;
+  o.opm_q=(rev!==null&&op!==null&&rev)?op/rev*100:null;
+  o.opm_py=(yr&&yr.r&&yr.o!==null&&yr.o!==undefined)?yr.o/yr.r*100:null;
+  o.ttm_op=sum4(s.op,qi); o.ttm_rev=sum4(s.rev,qi);
+  const pop=qi>=7?sum4(s.op,qi-4):null, prv=qi>=7?sum4(s.rev,qi-4):null;
+  o.ttm_op_yoy=(o.ttm_op!==null&&pop!==null&&pop>0)?(o.ttm_op/pop-1)*100:null;
+  o.ttm_rev_yoy=(o.ttm_rev!==null&&prv!==null&&prv>0)?(o.ttm_rev/prv-1)*100:null;
+  o.per_eff=(isLatest&&s.per!==null)?s.per:((o.ttm_op&&o.ttm_op>0&&s.mc)?s.mc/o.ttm_op:null);
+  o.roe_eff=(isLatest&&s.roe!==null)?s.roe:((o.ttm_op!==null&&s.eq)?o.ttm_op/s.eq*100:null);
+  o.val_src=(isLatest&&s.per!==null)?'원본':(o.per_eff!==null?'계산':null);
+  o.low_base=!!(yr&&yr.r&&yr.o!==null&&yr.o>0&&yr.o<Math.abs(yr.r)*0.005);
+  o.runrate=(op!==null&&o.ttm_op&&o.ttm_op>0)?op*4/o.ttm_op:null;
+  o.runrate_break=o.runrate!==null&&o.runrate<0.5;
+
+  if(rev===null||op===null){o.score=null;return o;}
+  const op0=yr?yr.o:null, turn=op0!==null&&op0!==undefined&&op0<=0&&op>0,
+        toLoss=op0!==null&&op0!==undefined&&op0>0&&op<=0,
+        stillLoss=op<=0&&(op0===null||op0===undefined||op0<=0);
+  const pt={};
+  pt['영업이익YoY']=turn?35:interp(o.op_yoy,OPY);
+  const lb=o.low_base&&!turn; if(lb)pt['영업이익YoY']=Math.min(pt['영업이익YoY'],18);
+  o.accel=(o.op_yoy!==null&&o.op_yoy_prev!==null&&o.op_yoy!==undefined&&o.op_yoy_prev!==undefined)?o.op_yoy-o.op_yoy_prev:null;
+  pt['가속도']=interp(o.accel,ACC); pt['매출YoY']=interp(o.rev_yoy,RVY);
+  pt['OPM']=interp(o.opm_q,OML)+interp((o.opm_q!==null&&o.opm_py!==null)?o.opm_q-o.opm_py:null,OMI);
+  let st=0; for(const x of[o.op_yoy,o.op_yoy_prev,o.op_yoy_prev2]){if(x!==null&&x!==undefined&&x>0)st++;else break;}
+  pt['연속성']=[0,3,6,10][st]; o.streak=st;
+  let t=Object.values(pt).reduce((a,b)=>a+b,0);
+  const fl=[];
+  if(lb){t=Math.min(t,70);fl.push(['저베이스','warnf']);}
+  if(stillLoss){t=Math.min(t,35);fl.push(['적자지속','bad']);}
+  if(toLoss){t=Math.min(t,20);fl.push(['적자전환','bad']);}
+  if(turn)fl.push(['흑자전환','']);
+  if(o.accel!==null&&o.accel>20)fl.push(['가속','']);
+  if(o.op_yoy!==null&&o.op_yoy<-30&&!toLoss)fl.push(['이익급감','bad']);
+  if(o.rev_yoy!==null&&o.rev_yoy<0&&o.op_yoy!==null&&o.op_yoy>30)fl.push(['비용절감형','warnf']);
+  if(o.opm_q!==null&&o.opm_py!==null&&o.opm_q-o.opm_py>=5)fl.push(['마진점프','']);
+  if(st>=3)fl.push(['3분기연속','']);
+  if(o.runrate_break)fl.push(['런레이트급감','warnf']);
+  o.parts=pt; o.flags=fl; o.score=Math.max(0,Math.min(100,t));
+  o.grade=(toLoss||(o.op_yoy!==null&&o.op_yoy<=-50))?'SHOCK':stillLoss?'LOSS':
+          t>=80?'SURPRISE':t>=65?'STRONG':t>=50?'WATCH':'NEUTRAL';
+  return o;
+}
+const GW={ttm_op_yoy:30,ttm_rev_yoy:20,per_eff:20,pbr:10,roe_eff:20};
+function garpPool(pool){
+  const rk={};
+  for(const k of Object.keys(GW)){
+    const rev=(k==='per_eff'||k==='pbr');
+    const v=pool.map(x=>x[k]).filter(x=>x!==null&&x!==undefined&&!isNaN(x)).sort((a,b)=>a-b);
+    rk[k]=x=>{if(x===null||x===undefined||isNaN(x)||!v.length)return null;
+      let lo=0,hi=v.length;while(lo<hi){const m=(lo+hi)>>1;if(v[m]<=x)lo=m+1;else hi=m;}
+      const p=100*lo/v.length;return rev?100-p:p;};
+  }
+  for(const s of pool){
+    let tot=0,ws=0,g=0,gw=0,vv=0,vw=0;const pc={};
+    for(const k in GW){const p=rk[k](s[k]);pc[k]=p;if(p===null)continue;
+      tot+=GW[k]*p/100;ws+=GW[k];
+      if(k==='ttm_op_yoy'||k==='ttm_rev_yoy'){g+=GW[k]*p/100;gw+=GW[k];}else{vv+=GW[k]*p/100;vw+=GW[k];}}
+    let sc=ws>=60?tot/ws*100:null;
+    if(sc!==null&&s.low_base)sc*=0.75;
+    if(sc!==null&&s.runrate_break)sc*=0.6;
+    s.garp=sc; s.gpct=pc;
+    s.growth_score=gw?g/gw*50:null; s.value_score=vw?vv/vw*50:null;
+    s.garp_grade=sc===null?null:sc>=85?'PRIME':sc>=72?'CANDIDATE':sc>=60?'WATCH':'NEUTRAL';
+  }
+}
+
+/* ------------------------------- 렌더 ------------------------------- */
+function compute(){
+  const isLatest=QI===DB.quarters.length-1;
+  const mk=document.getElementById('mk').value, ind=document.getElementById('ind').value,
+        mcMin=+document.getElementById('mc').value, kw=document.getElementById('kw').value.trim().toLowerCase();
+  let all=DB.stocks.map(s=>calc(s,QI,isLatest));
+  const pool=all.filter(s=>s.per_eff!==null&&s.per_eff>0&&s.ttm_op!==null&&(s.mc===null||s.mc>=mcMin));
+  garpPool(pool);
+  let f=all.filter(s=>(!mk||s.m===mk)&&(!ind||s.il===ind)&&(s.mc===null||s.mc>=mcMin));
+  if(kw)f=f.filter(s=>(s.n+' '+s.t+' '+(s.p||'')+' '+(s.il||'')+' '+(s.im||'')).toLowerCase().includes(kw));
+  return {all,f,pool:pool.filter(s=>(!mk||s.m===mk)&&(!ind||s.il===ind)&&(!kw||(s.n+' '+s.t+' '+(s.p||'')+' '+(s.il||'')+' '+(s.im||'')).toLowerCase().includes(kw)))};
+}
+const COLS={
+ surprise:[['n','종목','l'],['m','시장','l'],['im','산업','l'],['score','점수'],['grade','등급','l'],
+   ['op_yoy','영업이익YoY%'],['rev_yoy','매출YoY%'],['opm_q','OPM%'],['accel','가속%p'],
+   ['mc','시총(억)'],['r2','3M%'],['flags','플래그','l']],
+ garp:[['n','종목','l'],['m','시장','l'],['im','산업','l'],['garp','GARP'],['garp_grade','등급','l'],
+   ['growth_score','성장'],['value_score','밸류'],['per_eff','PER'],['pbr','PBR'],['roe_eff','ROE%'],
+   ['ttm_op_yoy','TTM이익YoY%'],['ttm_rev_yoy','TTM매출YoY%'],['mc','시총(억)'],['val_src','밸류','l']],
+ sector:[['im','산업(중)','l'],['il','대분류','l'],['n_','종목수'],['score_med','점수중앙'],['n_sur','서프라이즈'],
+   ['op_med','영업이익YoY%'],['rev_med','매출YoY%'],['opm_med','OPM%'],['per_med','PER'],
+   ['pbr_med','PBR'],['roe_med','ROE%'],['ret_med','3M%']]};
+COLS.shock=COLS.surprise;
+const med=a=>{const v=a.filter(x=>x!==null&&x!==undefined&&!isNaN(x)).sort((x,y)=>x-y);
+  return v.length?(v.length%2?v[(v.length-1)/2]:(v[v.length/2-1]+v[v.length/2])/2):null;};
+
+function build(){
+  const {f,pool}=compute();
+  const hint=document.getElementById('hint'), kp=document.getElementById('kpis');
+  if(TAB==='sector'){
+    const g={};
+    f.filter(s=>s.score!==null).forEach(s=>{const k=(s.im||'미분류');(g[k]=g[k]||[]).push(s);});
+    ROWS=Object.entries(g).filter(([,v])=>v.length>=3).map(([k,v])=>({im:k,il:v[0].il,n_:v.length,
+      score_med:med(v.map(x=>x.score)),n_sur:v.filter(x=>x.score>=65).length,
+      op_med:med(v.map(x=>x.op_yoy)),rev_med:med(v.map(x=>x.rev_yoy)),opm_med:med(v.map(x=>x.opm_q)),
+      per_med:med(v.map(x=>x.per_eff)),pbr_med:med(v.map(x=>x.pbr)),roe_med:med(v.map(x=>x.roe_eff)),
+      ret_med:med(v.map(x=>x.r[2]))}));
+    if(SORT.k==='score')SORT={k:'score_med',asc:false};
+    hint.textContent='종목 3개 이상 발표된 산업(중분류)만 표시. 점수는 그 산업 소속 종목들의 실적 서프라이즈 점수 중앙값.';
+    kp.innerHTML=box([['산업 수',ROWS.length],['서프라이즈 다수 산업',ROWS.filter(r=>r.n_sur>=3).length],
+      ['이익 역성장 산업',ROWS.filter(r=>r.op_med!==null&&r.op_med<0).length]]);
+  }else if(TAB==='garp'){
+    ROWS=pool.filter(s=>s.garp!==null);
+    if(!['garp','per_eff','pbr','roe_eff','ttm_op_yoy','ttm_rev_yoy','mc','growth_score','value_score'].includes(SORT.k))SORT={k:'garp',asc:false};
+    hint.innerHTML='밸류(PER·PBR·ROE)와 성장(TTM 영업이익·매출)을 <b>같은 분기 유니버스 안의 백분위</b>로 채점한다. 저베이스·런레이트 급감 종목은 자동 할인.';
+    kp.innerHTML=box([['채점 대상',ROWS.length],['PRIME',ROWS.filter(r=>r.garp_grade==='PRIME').length],
+      ['CANDIDATE',ROWS.filter(r=>r.garp_grade==='CANDIDATE').length],['PER 중앙값',F(med(ROWS.map(r=>r.per_eff)))]]);
+  }else{
+    ROWS=f.filter(s=>s.score!==null);
+    if(!['score','op_yoy','rev_yoy','opm_q','accel','mc'].includes(SORT.k))SORT={k:'score',asc:TAB==='shock'};
+    if(TAB==='shock'&&SORT.k==='score'&&SORT.asc===false)SORT.asc=true;
+    const t=DB.quarters[QI], cov=DB.coverage[t]||0;
+    hint.innerHTML=TAB==='shock'
+      ?'점수 하위 = 이익 급감·적자전환 종목. 보유 중이면 매도 점검, 아니면 회피·숏 후보로 본다.'
+      :'영업이익 YoY(35) + 가속도(20) + 매출 YoY(20) + OPM 수준·개선(15) + 연속성(10) = 100점.';
+    kp.innerHTML=box([['실적 반영 종목',ROWS.length],['SURPRISE',ROWS.filter(r=>r.grade==='SURPRISE').length],
+      ['STRONG',ROWS.filter(r=>r.grade==='STRONG').length],['흑자전환',ROWS.filter(r=>r.flags.some(x=>x[0]==='흑자전환')).length],
+      ['적자전환·쇼크',ROWS.filter(r=>r.grade==='SHOCK').length]]);
+  }
+  sortRows(); draw();
+}
+const box=a=>a.map(([l,v])=>`<div class="kpi"><b>${typeof v==='number'?v.toLocaleString('ko-KR'):v}</b><span>${l}</span></div>`).join('');
+function sortRows(){const k=SORT.k,s=SORT.asc?1:-1;
+  ROWS.sort((a,b)=>{let x=k==='r2'?a.r[2]:a[k],y=k==='r2'?b.r[2]:b[k];
+    if(typeof x==='string'||typeof y==='string')return String(x??'').localeCompare(String(y??''))*s;
+    if(x===null||x===undefined||isNaN(x))return 1; if(y===null||y===undefined||isNaN(y))return -1;
+    return (x-y)*s;});}
+function draw(){
+  const cols=COLS[TAB],tb=document.getElementById('tbl');
+  tb.querySelector('thead').innerHTML='<tr>'+cols.map(c=>
+    `<th class="${c[2]||''} ${SORT.k===c[0]?'sorted '+(SORT.asc?'asc':''):''}" data-k="${c[0]}">${c[1]}</th>`).join('')+'</tr>';
+  const rows=ROWS.slice(0,300);
+  document.getElementById('empty').style.display=rows.length?'none':'block';
+  tb.querySelector('tbody').innerHTML=rows.map((r,i)=>'<tr data-i="'+i+'">'+cols.map(c=>{
+    const k=c[0];let v=k==='r2'?r.r[2]:r[k],h;
+    if(k==='n')h=`<td class="l nm">${esc(v)}</td>`;
+    else if(k==='flags')h=`<td class="l fl">${(v||[]).map(x=>`<i class="${x[1]}">${x[0]}</i>`).join('')||'-'}</td>`;
+    else if(k==='grade'||k==='garp_grade')h=`<td class="l">${v?`<span class="g g-${v}">${v}</span>`:'-'}</td>`;
+    else if(['op_yoy','rev_yoy','accel','r2','ttm_op_yoy','ttm_rev_yoy','op_med','rev_med','ret_med'].includes(k))h=`<td>${P(v)}</td>`;
+    else if(typeof v==='number')h=`<td>${F(v,Math.abs(v)>=1000?0:Math.abs(v)<10?2:1)}</td>`;
+    else h=`<td class="${c[2]||''}">${esc(v??'-')}</td>`;
+    return h;}).join('')+'</tr>').join('');
+  tb.querySelectorAll('th').forEach(th=>th.onclick=()=>{const k=th.dataset.k;
+    SORT=SORT.k===k?{k,asc:!SORT.asc}:{k,asc:false};sortRows();draw();});
+  tb.querySelectorAll('tbody tr').forEach(tr=>tr.onclick=()=>{
+    const r=rows[+tr.dataset.i]; if(r.t)detail(r);});
+}
+
+/* ------------------------------- 종목 카드 ------------------------------- */
+function bars(qs,vals,color,neg){
+  const W=680,H=130,pad=22,n=vals.length,bw=(W-pad*2)/n*0.62,gap=(W-pad*2)/n;
+  const fin=vals.filter(v=>v!==null&&v!==undefined);
+  if(!fin.length)return '<p class="lg">데이터 없음</p>';
+  const mx=Math.max(...fin,0),mn=Math.min(...fin,0),rg=(mx-mn)||1;
+  const y=v=>H-pad-(v-mn)/rg*(H-pad*2), zy=y(0);
+  return `<svg viewBox="0 0 ${W} ${H}" role="img"><line x1="${pad}" y1="${zy}" x2="${W-pad}" y2="${zy}" stroke="#d5dce7"/>`+
+   vals.map((v,i)=>{if(v===null||v===undefined)return '';
+     const x=pad+gap*i+(gap-bw)/2,yy=y(v),h=Math.max(1,Math.abs(zy-yy));
+     return `<rect x="${x}" y="${v>=0?yy:zy}" width="${bw}" height="${h}" rx="2" fill="${v>=0?color:(neg||'#c62828')}"/>`+
+       `<text x="${x+bw/2}" y="${v>=0?yy-4:zy+h+11}" font-size="9" fill="#5b6779" text-anchor="middle">${F(v,0)}</text>`;}).join('')+
+   qs.map((q,i)=>`<text x="${pad+gap*i+gap/2}" y="${H-5}" font-size="8.5" fill="#9aa6b6" text-anchor="middle">${String(q).slice(2)}</text>`).join('')+'</svg>';
+}
+function detail(r){
+  const qs=DB.quarters, pct=r.gpct||{};
+  const pv=k=>pct[k]===null||pct[k]===undefined?'-':F(pct[k],0)+'%';
+  document.getElementById('sheet').innerHTML=
+   `<span class="x" onclick="document.getElementById('modal').classList.remove('on')">✕</span>
+    <h2>${esc(r.n)} <span style="font-size:.8rem;color:#5b6779">${r.t} · ${esc(r.m)}</span></h2>
+    <p class="sub">${esc(r.il||'')} / ${esc(r.im||'')} · ${esc(r.p||'')}</p>
+    <p style="margin-top:8px">${r.grade?`<span class="g g-${r.grade}">${r.grade} ${F(r.score)}점</span> `:''}
+      ${r.garp_grade?`<span class="g g-${r.garp_grade}">GARP ${F(r.garp)}</span>`:''}</p>
+    <p class="fl" style="margin-top:6px">${(r.flags||[]).map(x=>`<i class="${x[1]}">${x[0]}</i>`).join('')||''}</p>
+    <div class="mrow">
+      <div class="mbox"><b>${F(r.mc,0)}</b><span>시가총액(억)</span></div>
+      <div class="mbox"><b>${F(r.per_eff,2)}</b><span>PER (${r.val_src||'-'})</span></div>
+      <div class="mbox"><b>${F(r.pbr,2)}</b><span>PBR</span></div>
+      <div class="mbox"><b>${F(r.roe_eff)}</b><span>ROE %</span></div>
+      <div class="mbox"><b>${F(r.opm_q)}</b><span>분기 OPM %</span></div>
+      <div class="mbox"><b>${F(r.ttm_op,0)}</b><span>TTM 영업이익(억)</span></div>
+    </div>
+    <div class="mrow">
+      ${['1Y','6M','3M','1M','1W','1D','YTD'].map((l,i)=>
+        `<div class="mbox"><b>${P(r.r[i])}</b><span>주가 ${l}</span></div>`).join('')}
+    </div>
+    <div class="chart"><h3>분기 매출 (억원)</h3>${bars(qs,r.rev,'#2f6db2')}</div>
+    <div class="chart"><h3>분기 영업이익 (억원)</h3>${bars(qs,r.op,'#1b7a3d','#c62828')}
+      <p class="lg"><i><span class="sw" style="background:#1b7a3d"></span>흑자</i><i><span class="sw" style="background:#c62828"></span>적자</i></p></div>
+    <div class="chart"><h3>영업이익 YoY (%)</h3>${bars(qs,r.oy,'#2e6ff2','#c62828')}</div>
+    ${r.gpct?`<div class="chart"><h3>유니버스 백분위 (높을수록 유리)</h3>
+      <p class="lg">TTM이익성장 ${pv('ttm_op_yoy')} · TTM매출성장 ${pv('ttm_rev_yoy')} ·
+        PER저평가 ${pv('per_eff')} · PBR저평가 ${pv('pbr')} · ROE ${pv('roe_eff')}</p></div>`:''}
+    ${r.parts?`<div class="chart"><h3>실적 점수 분해</h3><p class="lg">${
+      Object.entries(r.parts).map(([k,v])=>`${k} ${F(v)}`).join(' · ')}</p></div>`:''}
+    <p class="note">런레이트 비율 ${r.runrate===null?'-':F(r.runrate,2)}배 (최근 분기 이익 ×4 ÷ TTM). 0.5배 미만이면 TTM 기준 밸류는 이미 지난 호황을 보고 있는 것이다.</p>`;
+  document.getElementById('modal').classList.add('on');
+}
+document.getElementById('modal').onclick=e=>{if(e.target.id==='modal')e.target.classList.remove('on')};
+
+/* ------------------------------- 초기화 ------------------------------- */
+fetch('data/sejong-data.json?v='+Date.now()).then(r=>r.json()).then(d=>{
+  DB=d; const m=d.meta, qs=d.quarters;
+  const qsel=document.getElementById('q');
+  qsel.innerHTML=qs.map((q,i)=>{const c=d.coverage[q]||0;
+    return `<option value="${i}">${q.slice(0,4)}년 ${+q.slice(4,6)/3|0}Q — ${c.toLocaleString('ko-KR')}종목</option>`;}).join('');
+  // 기본 분기: 발표 종목이 300개 이상인 가장 최근 분기
+  let def=qs.length-1; for(let i=qs.length-1;i>=0;i--){if((d.coverage[qs[i]]||0)>=300){def=i;break;}}
+  QI=def; qsel.value=def;
+  const t=qs[qs.length-1], ct=d.coverage[t]||0;
+  document.getElementById('meta').innerHTML=
+    `<span class="pill">스냅샷 <span>${esc(m.snapshot_id)}</span></span>`+
+    `<span class="pill">유니버스 <span>${(m.n_universe||0).toLocaleString('ko-KR')}종목</span></span>`+
+    `<span class="pill">적재 <span>${esc(m.ingested_at||'')}</span></span>`+
+    (ct<300?`<span class="pill warn">${t.slice(0,4)}년 ${+t.slice(4,6)/3|0}Q 어닝시즌 진행 중 — ${ct}종목 발표</span>`:'');
+  const inds=[...new Set(d.stocks.map(s=>s.il).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ko'));
+  document.getElementById('ind').innerHTML='<option value="">전체</option>'+inds.map(i=>`<option>${esc(i)}</option>`).join('');
+  document.getElementById('foot').innerHTML=
+    '세종기업데이터 원본 기준. <b>PER·ROE는 당기순이익이 아닌 영업이익 기준</b>'+
+    '(PER=시가총액÷TTM영업이익, ROE=TTM영업이익÷자본총계, 자본총계는 최근 4개 분기 평균). '+
+    '12월 결산 법인만 손익 반영, 일부 금융주는 매출 미공시, 종목코드 9로 시작하는 외국계 기업은 미제공. '+
+    '52주 주가변화율은 1년 전 시가총액과의 단순 비교라 분할·합병 종목은 왜곡될 수 있다. '+
+    '밸류 \'계산\'은 원본에 값이 없어 같은 공식으로 해당 분기 TTM을 직접 산출한 것 — '+
+    '현재 시가총액과 과거 분기 실적을 결합한 값이다. 참고 자료이며 매매 판단은 이용자 몫.';
+  ['q','mk','ind','mc'].forEach(id=>document.getElementById(id).onchange=e=>{
+    if(id==='q')QI=+e.target.value; build();});
+  let tm; document.getElementById('kw').oninput=()=>{clearTimeout(tm);tm=setTimeout(build,220);};
+  document.querySelectorAll('.tab').forEach(el=>el.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));el.classList.add('on');
+    TAB=el.dataset.t; SORT={k:TAB==='garp'?'garp':TAB==='sector'?'score_med':'score',asc:TAB==='shock'};build();});
+  build();
+}).catch(e=>{document.getElementById('hint').innerHTML=
+  '<b style="color:#c62828">데이터를 불러오지 못했습니다.</b> data/sejong-data.json 게시 여부를 확인하세요.';console.error(e);});
+</script>
+</body>
+</html>
