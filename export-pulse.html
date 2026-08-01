@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>수출 펄스 | Trend Insight</title>
+<meta name="description" content="종목별 주력 품목 HS코드의 관세청 월별 수출 데이터로 실적 방향성을 미리 가늠하는 수출 펄스 — YoY·일평균·P&Q 분해">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--navy:#0b1f3f;--accent:#2e6ff2;--blue:#2f6db2;--red:#b22f2f;--green:#1a7f37;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg:#f5f7fb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{text-decoration:none;color:inherit}
+header{background:var(--navy);padding:16px 24px}
+header a{color:#fff;font-weight:800}
+.wrap{max-width:1080px;margin:0 auto;padding:34px 20px 60px}
+h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:.92rem;margin:6px 0 4px}
+.asof{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 16px;font-size:.88rem;font-weight:700;color:var(--navy);margin:10px 8px 10px 0}
+.asof span{color:var(--green)}
+.datebox{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:.88rem;font-weight:600;color:var(--navy);margin:10px 0}
+.datebox input{font-family:inherit;font-size:.88rem;font-weight:700;color:var(--navy);border:none;outline:none;background:transparent}
+.datebox button{font-family:inherit;font-size:.8rem;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:999px;padding:4px 12px;cursor:pointer}
+.datebox button.ghost{background:#eef2f8;color:#39506e}
+#datemsg{font-size:.8rem;color:var(--red);margin:4px 0 8px;display:none}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 1px 3px rgba(11,31,63,.05);margin-top:22px}
+.card h2{font-size:1.1rem;color:var(--navy);margin-bottom:6px}
+.mnote{font-size:.85rem;color:var(--muted);background:#f8fafd;border:1px solid var(--line);border-radius:8px;padding:9px 13px;margin-top:8px}
+.summary{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.kpi{flex:1;min-width:140px;background:#f8fafd;border:1px solid var(--line);border-radius:10px;padding:12px 16px}
+.kpi b{display:block;font-size:1.5rem;color:var(--navy);line-height:1.2}
+.kpi span{font-size:.78rem;color:var(--muted);font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:12px}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}
+td:first-child{font-weight:600}
+th{color:var(--muted);font-weight:600;font-size:.78rem}
+tr.clickable{cursor:pointer}
+tr.clickable:hover{background:#f8fafd}
+.grade{padding:3px 11px;border-radius:999px;font-size:.76rem;font-weight:800;white-space:nowrap}
+.g-SUR{background:#e6f4ea;color:#1b7a3d}
+.g-SHK{background:#fdecea;color:#c62828}
+.g-NEU{background:#eef2f8;color:#5b6779}
+.g-DS{background:#fff3e0;color:#e65100}
+.up{color:#c62828;font-weight:700}
+.dn{color:#1a4fc4;font-weight:700}
+.drv{font-size:.74rem;font-weight:800;padding:2px 8px;border-radius:6px}
+.drv-P{background:#fdf1e3;color:#b25d0e}
+.drv-Q{background:#e8f0fe;color:#1a4fc4}
+.detail{background:#f8fafd;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-top:6px;font-size:.84rem}
+.detail h3{font-size:.95rem;color:var(--navy);margin-bottom:8px}
+.detail .r{color:var(--muted);margin-top:4px}
+.detail .r b{color:var(--text)}
+.pqbar{display:flex;height:14px;border-radius:7px;overflow:hidden;margin:8px 0;max-width:420px;border:1px solid var(--line)}
+.pqbar div{display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:800;color:#fff}
+.pqP{background:#e8830c}.pqQ{background:#2e6ff2}
+.chartbox{margin-top:10px;overflow-x:auto}
+.mini6{margin-top:10px}
+.mini6 table{font-size:.78rem}
+.empty{text-align:center;color:var(--muted);padding:36px 0;font-size:.9rem}
+.legend{font-size:.74rem;color:var(--muted);margin-top:4px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px 0 10px;vertical-align:middle}
+footer{max-width:1080px;margin:0 auto;padding:0 20px 40px;font-size:.76rem;color:#9aa6b6}
+@media(max-width:640px){th:nth-child(3),td:nth-child(3){display:none}}
+</style>
+</head>
+<body>
+<header><a href="index.html">← Trend Insight</a></header>
+<div class="wrap">
+<h1>📦 수출 펄스</h1>
+<div class="sub">종목별 주력 품목(HS코드)의 관세청 월별 수출 데이터 — 실적 발표 전에 분기 방향성을 가늠한다. 매월 11일(잠정)·21일(확정 갱신) 수집.</div>
+<div>
+  <span class="asof">수집 회차: <span id="asof">-</span></span>
+  <span class="datebox">📅 <input type="date" id="datepick"> <button onclick="showDate()">조회</button> <button class="ghost" onclick="showLatest()">최신</button></span>
+</div>
+<div id="datemsg"></div>
+<div id="content"><div class="empty">데이터 로딩 중…</div></div>
+</div>
+<footer>본 자료는 투자 참고용이며 특정 종목의 매수·매도를 권유하지 않습니다. 수출 데이터의 합은 기업 매출·수출 실적을 완벽히 반영하지 않으며, 동일 HS코드에 여러 기업이 혼재할 수 있습니다(산업 신호). 단위 1000USD. 잠정치는 확정 시 수정될 수 있습니다.</footer>
+<script>
+var DB=null,CUR=null,OPEN=null;
+function pct(x,d){if(x==null)return '-';var s=(x*100).toFixed(d==null?1:d);return (x>=0?'+':'')+s+'%';}
+function cls(x){return x==null?'':(x>=0?'up':'dn');}
+function fmt(n){if(n==null)return '-';return Math.round(n).toLocaleString();}
+function ginfo(f){
+  if(f==='SURPRISE_WATCH')return['g-SUR','🟢 서프라이즈 후보'];
+  if(f==='SHOCK_WATCH')return['g-SHK','🔴 쇼크 경계'];
+  if(f==='DATA_SHORT')return['g-DS','데이터 부족'];
+  return['g-NEU','중립'];
+}
+function sparkline(series){
+  var s=series.slice(-24);if(s.length<4)return '';
+  var W=Math.max(420,s.length*22),H=140,pad=6;
+  var vs=s.map(function(r){return r.v||0});
+  var mx=Math.max.apply(null,vs)||1;
+  var bw=(W-pad*2)/s.length;
+  var h='<svg width="'+W+'" height="'+(H+34)+'" style="display:block">';
+  s.forEach(function(r,i){
+    var bh=Math.max(2,(r.v||0)/mx*(H-14));
+    var x=pad+i*bw, y=H-bh;
+    var col=(r.yoy==null)?'#c9d3e0':(r.yoy>=0?'#d98a8a':'#8aa8d9');
+    if(i===s.length-1)col=(r.yoy==null)?'#7e8ba0':(r.yoy>=0?'#b22f2f':'#2e6ff2');
+    h+='<rect x="'+(x+2)+'" y="'+y+'" width="'+(bw-4)+'" height="'+bh+'" rx="2" fill="'+col+'"><title>'+r.ym+' · '+fmt(r.v)+'kUSD · YoY '+pct(r.yoy)+'</title></rect>';
+    if(i%3===0||i===s.length-1)h+='<text x="'+(x+bw/2)+'" y="'+(H+14)+'" font-size="9" fill="#8a97a8" text-anchor="middle">'+r.ym.slice(2,4)+'.'+r.ym.slice(4,6)+'</text>';
+  });
+  // 단가(P) 라인
+  var ps=s.map(function(r){return r.p});
+  var pv=ps.filter(function(v){return v!=null});
+  if(pv.length>3){
+    var pmx=Math.max.apply(null,pv),pmn=Math.min.apply(null,pv);
+    var pts='';
+    s.forEach(function(r,i){
+      if(r.p==null)return;
+      var x=pad+i*bw+bw/2;
+      var y=8+(1-(r.p-pmn)/((pmx-pmn)||1))*(H-40);
+      pts+=(pts?' ':'')+x+','+y;
+    });
+    h+='<polyline points="'+pts+'" fill="none" stroke="#e8830c" stroke-width="2" opacity=".85"/>';
+  }
+  h+='</svg>';
+  return '<div class="chartbox">'+h+'</div><div class="legend"><i style="background:#b22f2f"></i>월 수출금액(YoY+ 빨강/− 파랑)<i style="background:#e8830c"></i>수출단가 P 추이</div>';
+}
+function pqbar(p,q){
+  if(p==null||q==null)return '';
+  var ap=Math.abs(p),aq=Math.abs(q),t=ap+aq;if(t===0)return '';
+  var wp=Math.round(ap/t*100);
+  return '<div class="pqbar"><div class="pqP" style="width:'+wp+'%">P '+pct(p,0)+'</div><div class="pqQ" style="width:'+(100-wp)+'%">Q '+pct(q,0)+'</div></div>';
+}
+function detail(x){
+  var h='<div class="detail"><h3>'+x.name+' <span style="color:#5b6779;font-weight:500;font-size:.8rem">'+(x.item||'')+' · HS '+x.hs+'</span></h3>';
+  h+='<div class="r"><b>'+(x.last_ym?x.last_ym.slice(0,4)+'.'+x.last_ym.slice(4,6):'-')+'</b> 수출 <b>'+fmt(x.value)+'</b> 천달러 · YoY <b class="'+cls(x.yoy)+'">'+pct(x.yoy)+'</b> · 일평균 YoY <b class="'+cls(x.yoy_daily)+'">'+pct(x.yoy_daily)+'</b></div>';
+  h+='<div class="r">YoY 기여 분해 — 단가(P) '+pct(x.yoy_p)+' × 물량(Q) '+pct(x.yoy_q)+' '+(x.driver?('· <span class="drv drv-'+(x.driver==='P_DRIVEN'?'P':'Q')+'">'+(x.driver==='P_DRIVEN'?'P(단가) 주도':'Q(물량) 주도')+'</span>'):'')+'</div>';
+  h+=pqbar(x.yoy_p,x.yoy_q);
+  if(x.driver==='P_DRIVEN')h+='<div class="r" style="color:#b25d0e">⚠ 단가 주도 성장 — 가격 사이클 반전 시 되돌림 리스크 병기</div>';
+  if(x.series&&x.series.length)h+=sparkline(x.series);
+  var s6=(x.series||[]).slice(-6);
+  if(s6.length){
+    h+='<div class="mini6"><table><thead><tr><th>월</th><th>금액(천$)</th><th>일평균</th><th>YoY</th><th>일평균YoY</th><th>P YoY</th><th>Q YoY</th></tr></thead><tbody>';
+    s6.forEach(function(r){
+      h+='<tr><td>'+r.ym.slice(0,4)+'.'+r.ym.slice(4,6)+'</td><td>'+fmt(r.v)+'</td><td>'+fmt(r.dv)+'</td><td class="'+cls(r.yoy)+'">'+pct(r.yoy)+'</td><td class="'+cls(r.yoy_dv)+'">'+pct(r.yoy_dv)+'</td><td class="'+cls(r.yoy_p)+'">'+pct(r.yoy_p)+'</td><td class="'+cls(r.yoy_q)+'">'+pct(r.yoy_q)+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+  if(x.note)h+='<div class="r" style="margin-top:8px"><b>노트</b> — '+x.note+'</div>';
+  return h+'</div>';
+}
+function render(rec){
+  CUR=rec;OPEN=null;
+  document.getElementById("asof").textContent=rec.date+(rec.label?' ('+rec.label+')':'');
+  var it=rec.items||[];
+  var nS=it.filter(function(x){return x.flag==='SURPRISE_WATCH'}).length;
+  var nK=it.filter(function(x){return x.flag==='SHOCK_WATCH'}).length;
+  var h='<div class="card"><h2>종목별 수출 펄스</h2>';
+  if(rec.note)h+='<div class="mnote">'+rec.note+' · 기간 '+rec.period+'</div>';
+  h+='<div class="summary"><div class="kpi"><b>'+it.length+'</b><span>추적 종목</span></div><div class="kpi"><b style="color:#1b7a3d">'+nS+'</b><span>🟢 서프라이즈 후보</span></div><div class="kpi"><b style="color:#c62828">'+nK+'</b><span>🔴 쇼크 경계</span></div><div class="kpi"><b>'+(it.length-nS-nK)+'</b><span>중립·기타</span></div></div>';
+  if(!it.length){h+='<div class="empty">게시된 데이터가 없습니다</div></div>';}
+  else{
+    h+='<table><thead><tr><th>종목</th><th>품목</th><th>최근월 금액(천$)</th><th>YoY</th><th>일평균YoY</th><th>P·Q 주도</th><th>판정</th></tr></thead><tbody>';
+    it.forEach(function(x,i){
+      var g=ginfo(x.flag);
+      h+='<tr class="clickable" onclick="tog('+i+')"><td>'+x.name+'</td><td style="text-align:left;color:#5b6779;font-weight:400">'+(x.item||'')+'</td><td>'+fmt(x.value)+'</td><td class="'+cls(x.yoy)+'">'+pct(x.yoy)+'</td><td class="'+cls(x.yoy_daily)+'">'+pct(x.yoy_daily)+'</td><td>'+(x.driver?'<span class="drv drv-'+(x.driver==='P_DRIVEN'?'P':'Q')+'">'+(x.driver==='P_DRIVEN'?'P':'Q')+'</span>':'-')+'</td><td><span class="grade '+g[0]+'">'+g[1]+'</span></td></tr>';
+      h+='<tr id="d'+i+'" style="display:none"><td colspan="7" style="text-align:left">'+detail(x)+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+  h+='<div class="card"><h2>해석 가이드</h2><div class="r" style="font-size:.85rem;color:#5b6779">· <b>일평균 YoY</b>: 월별 일수 차이를 보정한 값 — 설 연휴가 1↔2월로 이동한 해는 1~2월 합산으로 재확인<br>· <b>P&amp;Q 분해</b>: 금액 YoY ≈ (1+단가YoY)×(1+물량YoY)−1. <b>Q(물량) 주도</b>가 실적 질이 높고, <b>P(단가) 주도</b>는 가격 사이클 반전 리스크 동반<br>· 동일 HS코드에 동종사가 혼재하는 품목(메모리·장비·라면 등)은 개별 종목이 아닌 <b>산업 신호</b>로 해석<br>· 11일 수집분은 잠정치 — 21일 확정 갱신과 차이가 크면 그 수정폭 자체가 주의 신호</div></div>';
+  document.getElementById("content").innerHTML=h;
+}
+function tog(i){
+  var r=document.getElementById("d"+i);
+  if(OPEN!=null&&OPEN!==i){var p=document.getElementById("d"+OPEN);if(p)p.style.display="none";}
+  r.style.display=r.style.display==="none"?"":"none";
+  OPEN=r.style.display===""?i:null;
+}
+function showLatest(){
+  var h=DB.history||[];
+  if(!h.length){document.getElementById("content").innerHTML='<div class="empty">아직 게시된 데이터가 없습니다</div>';return;}
+  render(h[h.length-1]);
+  document.getElementById("datepick").value=h[h.length-1].date;
+  document.getElementById("datemsg").style.display="none";
+}
+function showDate(){
+  var d=document.getElementById("datepick").value;
+  var rec=(DB.history||[]).find(function(r){return r.date===d});
+  var m=document.getElementById("datemsg");
+  if(!rec){m.textContent=d+" 데이터가 없습니다 (게시된 수집 회차만 조회 가능)";m.style.display="block";return;}
+  m.style.display="none";render(rec);
+}
+fetch("data/export-pulse.json?t="+Date.now()).then(function(r){return r.json()}).then(function(db){DB=db;showLatest();}).catch(function(){
+  document.getElementById("content").innerHTML='<div class="empty">데이터를 불러올 수 없습니다</div>';
+});
+</script>
+</body>
+</html>
