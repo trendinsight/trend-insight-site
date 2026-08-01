@@ -100,6 +100,21 @@ svg{width:100%;height:auto;display:block}
       <div class="tab" data-t="garp">저평가+성장</div>
       <div class="tab" data-t="shock">실적 쇼크</div>
       <div class="tab" data-t="sector">산업 온도</div>
+      <div class="tab" data-t="masters">마스터스</div>
+    </div>
+    <div id="mrow" class="ctl" style="display:none;margin-top:12px">
+      <div class="f"><label>거장 선택</label><select id="mst">
+        <option value="all">거장 7인 종합 (자문단)</option>
+        <option value="ken_fisher">켄 피셔 — PSR 역발상</option>
+        <option value="philip_fisher">필립 피셔 — 위대한 기업</option>
+        <option value="graham">벤저민 그레이엄 — 안전마진</option>
+        <option value="buffett">워런 버핏 — 경제적 해자</option>
+        <option value="lynch">피터 린치 — PEG</option>
+        <option value="korekawa">고레가와 긴조 — 수면 아래 매집</option>
+        <option value="oneil">윌리엄 오닐 — CANSLIM</option>
+      </select></div>
+      <div class="f"><label>VETO 종목</label><select id="mveto">
+        <option value="0">포함 (하단 배치)</option><option value="1">제외</option></select></div>
     </div>
     <div id="kpis" class="kpis"></div>
     <div id="hint" class="sub" style="margin-top:10px"></div>
@@ -113,6 +128,8 @@ svg{width:100%;height:auto;display:block}
 <div id="modal"><div class="sheet" id="sheet"></div></div>
 
 <script>
+const GCLS={TOP:'SURPRISE',GOOD:'STRONG',FAIR:'WATCH',PASS:'NEUTRAL',VETO:'SHOCK',
+  매수우위:'SURPRISE',관망:'WATCH',유보:'NEUTRAL',회피:'SHOCK'};
 const F=(v,d=1)=>v===null||v===undefined||isNaN(v)?'-':Number(v).toLocaleString('ko-KR',{minimumFractionDigits:d,maximumFractionDigits:d});
 const P=v=>v===null||v===undefined||isNaN(v)?'-':`<span class="${v>=0?'up':'dn'}">${v>=0?'+':''}${F(v)}</span>`;
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -134,6 +151,7 @@ function calc(s,qi,isLatest){
   o.opm_q=(rev!==null&&op!==null&&rev)?op/rev*100:null;
   o.opm_py=(yr&&yr.r&&yr.o!==null&&yr.o!==undefined)?yr.o/yr.r*100:null;
   o.ttm_op=sum4(s.op,qi); o.ttm_rev=sum4(s.rev,qi);
+  o.opm_ttm=(o.ttm_op!==null&&o.ttm_rev)?o.ttm_op/o.ttm_rev*100:null;
   const pop=qi>=7?sum4(s.op,qi-4):null, prv=qi>=7?sum4(s.rev,qi-4):null;
   o.ttm_op_yoy=(o.ttm_op!==null&&pop!==null&&pop>0)?(o.ttm_op/pop-1)*100:null;
   o.ttm_rev_yoy=(o.ttm_rev!==null&&prv!==null&&prv>0)?(o.ttm_rev/prv-1)*100:null;
@@ -143,6 +161,33 @@ function calc(s,qi,isLatest){
   o.low_base=!!(yr&&yr.r&&yr.o!==null&&yr.o>0&&yr.o<Math.abs(yr.r)*0.005);
   o.runrate=(op!==null&&o.ttm_op&&o.ttm_op>0)?op*4/o.ttm_op:null;
   o.runrate_break=o.runrate!==null&&o.runrate<0.5;
+
+  /* --- 거장 채점용 파생지표 (masters.py load_universe와 동일) --- */
+  o.psr=(o.ttm_rev&&o.ttm_rev>0&&s.mc)?s.mc/o.ttm_rev:null;
+  o.earnings_yield=(o.per_eff&&o.per_eff>0)?100/o.per_eff:null;
+  const ms=(s.ms||[]).filter(x=>x!==null&&x!==undefined&&x>0);
+  if(ms.length>=3&&s.mc){const lo=Math.min(...ms),hi=Math.max(...ms);
+    // 1년 변동폭이 0.01% 미만이면 '밴드'가 아니라 잡음이다 — 중립(0.5)
+    o.band_pos=(hi>lo&&(hi-lo)/hi>=1e-4)?(s.mc-lo)/(hi-lo):0.5;
+    o.dd_from_high=(s.mc/hi-1)*100; o.up_from_low=(s.mc/lo-1)*100;}
+  else{o.band_pos=o.dd_from_high=o.up_from_low=null;}
+  let pstreak=0,lossq=0,broken=false;const opms=[];
+  for(let k=0;k<8;k++){const i=qi-k;
+    const ov=(i>=0)?s.op[i]:undefined, rv2=(i>=0)?s.rev[i]:undefined;
+    const ok=ov!==null&&ov!==undefined;
+    if(!broken){ if(ok&&ov>0) pstreak++; else broken=true; }   // 첫 비흑자에서 연속 중단
+    if(ok&&ov<=0)lossq++;
+    if(ok&&rv2!==null&&rv2!==undefined&&rv2>0)opms.push(ov/rv2*100);}
+  o.profit_streak=pstreak; o.loss_q=lossq;
+  if(opms.length>=4){const mu=opms.reduce((a,b)=>a+b,0)/opms.length;
+    const va=opms.reduce((a,b)=>a+(b-mu)*(b-mu),0)/opms.length;
+    o.opm_mean8=mu; o.opm_cv=mu?Math.sqrt(va)/Math.abs(mu):null;}
+  else{o.opm_mean8=o.opm_cv=null;}
+  const lg=s.il||'',md=s.im||'';
+  o.is_financial=lg==='금융'||['금융서비스','금융지주','리츠','밴처캐피탈_VC','생명보험','손해보험','증권','은행'].includes(md);
+  o.is_holding=lg==='지주사'||['지주사','금융지주'].includes(md);
+  o.is_lowmargin=lg==='유통'||['종합상사','IT유통','MRO','식자재_유통','철강_유통','화장품_유통','오프라인'].includes(md);
+  o.is_cyclical=['반도체','석유화학','철강','조선','비철금속','운송','건설','디스플레이','배터리'].includes(lg);
 
   if(rev===null||op===null){o.score=null;return o;}
   const op0=yr?yr.o:null, turn=op0!==null&&op0!==undefined&&op0<=0&&op>0,
@@ -173,6 +218,206 @@ function calc(s,qi,isLatest){
           t>=80?'SURPRISE':t>=65?'STRONG':t>=50?'WATCH':'NEUTRAL';
   return o;
 }
+/* ---- 거장 채점 (scripts/masters.py 미러 — 한쪽 고치면 반드시 양쪽 고칠 것) ---- */
+const DIRECT='직접',PROXY='대용',NA='N/A',MIN_SCORED=3,LYNCH_CAP=50,FLAT_EPS=0.01;
+// 0.00001% 하락을 '하락'으로 세면 판정이 흔들린다 — 보합으로 본다
+const down=x=>x!==null&&x!==undefined&&!isNaN(x)&&x<-FLAT_EPS;
+// 밴드 위치는 경계(0.40·0.85·0.90) 판정이라 소수 4자리로 고정해 비교한다
+const bandq=x=>(x===null||x===undefined||isNaN(x))?null:Math.round(x*1e4)/1e4;
+const IT=(n,p,st,note)=>({항목:n,점수:p,상태:st||DIRECT,설명:note});
+const NAI=(n,why)=>({항목:n,점수:null,상태:NA,설명:why});
+function tierM(v,two,one,rev){if(v===null||v===undefined||isNaN(v))return null;
+  return rev?(v<=two?2:v<=one?1:0):(v>=two?2:v>=one?1:0);}
+const negM=v=>(typeof v==='number'&&!isNaN(v))?-v:null;
+const FM=(v,n)=>(v===null||v===undefined||isNaN(v))?'-':Number(v).toLocaleString('ko-KR',{minimumFractionDigits:n??1,maximumFractionDigits:n??1});
+
+function warnsM(s){const w=[];
+  if(s.low_base)w.push('저베이스 — 전년 이익이 0에 가까워 성장률이 허수');
+  if(s.runrate_break)w.push('런레이트급감 — 최근 분기 이익이 TTM의 절반 미만');
+  if(s.is_financial)w.push('금융업 — 매출·영업이익률 개념이 제조·서비스와 다름');
+  if(s.is_holding)w.push('지주사 — 연결 매출이 자회사 합산이라 배수 왜곡');
+  return w;}
+
+function finalizeM(key,label,s,items,vetoes,extra,tiebreak){
+  const scored=items.filter(i=>i.점수!==null&&i.점수!==undefined);
+  const n=scored.length,total=items.length;
+  const raw=scored.reduce((a,b)=>a+b.점수,0), enough=n>=MIN_SCORED;
+  let score=(n&&enough)?Math.round(raw/(n*2)*1000)/10:null;
+  let grade=score===null?null:score>=80?'TOP':score>=65?'GOOD':score>=50?'FAIR':'PASS';
+  if(vetoes.length&&score!==null)grade='VETO';
+  return Object.assign({master:key,master_label:label,score,grade,raw,max_raw:n*2,
+    확인율:total?Math.round(n/total*100):0,채점항목:n,전체항목:total,insufficient:!enough,
+    대용수:scored.filter(i=>i.상태===PROXY).length,tiebreak:tiebreak===undefined?null:tiebreak,
+    items,veto:vetoes,warns:warnsM(s)},extra||{});}
+
+function m_graham(s){const v=[];
+  if(s.ttm_op!==null&&s.ttm_op<=0&&s.pbr&&s.pbr>=3)v.push('적자 + PBR 3배↑ — 투자가 아니라 투기');
+  const items=[
+    IT('PBR',tierM(s.pbr,1.0,1.5,1),DIRECT,`PBR ${FM(s.pbr)} (2점 <1.0)`),
+    IT('PER',tierM(s.per_eff,10,15,1),DIRECT,`PER ${FM(s.per_eff)} — 영업이익 기준 (2점 <10)`),
+    NAI('재무 안전성','부채비율·유동비율이 세종 데이터에 없음'),
+    IT('이익 안정성',tierM(s.profit_streak,8,6),DIRECT,`최근 ${s.profit_streak}분기 연속 영업흑자 (2점 8분기)`),
+    IT('가격 위치',tierM(s.dd_from_high===null?null:-s.dd_from_high,30,15),PROXY,
+       `고점 대비 ${FM(s.dd_from_high)}% — 시총 시계열 근사 (2점 −30%↓)`)];
+  return finalizeM('graham','벤저민 그레이엄 · 안전마진',s,items,v,null,negM(s.pbr));}
+
+function m_buffett(s){const items=[
+    IT('ROE 지속성',tierM(s.roe_eff,15,10),DIRECT,`ROE ${FM(s.roe_eff)}% — 영업이익 기준 (2점 15%↑)`),
+    NAI('해자','브랜드·전환비용·네트워크는 정성 판단 — masters-council로'),
+    IT('이익의 질',tierM(s.opm_cv,0.25,0.5,1),PROXY,
+       `8분기 영업이익률 변동계수 ${FM(s.opm_cv,2)} — 현금흐름 대신 이익 안정성으로 대용 (2점 0.25↓)`),
+    IT('경영진(자본배분)',tierM(s.sc,0,5,1),PROXY,`주식수 6M 증감 ${FM(s.sc)}% — 희석 여부로 대용 (2점 0%↓)`),
+    IT('가격',tierM(s.earnings_yield,10,6),DIRECT,`이익수익률 ${FM(s.earnings_yield)}% (2점 10%↑)`)];
+  return finalizeM('buffett','워런 버핏 · 경제적 해자',s,items,[],null,s.roe_eff??null);}
+
+function m_lynch(s){const v=[];
+  const g=s.ttm_op_yoy, gc=(g===null||g===undefined)?null:Math.min(g,LYNCH_CAP), per=s.per_eff;
+  const peg=(per>0&&gc>0)?per/gc:null;
+  if(g!==null&&g!==undefined&&g>200)v.push(`TTM 이익 성장 ${FM(g,0)}% — 지속 가능한 성장률이 아니라 회복·일회성`);
+  const cyc=!!(s.is_cyclical&&per&&per<6&&g&&g>80);
+  if(cyc)v.push('경기순환주인데 PER 최저·이익 급증 — 린치가 최다 실수로 꼽은 사이클 고점 패턴');
+  if(s.low_base||s.runrate_break)v.push('일회성 이익 급증으로 만들어진 PEG — 지속 가능한 성장률이 아님');
+  const items=[
+    IT('PEG',tierM(peg,0.5,1.0,1),DIRECT,
+       `PEG ${FM(peg,2)} = PER ${FM(per)} ÷ 성장률 ${FM(gc)}% (성장률은 ${LYNCH_CAP}% 상한 적용, 원값 ${FM(g)}%) — 2점 <0.5`),
+    IT('유형 분류',cyc?0:(s.is_cyclical?1:2),PROXY,
+       s.is_cyclical?'경기순환 업종 — 저PER이 곧 고점일 수 있음':'비순환 업종 — 이익 배수 해석이 비교적 안정적'),
+    NAI('2분 스토리','매수 논거 서술은 사람이 쓴다 — investment-thesis로'),
+    NAI('생활 검증','제품 접점 확인은 정성 — masters-council로'),
+    IT('기관 소외',tierM(s.mc?-s.mc:null,-3000,-20000),PROXY,`시총 ${FM(s.mc,0)}억 — 커버리지 수 대신 규모로 대용 (2점 3천억↓)`)];
+  return finalizeM('lynch','피터 린치 · PEG와 유형 분류',s,items,v,
+    {peg_lynch:peg===null?null:Math.round(peg*1000)/1000,growth_capped:gc},negM(peg));}
+
+const PSR_BANDS={'슈퍼컴퍼니':[0.75,1.5],'일반기업':[0.40,0.80]};
+function fisherType(s){const g=s.ttm_rev_yoy,m=s.opm_ttm;
+  return (g!==null&&g!==undefined&&m!==null&&m!==undefined&&g>=15&&m>=10)?'슈퍼컴퍼니':'일반기업';}
+function psrZone(psr,t){if(psr===null||psr===undefined)return null;
+  const[b,h]=PSR_BANDS[t]; return psr>3?'절대금지':psr<=b?'적극매수':psr<=h?'보유관망':'매도검토';}
+function glitchStage(s){const dd=s.dd_from_high,up=s.up_from_low;
+  if(dd===null||dd===undefined||up===null||up===undefined)return null;
+  if(dd>-20)return dd>-8?'3단계 고점권':'2단계 회복';
+  if(up<8)return '0단계 하락지속';
+  return dd<-35?'1단계 비관되돌림':'2단계 회복';}
+
+function m_kenfisher(s){const v=[],ex={};
+  const psr=s.psr,typ=fisherType(s),fin=s.is_financial,hold=s.is_holding;
+  if(psr!==null&&psr!==undefined&&psr>3&&!(fin||hold))
+    v.push('PSR 3배 초과 — 피셔 절대 규칙 1 위반 (예외 없는 매수 금지)');
+  if(s.ttm_rev_yoy!==null&&s.ttm_rev_yoy<0&&s.rev_yoy!==null&&s.rev_yoy<0)
+    v.push('TTM·당분기 매출 동시 감소 — 글리치가 아니라 구조적 쇠퇴 가능');
+  const skip=!!(fin||hold);
+  const psrItem=skip?NAI('PSR','금융·지주는 매출 개념이 달라 PSR 미적용 (피셔 원칙) — PBR로 대체 판단')
+    :IT('PSR',tierM(psr,PSR_BANDS[typ][0],PSR_BANDS[typ][1],1),DIRECT,
+        `PSR ${FM(psr,2)} · ${typ} 기준 2점 ≤${PSR_BANDS[typ][0]}`);
+  const mg=s.opm_ttm;
+  if(s.is_lowmargin&&psr!==null&&psr<0.4&&(mg||0)<5)
+    v.push('저마진 유통·상사의 낮은 PSR — 저평가 신호가 아님 (마진 게이트 미달)');
+  const items=[psrItem,
+    IT('마진 게이트',tierM(mg,8,5),PROXY,`TTM 영업이익률 ${FM(mg)}% — 순이익률 대신 사용 (2점 8%↑)`),
+    IT('서프라이즈 여지',(down(s.r[0])&&s.ttm_op_yoy!==null&&s.ttm_op_yoy>0)?2
+        :(down(s.r[1])?1:0),PROXY,
+       `1년 주가 ${FM(s.r[0])}% · TTM 이익 ${FM(s.ttm_op_yoy)}% — 기대는 낮아졌는데 실적은 도는가`),
+    IT('글리치 국면',({'1단계 비관되돌림':2,'2단계 회복':1,'0단계 하락지속':1,'3단계 고점권':0})[glitchStage(s)]??null,
+       PROXY,`${glitchStage(s)||'판정불가'} — 시총 시계열 근사`),
+    NAI('컨센서스 역방향','지배적 서사와의 차이는 정성 판단 — fisher-method 3대 질문으로')];
+  ex.psr=skip?null:(psr===null?null:Math.round(psr*1000)/1000);
+  ex.기업유형=skip?'PSR 미적용':typ; ex.psr_zone=skip?null:psrZone(psr,typ);
+  ex.glitch=glitchStage(s);
+  ex.psr_milestones=(skip||!psr||psr<=0)?null:
+    Object.fromEntries([0.4,0.75,1.5,3.0,6.0].map(t=>[String(t),Math.round(t/psr*100)/100]));
+  return finalizeM('ken_fisher','켄 피셔 · PSR 역발상',s,items,v,ex,skip?negM(s.pbr):negM(psr));}
+
+const PF_POINTS={1:'충분한 시장 잠재력 (매출이 여러 해 늘 수 있는가)',2:'신제품·신공정 개발 의지',
+ 3:'R&D 효율',4:'영업조직의 힘',5:'영업이익률',6:'이익률 개선 노력',7:'노사관계',8:'임원 관계',
+ 9:'경영진의 깊이',10:'원가분석·회계 통제',11:'업종 고유의 강점',12:'장기 이익 전망',
+ 13:'증자에 의한 희석 가능성',14:'좋을 때만 말하지 않는가',15:'경영진의 진실성'};
+
+function m_philipfisher(s){const v=[];
+  const g=s.ttm_rev_yoy,opm=s.opm_ttm;
+  const opmImp=(opm!==null&&opm!==undefined&&s.opm_mean8!==null&&s.opm_mean8!==undefined)?opm-s.opm_mean8:null;
+  const dil=s.sc;
+  const p3=(x,a,b,c,rev)=>{if(x===null||x===undefined||isNaN(x))return null;
+    return rev?(x<=a?3:x<=b?2:x<=c?1:0):(x>=a?3:x>=b?2:x>=c?1:0);};
+  const pts={1:[p3(g,20,10,3),`TTM 매출 ${FM(g)}% (3점 20%↑)`],
+             5:[p3(opm,15,8,3),`TTM 영업이익률 ${FM(opm)}% (3점 15%↑)`],
+             6:[p3(opmImp,3,1,0),`영업이익률이 8분기 평균 대비 ${FM(opmImp)}%p 개선 (3점 +3%p↑)`],
+             13:[p3(dil,0,3,10,1),`주식수 6M 증감 ${FM(dil)}% (3점 증가 없음)`]};
+  if(s.is_financial||s.is_holding)
+    for(const k of[1,5,6])pts[k]=[null,'금융·지주 — 매출·영업이익률 개념 상이로 미채점'];
+  const keys=Object.keys(pts).map(Number).sort((a,b)=>a-b);
+  const sc=keys.filter(k=>pts[k][0]!==null);
+  const raw=sc.reduce((a,k)=>a+pts[k][0],0);
+  let score=sc.length?Math.round(raw/(sc.length*3)*1000)/10:null;
+  const cut=[];
+  if(g!==null&&g!==undefined&&g<7)cut.push('매출 성장 7% 미만');
+  if(opm!==null&&opm!==undefined&&opm<5)cut.push('영업이익률 5% 미만');
+  if((s.loss_q||0)>=3)cut.push(`최근 8분기 중 영업적자 ${s.loss_q}회`);
+  if(dil!==null&&dil!==undefined&&dil>30)cut.push('주식수 30% 초과 증가');
+  if(s.runrate_break)cut.push('런레이트 급감 — TTM 지표가 이미 지나간 호황을 보고 있음');
+  if(s.low_base)cut.push('저베이스 — 성장률이 분모 착시');
+  if(cut.length)v.push('정량 컷 미달: '+cut.join(', '));
+  if(sc.length<MIN_SCORED)score=null;
+  let grade=score===null?null:score>=80?'TOP':score>=65?'GOOD':score>=50?'FAIR':'PASS';
+  if(v.length&&score!==null)grade='VETO';
+  const items=keys.map(k=>pts[k][0]!==null?IT(`${k}. ${PF_POINTS[k]}`,pts[k][0],DIRECT,pts[k][1])
+                                          :NAI(`${k}. ${PF_POINTS[k]}`,pts[k][1]))
+    .concat(Object.keys(PF_POINTS).map(Number).filter(k=>!keys.includes(k)).sort((a,b)=>a-b)
+      .map(k=>NAI(`${k}. ${PF_POINTS[k]}`,'사업보고서·IR·스커틀벗 필요')));
+  return {master:'philip_fisher',master_label:'필립 피셔 · 15포인트(정량 4개)',score,grade,raw,
+    max_raw:sc.length*3,확인율:Math.round(sc.length/15*100),채점항목:sc.length,전체항목:15,
+    insufficient:sc.length<MIN_SCORED,tiebreak:(opm||0)+(g||0)/10,대용수:0,items,veto:v,warns:warnsM(s),
+    미확인포인트:Object.keys(PF_POINTS).map(Number).filter(k=>!sc.includes(k)),
+    note:'15포인트 중 4개만 정량 대리 채점 — 나머지 11개는 philip-fisher-method 스킬의 스커틀벗으로 채워야 등급이 확정된다'};}
+
+function m_korekawa(s){const v=[],bp=bandq(s.band_pos);
+  if(bp!==null&&bp!==undefined&&bp>=0.85)v.push('후지산 8부 능선 이상 — 카메 3칙 위반 (고가 추격 금지)');
+  const hot=s.r[3]!==null&&s.r[3]>=30;
+  const items=[
+    NAI('대국관 정합','2년 후 경제 시나리오와의 연결은 사람이 쓴다 — korekawa-method로'),
+    IT('수면 아래',(s.mc&&s.mc<3000&&down(s.r[0]))?2:(down(s.r[0])?1:0),PROXY,
+       `시총 ${FM(s.mc,0)}억 · 1년 주가 ${FM(s.r[0])}% — 거래회전율 대신 규모·소외도로 대용`),
+    IT('능선 위치',(bp===null||bp===undefined)?null:((bp>=0.10&&bp<=0.40)?2:(bp<0.60?1:0)),PROXY,
+       `밴드 위치 ${FM(bp,2)} — 2·3부 능선(0.10~0.40)이 만점`),
+    IT('실적 기반',(s.profit_streak===null||s.profit_streak===undefined)?null:
+       (hot?0:(s.profit_streak>=8?2:(s.profit_streak>=4?1:0))),DIRECT,
+       `${s.profit_streak}분기 연속 흑자${hot?' · 1개월 +30%↑ 완력시세 감지':''}`),
+    NAI('인내 가능성','2년 보유 가능 자금·신용 미사용 여부는 계좌 상태 — risk-manager로')];
+  return finalizeM('korekawa','고레가와 긴조 · 수면 아래 매집',s,items,v,null,negM(bp));}
+
+function m_oneil(s){const items=[
+    IT('C 현분기 이익',tierM(s.op_yoy,25,10),DIRECT,`분기 영업이익 YoY ${FM(s.op_yoy)}% (2점 +25%↑)`),
+    IT('A 연간 이익',tierM(s.ttm_op_yoy,25,10),DIRECT,`TTM 영업이익 YoY ${FM(s.ttm_op_yoy)}% (2점 +25%↑)`),
+    IT('N 신고가',bandq(s.band_pos)===null?null:(bandq(s.band_pos)>=0.90?2:(bandq(s.band_pos)>=0.70?1:0)),
+       PROXY,`밴드 위치 ${FM(s.band_pos,2)} — 신고가 근접이 만점`),
+    IT('L 주도주',tierM(s.r[1],30,10),DIRECT,`6개월 주가 ${FM(s.r[1])}% (2점 +30%↑)`),
+    NAI('I 기관 수급','기관·외국인 순매수가 세종 데이터에 없음 — supply-demand-analyzer로')];
+  return finalizeM('oneil','윌리엄 오닐 · CANSLIM',s,items,[],null,s.ttm_op_yoy??null);}
+
+const MASTERS={ken_fisher:['켄 피셔 · PSR 역발상',m_kenfisher],
+  philip_fisher:['필립 피셔 · 위대한 기업',m_philipfisher],
+  graham:['벤저민 그레이엄 · 안전마진',m_graham],
+  buffett:['워런 버핏 · 경제적 해자',m_buffett],
+  lynch:['피터 린치 · PEG',m_lynch],
+  korekawa:['고레가와 긴조 · 수면 아래 매집',m_korekawa],
+  oneil:['윌리엄 오닐 · CANSLIM',m_oneil]};
+const MORDER=['ken_fisher','philip_fisher','graham','buffett','lynch','korekawa','oneil'];
+
+function councilM(s){
+  const r={}; MORDER.forEach(k=>r[k]=MASTERS[k][1](s));
+  const vals=MORDER.map(k=>r[k].score).filter(x=>x!==null);
+  const avg=vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10)/10:null;
+  const vet=MORDER.filter(k=>r[k].veto.length).map(k=>r[k].master_label);
+  const scored=MORDER.filter(k=>r[k].score!==null);
+  const best=scored.length?scored.reduce((a,b)=>r[a].score>=r[b].score?a:b):null;
+  const worst=scored.length?scored.reduce((a,b)=>r[a].score<=r[b].score?a:b):null;
+  const verdict=avg===null?null:(vet.length?(vet.length>=3?'회피':'유보')
+    :(avg>=70?'매수우위':avg>=55?'관망':avg>=40?'유보':'회피'));
+  return {council_avg:avg,verdict,veto_masters:vet,
+    best_master:best?r[best].master_label:null,best_score:best?r[best].score:null,
+    worst_master:worst?r[worst].master_label:null,
+    spread:(best&&worst)?Math.round((r[best].score-r[worst].score)*10)/10:null,
+    scores:Object.fromEntries(MORDER.map(k=>[k,r[k].score])),detail:r};}
+
 const GW={ttm_op_yoy:30,ttm_rev_yoy:20,per_eff:20,pbr:10,roe_eff:20};
 function garpPool(pool){
   const rk={};
@@ -220,6 +465,20 @@ const COLS={
    ['op_med','영업이익YoY%'],['rev_med','매출YoY%'],['opm_med','OPM%'],['per_med','PER'],
    ['pbr_med','PBR'],['roe_med','ROE%'],['ret_med','3M%']]};
 COLS.shock=COLS.surprise;
+/* 거장별 표시 컬럼 — 그 거장이 실제로 보는 지표만 */
+const MCOLS={
+ all:[['n','종목','l'],['m','시장','l'],['im','산업','l'],['score','7인평균'],['grade','판정','l'],
+   ['best_label','최고점 거장','l'],['best_score','점수'],['spread','의견차'],['veto_n','VETO'],['mc','시총(억)']],
+ ken_fisher:[['psr','PSR'],['기업유형','유형','l'],['psr_zone','PSR구간','l'],['glitch','글리치','l'],['opm_ttm','OPM%']],
+ philip_fisher:[['ttm_rev_yoy','TTM매출%'],['opm_ttm','OPM%'],['sc','주식수%'],['loss_q','적자분기']],
+ graham:[['pbr','PBR'],['per_eff','PER'],['dd_from_high','고점대비%'],['profit_streak','연속흑자']],
+ buffett:[['roe_eff','ROE%'],['earnings_yield','이익수익률%'],['opm_cv','이익변동'],['sc','주식수%']],
+ lynch:[['peg_lynch','PEG'],['per_eff','PER'],['growth_capped','성장률(상한)'],['ttm_op_yoy','TTM이익%']],
+ korekawa:[['band_pos','능선'],['r0','1년주가%'],['profit_streak','연속흑자']],
+ oneil:[['op_yoy','분기이익%'],['ttm_op_yoy','TTM이익%'],['band_pos','밴드'],['r1','6M주가%']]};
+const mcolsFor=w=>w==='all'?MCOLS.all
+  :[['n','종목','l'],['m','시장','l'],['im','산업','l'],['score','점수'],['grade','등급','l'],
+    ['확인율','확인율%']].concat(MCOLS[w]).concat([['mc','시총(억)'],['veto_n','VETO']]);
 const med=a=>{const v=a.filter(x=>x!==null&&x!==undefined&&!isNaN(x)).sort((x,y)=>x-y);
   return v.length?(v.length%2?v[(v.length-1)/2]:(v[v.length/2-1]+v[v.length/2])/2):null;};
 
@@ -238,6 +497,36 @@ function build(){
     hint.textContent='종목 3개 이상 발표된 산업(중분류)만 표시. 점수는 그 산업 소속 종목들의 실적 서프라이즈 점수 중앙값.';
     kp.innerHTML=box([['산업 수',ROWS.length],['서프라이즈 다수 산업',ROWS.filter(r=>r.n_sur>=3).length],
       ['이익 역성장 산업',ROWS.filter(r=>r.op_med!==null&&r.op_med<0).length]]);
+  }else if(TAB==='masters'){
+    const who=document.getElementById('mst').value;
+    const noVeto=document.getElementById('mveto').value==='1';
+    const rows=[];
+    for(const s of f){
+      if(s.op_q===null||s.op_q===undefined)continue;
+      if(who==='all'){
+        const c=councilM(s); if(c.council_avg===null)continue;
+        rows.push(Object.assign({},s,{score:c.council_avg,grade:c.verdict,
+          best_label:(c.best_master||'').split(' · ')[0],best_score:c.best_score,
+          spread:c.spread,veto_n:c.veto_masters.length,council:c,
+          tiebreak:c.best_score}));
+      }else{
+        const r=MASTERS[who][1](s); if(r.score===null)continue;
+        rows.push(Object.assign({},s,{score:r.score,grade:r.grade,확인율:r.확인율,
+          veto_n:r.veto.length,mres:r,tiebreak:r.tiebreak},
+          r.psr!==undefined?{psr:r.psr,기업유형:r.기업유형,psr_zone:r.psr_zone,glitch:r.glitch}:{},
+          r.peg_lynch!==undefined?{peg_lynch:r.peg_lynch,growth_capped:r.growth_capped}:{}));
+      }
+    }
+    ROWS=noVeto?rows.filter(r=>!r.veto_n):rows;
+    SORT={k:'score',asc:false};
+    const lbl=who==='all'?'거장 7인 종합':MASTERS[who][0];
+    hint.innerHTML=who==='all'
+      ? '거장 <b>동일가중 평균</b>. 이 표의 핵심은 평균이 아니라 <b>의견차</b>다 — 거장들이 갈리는 종목에 판단할 거리가 있다.'
+      : `<b>${esc(lbl)}</b> 기준. 데이터가 없는 항목은 0점이 아니라 N/A로 분모에서 뺐고, 몇 개로 낸 점수인지 <b>확인율</b>로 표시한다. 종목을 누르면 항목별 채점 근거가 나온다.`;
+    kp.innerHTML=box([['채점 종목',ROWS.length],['TOP',ROWS.filter(r=>r.grade==='TOP').length],
+      ['GOOD',ROWS.filter(r=>r.grade==='GOOD').length],
+      ['VETO',rows.filter(r=>r.veto_n).length],
+      ['평균 확인율',who==='all'?'—':Math.round(ROWS.reduce((a,b)=>a+(b.확인율||0),0)/(ROWS.length||1))+'%']]);
   }else if(TAB==='garp'){
     ROWS=pool.filter(s=>s.garp!==null);
     if(!['garp','per_eff','pbr','roe_eff','ttm_op_yoy','ttm_rev_yoy','mc','growth_score','value_score'].includes(SORT.k))SORT={k:'garp',asc:false};
@@ -259,23 +548,34 @@ function build(){
   sortRows(); draw();
 }
 const box=a=>a.map(([l,v])=>`<div class="kpi"><b>${typeof v==='number'?v.toLocaleString('ko-KR'):v}</b><span>${l}</span></div>`).join('');
+const gv=(o,k)=>k==='r0'?o.r[0]:k==='r1'?o.r[1]:k==='r2'?o.r[2]:o[k];
 function sortRows(){const k=SORT.k,s=SORT.asc?1:-1;
-  ROWS.sort((a,b)=>{let x=k==='r2'?a.r[2]:a[k],y=k==='r2'?b.r[2]:b[k];
+  ROWS.sort((a,b)=>{
+    // 마스터스 탭은 VETO를 항상 아래로 내리고, 동점은 거장 핵심지표로 가른다
+    if(TAB==='masters'&&k==='score'){
+      const dv=(a.veto_n||0)-(b.veto_n||0); if(dv)return dv;
+      if(a.score!==b.score)return (a.score-b.score)*s;
+      const at=a.tiebreak,bt=b.tiebreak;
+      if(at===null||at===undefined||isNaN(at))return 1;
+      if(bt===null||bt===undefined||isNaN(bt))return -1;
+      return (at-bt)*s;}
+    let x=gv(a,k),y=gv(b,k);
     if(typeof x==='string'||typeof y==='string')return String(x??'').localeCompare(String(y??''))*s;
     if(x===null||x===undefined||isNaN(x))return 1; if(y===null||y===undefined||isNaN(y))return -1;
     return (x-y)*s;});}
 function draw(){
-  const cols=COLS[TAB],tb=document.getElementById('tbl');
+  const cols=TAB==='masters'?mcolsFor(document.getElementById('mst').value):COLS[TAB];
+  const tb=document.getElementById('tbl');
   tb.querySelector('thead').innerHTML='<tr>'+cols.map(c=>
     `<th class="${c[2]||''} ${SORT.k===c[0]?'sorted '+(SORT.asc?'asc':''):''}" data-k="${c[0]}">${c[1]}</th>`).join('')+'</tr>';
   const rows=ROWS.slice(0,300);
   document.getElementById('empty').style.display=rows.length?'none':'block';
   tb.querySelector('tbody').innerHTML=rows.map((r,i)=>'<tr data-i="'+i+'">'+cols.map(c=>{
-    const k=c[0];let v=k==='r2'?r.r[2]:r[k],h;
-    if(k==='n')h=`<td class="l nm">${esc(v)}</td>`;
+    const k=c[0];let v=gv(r,k),h;
+    if(k==='n')h=`<td class="l nm">${esc(v)}${r.veto_n?' <i class="fl" style="color:#c62828">⛔</i>':''}</td>`;
     else if(k==='flags')h=`<td class="l fl">${(v||[]).map(x=>`<i class="${x[1]}">${x[0]}</i>`).join('')||'-'}</td>`;
-    else if(k==='grade'||k==='garp_grade')h=`<td class="l">${v?`<span class="g g-${v}">${v}</span>`:'-'}</td>`;
-    else if(['op_yoy','rev_yoy','accel','r2','ttm_op_yoy','ttm_rev_yoy','op_med','rev_med','ret_med'].includes(k))h=`<td>${P(v)}</td>`;
+    else if(k==='grade'||k==='garp_grade')h=`<td class="l">${v?`<span class="g g-${GCLS[v]||v}">${v}</span>`:'-'}</td>`;
+    else if(['op_yoy','rev_yoy','accel','r0','r1','r2','ttm_op_yoy','ttm_rev_yoy','op_med','rev_med','ret_med','dd_from_high','sc'].includes(k))h=`<td>${P(v)}</td>`;
     else if(typeof v==='number')h=`<td>${F(v,Math.abs(v)>=1000?0:Math.abs(v)<10?2:1)}</td>`;
     else h=`<td class="${c[2]||''}">${esc(v??'-')}</td>`;
     return h;}).join('')+'</tr>').join('');
@@ -299,6 +599,38 @@ function bars(qs,vals,color,neg){
        `<text x="${x+bw/2}" y="${v>=0?yy-4:zy+h+11}" font-size="9" fill="#5b6779" text-anchor="middle">${F(v,0)}</text>`;}).join('')+
    qs.map((q,i)=>`<text x="${pad+gap*i+gap/2}" y="${H-5}" font-size="8.5" fill="#9aa6b6" text-anchor="middle">${String(q).slice(2)}</text>`).join('')+'</svg>';
 }
+/* 종목 카드의 거장 블록 — 7인 점수 막대 + 선택 거장의 항목별 근거 */
+function mastersBlock(r){
+  if(r.op_q===null||r.op_q===undefined)return '';
+  const c=councilM(r), sel=(TAB==='masters')?document.getElementById('mst').value:'all';
+  const bars=MORDER.map(k=>{const d=c.detail[k],sc=d.score;
+    const w=sc===null?0:sc, col=d.veto.length?'#c62828':sc>=80?'#1a4fc4':sc>=65?'#1b7a3d':sc>=50?'#e65100':'#8a94a6';
+    return `<div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+      <span style="width:104px;font-size:.76rem;color:#39506e;font-weight:700">${esc(MASTERS[k][0].split(' · ')[0])}</span>
+      <span style="flex:1;background:#eef2f8;border-radius:5px;height:13px;position:relative;overflow:hidden">
+        <span style="position:absolute;left:0;top:0;bottom:0;width:${w}%;background:${col}"></span></span>
+      <span style="width:88px;text-align:right;font-size:.75rem;color:#5b6779">${sc===null?'채점불가':F(sc)+' · '+d.확인율+'%'}</span>
+      ${d.veto.length?'<span style="font-size:.7rem;color:#c62828;font-weight:800">VETO</span>':''}</div>`;}).join('');
+  const showKeys=sel==='all'?MORDER:[sel];
+  const detailHtml=showKeys.map(k=>{const d=c.detail[k];
+    return `<div style="margin-top:12px">
+      <h3 style="font-size:.88rem;color:#0b1f3f">${esc(d.master_label)} — ${d.score===null?'채점 불가':F(d.score)+'점'}
+        <span style="font-weight:500;color:#5b6779;font-size:.78rem">(확인율 ${d.확인율}% · ${d.채점항목}/${d.전체항목}항목${d.대용수?` · 대용 ${d.대용수}`:''})</span></h3>
+      ${d.veto.length?`<p class="lg" style="color:#c62828;font-weight:700">⛔ ${d.veto.map(esc).join(' / ')}</p>`:''}
+      ${(d.warns||[]).length?`<p class="lg" style="color:#e65100">⚠ ${d.warns.map(esc).join(' / ')}</p>`:''}
+      ${d.psr_zone?`<p class="lg">PSR ${F(d.psr,2)} · ${esc(d.기업유형)} · <b>${esc(d.psr_zone)}</b> · ${esc(d.glitch||'')}
+        ${d.psr_milestones?`<br>PSR 마일스톤 도달 시 주가 배수 — ${Object.entries(d.psr_milestones).map(([t,x])=>`PSR ${t} → ${F(x,2)}배`).join(' · ')}`:''}</p>`:''}
+      ${d.note?`<p class="lg" style="color:#8a5a00">${esc(d.note)}</p>`:''}
+      <table style="min-width:0"><thead><tr><th class="l">항목</th><th>점수</th><th class="l">출처</th><th class="l">근거</th></tr></thead>
+      <tbody>${d.items.map(i=>`<tr><td class="l">${esc(i.항목)}</td>
+        <td>${i.점수===null||i.점수===undefined?'—':i.점수}</td>
+        <td class="l" style="color:${i.상태==='N/A'?'#9aa6b6':i.상태==='대용'?'#e65100':'#1b7a3d'}">${esc(i.상태)}</td>
+        <td class="l" style="font-size:.78rem;color:#5b6779">${esc(i.설명||'')}</td></tr>`).join('')}</tbody></table></div>`;}).join('');
+  return `<div class="chart"><h3>거장 7인 채점 — 평균 ${c.council_avg===null?'-':F(c.council_avg)}점 · <b>${esc(c.verdict||'-')}</b>
+      ${c.spread!==null?` · 의견차 ${F(c.spread)}점`:''}</h3>
+    <p class="lg">막대 옆 숫자는 <b>점수 · 확인율</b>. 확인율이 낮으면 그 거장의 기준 중 이 데이터로 확인한 항목이 적다는 뜻이다.</p>
+    ${bars}${detailHtml}</div>`;}
+
 function detail(r){
   const qs=DB.quarters, pct=r.gpct||{};
   const pv=k=>pct[k]===null||pct[k]===undefined?'-':F(pct[k],0)+'%';
@@ -330,6 +662,7 @@ function detail(r){
         PER저평가 ${pv('per_eff')} · PBR저평가 ${pv('pbr')} · ROE ${pv('roe_eff')}</p></div>`:''}
     ${r.parts?`<div class="chart"><h3>실적 점수 분해</h3><p class="lg">${
       Object.entries(r.parts).map(([k,v])=>`${k} ${F(v)}`).join(' · ')}</p></div>`:''}
+    ${mastersBlock(r)}
     <p class="note">런레이트 비율 ${r.runrate===null?'-':F(r.runrate,2)}배 (최근 분기 이익 ×4 ÷ TTM). 0.5배 미만이면 TTM 기준 밸류는 이미 지난 호황을 보고 있는 것이다.</p>`;
   document.getElementById('modal').classList.add('on');
 }
@@ -362,9 +695,12 @@ fetch('data/sejong-data.json?v='+Date.now()).then(r=>r.json()).then(d=>{
   ['q','mk','ind','mc'].forEach(id=>document.getElementById(id).onchange=e=>{
     if(id==='q')QI=+e.target.value; build();});
   let tm; document.getElementById('kw').oninput=()=>{clearTimeout(tm);tm=setTimeout(build,220);};
+  ['mst','mveto'].forEach(id=>document.getElementById(id).onchange=build);
   document.querySelectorAll('.tab').forEach(el=>el.onclick=()=>{
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));el.classList.add('on');
-    TAB=el.dataset.t; SORT={k:TAB==='garp'?'garp':TAB==='sector'?'score_med':'score',asc:TAB==='shock'};build();});
+    TAB=el.dataset.t;
+    document.getElementById('mrow').style.display=TAB==='masters'?'flex':'none';
+    SORT={k:TAB==='garp'?'garp':TAB==='sector'?'score_med':'score',asc:TAB==='shock'};build();});
   build();
 }).catch(e=>{document.getElementById('hint').innerHTML=
   '<b style="color:#c62828">데이터를 불러오지 못했습니다.</b> data/sejong-data.json 게시 여부를 확인하세요.';console.error(e);});
