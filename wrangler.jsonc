@@ -1,3 +1,10 @@
+// ⛔ 이 설정으로 `wrangler deploy` 를 직접 실행하지 마세요.
+//    배포는 main 커밋 → Cloudflare Workers Builds 자동 배포로만 합니다.
+//    assets.directory 가 "." 이므로 저장소 전체 파일이 없는 디렉터리에서 배포하면
+//    프로덕션 애셋 번들이 반쪽짜리로 교체되어 사이트 전 페이지가 404 가 됩니다.
+//    (worker.js 가 빠지면 /api/*, KV 기반 /data/*.json 도 함께 죽습니다)
+//    사고 이력 2026-07-31 → 복구: 대시보드 > 배포 > 직전 main 빌드 버전 롤백
+//    자세한 내용은 DEPLOY.md 참고.
 {
   "name": "trend-insight-site",
   "main": "worker.js",
