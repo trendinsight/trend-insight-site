@@ -74,12 +74,12 @@
   </div>
   <div class="row">
     <div class="card">
-      <h2>산출 분해</h2>
-      <div class="meta">주식 내 가치 비중이 어떻게 계산됐는가</div>
+      <h2>왜 이 비율인가? — 3단계 시소</h2>
+      <div class="meta">주식 안에서 가치 : 성장 비율이 정해지는 과정</div>
       <div id="calcbody"></div>
     </div>
     <div class="card">
-      <h2>시장 검증 — 스타일 상대강도</h2>
+      <h2>시장에 물어봤다 — 답안 맞춰보기</h2>
       <div class="meta" id="rsmeta"></div>
       <div id="rsbody"></div>
     </div>
@@ -167,35 +167,65 @@ function render(rec){
       <div style="width:${f.growth}%;background:var(--gro)"><span class="pct">${f.growth}%</span><span class="lb">성장</span></div>
     </div>`;
 
-  // 산출 분해 (기본 → 국면 → 시장검증 → 최종)
+  // 산출 분해 — 시소(성장↔가치) 3단계 스토리
   const st=rec.style;
-  const steps=[
-    ['확률가중 기본 (가치)',st.value_base,'var(--neu)'],
-    ['+ 국면 보정 ('+esc(rec.phase_ko)+')',st.phase_adj,st.phase_adj>=0?'var(--val)':'var(--gro)'],
-    ['+ 시장검증 보정',st.rs_adj,st.rs_adj>=0?'var(--val)':'var(--gro)'],
-    ['= 주식 내 가치 비중',st.value_pct,'var(--val)'],
-  ];
-  document.getElementById('calcbody').innerHTML='<div class="bars">'+steps.map(([lb,v,col],i)=>{
-    const isadj=i===1||i===2;
-    const w=isadj?Math.min(100,Math.abs(v)*8):Math.min(100,v);
-    const txt=isadj?(v>=0?'+':'')+v.toFixed(1)+'%p':v.toFixed(1)+'%';
-    return `<div class="bar"><span class="lbl">${lb}</span><span class="track"><span class="fill" style="width:${w}%;background:${col}"></span></span><span class="val">${txt}</span></div>`;
-  }).join('')+`</div>
-  <div class="note">가치 비중이 50% 위면 가치 우위, 아래면 성장 우위 국면. 캡 25~75%.</div>`;
+  function seesaw(pos,label,col){
+    // pos: 가치 비중 0~100 (오른쪽=가치)
+    return `<div style="margin:2px 0 10px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-bottom:3px">
+        <span style="color:var(--gro)">◀ 성장 쪽</span><span>${label}</span><span style="color:var(--val)">가치 쪽 ▶</span></div>
+      <div style="position:relative;height:16px;border-radius:8px;background:linear-gradient(90deg,var(--gro) 0%,#3a3f4a 50%,var(--val) 100%);opacity:.95">
+        <div style="position:absolute;left:50%;top:-2px;bottom:-2px;width:2px;background:#0f1115"></div>
+        <div style="position:absolute;left:${pos}%;top:-5px;transform:translateX(-50%);width:14px;height:26px;border-radius:5px;background:${col};border:2px solid #0f1115;box-shadow:0 0 6px ${col}"></div>
+      </div>
+    </div>`;
+  }
+  const stepTxt=(v,who)=>`${who} 쪽으로 <b>${Math.abs(v).toFixed(0)}칸(%p)</b> 이동`;
+  const s1=st.value_base, s2=s1+st.phase_adj, s3=st.value_pct;
+  const arrow=v=>v===0?'—':(v>0?`<span style="color:var(--val)">▶ ${stepTxt(v,'가치')}</span>`:`<span style="color:var(--gro)">◀ ${stepTxt(v,'성장')}</span>`);
+  const won=Math.round(st.value_pct);
+  document.getElementById('calcbody').innerHTML=`
+    <div style="font-size:13px;line-height:1.9">
+      <div><b style="color:var(--sub)">①</b> 앞으로 6개월 금리 전망만 보면 → 바늘이 <b>가치 ${s1.toFixed(1)}</b>에서 출발</div>
+      ${seesaw(s1,'금리 전망 반영',(s1>=50?'var(--val)':'var(--gro)'))}
+      <div><b style="color:var(--sub)">②</b> 지금 국면이 <b>${esc(rec.phase_ko)}</b>라서 → ${arrow(st.phase_adj)}</div>
+      ${seesaw(s2,'국면 반영',(s2>=50?'var(--val)':'var(--gro)'))}
+      <div><b style="color:var(--sub)">③</b> 실제 시장 흐름 확인 결과 → ${arrow(st.rs_adj)}</div>
+      ${seesaw(s3,'최종 위치','var(--cash)')}
+    </div>
+    <div style="margin-top:10px;padding:10px 12px;background:#0c0e12;border-radius:10px;font-size:13px;line-height:1.7">
+      💡 <b>쉽게 말하면</b> — 주식에 100만원을 넣는다면
+      <b style="color:var(--val)">가치주 약 ${won}만원</b> : <b style="color:var(--gro)">성장주 약 ${100-won}만원</b>.
+      바늘이 가운데(50)보다 ${st.value_pct>=50?'오른쪽이면 가치주를 더 담는':'왼쪽이면 성장주를 더 담는'} 국면이다.
+    </div>
+    <div class="note">가치주 = 저PER·저PBR·배당 많은 저평가 기업 / 성장주 = 이익이 빠르게 크는 기업. 바늘은 25~75 사이에서만 움직인다(캡).</div>`;
 
-  // 시장 검증
+  // 시장 검증 — "실제 시장에 물어봤다" 성적표
   const rs=rec.rs;
   if(rs){
-    document.getElementById('rsmeta').textContent=`최근 ${rs.window}거래일 수익률 (기준 ${fmtD(rs.date)})`;
+    const VKO={CONFIRM:'✅ 일치',NEUTRAL:'⚖ 무승부',DIVERGE:'⚠ 불일치'};
+    const winner=rs.spread<0?'가치':(rs.spread>0?'성장':'없음');
+    const gap=Math.abs(rs.spread).toFixed(0);
+    document.getElementById('rsmeta').textContent='위 계산이 맞는지, 최근 3개월(60거래일) 실제 시장 성적으로 확인했다';
     const maxr=Math.max(Math.abs(rs.value_ret),Math.abs(rs.growth_ret),1);
+    const row=(nm,sub,ret,col)=>`
+      <div class="bar" style="margin:8px 0">
+        <span class="lbl">${nm}<br><span style="font-size:10px;color:var(--sub)">${sub}</span></span>
+        <span class="track" style="height:12px"><span class="fill" style="width:${Math.abs(ret)/maxr*100}%;background:${col}"></span></span>
+        <span class="val">${ret>=0?'+':''}${ret}%</span>
+      </div>`;
     document.getElementById('rsbody').innerHTML=`
+      <div style="font-size:12px;color:var(--sub);margin-bottom:2px">최근 3개월 성적표 — 누가 더 잘 버텼나?</div>
       <div class="bars">
-        <div class="bar"><span class="lbl">가치 · ${esc(rs.proxies.value.name)}</span><span class="track"><span class="fill" style="width:${Math.abs(rs.value_ret)/maxr*100}%;background:var(--val)"></span></span><span class="val">${rs.value_ret>=0?'+':''}${rs.value_ret}%</span></div>
-        <div class="bar"><span class="lbl">성장 · ${esc(rs.proxies.growth.name)}</span><span class="track"><span class="fill" style="width:${Math.abs(rs.growth_ret)/maxr*100}%;background:var(--gro)"></span></span><span class="val">${rs.growth_ret>=0?'+':''}${rs.growth_ret}%</span></div>
+        ${row('가치주 팀','('+esc(rs.proxies.value.name)+')',rs.value_ret,'var(--val)')}
+        ${row('성장주 팀','('+esc(rs.proxies.growth.name)+')',rs.growth_ret,'var(--gro)')}
       </div>
-      <div style="margin-top:10px;font-size:13px">스프레드(성장−가치) <b>${rs.spread>=0?'+':''}${rs.spread}%p</b>
-      &nbsp;<span class="vchip" style="background:${VC[rs.verdict]||'var(--neu)'}">${esc(rs.verdict||'')}</span></div>
-      <div class="note">${rs.verdict==='CONFIRM'?'금리 논리와 시장 흐름 일치 — 배분 신뢰도 높음':rs.verdict==='DIVERGE'?'금리 논리와 시장 흐름 불일치 — 배분 이동은 분할로, 전환 확인 후 가속':'뚜렷한 스타일 우위 없음'}</div>`;
+      <div style="margin-top:10px;padding:10px 12px;background:#0c0e12;border-radius:10px;font-size:13px;line-height:1.7">
+        ${winner==='없음'?'두 팀 성적이 비슷하다.':`최근 3개월은 <b style="color:${winner==='가치'?'var(--val)':'var(--gro)'}">${winner}주 팀</b>이 <b>${gap}%p</b> 더 잘 버텼다.`}
+        금리로 계산한 방향과 실제 시장 방향이
+        <span class="vchip" style="background:${VC[rs.verdict]||'var(--neu)'}">${VKO[rs.verdict]||esc(rs.verdict||'')}</span>
+      </div>
+      <div class="note">${rs.verdict==='CONFIRM'?'계산과 시장이 같은 말을 한다 → 위 배분을 믿고 가도 되는 국면.':rs.verdict==='DIVERGE'?'계산과 시장이 다른 말을 한다 → 배분을 한 번에 옮기지 말고 나눠서 천천히.':'아직 시장의 답이 뚜렷하지 않다 → 배분 이동은 보수적으로.'}</div>`;
   }else{
     document.getElementById('rsmeta').textContent='';
     document.getElementById('rsbody').innerHTML='<div class="note">이 회차는 상대강도 검증이 생략되었다 (데이터 미수집).</div>';
