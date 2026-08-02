@@ -184,19 +184,32 @@ function render(rec){
   const s1=st.value_base, s2=s1+st.phase_adj, s3=st.value_pct;
   const arrow=v=>v===0?'—':(v>0?`<span style="color:var(--val)">▶ ${stepTxt(v,'가치')}</span>`:`<span style="color:var(--gro)">◀ ${stepTxt(v,'성장')}</span>`);
   const won=Math.round(st.value_pct);
+  const tag=(t,c)=>`<span style="display:inline-block;padding:1px 7px;border-radius:5px;font-size:10px;font-weight:700;background:${c};color:#0b0d10;margin-right:6px;vertical-align:1px">${t}</span>`;
   document.getElementById('calcbody').innerHTML=`
     <div style="font-size:13px;line-height:1.9">
-      <div><b style="color:var(--sub)">①</b> 앞으로 6개월 금리 전망만 보면 → 바늘이 <b>가치 ${s1.toFixed(1)}</b>에서 출발</div>
+      <div>${tag('미래 예측','var(--warn)')}<b style="color:var(--sub)">①</b> 앞으로 6개월 금리 전망만 보면 → 바늘이 <b>가치 ${s1.toFixed(1)}</b>에서 출발</div>
       ${seesaw(s1,'금리 전망 반영',(s1>=50?'var(--val)':'var(--gro)'))}
-      <div><b style="color:var(--sub)">②</b> 지금 국면이 <b>${esc(rec.phase_ko)}</b>라서 → ${arrow(st.phase_adj)}</div>
+      <div>${tag('현재 위치','var(--neu)')}<b style="color:var(--sub)">②</b> 지금 국면이 <b>${esc(rec.phase_ko)}</b>라서 → ${arrow(st.phase_adj)}</div>
       ${seesaw(s2,'국면 반영',(s2>=50?'var(--val)':'var(--gro)'))}
-      <div><b style="color:var(--sub)">③</b> 실제 시장 흐름 확인 결과 → ${arrow(st.rs_adj)}</div>
+      <div>${tag('과거 실측','var(--ok)')}<b style="color:var(--sub)">③</b> 최근 3개월 실제 주가 흐름 확인 → ${arrow(st.rs_adj)}</div>
       ${seesaw(s3,'최종 위치','var(--cash)')}
     </div>
     <div style="margin-top:10px;padding:10px 12px;background:#0c0e12;border-radius:10px;font-size:13px;line-height:1.7">
       💡 <b>쉽게 말하면</b> — 주식에 100만원을 넣는다면
-      <b style="color:var(--val)">가치주 약 ${won}만원</b> : <b style="color:var(--gro)">성장주 약 ${100-won}만원</b>.
-      바늘이 가운데(50)보다 ${st.value_pct>=50?'오른쪽이면 가치주를 더 담는':'왼쪽이면 성장주를 더 담는'} 국면이다.
+      <b style="color:var(--val)">가치주 약 ${won}만원</b> : <b style="color:var(--gro)">성장주 약 ${100 - won}만원</b>.
+      바늘이 가운데(50)보다 ${st.value_pct >= 50 ? '오른쪽이면 가치주를 더 담는' : '왼쪽이면 성장주를 더 담는'} 국면이다.
+    </div>
+    <div style="margin-top:12px;padding:12px 14px;background:#12151b;border:1px solid var(--line);border-radius:10px;font-size:12.5px;line-height:1.85">
+      <b>❓ ①과 ③은 뭐가 다른가</b><br>
+      <b style="color:var(--warn)">① 금리 전망</b>은 <b>"앞으로 이렇게 되어야 한다"</b>는 <u>이론상의 예측</u>이다.
+      아직 일어나지 않은 일이라 <b>틀릴 수도, 너무 이를 수도</b> 있다.<br>
+      <b style="color:var(--ok)">③ 실제 주가 흐름</b>은 <b>"지금 실제로 이렇게 되고 있다"</b>는 <u>이미 벌어진 증거</u>다.
+      최근 3개월 동안 두 스타일 중 누가 실제로 더 잘 버텼는지를 본다.<br><br>
+      <b>왜 둘 다 보나?</b> — 이론만 믿으면 시장이 아직 안 움직였는데 혼자 먼저 갈아타서 오래 기다리게 되고,
+      주가만 믿으면 이미 다 오른 뒤에 뒤늦게 따라 들어간다.
+      그래서 <b>예측(①)으로 방향을 잡고, 증거(③)로 그 방향이 맞는지 확인</b>하는 순서를 쓴다.<br><br>
+      둘이 같은 말을 하면 ③이 바늘을 <b>같은 방향으로 더 밀어</b>주고(확신 강화),
+      다른 말을 하면 <b>반대로 당겨</b> 성급한 이동을 막는다. 아래 "시장에 물어봤다" 카드가 그 판정 결과다.
     </div>
     <div class="note">가치주 = 저PER·저PBR·배당 많은 저평가 기업 / 성장주 = 이익이 빠르게 크는 기업. 바늘은 25~75 사이에서만 움직인다(캡).</div>`;
 
@@ -225,7 +238,8 @@ function render(rec){
         금리로 계산한 방향과 실제 시장 방향이
         <span class="vchip" style="background:${VC[rs.verdict]||'var(--neu)'}">${VKO[rs.verdict]||esc(rs.verdict||'')}</span>
       </div>
-      <div class="note">${rs.verdict==='CONFIRM'?'계산과 시장이 같은 말을 한다 → 위 배분을 믿고 가도 되는 국면.':rs.verdict==='DIVERGE'?'계산과 시장이 다른 말을 한다 → 배분을 한 번에 옮기지 말고 나눠서 천천히.':'아직 시장의 답이 뚜렷하지 않다 → 배분 이동은 보수적으로.'}</div>`;
+      <div class="note">${rs.verdict==='CONFIRM'?'계산과 시장이 같은 말을 한다 → 위 배분을 믿고 가도 되는 국면.':rs.verdict==='DIVERGE'?'계산과 시장이 다른 말을 한다 → 배분을 한 번에 옮기지 말고 나눠서 천천히.':'아직 시장의 답이 뚜렷하지 않다 → 배분 이동은 보수적으로.'}
+      <br>※ 위 카드 ①은 <b>앞으로의 예측</b>, 여기는 <b>이미 지나간 3개월의 실제 성적</b>이다. 예측이 현실에서 확인되는지 대조하는 자리다.</div>`;
   }else{
     document.getElementById('rsmeta').textContent='';
     document.getElementById('rsbody').innerHTML='<div class="note">이 회차는 상대강도 검증이 생략되었다 (데이터 미수집).</div>';
