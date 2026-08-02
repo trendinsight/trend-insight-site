@@ -11,7 +11,7 @@ body{font-family:'Pretendard',sans-serif;margin:0;color:#1c2533;line-height:1.6;
 header{background:#0b1f3f;padding:16px 24px;font-weight:800;display:flex;align-items:center;gap:16px}
 header a{color:#fff;text-decoration:none}
 header .sub{color:#9fb3d1;font-weight:500;font-size:.85rem}
-main{max-width:1080px;margin:0 auto;padding:28px 18px 60px}
+main{max-width:1560px;margin:0 auto;padding:28px 22px 60px}
 h1{color:#0b1f3f;font-size:1.5rem;margin:0 0 6px}
 .desc{color:#5b6779;font-size:.92rem;margin-bottom:18px}
 .toolbar{position:sticky;top:0;z-index:10;background:#f5f7fbee;backdrop-filter:blur(6px);padding:10px 0 8px;border-bottom:1px solid #e4e9f1;margin-bottom:20px}
@@ -28,17 +28,17 @@ h1{color:#0b1f3f;font-size:1.5rem;margin:0 0 6px}
 .ghead h2{margin:0;font-size:1.08rem;color:#0b1f3f}
 .ghead .gq{color:#5b6779;font-size:.84rem;font-weight:500}
 .ghead .cnt{margin-left:auto;background:#eef2f9;color:#3c4757;border-radius:999px;padding:2px 10px;font-size:.75rem;font-weight:700}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}
-.card{background:#fff;border:1px solid #e4e9f1;border-radius:12px;padding:14px 16px;cursor:pointer;transition:box-shadow .15s,border-color .15s}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(390px,1fr));gap:12px}
+.card{background:#fff;border:1px solid #e4e9f1;border-radius:12px;padding:13px 16px;cursor:pointer;transition:box-shadow .15s,border-color .15s;display:flex;flex-direction:column}
 .card:hover{border-color:#2e6ff2;box-shadow:0 3px 12px rgba(46,111,242,.12)}
-.card .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.card .ko{font-weight:800;color:#13294b;font-size:.98rem}
-.card .tag{font-size:.68rem;font-weight:700;border-radius:6px;padding:2px 7px;color:#fff}
-.card .id{color:#9aa6b6;font-size:.72rem;font-family:ui-monospace,monospace}
-.card .go{margin-left:auto;color:#2e6ff2;font-size:.74rem;font-weight:800;white-space:nowrap}
-.card .infoB{margin-left:auto;border:1px solid #d5dde9;background:#f0f4fa;border-radius:6px;cursor:pointer;font-size:.7rem;padding:2px 8px;color:#5b6779;font-family:inherit}
-.card.linked .infoB{margin-left:0}
-.card .use{color:#3c4757;font-size:.85rem;margin-top:6px}
+.card .top{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;min-width:0}
+.card .ko{font-weight:800;color:#13294b;font-size:.97rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+.card .tag{font-size:.67rem;font-weight:700;border-radius:6px;padding:2px 7px;color:#fff;white-space:nowrap;flex:0 0 auto}
+.card .id{color:#9aa6b6;font-size:.72rem;font-family:ui-monospace,monospace;margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .go{margin-left:auto;color:#2e6ff2;font-size:.73rem;font-weight:800;white-space:nowrap;flex:0 0 auto}
+.card .infoB{border:1px solid #d5dde9;background:#f0f4fa;border-radius:6px;cursor:pointer;font-size:.69rem;padding:2px 8px;color:#5b6779;font-family:inherit;white-space:nowrap;flex:0 0 auto}
+.card:not(.linked) .infoB{margin-left:auto}
+.card .use{color:#3c4757;font-size:.85rem;margin-top:7px;flex:1 0 auto}
 .card .more{display:none;margin-top:10px;border-top:1px dashed #e4e9f1;padding-top:10px}
 .card.open .more{display:block}
 .more .lbl{font-size:.72rem;font-weight:700;color:#5b6779;margin-bottom:4px}
@@ -47,8 +47,8 @@ h1{color:#0b1f3f;font-size:1.5rem;margin:0 0 6px}
 .more a.page{display:inline-block;font-size:.8rem;color:#fff;background:#2e6ff2;border-radius:7px;padding:5px 12px;text-decoration:none;font-weight:700}
 .hidden{display:none!important}
 .noresult{color:#9aa6b6;text-align:center;padding:40px 0;display:none}
-footer{max-width:1080px;margin:0 auto;padding:0 18px 40px;color:#9aa6b6;font-size:.75rem}
-@media(max-width:640px){.grid{grid-template-columns:1fr}}
+footer{max-width:1560px;margin:0 auto;padding:0 22px 40px;color:#9aa6b6;font-size:.75rem}
+@media(max-width:700px){.grid{grid-template-columns:1fr}.card .id{display:none}}
 </style>
 </head>
 <body>
@@ -57,7 +57,7 @@ footer{max-width:1080px;margin:0 auto;padding:0 18px 40px;color:#9aa6b6;font-siz
 <h1>🧭 스킬 맵 — 어떤 스킬을 쓸까?</h1>
 <div class="desc">투자 워크플로 순서(그룹)와 기능 유형(태그)으로 정리한 전체 스킬 지도. <b>"페이지 열기 →"가 있는 카드는 클릭 즉시 전용 페이지로 이동</b>하고, 호출 문구는 "호출 문구 ▾" 버튼으로 확인합니다.</div>
 <div class="toolbar">
-  <input id="q" type="search" placeholder="스킬 이름·용도·호출 문구 검색 (예: 손절, 온도계, 적정주가, PSR...)">
+  <input id="q" type="search" placeholder="스킬 이름·용도·호출 문구 검색 — 띄어쓰기 무시 (예: 금리예측, 시장온도계, 손절, PSR...)">
   <div class="chips" id="tagchips"></div>
   <div class="stats" id="stats"></div>
 </div>
@@ -179,8 +179,9 @@ function render(){
   const grid=sec.querySelector(".grid");
   items.forEach(s=>{
    const c=document.createElement("div");c.className="card"+(s.p?" linked":"");c.dataset.tag=s.t;
-   c.dataset.text=(s.id+" "+s.ko+" "+s.u+" "+s.tr.join(" ")).toLowerCase();
-   c.innerHTML=`<div class="top"><span class="ko">${s.ko}</span><span class="tag" style="background:${TAGC[s.t]||"#5b6779"}">${s.t}</span><span class="id">${s.id}</span>${s.p?`<span class="go">페이지 열기 →</span>`:""}<button class="infoB" title="호출 문구 보기">호출 문구 ▾</button></div><div class="use">${s.u}</div><div class="more"><div class="lbl">이렇게 말하면 실행돼요</div><div class="trig">${s.tr.map(t=>`<span>"${t}"</span>`).join("")}</div>${s.p?`<a class="page" href="${s.p}" onclick="event.stopPropagation()">전용 페이지 열기 →</a>`:""}</div>`;
+   c.dataset.text=(s.id+" "+s.ko+" "+s.t+" "+s.u+" "+s.tr.join(" ")).toLowerCase();
+   c.dataset.norm=c.dataset.text.replace(/[\s·・.\-_/]/g,"");
+   c.innerHTML=`<div class="top"><span class="ko">${s.ko}</span><span class="tag" style="background:${TAGC[s.t]||"#5b6779"}">${s.t}</span>${s.p?`<span class="go">페이지 열기 →</span>`:""}<button class="infoB" title="호출 문구 보기">호출 문구 ▾</button></div><div class="use">${s.u}</div><div class="id">${s.id}</div><div class="more"><div class="lbl">이렇게 말하면 실행돼요</div><div class="trig">${s.tr.map(t=>`<span>"${t}"</span>`).join("")}</div>${s.p?`<a class="page" href="${s.p}" onclick="event.stopPropagation()">전용 페이지 열기 →</a>`:""}</div>`;
    c.onclick=()=>{if(s.p){window.location.href=s.p;}else{c.classList.toggle("open");}};
    c.querySelector(".infoB").onclick=e=>{e.stopPropagation();c.classList.toggle("open");};
    grid.appendChild(c);
@@ -197,10 +198,12 @@ function render(){
  apply();
 }
 function apply(){
- const q=$("#q").value.trim().toLowerCase();
+ const raw=$("#q").value.trim().toLowerCase();
+ const q=raw, qn=raw.replace(/[\s·・.\-_/]/g,"");
  let shown=0;
  document.querySelectorAll(".card").forEach(c=>{
-  const ok=(!q||c.dataset.text.includes(q))&&(!tagFilter||c.dataset.tag===tagFilter);
+  const hit=!q||c.dataset.text.includes(q)||(qn&&c.dataset.norm.includes(qn));
+  const ok=hit&&(!tagFilter||c.dataset.tag===tagFilter);
   c.classList.toggle("hidden",!ok);if(ok)shown++;
  });
  document.querySelectorAll(".group").forEach(g=>{
