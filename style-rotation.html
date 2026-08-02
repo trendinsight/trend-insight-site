@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>스타일 로테이션 — Trend Insight</title>
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--line:#252a34;--txt:#e6e9ef;--sub:#9aa4b2;
+        --val:#3e8ef7;--gro:#e5484d;--cash:#f5a524;--ok:#12b886;--neu:#7c8598;--warn:#f5a524;--bad:#e5484d;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+  header{padding:22px 18px 8px;max-width:1040px;margin:0 auto}
+  h1{font-size:21px;margin:0 0 4px}
+  .sub{color:var(--sub);font-size:13px;line-height:1.5}
+  .wrap{max-width:1040px;margin:0 auto;padding:12px 18px 60px}
+  .row{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;flex:1;min-width:300px}
+  .card h2{font-size:15px;margin:0 0 2px}
+  .meta{color:var(--sub);font-size:12px;margin-bottom:10px}
+  .ctrl{margin:6px 0 2px;font-size:13px;color:var(--sub)}
+  select{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px}
+  .phasechip{display:inline-block;padding:5px 16px;border-radius:999px;font-size:14px;font-weight:800;color:#0b0d10;margin:4px 0 8px}
+  .rates{font-size:13px;color:var(--sub);margin-bottom:12px}
+  .rates b{color:var(--txt);font-size:15px}
+  .probbar{display:flex;height:26px;border-radius:8px;overflow:hidden;margin:8px 0 4px}
+  .probbar div{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0b0d10;min-width:0;overflow:hidden;white-space:nowrap}
+  .legend{font-size:11px;color:var(--sub);margin-top:4px}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin:0 4px 0 10px;vertical-align:-1px}
+  .allocbar{display:flex;height:44px;border-radius:10px;overflow:hidden;margin:12px 0 6px}
+  .allocbar div{display:flex;flex-direction:column;align-items:center;justify-content:center;color:#0b0d10;font-weight:800;min-width:0;overflow:hidden}
+  .allocbar .pct{font-size:16px;line-height:1}
+  .allocbar .lb{font-size:10px;font-weight:700;opacity:.85}
+  .donutwrap{display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:center}
+  .dlist{font-size:13px;line-height:2}
+  .dlist i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:8px;vertical-align:-1px}
+  .dlist b{font-size:16px}
+  .bars{margin-top:8px}
+  .bar{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12px}
+  .bar .lbl{width:150px;color:var(--sub);flex:none}
+  .bar .track{flex:1;height:9px;background:#0c0e12;border-radius:6px;overflow:hidden;position:relative}
+  .bar .fill{height:100%;border-radius:6px}
+  .bar .val{width:56px;text-align:right;color:var(--txt);font-weight:700}
+  .vchip{display:inline-block;padding:3px 12px;border-radius:999px;font-size:12px;font-weight:800;color:#0b0d10}
+  .flags{margin-top:12px;font-size:12px;color:var(--warn);line-height:1.7;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+  th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:center}
+  th{color:var(--sub);font-weight:600}
+  td.l{text-align:left}
+  .doc{margin-top:26px;color:var(--sub);font-size:12px;line-height:1.8;border-top:1px solid var(--line);padding-top:14px}
+  a{color:var(--val)}
+  .note{font-size:12px;color:var(--sub);margin-top:6px;font-style:italic}
+</style>
+</head>
+<body>
+<header>
+  <h1>🔄 스타일 로테이션</h1>
+  <div class="sub">금리 방향(국면 + 6개월 확률 시나리오)으로 <b style="color:var(--val)">가치</b> : <b style="color:var(--gro)">성장</b> 스타일 배분을 산출하고,
+  <b style="color:var(--cash)">예수금 온도계</b>의 권장 현금 비율과 결합해 최종 3분할(현금/가치/성장)을 낸다.
+  금리 인하 = 할인율↓ → 성장주 리레이팅 / 금리 인상 = 할인율↑ → 저평가·현금흐름 가치주 상대 우위.</div>
+  <div class="ctrl">기준일 <select id="datesel"></select></div>
+</header>
+<div class="wrap">
+  <div class="row">
+    <div class="card" id="phasecard">
+      <h2>금리 국면</h2>
+      <div class="meta" id="pmeta"></div>
+      <div id="phasebody"></div>
+    </div>
+    <div class="card">
+      <h2>최종 자산 배분</h2>
+      <div class="meta">현금(예수금 온도계) + 주식(가치:성장 로테이션)</div>
+      <div id="allocbody"></div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="card">
+      <h2>산출 분해</h2>
+      <div class="meta">주식 내 가치 비중이 어떻게 계산됐는가</div>
+      <div id="calcbody"></div>
+    </div>
+    <div class="card">
+      <h2>시장 검증 — 스타일 상대강도</h2>
+      <div class="meta" id="rsmeta"></div>
+      <div id="rsbody"></div>
+    </div>
+  </div>
+  <div id="flagbox"></div>
+  <div class="card" style="margin-top:14px">
+    <h2>배분 추이</h2>
+    <div class="meta"><i style="color:var(--cash)">■</i> 현금 · <i style="color:var(--val)">■</i> 가치 · <i style="color:var(--gro)">■</i> 성장 (누적 100%)</div>
+    <div id="trend"></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h2>금리 방향 → 스타일 매트릭스 (산식 기준표)</h2>
+    <table>
+      <tr><th>6개월 방향</th><th>주식 내 가치</th><th>주식 내 성장</th><th>논리</th></tr>
+      <tr><td>인하</td><td style="color:var(--val)">35%</td><td style="color:var(--gro)"><b>65%</b></td><td class="l">할인율 하락 → 미래이익 성장주 리레이팅</td></tr>
+      <tr><td>동결</td><td style="color:var(--val)">50%</td><td style="color:var(--gro)">50%</td><td class="l">중립 — 국면 보정으로 방향 결정</td></tr>
+      <tr><td>인상</td><td style="color:var(--val)"><b>65%</b></td><td style="color:var(--gro)">35%</td><td class="l">할인율 상승 → 저PER·현금흐름·배당 가치주 방어</td></tr>
+    </table>
+    <table>
+      <tr><th>현재 국면</th><th>인상기</th><th>정점 동결기</th><th>저점 동결기</th><th>인하기</th></tr>
+      <tr><td class="l">가치 보정</td><td>+5%p</td><td>+3%p</td><td>−3%p</td><td>−5%p</td></tr>
+    </table>
+    <div class="note">확률가중 기본값 + 국면 보정 + 시장검증 보정(±5%p 캡) → 가치 비중 25~75% 캡. 여기에 예수금 온도계 권고 현금을 결합.</div>
+  </div>
+  <div class="doc">
+    <b>읽는 법</b> — ① 금리 국면 카드에서 지금이 사이클 어디인지 확인 → ② 최종 배분 바에서 현금/가치/성장 목표 비율 확인 →
+    ③ 시장 검증에서 금리 논리와 실제 시장 흐름(상대강도)이 일치(CONFIRM)하는지, 어긋나는지(DIVERGE) 확인.
+    DIVERGE면 배분 이동을 서두르지 말고 분할로 접근한다.<br>
+    가치 프록시: PLUS 고배당주(161510) · 성장 프록시: KODEX 코스닥150(229200) · 상대강도 창: 60거래일.<br>
+    이 배분은 참고치이며 단독 매매 신호가 아니다. 연계: <a href="cash-gauge.html">예수금 온도계</a> ·
+    금리 예측 근거는 rate-forecast 리포트 참조.
+  </div>
+</div>
+<script>
+const PC={hiking:'var(--gro)',peak_hold:'var(--warn)',trough_hold:'var(--neu)',cutting:'var(--ok)'};
+const VC={CONFIRM:'var(--ok)',NEUTRAL:'var(--neu)',DIVERGE:'var(--bad)'};
+let DATA=null;
+
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function fmtD(d){return d?`${d.slice(0,4)}.${d.slice(4,6)}.${d.slice(6,8)}`:'';}
+
+function donut(f){
+  const R=62,C=2*Math.PI*R,cx=80,cy=80;
+  const segs=[['cash',f.cash,'var(--cash)'],['value',f.value,'var(--val)'],['growth',f.growth,'var(--gro)']];
+  let off=0,paths='';
+  for(const[,v,col]of segs){
+    const len=C*v/100;
+    paths+=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${col}" stroke-width="22"
+      stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 ${cx} ${cy})"/>`;
+    off+=len;
+  }
+  return `<svg width="160" height="160" viewBox="0 0 160 160">${paths}
+    <text x="80" y="76" text-anchor="middle" fill="var(--txt)" font-size="13" font-weight="700">주식 ${(100-f.cash).toFixed(0)}%</text>
+    <text x="80" y="94" text-anchor="middle" fill="var(--sub)" font-size="11">현금 ${f.cash.toFixed(0)}%</text></svg>`;
+}
+
+function render(rec){
+  // 금리 국면
+  const p=rec.probs||{},rt=rec.rates||{};
+  document.getElementById('pmeta').textContent=`기준일 ${fmtD(rec.date)}${rec.note?' · '+rec.note:''}`;
+  document.getElementById('phasebody').innerHTML=`
+    <span class="phasechip" style="background:${PC[rec.phase]||'var(--neu)'}">${esc(rec.phase_ko)}</span>
+    <div class="rates">한국 기준금리 <b>${rt.kr!=null?rt.kr.toFixed(2)+'%':'—'}</b> &nbsp;·&nbsp; 미국 정책금리 <b>${rt.us!=null?rt.us.toFixed(2)+'%':'—'}</b></div>
+    <div style="font-size:12px;color:var(--sub)">6개월 후 방향 확률</div>
+    <div class="probbar">
+      <div style="width:${p.cut}%;background:var(--ok)">${p.cut>=12?'인하 '+p.cut+'%':''}</div>
+      <div style="width:${p.hold}%;background:var(--neu)">${p.hold>=12?'동결 '+p.hold+'%':''}</div>
+      <div style="width:${p.hike}%;background:var(--gro)">${p.hike>=12?'인상 '+p.hike+'%':''}</div>
+    </div>
+    <div class="legend"><i style="background:var(--ok)"></i>인하 ${p.cut}%<i style="background:var(--neu)"></i>동결 ${p.hold}%<i style="background:var(--gro)"></i>인상 ${p.hike}%</div>`;
+
+  // 최종 배분
+  const f=rec.final;
+  document.getElementById('allocbody').innerHTML=`
+    <div class="donutwrap">${donut(f)}
+      <div class="dlist">
+        <div><i style="background:var(--cash)"></i>현금 <b>${f.cash}%</b> <span style="color:var(--sub);font-size:11px">(${esc(rec.cash.source==='cash-gauge'?'예수금 온도계'+(rec.cash.stance?' · '+rec.cash.stance:''):rec.cash.source==='manual'?'수동':'기본값')})</span></div>
+        <div><i style="background:var(--val)"></i>가치 <b>${f.value}%</b> <span style="color:var(--sub);font-size:11px">(주식 내 ${rec.style.value_pct}%)</span></div>
+        <div><i style="background:var(--gro)"></i>성장 <b>${f.growth}%</b> <span style="color:var(--sub);font-size:11px">(주식 내 ${rec.style.growth_pct}%)</span></div>
+      </div>
+    </div>
+    <div class="allocbar">
+      <div style="width:${f.cash}%;background:var(--cash)"><span class="pct">${f.cash}%</span><span class="lb">현금</span></div>
+      <div style="width:${f.value}%;background:var(--val)"><span class="pct">${f.value}%</span><span class="lb">가치</span></div>
+      <div style="width:${f.growth}%;background:var(--gro)"><span class="pct">${f.growth}%</span><span class="lb">성장</span></div>
+    </div>`;
+
+  // 산출 분해 (기본 → 국면 → 시장검증 → 최종)
+  const st=rec.style;
+  const steps=[
+    ['확률가중 기본 (가치)',st.value_base,'var(--neu)'],
+    ['+ 국면 보정 ('+esc(rec.phase_ko)+')',st.phase_adj,st.phase_adj>=0?'var(--val)':'var(--gro)'],
+    ['+ 시장검증 보정',st.rs_adj,st.rs_adj>=0?'var(--val)':'var(--gro)'],
+    ['= 주식 내 가치 비중',st.value_pct,'var(--val)'],
+  ];
+  document.getElementById('calcbody').innerHTML='<div class="bars">'+steps.map(([lb,v,col],i)=>{
+    const isadj=i===1||i===2;
+    const w=isadj?Math.min(100,Math.abs(v)*8):Math.min(100,v);
+    const txt=isadj?(v>=0?'+':'')+v.toFixed(1)+'%p':v.toFixed(1)+'%';
+    return `<div class="bar"><span class="lbl">${lb}</span><span class="track"><span class="fill" style="width:${w}%;background:${col}"></span></span><span class="val">${txt}</span></div>`;
+  }).join('')+`</div>
+  <div class="note">가치 비중이 50% 위면 가치 우위, 아래면 성장 우위 국면. 캡 25~75%.</div>`;
+
+  // 시장 검증
+  const rs=rec.rs;
+  if(rs){
+    document.getElementById('rsmeta').textContent=`최근 ${rs.window}거래일 수익률 (기준 ${fmtD(rs.date)})`;
+    const maxr=Math.max(Math.abs(rs.value_ret),Math.abs(rs.growth_ret),1);
+    document.getElementById('rsbody').innerHTML=`
+      <div class="bars">
+        <div class="bar"><span class="lbl">가치 · ${esc(rs.proxies.value.name)}</span><span class="track"><span class="fill" style="width:${Math.abs(rs.value_ret)/maxr*100}%;background:var(--val)"></span></span><span class="val">${rs.value_ret>=0?'+':''}${rs.value_ret}%</span></div>
+        <div class="bar"><span class="lbl">성장 · ${esc(rs.proxies.growth.name)}</span><span class="track"><span class="fill" style="width:${Math.abs(rs.growth_ret)/maxr*100}%;background:var(--gro)"></span></span><span class="val">${rs.growth_ret>=0?'+':''}${rs.growth_ret}%</span></div>
+      </div>
+      <div style="margin-top:10px;font-size:13px">스프레드(성장−가치) <b>${rs.spread>=0?'+':''}${rs.spread}%p</b>
+      &nbsp;<span class="vchip" style="background:${VC[rs.verdict]||'var(--neu)'}">${esc(rs.verdict||'')}</span></div>
+      <div class="note">${rs.verdict==='CONFIRM'?'금리 논리와 시장 흐름 일치 — 배분 신뢰도 높음':rs.verdict==='DIVERGE'?'금리 논리와 시장 흐름 불일치 — 배분 이동은 분할로, 전환 확인 후 가속':'뚜렷한 스타일 우위 없음'}</div>`;
+  }else{
+    document.getElementById('rsmeta').textContent='';
+    document.getElementById('rsbody').innerHTML='<div class="note">이 회차는 상대강도 검증이 생략되었다 (데이터 미수집).</div>';
+  }
+
+  // flags
+  const fb=document.getElementById('flagbox');
+  fb.innerHTML=(rec.flags&&rec.flags.length)?'<div class="flags">'+rec.flags.map(x=>'⚠ '+esc(x)).join('<br>')+'</div>':'';
+}
+
+function trend(hist){
+  const el=document.getElementById('trend');
+  if(hist.length<2){el.innerHTML='<div class="note">이력이 2일 이상 쌓이면 추이 차트가 표시된다.</div>';return;}
+  const W=980,H=200,PL=34,PB=20,n=hist.length;
+  const x=i=>PL+(W-PL-8)*i/(n-1), y=v=>8+(H-PB-8)*(1-v/100);
+  function area(getTop,getBot,col){
+    let d='M'+x(0)+' '+y(getTop(hist[0]));
+    for(let i=1;i<n;i++)d+=' L'+x(i)+' '+y(getTop(hist[i]));
+    for(let i=n-1;i>=0;i--)d+=' L'+x(i)+' '+y(getBot(hist[i]));
+    return `<path d="${d} Z" fill="${col}" opacity="0.75"/>`;
+  }
+  const cashTop=r=>100, cashBot=r=>100-r.final.cash;
+  const valBot=r=>100-r.final.cash-r.final.value;
+  const svg=`<svg width="100%" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="min-height:180px">
+    ${[0,25,50,75,100].map(v=>`<line x1="${PL}" y1="${y(v)}" x2="${W-8}" y2="${y(v)}" stroke="#1c212b"/>
+      <text x="4" y="${y(v)+4}" fill="#5b6470" font-size="10">${v}%</text>`).join('')}
+    ${area(cashTop,cashBot,'var(--cash)')}
+    ${area(cashBot,valBot,'var(--val)')}
+    ${area(valBot,()=>0,'var(--gro)')}
+    <text x="${PL}" y="${H-4}" fill="#5b6470" font-size="10">${fmtD(hist[0].date)}</text>
+    <text x="${W-8}" y="${H-4}" fill="#5b6470" font-size="10" text-anchor="end">${fmtD(hist[n-1].date)}</text>
+  </svg>`;
+  el.innerHTML=svg;
+}
+
+async function init(){
+  try{
+    const r=await fetch('data/style-rotation.json?cb='+Date.now());
+    DATA=await r.json();
+  }catch(e){document.querySelector('.wrap').innerHTML='<div class="note">데이터를 불러오지 못했다 (data/style-rotation.json).</div>';return;}
+  const hist=DATA.history||[];
+  if(!hist.length){document.querySelector('.wrap').innerHTML='<div class="note">아직 게시된 데이터가 없다.</div>';return;}
+  const sel=document.getElementById('datesel');
+  sel.innerHTML=hist.slice().reverse().map(h=>`<option value="${h.date}">${fmtD(h.date)}</option>`).join('');
+  sel.onchange=()=>render(hist.find(h=>h.date===sel.value));
+  render(hist[hist.length-1]);
+  trend(hist);
+}
+init();
+</script>
+</body>
+</html>
