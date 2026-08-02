@@ -109,7 +109,7 @@ const S=[
 {g:"g3",id:"trend-masters",ko:"3인 거장 추세",t:"거장기법",u:"토마스 카·리버모어·엘더 3인 독립 판정 + 매매 실행 계획",tr:["삼중스크린","피벗 돌파"],p:"trend-masters.html"},
 {g:"g3",id:"trend-rider",ko:"추세 라이더",t:"거장기법",u:"와인스타인 4단계·RS 주도주 판별·트레일링 스탑 출구 관리",tr:["추세 단계","계속 들고 가도 돼?"],p:"trend-rider-board.html"},
 // GROUP 4
-{g:"g4",id:"stock-analysis",ko:"종목 종합분석",t:"분석",u:"펀더멘털+기술+거시+포트+논거+리스크를 한 편으로 통합 (풀 분석)",tr:["OO 분석해줘","이 종목 어때?"],p:null},
+{g:"g4",id:"stock-analysis",ko:"종목 종합분석",t:"분석",u:"펀더멘털+기술+거시+포트+논거+리스크를 한 편으로 통합 (풀 분석)",tr:["OO 분석해줘","이 종목 어때?"],p:"cockpit.html"},
 {g:"g4",id:"fair-value-band",ko:"적정주가 밴드",t:"밸류에이션",u:"4층 구조(기본·산업·시장·기술) 내재가치 밴드, 저평가/고평가 판정",tr:["적정주가","싸? 비싸?"],p:"fair-value.html"},
 {g:"g4",id:"adjusted-fair-value",ko:"조정 적정주가",t:"밸류에이션",u:"목표주가 컨센서스에 26개 변수를 가중 반영한 조정 적정가",tr:["조정 적정주가","변수 반영해줘"],p:"adjusted-value.html"},
 {g:"g4",id:"broker-report-digest",ko:"종목 리포트 요약",t:"리서치",u:"한 종목의 1년치 증권사 리포트를 목표가·논거·리스크로 종합 요약",tr:["OO 리포트 요약해줘"],p:"report-summary.html"},
@@ -119,13 +119,13 @@ const S=[
 {g:"g4",id:"stock-thermometer",ko:"종목 온도계",t:"온도계",u:"개별 종목 과열/과매도 온도 + 미너비니 셋업 판정",tr:["OO 온도 어때","과열이야?"],p:"stock-gauge.html"},
 {g:"g4",id:"signal-analyzer",ko:"시그널 분석",t:"분석",u:"MACD·RSI·볼린저·OBV·ADX 통합 매수/매도 점수(0~100) 분해",tr:["시그널 분석","매수 점수"],p:"signal.html"},
 {g:"g4",id:"ichimoku-analyzer",ko:"일목균형표",t:"분석",u:"구름대·삼역호전 5대 시그널 + ADX·OBV 보완, 시나리오 확률",tr:["일목 분석","구름대 지지 되나?"],p:"ichimoku.html"},
-{g:"g4",id:"crypto-analysis",ko:"크립토 종합분석",t:"분석",u:"BTC·ETH·XRP 전용 펀더멘털+기술+거시+리스크 풀 분석",tr:["비트코인 어때?","코인 분석"],p:null},
+{g:"g4",id:"crypto-analysis",ko:"크립토 종합분석",t:"분석",u:"BTC·ETH·XRP 전용 펀더멘털+기술+거시+리스크 풀 분석",tr:["비트코인 어때?","코인 분석"],p:"crypto-report.html"},
 // GROUP 5
-{g:"g5",id:"entry-timer",ko:"진입 타이머",t:"타이밍·계산",u:"VCP 피벗·다바스 박스·터틀 사이징으로 '지금 살 자리인가' 판정",tr:["지금 사도 돼?","매수가 잡아줘"],p:null},
+{g:"g5",id:"entry-timer",ko:"진입 타이머",t:"타이밍·계산",u:"VCP 피벗·다바스 박스·터틀 사이징으로 '지금 살 자리인가' 판정",tr:["지금 사도 돼?","매수가 잡아줘"],p:"entry.html"},
 {g:"g5",id:"pyramid-calculator",ko:"피라미드 계산기",t:"타이밍·계산",u:"ATR 기반 1유닛 수량·2N 손절가·피라미딩(불타기) 지점 계산",tr:["몇 주 살까","불타기 계획"],p:"pyramid-calc.html"},
 {g:"g5",id:"crypto-thermometer",ko:"코인 온도계",t:"온도계",u:"BTC·ETH·XRP 진입 판정(BUY_POINT 등) + 과열 온도·텔레그램 알림",tr:["코인 살 자리야?","코인 온도계"],p:"crypto-gauge.html"},
 // GROUP 6
-{g:"g6",id:"risk-manager",ko:"리스크 매니저",t:"리스크·점검",u:"리스크 규정 헌법 관리, 매매 전 사전점검·포지션 한도·사이징",tr:["사도 돼?","얼마까지 살 수 있어?"],p:null},
+{g:"g6",id:"risk-manager",ko:"리스크 매니저",t:"리스크·점검",u:"리스크 규정 헌법 관리, 매매 전 사전점검·포지션 한도·사이징",tr:["사도 돼?","얼마까지 살 수 있어?"],p:"risk.html"},
 {g:"g6",id:"correlation-risk",ko:"상관·팩터 점검",t:"리스크·점검",u:"보유종목 숨은 레버리지·최악일 동시 손실·분산 착시 정량화",tr:["같이 빠지는 종목","팩터 중복"],p:null},
 {g:"g6",id:"cash-ratio-advisor",ko:"예수금 온도계",t:"온도계",u:"시장·거시·심리 세 온도계 결합 → 권장 현금 비율(%) 추천",tr:["현금 몇 프로?","예수금 온도계"],p:"cash-gauge.html"},
 {g:"g6",id:"style-rotation",ko:"스타일 로테이션",t:"전략",u:"금리 국면 → 가치:성장:현금 3분할 배분 비율 산출",tr:["가치주야 성장주야?","스타일 배분"],p:"style-rotation.html"},
@@ -137,12 +137,12 @@ const S=[
 {g:"g7",id:"sa-conviction",ko:"SA 컨빅션",t:"전략",u:"AI 인프라 6대 병목주 발굴 + 집중투자 가드레일 R1~R7 감사",tr:["AI 인프라주","SA 리스크 감사"],p:"sa-conviction.html"},
 // GROUP 8
 {g:"g8",id:"portfolio-manager",ko:"포트폴리오 매니저",t:"매도·관리",u:"보유종목·현금·손익·비중·공시 통합 점검, 매매 내역 기록",tr:["포트 점검","매수했어 기록해줘"],p:null},
-{g:"g8",id:"stop-loss-screener",ko:"손절 스크리너",t:"매도·관리",u:"50일선 붕괴 등 5대 매도 기준으로 즉시손절/경고/유지 판정",tr:["팔아야 할 종목","손절 후보"],p:null},
+{g:"g8",id:"stop-loss-screener",ko:"손절 스크리너",t:"매도·관리",u:"50일선 붕괴 등 5대 매도 기준으로 즉시손절/경고/유지 판정",tr:["팔아야 할 종목","손절 후보"],p:"stoploss.html"},
 {g:"g8",id:"investment-thesis",ko:"투자 논거",t:"기록·결재",u:"매수 논거·훼손 조건 문서화, 실적 후 유지/약화/훼손 판정 + 논거 보드",tr:["논거 아직 유효해?","논거 등록"],p:"thesis-board.html"},
 // GROUP 9
 {g:"g9",id:"team-leader",ko:"팀장 결재",t:"기록·결재",u:"5축(환경·논거·진입·수급·리스크) 교차 점검 최종 결재 + 레드팀 반론",tr:["팀장 결재","결재 올려줘"],p:"decision-board.html"},
 {g:"g9",id:"kongming",ko:"공명 (군사)",t:"기록·결재",u:"팀장 사각지대 8대 점검, 독립 2인 결재와 상·중·하 3책",tr:["공명 의견","반론 좀 해봐"],p:"kongming-board.html"},
-{g:"g9",id:"trade-journal",ko:"매매 복기",t:"기록·결재",u:"청산 매매 복기(계획 vs 실제·R배수), 승률·손익비·교훈 누적",tr:["복기","월간 복기"],p:null},
+{g:"g9",id:"trade-journal",ko:"매매 복기",t:"기록·결재",u:"청산 매매 복기(계획 vs 실제·R배수), 승률·손익비·교훈 누적",tr:["복기","월간 복기"],p:"journal.html"},
 {g:"g9",id:"performance-attribution",ko:"성과 귀인",t:"분석",u:"실현 성과를 알파/베타/운으로 분해, 비용후 수익률·회전율 분석",tr:["실력이야 운이야","성과 귀인"],p:null},
 {g:"g9",id:"vault-auditor",ko:"볼트 감사",t:"리스크·점검",u:"옵시디언 볼트 전체의 규격(프런트매터·폴더) 위반 검사",tr:["볼트 점검"],p:null},
 // GROUP 10
