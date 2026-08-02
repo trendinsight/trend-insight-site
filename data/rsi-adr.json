@@ -1,0 +1,5 @@
+{
+ "page": "rsi-adr.html",
+ "howto": "게시 방법: entries 배열 맨 앞에 {date:'YYYY-MM-DD', title:'제목', summary:'2~3문장 요약', html:'<h3>/<p>/<table> 본문 조각'}을 추가해 GitHub(trendinsight/trend-insight-site, main)에 커밋. 같은 날짜가 이미 있으면 교체. 스타일은 페이지가 입힌다.",
+ "entries": []
+}
