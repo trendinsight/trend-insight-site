@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>스킬 맵 | Trend Insight</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+*{box-sizing:border-box}
+body{font-family:'Pretendard',sans-serif;margin:0;color:#1c2533;line-height:1.6;background:#f5f7fb}
+header{background:#0b1f3f;padding:16px 24px;font-weight:800;display:flex;align-items:center;gap:16px}
+header a{color:#fff;text-decoration:none}
+header .sub{color:#9fb3d1;font-weight:500;font-size:.85rem}
+main{max-width:1080px;margin:0 auto;padding:28px 18px 60px}
+h1{color:#0b1f3f;font-size:1.5rem;margin:0 0 6px}
+.desc{color:#5b6779;font-size:.92rem;margin-bottom:18px}
+.toolbar{position:sticky;top:0;z-index:10;background:#f5f7fbee;backdrop-filter:blur(6px);padding:10px 0 8px;border-bottom:1px solid #e4e9f1;margin-bottom:20px}
+#q{width:100%;padding:12px 16px;border:1.5px solid #d5dde9;border-radius:10px;font-size:1rem;font-family:inherit;background:#fff}
+#q:focus{outline:none;border-color:#2e6ff2}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{border:1px solid #d5dde9;background:#fff;color:#3c4757;border-radius:999px;padding:5px 12px;font-size:.8rem;cursor:pointer;font-family:inherit}
+.chip.on{background:#0b1f3f;color:#fff;border-color:#0b1f3f}
+.stats{color:#5b6779;font-size:.82rem;margin-top:8px}
+.toc{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:22px}
+.toc a{font-size:.8rem;text-decoration:none;color:#fff;border-radius:8px;padding:5px 10px;font-weight:700;opacity:.92}
+.group{margin-bottom:30px}
+.ghead{display:flex;align-items:baseline;gap:10px;border-left:6px solid;padding:6px 0 6px 14px;margin-bottom:12px;background:#fff;border-radius:0 10px 10px 0;box-shadow:0 1px 3px rgba(11,31,63,.06)}
+.ghead h2{margin:0;font-size:1.08rem;color:#0b1f3f}
+.ghead .gq{color:#5b6779;font-size:.84rem;font-weight:500}
+.ghead .cnt{margin-left:auto;background:#eef2f9;color:#3c4757;border-radius:999px;padding:2px 10px;font-size:.75rem;font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}
+.card{background:#fff;border:1px solid #e4e9f1;border-radius:12px;padding:14px 16px;cursor:pointer;transition:box-shadow .15s,border-color .15s}
+.card:hover{border-color:#2e6ff2;box-shadow:0 3px 12px rgba(46,111,242,.12)}
+.card .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card .ko{font-weight:800;color:#13294b;font-size:.98rem}
+.card .tag{font-size:.68rem;font-weight:700;border-radius:6px;padding:2px 7px;color:#fff}
+.card .id{color:#9aa6b6;font-size:.72rem;font-family:ui-monospace,monospace}
+.card .use{color:#3c4757;font-size:.85rem;margin-top:6px}
+.card .more{display:none;margin-top:10px;border-top:1px dashed #e4e9f1;padding-top:10px}
+.card.open .more{display:block}
+.more .lbl{font-size:.72rem;font-weight:700;color:#5b6779;margin-bottom:4px}
+.trig{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.trig span{background:#f0f4fa;border-radius:6px;padding:3px 8px;font-size:.76rem;color:#2e6ff2;font-weight:600}
+.more a.page{display:inline-block;font-size:.8rem;color:#fff;background:#2e6ff2;border-radius:7px;padding:5px 12px;text-decoration:none;font-weight:700}
+.hidden{display:none!important}
+.noresult{color:#9aa6b6;text-align:center;padding:40px 0;display:none}
+footer{max-width:1080px;margin:0 auto;padding:0 18px 40px;color:#9aa6b6;font-size:.75rem}
+@media(max-width:640px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><a href="index.html">← Trend Insight</a><span class="sub">스킬 맵 · Skill Navigator</span></header>
+<main>
+<h1>🧭 스킬 맵 — 어떤 스킬을 쓸까?</h1>
+<div class="desc">투자 워크플로 순서(그룹)와 기능 유형(태그)으로 정리한 전체 스킬 지도. 카드를 누르면 호출 문구와 전용 페이지가 열립니다.</div>
+<div class="toolbar">
+  <input id="q" type="search" placeholder="스킬 이름·용도·호출 문구 검색 (예: 손절, 온도계, 적정주가, PSR...)">
+  <div class="chips" id="tagchips"></div>
+  <div class="stats" id="stats"></div>
+</div>
+<div class="toc" id="toc"></div>
+<div id="groups"></div>
+<div class="noresult" id="noresult">검색 결과가 없습니다.</div>
+</main>
+<footer>이 페이지는 skill-navigator 스킬이 관리합니다. 새 스킬을 만들면 "스킬 맵 갱신해줘"라고 요청하세요.</footer>
+<script>
+const GROUPS=[
+ {id:"g1",n:"GROUP 1 — 시장·거시 환경",q:"지금 장세가 어떤가?",c:"#b22f2f"},
+ {id:"g2",n:"GROUP 2 — 종목 발굴·스크리닝",q:"살 후보를 어떻게 찾나?",c:"#2e6ff2"},
+ {id:"g3",n:"GROUP 3 — 거장 기법",q:"거장의 눈으로 보면?",c:"#c9a227"},
+ {id:"g4",n:"GROUP 4 — 종목 분석·밸류에이션",q:"이 종목, 사도 되는 값인가?",c:"#0e7c86"},
+ {id:"g5",n:"GROUP 5 — 진입 타이밍·사이징",q:"언제, 얼마나 살까?",c:"#2e7d32"},
+ {id:"g6",n:"GROUP 6 — 리스크·자산배분",q:"얼마나 지키고 나눌까?",c:"#e8830c"},
+ {id:"g7",n:"GROUP 7 — 하락장·특수 전략",q:"떨어질 때는 뭘 하나?",c:"#7c4dcf"},
+ {id:"g8",n:"GROUP 8 — 보유 관리·매도",q:"팔까, 들고 갈까?",c:"#d4380d"},
+ {id:"g9",n:"GROUP 9 — 결재·복기·기록",q:"결정과 결과를 어떻게 남기나?",c:"#7c3aed"},
+ {id:"g10",n:"GROUP 10 — 자동화·게시",q:"루틴을 어떻게 돌리고 알리나?",c:"#12b886"},
+ {id:"g11",n:"GROUP 11 — 기타 자산·법인·생활",q:"주식 밖의 일들",c:"#5b6779"},
+ {id:"g12",n:"GROUP 12 — 문서·스킬 도구",q:"산출물과 스킬 자체를 만들 때",c:"#455a7a"}
+];
+const TAGC={"온도계":"#b22f2f","스크리너":"#2e6ff2","분석":"#0e7c86","밸류에이션":"#e6b422","거장기법":"#c9a227","타이밍·계산":"#2e7d32","수급·데이터":"#9d6bff","리서치":"#e8830c","리스크·점검":"#d4380d","매도·관리":"#b22f2f","기록·결재":"#7c3aed","자동화·게시":"#12b886","도구·생활":"#5b6779","전략":"#7c4dcf"};
+const S=[
+// GROUP 1
+{g:"g1",id:"market-thermometer",ko:"시장 온도계",t:"온도계",u:"코스피·코스닥·미 3대지수의 과열/과매도 온도(0~100) 판정·게시",tr:["시장 온도계","지금 과매수야?","코스피 온도"],p:"gauge.html"},
+{g:"g1",id:"macro-thermometer",ko:"거시 온도계",t:"온도계",u:"금리·달러·환율·유가·VIX 6종이 시장에 주는 순풍/역풍을 온도로",tr:["거시 온도계","매크로가 코스피에 유리해?"],p:"macro-gauge.html"},
+{g:"g1",id:"crowd-thermometer",ko:"군중심리 온도계",t:"온도계",u:"신용융자·예탁금·종토방 버즈로 심리 과열/공포(역발상) 판정",tr:["군중심리","빚투 과열이야?","숏 스퀴즈"],p:"crowd-gauge.html"},
+{g:"g1",id:"macro-analysis",ko:"거시 분석",t:"분석",u:"FOMC·CPI·환율 등 거시 변수를 내 종목·섹터 영향으로 해석",tr:["오늘 시장 톤","이 지표가 내 종목에?"],p:null},
+{g:"g1",id:"rate-forecast",ko:"금리 예측",t:"분석",u:"금통위·FOMC 방향과 6개월 금리 시나리오를 확률로 예측",tr:["금리 어떻게 될까","금리 인하 시기"],p:null},
+{g:"g1",id:"industry-indicator",ko:"산업지표 보드",t:"수급·데이터",u:"21개 업종 실물 지표로 업황 판정 + 업종별 추천 종목",tr:["산업지표","어느 업종이 좋아?"],p:"industry-board.html"},
+{g:"g1",id:"sector-flow",ko:"업종 수급",t:"수급·데이터",u:"업종별 개인·외국인·기관 순매수 엑셀 자동 갱신 + 차트 게시",tr:["업종 수급 업데이트"],p:"sector-flow.html"},
+{g:"g1",id:"export-pulse",ko:"수출 펄스",t:"수급·데이터",u:"관세청 HS코드 수출 데이터로 실적 서프라이즈/쇼크 선행 감지",tr:["수출 펄스","OO 수출 어때?"],p:"export-pulse.html"},
+{g:"g1",id:"market-calendar-sync",ko:"증시 캘린더",t:"자동화·게시",u:"FOMC·실적발표·만기 등 시장 일정을 구글 캘린더에 등록·갱신",tr:["일정 등록해줘","이번 달 시장 일정"],p:null},
+// GROUP 2
+{g:"g2",id:"korean-stock-screener",ko:"거래량 정배열 스크리너",t:"스크리너",u:"당일 거래량 상위 + 이평선 정배열(MA5>20>60>120) 필터",tr:["정배열 종목","거래량 순위"],p:null},
+{g:"g2",id:"canslim-screener",ko:"CANSLIM 스크리너",t:"스크리너",u:"오닐 7요건(C·A·N·S·L·I·M) 채점으로 성장 주도주 발굴",tr:["캔슬림","주도주 발굴"],p:null},
+{g:"g2",id:"horizon-stock-picker",ko:"기간별 종목선정",t:"스크리너",u:"단기·중기·장기 구간별 각 5종목(총 15종목) 선정 오케스트레이터",tr:["기간별 종목 골라줘","묻어둘 종목"],p:"horizon-picks.html"},
+{g:"g2",id:"sejong-data",ko:"세종기업데이터",t:"수급·데이터",u:"2,500종목 분기실적 적재 → 서프라이즈·GARP·실적쇼크 스크리닝",tr:["실적 서프라이즈","저평가 성장주"],p:"sejong-data.html"},
+{g:"g2",id:"dividend-compounder",ko:"배당성장 복리",t:"스크리너",u:"배당 4%↑+성장 종목 발굴, DRIP 복리 시뮬레이션·배당 캘린더",tr:["배당주","배당 재투자"],p:"dividend-growth.html"},
+{g:"g2",id:"volume-insight",ko:"거래량 인사이트",t:"스크리너",u:"VSA·와이코프로 거래량 의미 판독 + S급 돌파대량 전시장 발굴",tr:["거래량 분석","매집이야 분산이야?"],p:"volume-radar.html"},
+{g:"g2",id:"rsi-adr",ko:"RSI·ADR 과매도",t:"스크리너",u:"RSI·ADR 기반 과매도 스크리닝 (요청 시 실행·게시)",tr:["RSI ADR 스크리닝"],p:null},
+// GROUP 3
+{g:"g3",id:"masters-council",ko:"거장 자문단",t:"거장기법",u:"거장 13인이 각자 관점으로 채점·논평, 종합 판정과 토론",tr:["거장들 의견","버핏이라면"],p:"masters.html"},
+{g:"g3",id:"korekawa-method",ko:"고레가와 긴조",t:"거장기법",u:"수면 아래 소외 우량주 발굴, 카메 3칙·투자 5개조 판정",tr:["고레가와","소외 우량주 찾아줘"],p:"korekawa-board.html"},
+{g:"g3",id:"fisher-method",ko:"켄 피셔",t:"거장기법",u:"PSR·글리치로 급락 우량 성장주 발굴 + 70/20/10 탑다운 배분",tr:["PSR 싼 종목","글리치"],p:"fisher-board.html"},
+{g:"g3",id:"philip-fisher-method",ko:"필립 피셔 15포인트",t:"거장기법",u:"위대한 기업 15포인트 채점·스커틀벗 탐문·매도 3사유 판정",tr:["15포인트 채점","스커틀벗"],p:"philip-fisher-board.html"},
+{g:"g3",id:"trend-masters",ko:"3인 거장 추세",t:"거장기법",u:"토마스 카·리버모어·엘더 3인 독립 판정 + 매매 실행 계획",tr:["삼중스크린","피벗 돌파"],p:"trend-masters.html"},
+{g:"g3",id:"trend-rider",ko:"추세 라이더",t:"거장기법",u:"와인스타인 4단계·RS 주도주 판별·트레일링 스탑 출구 관리",tr:["추세 단계","계속 들고 가도 돼?"],p:"trend-rider-board.html"},
+// GROUP 4
+{g:"g4",id:"stock-analysis",ko:"종목 종합분석",t:"분석",u:"펀더멘털+기술+거시+포트+논거+리스크를 한 편으로 통합 (풀 분석)",tr:["OO 분석해줘","이 종목 어때?"],p:null},
+{g:"g4",id:"fair-value-band",ko:"적정주가 밴드",t:"밸류에이션",u:"4층 구조(기본·산업·시장·기술) 내재가치 밴드, 저평가/고평가 판정",tr:["적정주가","싸? 비싸?"],p:"fair-value.html"},
+{g:"g4",id:"adjusted-fair-value",ko:"조정 적정주가",t:"밸류에이션",u:"목표주가 컨센서스에 26개 변수를 가중 반영한 조정 적정가",tr:["조정 적정주가","변수 반영해줘"],p:"adjusted-value.html"},
+{g:"g4",id:"broker-report-digest",ko:"종목 리포트 요약",t:"리서치",u:"한 종목의 1년치 증권사 리포트를 목표가·논거·리스크로 종합 요약",tr:["OO 리포트 요약해줘"],p:"report-summary.html"},
+{g:"g4",id:"research-digest",ko:"데일리 리포트 요약",t:"리서치",u:"당일 발간된 기업·산업 리포트 전체 훑기, 목표가 상향/하향 표시",tr:["오늘 리포트 뭐 나왔어"],p:"research-digest.html"},
+{g:"g4",id:"forensic-checklist",ko:"회계 포렌식",t:"리스크·점검",u:"CB오버행·지분담보·감사의견·회전일수 등 매수 전 지뢰 6축 점검",tr:["지뢰 없어?","CB 오버행"],p:null},
+{g:"g4",id:"supply-demand-analyzer",ko:"종목 수급 분석",t:"수급·데이터",u:"투자자별 매집수량·분산비율·추후 매수/매도 여력 산출",tr:["누가 사고 있어?","수급 어때?"],p:"supply.html"},
+{g:"g4",id:"stock-thermometer",ko:"종목 온도계",t:"온도계",u:"개별 종목 과열/과매도 온도 + 미너비니 셋업 판정",tr:["OO 온도 어때","과열이야?"],p:"stock-gauge.html"},
+{g:"g4",id:"signal-analyzer",ko:"시그널 분석",t:"분석",u:"MACD·RSI·볼린저·OBV·ADX 통합 매수/매도 점수(0~100) 분해",tr:["시그널 분석","매수 점수"],p:"signal.html"},
+{g:"g4",id:"ichimoku-analyzer",ko:"일목균형표",t:"분석",u:"구름대·삼역호전 5대 시그널 + ADX·OBV 보완, 시나리오 확률",tr:["일목 분석","구름대 지지 되나?"],p:"ichimoku.html"},
+{g:"g4",id:"crypto-analysis",ko:"크립토 종합분석",t:"분석",u:"BTC·ETH·XRP 전용 펀더멘털+기술+거시+리스크 풀 분석",tr:["비트코인 어때?","코인 분석"],p:null},
+// GROUP 5
+{g:"g5",id:"entry-timer",ko:"진입 타이머",t:"타이밍·계산",u:"VCP 피벗·다바스 박스·터틀 사이징으로 '지금 살 자리인가' 판정",tr:["지금 사도 돼?","매수가 잡아줘"],p:null},
+{g:"g5",id:"pyramid-calculator",ko:"피라미드 계산기",t:"타이밍·계산",u:"ATR 기반 1유닛 수량·2N 손절가·피라미딩(불타기) 지점 계산",tr:["몇 주 살까","불타기 계획"],p:"pyramid-calc.html"},
+{g:"g5",id:"crypto-thermometer",ko:"코인 온도계",t:"온도계",u:"BTC·ETH·XRP 진입 판정(BUY_POINT 등) + 과열 온도·텔레그램 알림",tr:["코인 살 자리야?","코인 온도계"],p:"crypto-gauge.html"},
+// GROUP 6
+{g:"g6",id:"risk-manager",ko:"리스크 매니저",t:"리스크·점검",u:"리스크 규정 헌법 관리, 매매 전 사전점검·포지션 한도·사이징",tr:["사도 돼?","얼마까지 살 수 있어?"],p:null},
+{g:"g6",id:"correlation-risk",ko:"상관·팩터 점검",t:"리스크·점검",u:"보유종목 숨은 레버리지·최악일 동시 손실·분산 착시 정량화",tr:["같이 빠지는 종목","팩터 중복"],p:null},
+{g:"g6",id:"cash-ratio-advisor",ko:"예수금 온도계",t:"온도계",u:"시장·거시·심리 세 온도계 결합 → 권장 현금 비율(%) 추천",tr:["현금 몇 프로?","예수금 온도계"],p:"cash-gauge.html"},
+{g:"g6",id:"style-rotation",ko:"스타일 로테이션",t:"전략",u:"금리 국면 → 가치:성장:현금 3분할 배분 비율 산출",tr:["가치주야 성장주야?","스타일 배분"],p:"style-rotation.html"},
+// GROUP 7
+{g:"g7",id:"bear-market-trader",ko:"하락장 트레이더",t:"전략",u:"약세 5국면 판정 + 인버스 ETF·개별주 숏·낙폭과대 반등매수 전략",tr:["지금 하락장이야?","인버스 살까?"],p:"bear-gauge.html"},
+{g:"g7",id:"short-candidate-screener",ko:"숏 후보 스크리너",t:"스크리너",u:"5축 100점으로 낙폭 클 종목 랭킹, 대주 가능·과열종목 검증",tr:["숏 칠 종목","공매도 후보"],p:"short-radar.html"},
+{g:"g7",id:"leverage-switcher",ko:"레버리지 스위처",t:"전략",u:"KODEX 레버리지/현금/인버스 3-state 스위칭 신호 + 백테스트",tr:["지금 레버리지야 인버스야?"],p:"switch-gauge.html"},
+{g:"g7",id:"ltcm-convergence",ko:"LTCM 수렴",t:"전략",u:"우선주 괴리·지주사 할인·페어·ETF 괴리의 수렴 차익 발굴(가드레일 내장)",tr:["우선주 괴리 스캔","수렴 트레이드"],p:"ltcm-board.html"},
+{g:"g7",id:"sa-conviction",ko:"SA 컨빅션",t:"전략",u:"AI 인프라 6대 병목주 발굴 + 집중투자 가드레일 R1~R7 감사",tr:["AI 인프라주","SA 리스크 감사"],p:"sa-conviction.html"},
+// GROUP 8
+{g:"g8",id:"portfolio-manager",ko:"포트폴리오 매니저",t:"매도·관리",u:"보유종목·현금·손익·비중·공시 통합 점검, 매매 내역 기록",tr:["포트 점검","매수했어 기록해줘"],p:null},
+{g:"g8",id:"stop-loss-screener",ko:"손절 스크리너",t:"매도·관리",u:"50일선 붕괴 등 5대 매도 기준으로 즉시손절/경고/유지 판정",tr:["팔아야 할 종목","손절 후보"],p:null},
+{g:"g8",id:"investment-thesis",ko:"투자 논거",t:"기록·결재",u:"매수 논거·훼손 조건 문서화, 실적 후 유지/약화/훼손 판정 + 논거 보드",tr:["논거 아직 유효해?","논거 등록"],p:"thesis-board.html"},
+// GROUP 9
+{g:"g9",id:"team-leader",ko:"팀장 결재",t:"기록·결재",u:"5축(환경·논거·진입·수급·리스크) 교차 점검 최종 결재 + 레드팀 반론",tr:["팀장 결재","결재 올려줘"],p:"decision-board.html"},
+{g:"g9",id:"kongming",ko:"공명 (군사)",t:"기록·결재",u:"팀장 사각지대 8대 점검, 독립 2인 결재와 상·중·하 3책",tr:["공명 의견","반론 좀 해봐"],p:"kongming-board.html"},
+{g:"g9",id:"trade-journal",ko:"매매 복기",t:"기록·결재",u:"청산 매매 복기(계획 vs 실제·R배수), 승률·손익비·교훈 누적",tr:["복기","월간 복기"],p:null},
+{g:"g9",id:"performance-attribution",ko:"성과 귀인",t:"분석",u:"실현 성과를 알파/베타/운으로 분해, 비용후 수익률·회전율 분석",tr:["실력이야 운이야","성과 귀인"],p:null},
+{g:"g9",id:"vault-auditor",ko:"볼트 감사",t:"리스크·점검",u:"옵시디언 볼트 전체의 규격(프런트매터·폴더) 위반 검사",tr:["볼트 점검"],p:null},
+// GROUP 10
+{g:"g10",id:"trading-desk",ko:"트레이딩 데스크",t:"자동화·게시",u:"브리핑→온도→발굴→분석→진입→결재→매도점검→기록 풀 파이프라인",tr:["데스크 돌려","하루 루틴 실행"],p:"trading-desk.html"},
+{g:"g10",id:"daily-briefing",ko:"데일리 브리핑",t:"자동화·게시",u:"장 시작 전 거시·포트 리스크·공시·일정·관전포인트 한 페이지",tr:["아침 브리핑","간밤에 뭐 있었어?"],p:null},
+{g:"g10",id:"morning",ko:"모닝 브리프",t:"자동화·게시",u:"일정 중심 아침 브리프 HTML 렌더링·정기 설정",tr:["/morning"],p:null},
+{g:"g10",id:"schedule",ko:"스케줄러",t:"자동화·게시",u:"매일/매주 반복 작업이나 예약 작업 등록",tr:["매일 아침마다","1시간 뒤에"],p:null},
+{g:"g10",id:"trend-insight-publisher",ko:"퍼블리셔",t:"자동화·게시",u:"PDF·HTML 리포트를 Trend Insight 홈페이지에 게시·수정·삭제",tr:["홈페이지에 올려줘"],p:null},
+{g:"g10",id:"daily-proverb",ko:"오늘의 격언",t:"자동화·게시",u:"장세에 맞는 주식 격언 페이지 매일 갱신",tr:["격언 업데이트"],p:"proverb.html"},
+{g:"g10",id:"skill-navigator",ko:"스킬 내비게이터",t:"자동화·게시",u:"이 스킬 맵의 그룹핑 관리·새 스킬 반영·페이지 재게시",tr:["스킬 맵 갱신","스킬 그룹핑"],p:"skill-map.html"},
+{g:"g10",id:"family-album",ko:"가족 앨범",t:"도구·생활",u:"가족 앨범 홈페이지(사진·유튜브 연동) 관리·배포",tr:["가족 앨범"],p:null},
+// GROUP 11
+{g:"g11",id:"brazil-bond-manager",ko:"브라질 국채",t:"전략",u:"헤알 국채 매수 신호(환율 레벨 규칙)·진행 기록·논거 5조건 점검",tr:["브라질 국채 사도 돼?"],p:null},
+{g:"g11",id:"corp-founder",ko:"법인 설립",t:"도구·생활",u:"투자법인 설립 절차·정관 등 서류 초안·세무 시뮬레이션·인허가",tr:["법인 만들기","법인이 유리해?"],p:null},
+{g:"g11",id:"receipt-ledger",ko:"영수증 가계부",t:"도구·생활",u:"영수증 사진 판독 → 지출 원장 기입·계정과목 분류·월간 정산",tr:["영수증 처리","이번 달 지출"],p:"receipt-upload.html"},
+{g:"g11",id:"cat-meow-analyzer",ko:"고양이 울음 분석",t:"도구·생활",u:"울음 음향 분석으로 발성 유형·건강 이상 신호 판정",tr:["고양이 왜 울어"],p:null},
+{g:"g11",id:"character-insight",ko:"인물 판별",t:"도구·생활",u:"26개 성품 특성을 설문+행동 관찰로 판정, 말 vs 행동 괴리",tr:["이 사람 믿을 만해?"],p:null},
+// GROUP 12
+{g:"g12",id:"docx / pdf / pptx / xlsx",ko:"문서 생성 4종",t:"도구·생활",u:"워드·PDF·프레젠테이션·엑셀 산출물 제작/편집",tr:["PDF로 만들어줘","엑셀로 정리해줘"],p:null},
+{g:"g12",id:"skill-creator",ko:"스킬 크리에이터",t:"도구·생활",u:"새 스킬 설계·제작·평가",tr:["스킬 만들어줘"],p:null},
+{g:"g12",id:"skill-editor",ko:"스킬 에디터",t:"도구·생활",u:"기존 스킬 수정 후 재설치용 .skill 패키징",tr:["스킬 고쳐줘"],p:null},
+{g:"g12",id:"project-planner",ko:"프로젝트 플래너",t:"도구·생활",u:"프로젝트 작업 분해·일정·마일스톤 설계",tr:["로드맵 짜줘"],p:null}
+];
+const $=s=>document.querySelector(s);
+let tagFilter=null;
+function render(){
+ const gs=$("#groups");gs.innerHTML="";
+ const toc=$("#toc");toc.innerHTML="";
+ GROUPS.forEach(g=>{
+  const items=S.filter(s=>s.g===g.id);
+  const sec=document.createElement("section");
+  sec.className="group";sec.id=g.id;
+  sec.innerHTML=`<div class="ghead" style="border-color:${g.c}"><h2>${g.n}</h2><span class="gq">${g.q}</span><span class="cnt">${items.length}</span></div><div class="grid"></div>`;
+  const grid=sec.querySelector(".grid");
+  items.forEach(s=>{
+   const c=document.createElement("div");c.className="card";c.dataset.tag=s.t;
+   c.dataset.text=(s.id+" "+s.ko+" "+s.u+" "+s.tr.join(" ")).toLowerCase();
+   c.innerHTML=`<div class="top"><span class="ko">${s.ko}</span><span class="tag" style="background:${TAGC[s.t]||"#5b6779"}">${s.t}</span><span class="id">${s.id}</span></div><div class="use">${s.u}</div><div class="more"><div class="lbl">이렇게 말하면 실행돼요</div><div class="trig">${s.tr.map(t=>`<span>"${t}"</span>`).join("")}</div>${s.p?`<a class="page" href="${s.p}" onclick="event.stopPropagation()">전용 페이지 열기 →</a>`:""}</div>`;
+   c.onclick=()=>c.classList.toggle("open");
+   grid.appendChild(c);
+  });
+  gs.appendChild(sec);
+  const a=document.createElement("a");a.href="#"+g.id;a.textContent=g.n.replace("GROUP ","G").split(" — ")[0]+" "+g.n.split(" — ")[1];a.style.background=g.c;toc.appendChild(a);
+ });
+ const chips=$("#tagchips");chips.innerHTML="";
+ Object.keys(TAGC).forEach(t=>{
+  const b=document.createElement("button");b.className="chip";b.textContent=t;
+  b.onclick=()=>{tagFilter=(tagFilter===t)?null:t;document.querySelectorAll(".chip").forEach(x=>x.classList.toggle("on",x.textContent===tagFilter));apply();};
+  chips.appendChild(b);
+ });
+ apply();
+}
+function apply(){
+ const q=$("#q").value.trim().toLowerCase();
+ let shown=0;
+ document.querySelectorAll(".card").forEach(c=>{
+  const ok=(!q||c.dataset.text.includes(q))&&(!tagFilter||c.dataset.tag===tagFilter);
+  c.classList.toggle("hidden",!ok);if(ok)shown++;
+ });
+ document.querySelectorAll(".group").forEach(g=>{
+  const vis=g.querySelectorAll(".card:not(.hidden)").length;
+  g.classList.toggle("hidden",vis===0);
+  g.querySelector(".cnt").textContent=vis;
+ });
+ $("#noresult").style.display=shown?"none":"block";
+ $("#stats").textContent=`총 ${S.length}개 스킬 · ${GROUPS.length}개 그룹`+(q||tagFilter?` · 표시 중 ${shown}개`:"");
+}
+$("#q").addEventListener("input",apply);
+render();
+</script>
+</body>
+</html>
