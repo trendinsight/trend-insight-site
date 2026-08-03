@@ -107,4 +107,55 @@
   }
   if(document.body)mount();
   else document.addEventListener('DOMContentLoaded',mount);
+
+  /* ── 데이터 갱신일 배지 (좌하단) ─────────────────────────
+     페이지별 데이터 JSON에서 최신 날짜를 뽑아 "마지막 갱신 N일 전"을 표시.
+     3일 이내 파랑 · 4~7일 주황 · 8일+ 빨강. 클릭 시 닫힘. */
+  var DATA_MAP={
+    '/gauge.html':'market-gauge.json','/macro-gauge.html':'macro-gauge.json',
+    '/crowd-gauge.html':'crowd-gauge.json','/cash-gauge.html':'cash-gauge.json',
+    '/crypto-gauge.html':'crypto-gauge.json','/bear-gauge.html':'bear-gauge.json',
+    '/switch-gauge.html':'switch-gauge.json','/style-rotation.html':'style-rotation.json',
+    '/korekawa-board.html':'korekawa-board.json','/fisher-board.html':'fisher-board.json',
+    '/philip-fisher-board.html':'philip-fisher-board.json','/trend-rider-board.html':'trend-rider-board.json',
+    '/thesis-board.html':'thesis-board.json','/decision-board.html':'decision-board.json',
+    '/kongming-board.html':'kongming-board.json','/horizon-picks.html':'horizon-picks.json',
+    '/short-radar.html':'short-radar.json','/volume-radar.html':'volume-radar.json',
+    '/sejong-data.html':'sejong-data.json','/export-pulse.html':'export-pulse.json',
+    '/dividend-growth.html':'dividend-growth.json','/ltcm-board.html':'ltcm-board.json',
+    '/industry-board.html':'industry-board.json','/research-digest.html':'research-digest.json',
+    '/report-summary.html':'report-summaries.json','/proverb.html':'proverb-history.json',
+    '/adjusted-value.html':'adjusted-value.json','/stock-graph.html':'stock-graph.json',
+    '/supply.html':'supply-gauge.json','/macro-analysis.html':'macro-analysis.json',
+    '/canslim.html':'canslim.json','/screener.html':'screener.json',
+    '/rsi-adr.html':'rsi-adr.json','/forensic.html':'forensic.json',
+    '/correlation.html':'correlation.json','/vault-audit.html':'vault-audit.json',
+    '/crypto-report.html':'crypto-report.json'
+  };
+  var df=DATA_MAP[path.replace(/\/$/,'')]||DATA_MAP[path];
+  if(df){
+    fetch('/data/'+df).then(function(r){if(!r.ok)throw 0;return r.text();}).then(function(txt){
+      var today=new Date();today.setHours(0,0,0,0);
+      var best=null,m,re=/20\d{2}([-.\/]?)(0[1-9]|1[0-2])\1(0[1-9]|[12]\d|3[01])/g;
+      while((m=re.exec(txt))){
+        var iso=m[0].replace(/[.\/]/g,'-');
+        if(iso.length===8)iso=iso.slice(0,4)+'-'+iso.slice(4,6)+'-'+iso.slice(6,8);
+        var d=new Date(iso+'T00:00:00');
+        if(isNaN(d)||d>today||d.getFullYear()<2020)continue;
+        if(!best||d>best)best=d;
+      }
+      if(!best)return;
+      var days=Math.round((today-best)/864e5);
+      var col=days<=3?'#2e6ff2':days<=7?'#e8830c':'#e5484d';
+      var label='\uB9C8\uC9C0\uB9C9 \uAC31\uC2E0 '+(best.getMonth()+1)+'.'+best.getDate()+' \u00B7 '+(days===0?'\uC624\uB298':days+'\uC77C \uC804');
+      var b=document.createElement('div');
+      b.id='sn-fresh';
+      b.style.cssText='position:fixed;left:14px;bottom:14px;z-index:99989;background:rgba(255,255,255,.96);border:1.5px solid '+col+';color:'+col+';font-weight:700;font-size:12px;padding:6px 12px;border-radius:999px;box-shadow:0 4px 14px rgba(0,0,0,.18);cursor:pointer;font-family:Pretendard,-apple-system,BlinkMacSystemFont,sans-serif;';
+      b.textContent='\uD83D\uDCC5 '+label;
+      b.title='\uD074\uB9AD\uD558\uBA74 \uB2EB\uD799\uB2C8\uB2E4';
+      b.addEventListener('click',function(){b.remove();});
+      if(document.body)document.body.appendChild(b);
+      else document.addEventListener('DOMContentLoaded',function(){document.body.appendChild(b);});
+    }).catch(function(){});
+  }
 })();

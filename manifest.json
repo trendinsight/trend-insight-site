@@ -1,0 +1,30 @@
+{
+ "name": "Trend Insight",
+ "short_name": "Trend Insight",
+ "description": "데이터 기반 기업분석 & 투자 인사이트 대시보드",
+ "start_url": "/",
+ "scope": "/",
+ "display": "standalone",
+ "background_color": "#0b1f3f",
+ "theme_color": "#0b1f3f",
+ "lang": "ko",
+ "icons": [
+  {
+   "src": "/icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png"
+  },
+  {
+   "src": "/icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "/icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}
