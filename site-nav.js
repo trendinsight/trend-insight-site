@@ -35,7 +35,7 @@
       ['리포트 요약 요청','/report-summary.html'],['크립토 리포트','/crypto-report.html'],
       ['오늘의 격언','/proverb.html']]],
     ['소개',[
-      ['회사소개','/about.html'],['문의하기','/#contact']]]
+      ['회사소개','/about.html'],['문의하기','/#contact'],['로그아웃','/api/auth/logout']]]
   ];
 
   var css=

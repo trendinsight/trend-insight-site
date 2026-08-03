@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<script>(function(){try{var t=localStorage.getItem('ti-theme');if(t==='dark'||(!t&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();</script>
+<title>무료 회원가입 | Trend Insight</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 125'%3E%3Ccircle cx='50' cy='17' r='15' fill='%234a7ebd'/%3E%3Ctext x='50' y='115' font-size='105' font-family='Georgia,serif' font-weight='bold' fill='%23b22f2f' text-anchor='middle'%3ET%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--navy:#0b1f3f;--accent:#2e6ff2;--accent-2:#1e5ae0;--t-red:#b22f2f;--i-blue:#4a7ebd;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg-soft:#f5f7fb;--card:#ffffff;}
+html[data-theme=dark]{--bg-soft:#111a2e;--card:#16223a;--line:#26334d;--text:#d4deee;--muted:#8fa0b9;--navy:#e8effc;}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg-soft);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;line-height:1.6}
+.box{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 30px rgba(11,31,63,.08);width:100%;max-width:400px;padding:36px 32px}
+.logo{text-align:center;margin-bottom:6px;font-family:Georgia,serif;font-weight:700;font-size:26px;color:var(--navy)}
+.logo .t{color:var(--t-red)}.logo .i{color:var(--i-blue)}
+.sub{text-align:center;color:var(--muted);font-size:13.5px;margin-bottom:26px}
+label{display:block;font-size:13px;font-weight:600;margin:14px 0 6px;color:var(--text)}
+input{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;font-size:15px;background:transparent;color:var(--text)}
+input:focus{outline:none;border-color:var(--accent)}
+button{width:100%;margin-top:22px;padding:12px;border:none;border-radius:9px;background:var(--accent);color:#fff;font-size:15px;font-weight:700;cursor:pointer}
+button:hover{background:var(--accent-2)}button:disabled{opacity:.6;cursor:wait}
+.err{display:none;margin-top:14px;padding:10px 12px;border-radius:8px;background:#fdecea;color:#b22f2f;font-size:13.5px}
+html[data-theme=dark] .err{background:#3d1f1f;color:#ff9e94}
+.foot{text-align:center;margin-top:20px;font-size:13.5px;color:var(--muted)}
+.foot a{color:var(--accent);text-decoration:none;font-weight:600}
+.notice{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo"><span class="t">T</span>rend <span class="i">I</span>nsight</div>
+  <div class="sub">무료 회원가입 — 가입 즉시 모든 콘텐츠를 열람할 수 있습니다.</div>
+  <form id="f">
+    <label for="name">이름</label>
+    <input id="name" type="text" autocomplete="name" maxlength="40" required>
+    <label for="email">이메일</label>
+    <input id="email" type="email" autocomplete="email" required>
+    <label for="pw">비밀번호 <span style="font-weight:400;color:var(--muted)">(8자 이상)</span></label>
+    <input id="pw" type="password" autocomplete="new-password" minlength="8" required>
+    <label for="pw2">비밀번호 확인</label>
+    <input id="pw2" type="password" autocomplete="new-password" minlength="8" required>
+    <button id="btn" type="submit">무료로 가입하기</button>
+  </form>
+  <div class="err" id="err"></div>
+  <div class="foot">이미 회원이신가요? <a id="loginlink" href="/login.html">로그인</a></div>
+  <div class="notice">· 입력하신 이름·이메일은 회원 확인 용도로만 사용됩니다.<br>· Trend Insight의 콘텐츠는 투자 참고 자료이며, 투자 판단과 책임은 이용자 본인에게 있습니다.</div>
+</div>
+<script>
+var next=new URLSearchParams(location.search).get('next')||'/';
+if(!/^\/[^/]/.test(next))next='/';
+document.getElementById('loginlink').href='/login.html?next='+encodeURIComponent(next);
+document.getElementById('f').addEventListener('submit',async function(e){
+  e.preventDefault();
+  var btn=document.getElementById('btn'),err=document.getElementById('err');
+  var pw=document.getElementById('pw').value;
+  if(pw!==document.getElementById('pw2').value){err.textContent='비밀번호가 서로 다릅니다';err.style.display='block';return;}
+  btn.disabled=true;err.style.display='none';
+  try{
+    var r=await fetch('/api/auth/signup',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({name:document.getElementById('name').value,email:document.getElementById('email').value,password:pw})});
+    var j=await r.json();
+    if(j.ok){location.href=next;return;}
+    err.textContent=j.error||'가입에 실패했습니다';err.style.display='block';
+  }catch(x){err.textContent='네트워크 오류가 발생했습니다';err.style.display='block';}
+  btn.disabled=false;
+});
+</script>
+</body>
+</html>

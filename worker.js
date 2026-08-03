@@ -2206,6 +2206,13 @@ export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
 
+    // ── 무료 회원제: 인증 API + 전체 페이지 잠금 게이트 (api/data 경로는 게이트 제외) ──
+    if (url.pathname.startsWith("/api/auth/")) {
+      return authHandle(req, url, env, ctx);
+    }
+    const authRedir = await authGate(req, url, env);
+    if (authRedir) return authRedir;
+
     if (url.pathname.startsWith("/api/todo/")) {
       return tdHandle(req, url, env, ctx);
     }
@@ -2812,5 +2819,195 @@ async function handleReceipts(req, url, env, ctx) {
     return bad("unknown endpoint", 404);
   } catch (e) {
     return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
+  }
+}
+
+/* ═══════════════════ 무료 회원제 (site membership) ═══════════════════
+   전 페이지 잠금: HTML·게시물 PDF는 로그인 세션 필요.
+   /api/* · /data/* · 정적 리소스(js/css/png/json)는 기존 그대로 (자동화 스킬 영향 없음).
+   회원/세션: D1(risk-manager) site_members / site_sessions. 가입 즉시 열람 + 텔레그램 알림. */
+
+const AUTH_COOKIE = "ti_sess";
+const AUTH_SESSION_DAYS = 90;
+const AUTH_PW_ITER = 50000;
+const AUTH_OPEN_PAGES = new Set(["/login.html", "/signup.html", "/login", "/signup"]);
+
+async function authEnsureTables(env) {
+  await env.RISK_DB.batch([
+    env.RISK_DB.prepare(
+      "CREATE TABLE IF NOT EXISTS site_members(" +
+      "id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE," +
+      "pw_hash TEXT NOT NULL, pw_salt TEXT NOT NULL, pw_iter INTEGER NOT NULL," +
+      "status TEXT NOT NULL DEFAULT 'active', created_at TEXT NOT NULL, last_login_at TEXT)"),
+    env.RISK_DB.prepare(
+      "CREATE TABLE IF NOT EXISTS site_sessions(" +
+      "token_hash TEXT PRIMARY KEY, member_id INTEGER NOT NULL," +
+      "created_at TEXT NOT NULL, expires_at TEXT NOT NULL)"),
+  ]);
+}
+
+function authRandHex(n) {
+  const a = crypto.getRandomValues(new Uint8Array(n));
+  return [...a].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function authHashPw(pw, saltHex, iter) {
+  const salt = new Uint8Array(saltHex.match(/../g).map((h) => parseInt(h, 16)));
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations: iter }, key, 256);
+  return [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function authSetCookie(token, maxAge) {
+  return AUTH_COOKIE + "=" + token + "; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=" + maxAge;
+}
+
+function authGetToken(req) {
+  const m = (req.headers.get("cookie") || "").match(/(?:^|;\s*)ti_sess=([0-9a-f]{64})/);
+  return m ? m[1] : null;
+}
+
+function authEsc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function authNowKST() {
+  return new Date(Date.now() + 9 * 36e5).toISOString().replace("T", " ").slice(0, 19);
+}
+
+async function authNewSession(env, memberId) {
+  const token = authRandHex(32);
+  const th = await rkSha256(token);
+  const now = new Date();
+  const exp = new Date(now.getTime() + AUTH_SESSION_DAYS * 86400e3);
+  await env.RISK_DB.prepare("INSERT INTO site_sessions(token_hash,member_id,created_at,expires_at) VALUES(?,?,?,?)")
+    .bind(th, memberId, now.toISOString(), exp.toISOString()).run();
+  return token;
+}
+
+async function authMember(req, env) {
+  const token = authGetToken(req);
+  if (!token) return null;
+  try {
+    const th = await rkSha256(token);
+    const row = await env.RISK_DB.prepare(
+      "SELECT m.id AS id, m.name AS name, m.email AS email, m.status AS status, s.expires_at AS expires_at " +
+      "FROM site_sessions s JOIN site_members m ON m.id = s.member_id WHERE s.token_hash = ?").bind(th).first();
+    if (!row || row.status !== "active") return null;
+    if (String(row.expires_at) < new Date().toISOString()) return null;
+    return row;
+  } catch (e) { return null; }
+}
+
+function authIsGatedPath(req, url) {
+  if (req.method !== "GET" && req.method !== "HEAD") return false;
+  const p = url.pathname;
+  if (p.startsWith("/api/") || p.startsWith("/data/")) return false;
+  if (AUTH_OPEN_PAGES.has(p)) return false;
+  if (p === "/" || p.endsWith("/") || p.endsWith(".html")) return true;
+  if (p.startsWith("/posts/") && p.endsWith(".pdf")) return true;
+  if (!p.slice(1).includes(".")) return true; // 확장자 없는 경로 (자동 .html 매핑 대비)
+  return false;
+}
+
+async function authGate(req, url, env) {
+  if (!authIsGatedPath(req, url)) return null;
+  const m = await authMember(req, env);
+  if (m) return null;
+  const next = encodeURIComponent(url.pathname + url.search);
+  return Response.redirect(url.origin + "/login.html?next=" + next, 302);
+}
+
+function authJson(status, obj, extraHeaders) {
+  return new Response(JSON.stringify(obj), { status, headers: { ...JSON_HEADERS, ...(extraHeaders || {}) } });
+}
+
+async function authHandle(req, url, env, ctx) {
+  const p = url.pathname.slice("/api/auth/".length).replace(/\/+$/, "");
+  try {
+    if (p === "me" && req.method === "GET") {
+      const m = await authMember(req, env);
+      if (!m) return authJson(401, { ok: false, error: "로그인이 필요합니다" });
+      return authJson(200, { ok: true, member: { name: m.name, email: m.email } });
+    }
+
+    if (p === "signup" && req.method === "POST") {
+      await authEnsureTables(env);
+      const b = await req.json().catch(() => ({}));
+      const name = String(b.name || "").trim().slice(0, 40);
+      const email = String(b.email || "").trim().toLowerCase();
+      const pw = String(b.password || "");
+      if (!name) return authJson(400, { ok: false, error: "이름을 입력해 주세요" });
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 120)
+        return authJson(400, { ok: false, error: "올바른 이메일 주소를 입력해 주세요" });
+      if (pw.length < 8 || pw.length > 100)
+        return authJson(400, { ok: false, error: "비밀번호는 8자 이상이어야 합니다" });
+      const dup = await env.RISK_DB.prepare("SELECT id FROM site_members WHERE email=?").bind(email).first();
+      if (dup) return authJson(409, { ok: false, error: "이미 가입된 이메일입니다. 로그인해 주세요." });
+      const salt = authRandHex(16);
+      const hash = await authHashPw(pw, salt, AUTH_PW_ITER);
+      await env.RISK_DB.prepare(
+        "INSERT INTO site_members(name,email,pw_hash,pw_salt,pw_iter,status,created_at) VALUES(?,?,?,?,?,'active',?)")
+        .bind(name, email, hash, salt, AUTH_PW_ITER, new Date().toISOString()).run();
+      const row = await env.RISK_DB.prepare("SELECT id FROM site_members WHERE email=?").bind(email).first();
+      const token = await authNewSession(env, row.id);
+      ctx.waitUntil((async () => {
+        const cnt = await env.RISK_DB.prepare("SELECT COUNT(*) AS c FROM site_members").first().catch(() => null);
+        await slTelegram(env,
+          "👤 <b>Trend Insight 신규 회원 가입</b>\n" +
+          "이름: " + authEsc(name) + "\n" +
+          "이메일: " + authEsc(email) + "\n" +
+          "가입 시각: " + authNowKST() + " KST\n" +
+          "누적 회원: " + (cnt ? cnt.c : "?") + "명");
+      })().catch(() => {}));
+      return authJson(200, { ok: true, member: { name, email } },
+        { "set-cookie": authSetCookie(token, AUTH_SESSION_DAYS * 86400) });
+    }
+
+    if (p === "login" && req.method === "POST") {
+      await authEnsureTables(env);
+      const b = await req.json().catch(() => ({}));
+      const email = String(b.email || "").trim().toLowerCase();
+      const pw = String(b.password || "");
+      const m = await env.RISK_DB.prepare(
+        "SELECT id,name,email,pw_hash,pw_salt,pw_iter,status FROM site_members WHERE email=?").bind(email).first();
+      if (!m) return authJson(401, { ok: false, error: "이메일 또는 비밀번호가 올바르지 않습니다" });
+      if (m.status !== "active") return authJson(403, { ok: false, error: "이용이 제한된 계정입니다" });
+      const hash = await authHashPw(pw, m.pw_salt, m.pw_iter);
+      if (hash !== m.pw_hash) return authJson(401, { ok: false, error: "이메일 또는 비밀번호가 올바르지 않습니다" });
+      const token = await authNewSession(env, m.id);
+      ctx.waitUntil(env.RISK_DB.prepare("UPDATE site_members SET last_login_at=? WHERE id=?")
+        .bind(new Date().toISOString(), m.id).run().catch(() => {}));
+      return authJson(200, { ok: true, member: { name: m.name, email: m.email } },
+        { "set-cookie": authSetCookie(token, AUTH_SESSION_DAYS * 86400) });
+    }
+
+    if (p === "logout") {
+      const token = authGetToken(req);
+      if (token) {
+        const th = await rkSha256(token);
+        await env.RISK_DB.prepare("DELETE FROM site_sessions WHERE token_hash=?").bind(th).run().catch(() => {});
+      }
+      const hdr = { "set-cookie": authSetCookie("x", 0) };
+      if (req.method === "GET")
+        return new Response(null, { status: 302, headers: { ...hdr, location: url.origin + "/login.html" } });
+      return authJson(200, { ok: true }, hdr);
+    }
+
+    if (p === "members" && req.method === "GET") {
+      // 관리자 조회: risk sync와 동일한 Bearer 토큰 사용
+      const auth = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+      const rowT = await env.RISK_DB.prepare("SELECT value FROM meta WHERE key='sync_token_hash'").first();
+      if (!rowT || !auth || (await rkSha256(auth)) !== rowT.value)
+        return authJson(401, { ok: false, error: "unauthorized" });
+      await authEnsureTables(env);
+      const rows = await env.RISK_DB.prepare(
+        "SELECT id,name,email,status,created_at,last_login_at FROM site_members ORDER BY id DESC").all();
+      return authJson(200, { ok: true, count: rows.results.length, members: rows.results });
+    }
+
+    return authJson(404, { ok: false, error: "unknown endpoint" });
+  } catch (e) {
+    return authJson(500, { ok: false, error: String(e) });
   }
 }
