@@ -655,6 +655,14 @@
     apply(true);
   });
   moreBtn.addEventListener('click',function(){shown+=PAGE;apply(false);});
+
+  /* URL 파라미터 ?q= — 리포트 페이지의 "모아보기" 링크에서 진입 */
+  var qp=new URLSearchParams(location.search).get('q');
+  if(qp){
+    searchEl.value=qp;
+    chipsEl.querySelectorAll('.chip').forEach(function(c){if(c._name===qp)activeChip=qp;});
+    syncChips();
+  }
   apply(true);
 })();
 </script>

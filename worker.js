@@ -2171,9 +2171,12 @@ export default {
 
     const assetRes = await env.ASSETS.fetch(req);
     if ((assetRes.headers.get("content-type") || "").includes("text/html")) {
+      const isPost = url.pathname.startsWith("/posts/");
       return new HTMLRewriter().on("head", {
         element(el) {
           el.append(`<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "33e842c948b94e4787347cd2487af700"}'></script>`, { html: true });
+          // 리포트 페이지에는 종목 도구 연결 위젯을 자동 주입 (기존·신규 게시물 공통)
+          if (isPost) el.append(`<script defer src="/post-tools.js"></script>`, { html: true });
         }
       }).transform(assetRes);
     }
