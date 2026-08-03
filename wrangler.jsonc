@@ -21,7 +21,7 @@
     { "binding": "RISK_DB", "database_name": "risk-manager", "database_id": "f08a8f96-b737-4674-80d4-79eb4c7e6ec1" }
   ],
   "triggers": {
-    // 매주 월~금 04:00·07:00 UTC = 13:00·16:00 KST
-    "crons": ["0 4,7 * * 1-5"]
+    // 04:00 UTC(13:00 KST) 평일: 손절 장중 스캔 / 07:00 UTC(16:00 KST) 매일: 시장(평일)·코인(매일) 온도계 + 손절 종가 스캔(평일)
+    "crons": ["0 4 * * 1-5", "0 7 * * *"]
   }
 }

@@ -166,6 +166,133 @@ function kstNow() {
   return new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16).replace("T", " ") + " KST";
 }
 
+/* ═══════════ 코인 온도계 자동 갱신 (업비트 KRW 일봉) ═══════════
+   시장 온도계와 동일 4지표 + 다바스 60일 박스 근사 진입판정 + 김치프리미엄.
+   결과는 KV "crypto-gauge" — /data/crypto-gauge.json 이 KV 우선으로 서빙. */
+const CRYPTO_COINS = [
+  { sym: "BTC", mkt: "KRW-BTC", usd: "BTC-USD" },
+  { sym: "ETH", mkt: "KRW-ETH", usd: "ETH-USD" },
+  { sym: "XRP", mkt: "KRW-XRP", usd: "XRP-USD" },
+];
+
+async function fetchUpbitDays(market, want = 420) {
+  let raw = [], to = "";
+  while (raw.length < want) {
+    const url = `https://api.upbit.com/v1/candles/days?market=${market}&count=200${to ? `&to=${encodeURIComponent(to)}` : ""}`;
+    const res = await fetch(url, { headers: { accept: "application/json" } });
+    if (!res.ok) throw new Error(`upbit ${market}: HTTP ${res.status}`);
+    const j = await res.json();
+    if (!j.length) break;
+    raw = raw.concat(j);
+    to = j[j.length - 1].candle_date_time_utc;
+    if (j.length < 200) break;
+  }
+  const rows = raw.map(c => ({
+    date: c.candle_date_time_kst.slice(0, 10).replace(/-/g, ""),
+    open: c.opening_price, high: c.high_price, low: c.low_price, close: c.trade_price,
+  }));
+  rows.sort((a, b) => (a.date < b.date ? -1 : 1));
+  if (rows.length < 100) throw new Error(`upbit ${market}: rows=${rows.length}`);
+  return rows;
+}
+
+function cryptoEntryCalc(rows) {
+  const n = rows.length, closes = rows.map(r => r.close);
+  const last = rows[n - 1], close = last.close;
+  const maAt = (p, endIdx) => {
+    if (endIdx + 1 < p) return null;
+    let s = 0; for (let i = endIdx - p + 1; i <= endIdx; i++) s += closes[i];
+    return s / p;
+  };
+  const ma50 = maAt(50, n - 1), ma150 = maAt(150, n - 1), ma200 = maAt(200, n - 1);
+  const ma200p = maAt(200, n - 21);
+  const yr = rows.slice(-252);
+  const hi52 = Math.max(...yr.map(r => r.high)), lo52 = Math.min(...yr.map(r => r.low));
+  const conds = [
+    ma50 !== null && close > ma50,
+    ma150 !== null && close > ma150,
+    ma200 !== null && close > ma200,
+    ma150 !== null && ma200 !== null && ma150 > ma200,
+    ma200 !== null && ma200p !== null && ma200 > ma200p,
+    close >= lo52 * 1.3,
+    close >= hi52 * 0.75,
+  ];
+  const tt = conds.filter(Boolean).length;
+  let trs = [];
+  for (let i = Math.max(1, n - 20); i < n; i++) {
+    trs.push(Math.max(rows[i].high - rows[i].low,
+      Math.abs(rows[i].high - rows[i - 1].close), Math.abs(rows[i].low - rows[i - 1].close)));
+  }
+  const N = trs.reduce((a, b) => a + b, 0) / trs.length;
+  const box = rows.slice(-61, -1);
+  const pivot = Math.max(...box.map(r => r.high));
+  const dist = (close / pivot - 1) * 100;
+  let verdict = "NO_SETUP";
+  if (tt >= 5 && dist > 0 && dist <= 3) verdict = "BUY_POINT";
+  else if (tt >= 5 && dist > -8 && dist <= 0) verdict = "SETUP";
+  else if (dist > 3) verdict = "EXTENDED";
+  return {
+    verdict, pattern: "BOX60", pivot: Math.round(pivot),
+    dist_to_pivot_pct: R1(dist), tt_passed: tt, tt_total: 7,
+    stop: Math.round(close - 2 * N),
+  };
+}
+
+async function updateCryptoGauge(env) {
+  let data = null;
+  try { data = JSON.parse((await env.GAUGE_KV.get("crypto-gauge")) || "null"); } catch (e) { data = null; }
+  if (!data) {
+    try {
+      const r = await env.ASSETS.fetch("https://seed/data/crypto-gauge.json");
+      if (r.ok) data = await r.json();
+    } catch (e) { /* seed 없음 */ }
+  }
+  if (!data || !data.coins) data = { coins: {} };
+
+  let usdkrw = null;
+  try { const fx = await fetchIndexYahoo("KRW=X"); usdkrw = fx[fx.length - 1].close; } catch (e) { /* 김프 생략 */ }
+
+  const failed = [];
+  for (const c of CRYPTO_COINS) {
+    try {
+      const rows = await fetchUpbitDays(c.mkt);
+      const a = analyze(rows);
+      const old = (data.coins[c.sym] && data.coins[c.sym].history) || [];
+      const oldBy = {};
+      old.forEach(h => { oldBy[h.date] = h; });
+      const hist = a.history.map(s => {
+        const o = oldBy[s.date];
+        if (o) {
+          if (o.kimchi_pct != null) s.kimchi_pct = o.kimchi_pct;
+          if (o.entry) s.entry = o.entry;
+        }
+        return s;
+      });
+      const lastSnap = hist[hist.length - 1];
+      lastSnap.entry = cryptoEntryCalc(rows);
+      if (usdkrw) {
+        try {
+          const r = await fetch(`https://api.coinbase.com/v2/prices/${c.usd}/spot`, { headers: { accept: "application/json" } });
+          if (r.ok) {
+            const usd = parseFloat((await r.json()).data.amount);
+            if (usd > 0) lastSnap.kimchi_pct = R2((rows[rows.length - 1].close / (usd * usdkrw) - 1) * 100);
+          }
+        } catch (e) { /* 김프 생략 */ }
+      }
+      const merged = old.filter(h => !hist.some(s => s.date === h.date)).concat(hist);
+      merged.sort((x, y) => (x.date < y.date ? -1 : 1));
+      data.coins[c.sym] = { history: merged.slice(-200) };
+    } catch (e) {
+      failed.push(`${c.sym}: ${String(e)}`);
+    }
+  }
+  if (!CRYPTO_COINS.some(c => data.coins[c.sym])) throw new Error(`updateCryptoGauge 전부 실패: ${failed.join(" | ")}`);
+  data.updated = kstNow();
+  if (failed.length) data.warnings = failed; else delete data.warnings;
+  await env.GAUGE_KV.put("crypto-gauge", JSON.stringify(data));
+  return data;
+}
+
 // 지수 정의 — 국내는 네이버, 미국은 야후. 게시 순서 = 페이지 표시 순서.
 const GAUGE_INDICES = [
   { key: "kospi",  src: "naver", sym: "KOSPI" },
@@ -2062,12 +2189,18 @@ async function tdHandle(req, url, env, ctx) {
 
 export default {
   async scheduled(event, env, ctx) {
-    // UTC 4시 = 13:00 KST(장중 참고) / UTC 7시 = 16:00 KST(종가 확정)
-    const utcH = new Date().getUTCHours();
+    // UTC 4시 = 13:00 KST(장중 참고, 평일만) / UTC 7시 = 16:00 KST(종가 확정, 매일)
+    const now = new Date();
+    const utcH = now.getUTCHours();
+    const day = now.getUTCDay();
+    const weekday = day >= 1 && day <= 5;
     const session = utcH < 6 ? "intraday" : "close";
-    // 시장 온도계는 종가 확정(16:00 KST) 1회만 자동 갱신
-    if (session === "close") ctx.waitUntil(updateGauge(env));
-    ctx.waitUntil(slRefresh(env, { notify: true, session }));
+    if (session === "close") {
+      // 시장 온도계는 거래일 16:00 KST 1회만, 코인 온도계는 주말 포함 매일 16:00 KST
+      if (weekday) ctx.waitUntil(updateGauge(env));
+      ctx.waitUntil(updateCryptoGauge(env));
+    }
+    if (weekday) ctx.waitUntil(slRefresh(env, { notify: true, session }));
   },
 
   async fetch(req, env, ctx) {
@@ -2145,10 +2278,11 @@ export default {
       // 홈 "일괄 갱신 요청" 버튼: ① 시장 온도계 즉시 서버 갱신 ② 나머지는 텔레그램으로 Claude 처리 요청
       const stamp = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16).replace("T", " ");
       ctx.waitUntil(updateGauge(env));
+      ctx.waitUntil(updateCryptoGauge(env));
       ctx.waitUntil(slTelegram(env,
         "\uD83C\uDF21 <b>\uC628\uB3C4\uACC4 \uC77C\uAD04 \uAC31\uC2E0 \uC694\uCCAD</b>\n" +
-        "\uC2DC\uC7A5 \uC628\uB3C4\uACC4\uB294 \uC989\uC2DC \uAC31\uC2E0\uC744 \uC2DC\uC791\uD588\uC2B5\uB2C8\uB2E4.\n" +
-        "\uAC70\uC2DC\u00B7\uAD70\uC911\uC2EC\uB9AC\u00B7\uC608\uC218\uAE08\u00B7\uCF54\uC778\uC740 Cowork\uC5D0\uC11C\n" +
+        "\uC2DC\uC7A5\u00B7\uCF54\uC778 \uC628\uB3C4\uACC4\uB294 \uC989\uC2DC \uAC31\uC2E0\uC744 \uC2DC\uC791\uD588\uC2B5\uB2C8\uB2E4.\n" +
+        "\uAC70\uC2DC\u00B7\uAD70\uC911\uC2EC\uB9AC\u00B7\uC608\uC218\uAE08\uC740 Cowork\uC5D0\uC11C\n" +
         "<code>\uC628\uB3C4\uACC4 \uAC31\uC2E0 \uD050 \uCC98\uB9AC\uD574\uC918</code> \uB77C\uACE0 \uC785\uB825\uD558\uBA74 \uCC98\uB9AC\uB429\uB2C8\uB2E4.\n" +
         "\uC694\uCCAD \uC2DC\uAC01: " + stamp + " KST"));
       return new Response(JSON.stringify({ ok: true, requested_at: stamp }), { headers: JSON_HEADERS });
@@ -2173,6 +2307,28 @@ export default {
     if (url.pathname === "/data/market-gauge.json") {
       const v = await env.GAUGE_KV.get("market-gauge");
       if (v) return new Response(v, { headers: JSON_HEADERS });
+    }
+
+    if (url.pathname === "/data/crypto-gauge.json") {
+      const v = await env.GAUGE_KV.get("crypto-gauge");
+      if (v) return new Response(v, { headers: JSON_HEADERS });
+    }
+
+    if (url.pathname === "/api/refresh-crypto-gauge") {
+      try {
+        const d = await updateCryptoGauge(env);
+        const summary = {};
+        for (const c of CRYPTO_COINS) {
+          const h = d.coins[c.sym] && d.coins[c.sym].history;
+          if (h && h.length) {
+            const s = h[h.length - 1];
+            summary[c.sym] = { date: s.date, score: s.score, zone: s.zone, kimchi_pct: s.kimchi_pct ?? null, verdict: s.entry ? s.entry.verdict : null };
+          }
+        }
+        return new Response(JSON.stringify({ ok: true, updated: d.updated, coins: summary, warnings: d.warnings ?? null }), { headers: JSON_HEADERS });
+      } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
+      }
     }
 
     if (url.pathname.startsWith("/api/receipts/")) {
