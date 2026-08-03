@@ -276,6 +276,17 @@ $("datelatest").onclick=()=>render(null);
 /* ── URL 파라미터 ── */
 const pc=new URLSearchParams(location.search).get("code");
 if(pc&&/^\d{6}$/.test(pc))loadStock(pc);
+/* ?q=종목명 자동 검색 (홈 통합 검색 연동) */
+const pq=new URLSearchParams(location.search).get("q");
+if(!pc&&pq){
+  fetch(`${API}/search?q=${encodeURIComponent(pq)}`).then(r=>r.json()).then(j=>{
+    const it=(j.data||[]).filter(x=>/^[0-9]{6}$/.test(x.code));
+    if(!it.length)return;
+    const h=it.find(x=>x.name===pq)||it[0];
+    const qi=$("q");if(qi)qi.value=h.name;
+    loadStock(h.code,h.name);
+  }).catch(()=>{});
+}
 </script>
 </body>
 </html>
