@@ -132,7 +132,9 @@
     '/correlation.html':'correlation.json','/vault-audit.html':'vault-audit.json',
     '/crypto-report.html':'crypto-report.json'
   };
-  var df=DATA_MAP[path.replace(/\/$/,'')]||DATA_MAP[path];
+  var _p=path.replace(/\/+$/,'');
+  if(!/\.html$/.test(_p))_p+='.html';
+  var df=DATA_MAP[_p];
   if(df){
     fetch('/data/'+df).then(function(r){if(!r.ok)throw 0;return r.text();}).then(function(txt){
       var today=new Date();today.setHours(0,0,0,0);
