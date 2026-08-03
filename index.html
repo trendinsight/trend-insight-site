@@ -124,6 +124,18 @@
   .cat.manual .freq{background:var(--gold);}
 
   /* Insights preview */
+  .search-bar{display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap;}
+  .search-bar input{flex:1;min-width:240px;max-width:480px;padding:12px 18px;border:1px solid var(--line);border-radius:12px;font-family:inherit;font-size:.95rem;background:#fff;color:var(--text);}
+  .search-bar input:focus{outline:2px solid var(--accent);border-color:var(--accent);}
+  #post-count{font-size:.85rem;color:var(--muted);font-weight:600;}
+  .stock-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;}
+  .stock-chips .chip{border:1px solid var(--line);background:#fff;color:var(--navy);font-size:.8rem;font-weight:600;padding:5px 12px;border-radius:999px;cursor:pointer;font-family:inherit;transition:all .15s;}
+  .stock-chips .chip:hover{border-color:var(--accent);color:var(--accent);}
+  .stock-chips .chip.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .stock-chips .chip b{font-weight:800;margin-left:4px;opacity:.6;}
+  .load-more-wrap{text-align:center;margin-top:32px;}
+  #load-more{border:1px solid var(--line);background:#fff;color:var(--navy);font-weight:700;font-size:.92rem;padding:12px 34px;border-radius:999px;cursor:pointer;font-family:inherit;transition:all .15s;}
+  #load-more:hover{border-color:var(--accent);color:var(--accent);}
   .filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:32px;}
   .filter-btn{border:1px solid var(--line);background:#fff;color:var(--muted);font-size:.85rem;font-weight:600;padding:8px 18px;border-radius:999px;cursor:pointer;font-family:inherit;transition:all .15s;}
   .filter-btn:hover{border-color:var(--accent);color:var(--accent);}
@@ -500,7 +512,12 @@
   <div class="container">
     <div class="section-label">Latest</div>
     <h2 class="section-title">최신 글</h2>
-    <p class="section-desc">카테고리를 선택해 최신 리포트를 확인하세요.</p>
+    <p class="section-desc">종목명·키워드로 검색하거나, 종목 태그와 카테고리로 리포트를 찾아보세요.</p>
+    <div class="search-bar">
+      <input type="search" id="post-search" placeholder="종목명·키워드 검색 (예: 케이아이엔엑스, 반도체, 금리)" aria-label="리포트 검색">
+      <span id="post-count"></span>
+    </div>
+    <div class="stock-chips" id="stock-chips"></div>
     <div class="filter-bar">
       <button class="filter-btn active" data-filter="all">전체</button>
       <button class="filter-btn" data-filter="us-kr">US-KR 모닝</button>
@@ -560,20 +577,86 @@
       <article class="insight" data-cat="daily"><div class="thumb"><span class="tag">데일리 마감 브리핑</span></div><div class="body"><a href="posts/2026-06-10-daily-close.html"><h3>검은 수요일 — 코스피 4.52% 급락 7730선 후퇴, CPI·동시만기 경계 속 투매</h3></a><p>외국인·기관 6조 투매에 4거래일 연속 사이드카…환율 1,524원, 오늘 밤 美 CPI가 분수령.</p><span class="date">2026.06.10</span></article>
       <!-- POSTS:END -->
     </div>
+    <div class="load-more-wrap" id="load-more-wrap" style="display:none;">
+      <button id="load-more" type="button">더 보기</button>
+    </div>
   </div>
 </section>
 
 <script>
-document.querySelectorAll('.filter-btn').forEach(function(btn){
-  btn.addEventListener('click', function(){
-    document.querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active');});
-    btn.classList.add('active');
-    var f = btn.dataset.filter;
-    document.querySelectorAll('#post-list .insight').forEach(function(card){
-      card.style.display = (f === 'all' || card.dataset.cat === f) ? '' : 'none';
+(function(){
+  var PAGE=12, shown=PAGE, activeCat='all', activeChip=null;
+  var cards=Array.prototype.slice.call(document.querySelectorAll('#post-list .insight'));
+  var searchEl=document.getElementById('post-search');
+  var countEl=document.getElementById('post-count');
+  var chipsEl=document.getElementById('stock-chips');
+  var moreWrap=document.getElementById('load-more-wrap');
+  var moreBtn=document.getElementById('load-more');
+  if(!searchEl||!cards.length)return;
+
+  cards.forEach(function(c){c._text=(c.textContent||'').toLowerCase();});
+
+  /* 종목 태그 자동 추출: 제목의 "이름(6자리코드)" 패턴 + "[리포트 요약] 이름 —" 패턴 */
+  var counts={};
+  cards.forEach(function(c){
+    var h=c.querySelector('h3'); if(!h)return;
+    var t=h.textContent, found={}, m;
+    var re=/([가-힣A-Za-z0-9&·]+)\s*\((\d{6})\)/g;
+    while((m=re.exec(t))){ if(m[1].trim().length>=2) found[m[1].trim()]=1; }
+    m=t.match(/^\[리포트 요약\]\s*([가-힣A-Za-z0-9&·]+)/);
+    if(m&&m[1].trim().length>=2) found[m[1].trim()]=1;
+    Object.keys(found).forEach(function(n){counts[n]=(counts[n]||0)+1;});
+  });
+  Object.keys(counts)
+    .filter(function(n){return counts[n]>=2;})
+    .sort(function(a,b){return counts[b]-counts[a];})
+    .slice(0,12)
+    .forEach(function(n){
+      var b=document.createElement('button');
+      b.type='button'; b.className='chip'; b._name=n;
+      b.innerHTML=n+'<b>'+counts[n]+'</b>';
+      b.addEventListener('click',function(){
+        if(activeChip===n){activeChip=null;searchEl.value='';}
+        else{activeChip=n;searchEl.value=n;}
+        syncChips(); apply(true);
+      });
+      chipsEl.appendChild(b);
+    });
+  function syncChips(){
+    chipsEl.querySelectorAll('.chip').forEach(function(c){c.classList.toggle('on',c._name===activeChip);});
+  }
+
+  function apply(reset){
+    if(reset)shown=PAGE;
+    var q=searchEl.value.trim().toLowerCase();
+    var terms=q?q.split(/\s+/):[];
+    var matched=cards.filter(function(c){
+      if(activeCat!=='all'&&c.dataset.cat!==activeCat)return false;
+      for(var i=0;i<terms.length;i++){if(c._text.indexOf(terms[i])===-1)return false;}
+      return true;
+    });
+    var visibleN=Math.min(shown,matched.length);
+    cards.forEach(function(c){c.style.display='none';});
+    matched.slice(0,visibleN).forEach(function(c){c.style.display='';});
+    countEl.textContent=matched.length?(matched.length+'건'+(visibleN<matched.length?' 중 '+visibleN+'건 표시':'')):'검색 결과가 없습니다';
+    moreWrap.style.display=matched.length>visibleN?'':'none';
+  }
+
+  document.querySelectorAll('.filter-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active');});
+      btn.classList.add('active');
+      activeCat=btn.dataset.filter;
+      apply(true);
     });
   });
-});
+  searchEl.addEventListener('input',function(){
+    if(activeChip&&searchEl.value.trim()!==activeChip){activeChip=null;syncChips();}
+    apply(true);
+  });
+  moreBtn.addEventListener('click',function(){shown+=PAGE;apply(false);});
+  apply(true);
+})();
 </script>
 
 <section id="contact" class="contact">
