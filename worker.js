@@ -2904,7 +2904,8 @@ function authIsGatedPath(req, url) {
   const p = url.pathname;
   if (p.startsWith("/api/") || p.startsWith("/data/")) return false;
   if (AUTH_OPEN_PAGES.has(p)) return false;
-  if (p === "/" || p.endsWith("/") || p.endsWith(".html")) return true;
+  if (p === "/" || p === "/index.html" || p === "/index") return false; // 홈은 공개 (로그인·가입 진입점)
+  if (p.endsWith("/") || p.endsWith(".html")) return true;
   if (p.startsWith("/posts/") && p.endsWith(".pdf")) return true;
   if (!p.slice(1).includes(".")) return true; // 확장자 없는 경로 (자동 .html 매핑 대비)
   return false;
