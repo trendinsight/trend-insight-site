@@ -2065,7 +2065,8 @@ export default {
     // UTC 4시 = 13:00 KST(장중 참고) / UTC 7시 = 16:00 KST(종가 확정)
     const utcH = new Date().getUTCHours();
     const session = utcH < 6 ? "intraday" : "close";
-    ctx.waitUntil(updateGauge(env));
+    // 시장 온도계는 종가 확정(16:00 KST) 1회만 자동 갱신
+    if (session === "close") ctx.waitUntil(updateGauge(env));
     ctx.waitUntil(slRefresh(env, { notify: true, session }));
   },
 
@@ -2138,6 +2139,19 @@ export default {
 
     if (url.pathname.startsWith("/api/forensic/")) {
       return handleForensic(req, url, env);
+    }
+
+    if (url.pathname === "/api/gauge-refresh-request" && req.method === "POST") {
+      // 홈 "일괄 갱신 요청" 버튼: ① 시장 온도계 즉시 서버 갱신 ② 나머지는 텔레그램으로 Claude 처리 요청
+      const stamp = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16).replace("T", " ");
+      ctx.waitUntil(updateGauge(env));
+      ctx.waitUntil(slTelegram(env,
+        "\uD83C\uDF21 <b>\uC628\uB3C4\uACC4 \uC77C\uAD04 \uAC31\uC2E0 \uC694\uCCAD</b>\n" +
+        "\uC2DC\uC7A5 \uC628\uB3C4\uACC4\uB294 \uC989\uC2DC \uAC31\uC2E0\uC744 \uC2DC\uC791\uD588\uC2B5\uB2C8\uB2E4.\n" +
+        "\uAC70\uC2DC\u00B7\uAD70\uC911\uC2EC\uB9AC\u00B7\uC608\uC218\uAE08\u00B7\uCF54\uC778\uC740 Cowork\uC5D0\uC11C\n" +
+        "<code>\uC628\uB3C4\uACC4 \uAC31\uC2E0 \uD050 \uCC98\uB9AC\uD574\uC918</code> \uB77C\uACE0 \uC785\uB825\uD558\uBA74 \uCC98\uB9AC\uB429\uB2C8\uB2E4.\n" +
+        "\uC694\uCCAD \uC2DC\uAC01: " + stamp + " KST"));
+      return new Response(JSON.stringify({ ok: true, requested_at: stamp }), { headers: JSON_HEADERS });
     }
 
     if (url.pathname === "/api/refresh-gauge") {

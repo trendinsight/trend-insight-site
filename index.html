@@ -244,6 +244,9 @@
   .sig-card .d .dash-stale{margin-left:6px;}
   .theme-toggle{border:1px solid var(--line);background:var(--card);border-radius:999px;width:38px;height:38px;font-size:1rem;cursor:pointer;line-height:1;transition:transform .15s;}
   .theme-toggle:hover{transform:scale(1.08);}
+  .gauge-refresh{font-family:inherit;font-size:.82rem;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:999px;padding:9px 18px;cursor:pointer;transition:background .15s,transform .12s;}
+  .gauge-refresh:hover{background:var(--accent-2);transform:translateY(-1px);}
+  .gauge-refresh:disabled{background:#8a94a6;cursor:default;transform:none;}
   .stock-search{background:linear-gradient(115deg,#0b1f3f 0%,#16325c 70%,#1c3f74 100%);border-radius:16px;padding:20px 22px 18px;margin-bottom:24px;box-shadow:0 10px 28px rgba(11,31,63,.18);}
   .ss-label{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
   .ss-label b{color:#fff;font-size:1rem;font-weight:800;}
@@ -409,6 +412,7 @@
     <div class="dash-head">
       <h2>📟 오늘의 계기판</h2>
       <span class="hint">카드를 누르면 상세 페이지로 이동합니다</span>
+      <button type="button" id="gauge-refresh" class="gauge-refresh">🔄 온도계 일괄 갱신 요청</button>
     </div>
 
     <div class="stock-search">
@@ -912,6 +916,22 @@
   });
   document.addEventListener('click',function(e){if(!e.target.closest('.ss-box'))hide();});
   chips.forEach(function(b){b.addEventListener('click',function(){go(b.getAttribute('data-href'));});});
+})();
+</script>
+<script>
+(function(){
+  var b=document.getElementById('gauge-refresh');
+  if(!b)return;
+  b.addEventListener('click',function(){
+    b.disabled=true;b.textContent='\uC694\uCCAD \uC804\uC1A1 \uC911\u2026';
+    fetch('/api/gauge-refresh-request',{method:'POST'}).then(function(r){return r.json();}).then(function(j){
+      if(!j.ok)throw 0;
+      b.textContent='\u2713 \uC811\uC218\uB428 \u2014 \uC2DC\uC7A5 \uC628\uB3C4\uACC4 \uAC31\uC2E0 \uC911, \uB098\uBA38\uC9C0\uB294 \uD154\uB808\uADF8\uB7A8 \uD655\uC778';
+      setTimeout(function(){location.reload();},30000);
+    }).catch(function(){
+      b.disabled=false;b.textContent='\u26A0 \uC2E4\uD328 \u2014 \uB2E4\uC2DC \uC2DC\uB3C4';
+    });
+  });
 })();
 </script>
 <script>
