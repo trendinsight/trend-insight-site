@@ -451,6 +451,18 @@ window.addEventListener('resize',()=>{if(chart){const P=$('#px-chart');
 
 const usp=new URLSearchParams(location.search);
 if(usp.get('code'))analyze(usp.get('code'),usp.get('name')||usp.get('code'),usp.get('market'));
+
+/* ?q=종목명 자동 검색 (리포트 페이지 연동) */
+if(!usp.get('code')&&usp.get('q')){
+  fetch('/api/cockpit/search?q='+encodeURIComponent(usp.get('q'))).then(function(r){return r.json();}).then(function(j){
+    var it=(j.data||[]).filter(function(x){return /^[0-9]{6}$/.test(x.code);});
+    if(!it.length)return;
+    var h=null;for(var i=0;i<it.length;i++){if(it[i].name===usp.get('q')){h=it[i];break;}}
+    h=h||it[0];
+    var qi=document.getElementById('q');if(qi)qi.value=h.name;
+    analyze(h.code,h.name,h.market);
+  }).catch(function(){});
+}
 </script>
 </body>
 </html>

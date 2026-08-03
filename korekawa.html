@@ -398,6 +398,17 @@ async function analyze(code,name){
     $('#detail').innerHTML='<div class="empty"><div class="big">⚠</div><div>연결 실패 · 잠시 후 다시 시도하세요</div></div>';
   }
 }
+
+/* ?q=종목명 자동 검색 (리포트 페이지 연동) */
+(function(){
+  var p=new URLSearchParams(location.search);
+  var q=p.get('q');
+  if(!q||p.get('code'))return;
+  setTimeout(function(){
+    var el=document.getElementById('q');
+    if(el){el.value=q;el.dispatchEvent(new Event('input'));el.focus();}
+  },600);
+})();
 </script>
 </body>
 </html>

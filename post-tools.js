@@ -24,7 +24,7 @@
     ['시그널','/signal.html'],
     ['일목균형표','/ichimoku.html'],
     ['수급 콕핏','/supply.html'],
-    ['종목 그래프','/stock-graph.html'],
+    ['고레가와','/korekawa.html'],
     ['거장 추세','/trend-masters.html']
   ];
 

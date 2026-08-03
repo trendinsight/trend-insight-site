@@ -319,6 +319,17 @@ function toast(msg) {
 }
 
 init();
+
+/* ?q=종목명 자동 검색 (리포트 페이지 연동) */
+(function(){
+  var p=new URLSearchParams(location.search);
+  var q=p.get('q');
+  if(!q||p.get('code'))return;
+  setTimeout(function(){
+    var el=document.getElementById('q');
+    if(el){el.value=q;el.dispatchEvent(new Event('input'));el.focus();}
+  },600);
+})();
 </script>
 </body>
 </html>

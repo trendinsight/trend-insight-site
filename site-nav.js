@@ -1,0 +1,108 @@
+/* Trend Insight — 공용 플로팅 내비게이션
+   worker.js가 홈(index)을 제외한 모든 HTML 페이지 <head>에 자동 주입한다.
+   우하단 ☰ 버튼 → 그룹 아코디언 패널. 각 페이지 레이아웃은 건드리지 않는다. */
+(function(){
+  var path=location.pathname;
+  if(path==='/'||path==='/index.html')return;
+  if(document.getElementById('sn-fab'))return;
+
+  var GROUPS=[
+    ['온도계',[
+      ['시장 온도계','/gauge.html'],['거시 온도계','/macro-gauge.html'],
+      ['군중심리 온도계','/crowd-gauge.html'],['예수금 온도계','/cash-gauge.html'],
+      ['종목 온도계','/stock-gauge.html'],['코인 온도계','/crypto-gauge.html']]],
+    ['스크리닝·레이더',[
+      ['기간별 종목선정','/horizon-picks.html'],['거래량 레이더','/volume-radar.html'],
+      ['세종기업데이터','/sejong-data.html'],['수출 펄스','/export-pulse.html'],
+      ['배당성장','/dividend-growth.html'],['LTCM 수렴','/ltcm-board.html'],
+      ['SA 컨빅션','/sa-conviction.html'],['스타일 로테이션','/style-rotation.html'],
+      ['레버리지 스위치','/switch-gauge.html'],['하락장 레이더','/bear-gauge.html'],
+      ['숏 후보 레이더','/short-radar.html']]],
+    ['전략 보드',[
+      ['고레가와 보드','/korekawa-board.html'],['피셔 보드','/fisher-board.html'],
+      ['위대한 기업','/philip-fisher-board.html'],['추세 라이더','/trend-rider-board.html'],
+      ['거장 자문단','/masters.html'],['논거 보드','/thesis-board.html'],
+      ['결재 보드','/decision-board.html'],['공명 책략','/kongming-board.html'],
+      ['트레이딩 데스크','/trading-desk.html']]],
+    ['웹앱 도구',[
+      ['적정주가','/fair-value.html'],['시그널','/signal.html'],
+      ['일목균형표','/ichimoku.html'],['고레가와','/korekawa.html'],
+      ['피셔','/fisher.html'],['피라미드 계산기','/pyramid-calc.html'],
+      ['종목 그래프','/stock-graph.html'],['수급 콕핏','/supply.html'],
+      ['업종 수급','/sector-flow.html']]],
+    ['리포트',[
+      ['최신 글 (검색)','/#insights'],['리포트 요약 (데일리)','/research-digest.html'],
+      ['리포트 요약 요청','/report-summary.html'],['크립토 리포트','/crypto-report.html'],
+      ['오늘의 격언','/proverb.html']]]
+  ];
+
+  var css=
+    '#sn-fab{position:fixed;right:18px;bottom:18px;z-index:99990;width:48px;height:48px;border-radius:50%;'+
+      'background:#0b1f3f;color:#fff;border:none;cursor:pointer;font-size:19px;line-height:1;'+
+      'box-shadow:0 6px 20px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;}'+
+    '#sn-fab:hover{background:#1a3a6b;}'+
+    '#sn-ov{position:fixed;inset:0;background:rgba(8,16,32,.55);z-index:99991;display:none;}'+
+    '#sn-panel{position:fixed;top:0;right:0;bottom:0;width:min(320px,88vw);background:#fff;z-index:99992;'+
+      'display:none;flex-direction:column;box-shadow:-12px 0 40px rgba(0,0,0,.25);'+
+      "font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic',sans-serif;}"+
+    '#sn-panel.on,#sn-ov.on{display:flex;}'+
+    '#sn-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid #e4e9f1;}'+
+    '#sn-head a{font-weight:800;color:#0b1f3f;text-decoration:none;font-size:1rem;}'+
+    '#sn-head a .r{color:#b22f2f;}#sn-head a .b{color:#4a7ebd;}'+
+    '#sn-close{background:none;border:none;font-size:20px;cursor:pointer;color:#5b6779;padding:4px 8px;}'+
+    '#sn-body{overflow-y:auto;padding:10px 12px 24px;flex:1;}'+
+    '#sn-body .sn-home{display:block;padding:11px 12px;border-radius:9px;font-weight:700;color:#2e6ff2;text-decoration:none;font-size:.92rem;}'+
+    '#sn-body .sn-home:hover{background:#f5f7fb;}'+
+    '#sn-body details{border-bottom:1px solid #eef1f6;}'+
+    '#sn-body summary{list-style:none;cursor:pointer;padding:12px;font-weight:700;color:#13294b;font-size:.92rem;'+
+      'display:flex;align-items:center;justify-content:space-between;border-radius:9px;}'+
+    '#sn-body summary:hover{background:#f5f7fb;}'+
+    '#sn-body summary::-webkit-details-marker{display:none;}'+
+    '#sn-body summary:after{content:"▾";font-size:.7rem;color:#9aa6b6;transition:transform .15s;}'+
+    '#sn-body details[open] summary:after{transform:rotate(180deg);}'+
+    '#sn-body .sn-links{padding:2px 0 10px 10px;}'+
+    '#sn-body .sn-links a{display:block;padding:9px 12px;border-radius:8px;color:#3c4757;text-decoration:none;font-size:.88rem;font-weight:600;}'+
+    '#sn-body .sn-links a:hover{background:#f5f7fb;color:#2e6ff2;}';
+  var st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
+
+  function el(tag,attrs,html){
+    var e=document.createElement(tag);
+    for(var k in attrs)e.setAttribute(k,attrs[k]);
+    if(html!=null)e.innerHTML=html;
+    return e;
+  }
+
+  var fab=el('button',{id:'sn-fab',type:'button','aria-label':'전체 메뉴'},'☰');
+  var ov=el('div',{id:'sn-ov'});
+  var panel=el('div',{id:'sn-panel'});
+  var head=el('div',{id:'sn-head'},
+    '<a href="/"><span class="r">Trend</span> <span class="b">Insight</span></a>'+
+    '<button id="sn-close" type="button" aria-label="닫기">✕</button>');
+  var body=el('div',{id:'sn-body'});
+  body.appendChild(el('a',{class:'sn-home',href:'/'},'🏠 홈 · 오늘의 계기판'));
+  body.appendChild(el('a',{class:'sn-home',href:'/skill-map.html'},'🧭 스킬 맵'));
+  GROUPS.forEach(function(g){
+    var d=document.createElement('details');
+    d.appendChild(el('summary',{},g[0]));
+    var box=el('div',{class:'sn-links'});
+    g[1].forEach(function(l){box.appendChild(el('a',{href:l[1]},l[0]));});
+    d.appendChild(box);
+    body.appendChild(d);
+  });
+  panel.appendChild(head);panel.appendChild(body);
+
+  function open(){ov.classList.add('on');panel.classList.add('on');}
+  function close(){ov.classList.remove('on');panel.classList.remove('on');}
+  fab.addEventListener('click',open);
+  ov.addEventListener('click',close);
+  head.querySelector('#sn-close').addEventListener('click',close);
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')close();});
+
+  function mount(){
+    document.body.appendChild(fab);
+    document.body.appendChild(ov);
+    document.body.appendChild(panel);
+  }
+  if(document.body)mount();
+  else document.addEventListener('DOMContentLoaded',mount);
+})();
