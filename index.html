@@ -162,6 +162,27 @@
   .mv-card .en{font-size:.92rem;color:var(--muted);font-style:italic;}
   @media (max-width:720px){.mv-grid{grid-template-columns:1fr;}}
 
+  /* Dashboard (오늘의 계기판) */
+  .dash{background:var(--bg-soft);padding:52px 0 60px;border-bottom:1px solid var(--line);}
+  .dash-head{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:22px;}
+  .dash-head h2{font-size:1.35rem;font-weight:800;color:var(--navy);letter-spacing:-.01em;}
+  .dash-head .hint{font-size:.8rem;color:var(--muted);}
+  .dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:16px;}
+  .dash-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 18px 14px;display:block;transition:transform .15s, box-shadow .15s;}
+  .dash-card:hover{transform:translateY(-3px);box-shadow:0 10px 26px rgba(11,31,63,.1);}
+  .dash-card .t{font-size:.88rem;font-weight:800;color:var(--navy);display:flex;justify-content:space-between;align-items:center;gap:6px;}
+  .dash-card .t .go{color:#b9c2cf;font-size:.78rem;font-weight:600;}
+  .dash-card .sub{font-size:.72rem;color:#9aa6b6;margin-top:2px;}
+  .dash-rows{margin-top:12px;display:flex;flex-direction:column;gap:10px;min-height:96px;}
+  .dash-row .lbl-line{display:flex;justify-content:space-between;align-items:baseline;font-size:.8rem;margin-bottom:4px;gap:8px;}
+  .dash-row .name{color:var(--text);font-weight:600;white-space:nowrap;}
+  .dash-row .val{font-weight:800;white-space:nowrap;}
+  .dash-bar{height:6px;border-radius:999px;background:#e9edf4;overflow:hidden;}
+  .dash-bar i{display:block;height:100%;border-radius:999px;}
+  .dash-foot{margin-top:12px;padding-top:10px;border-top:1px solid var(--bg-soft);font-size:.72rem;color:#9aa6b6;display:flex;justify-content:space-between;align-items:center;min-height:16px;}
+  .dash-stale{color:#c77700;font-weight:700;}
+  .dash-err{font-size:.82rem;color:#9aa6b6;}
+
   /* Footer */
   footer{background:#081830;color:#7d8aa0;padding:40px 0;font-size:.85rem;}
   .footer-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;}
@@ -299,6 +320,47 @@
       <div class="stat"><b>500+</b><span>누적 기업분석 리포트</span></div>
       <div class="stat"><b>10년+</b><span>시장 분석 경력</span></div>
       <div class="stat"><b>KOSPI·KOSDAQ</b><span>국내 전 종목 커버리지</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="dash" id="dashboard">
+  <div class="container">
+    <div class="dash-head">
+      <h2>📟 오늘의 계기판</h2>
+      <span class="hint">카드를 누르면 상세 페이지로 이동합니다</span>
+    </div>
+    <div class="dash-grid">
+      <a class="dash-card" id="dash-market" href="gauge.html">
+        <div class="t">시장 온도계 <span class="go">상세 →</span></div>
+        <div class="sub">가격 과열도 0~100 · 높을수록 과열</div>
+        <div class="dash-rows"><div class="dash-err">불러오는 중…</div></div>
+        <div class="dash-foot"></div>
+      </a>
+      <a class="dash-card" id="dash-macro" href="macro-gauge.html">
+        <div class="t">거시 온도계 <span class="go">상세 →</span></div>
+        <div class="sub">거시 환경 우호도 · 높을수록 순풍</div>
+        <div class="dash-rows"><div class="dash-err">불러오는 중…</div></div>
+        <div class="dash-foot"></div>
+      </a>
+      <a class="dash-card" id="dash-crowd" href="crowd-gauge.html">
+        <div class="t">군중심리 온도계 <span class="go">상세 →</span></div>
+        <div class="sub">심리 과열도 · 높을수록 쏠림</div>
+        <div class="dash-rows"><div class="dash-err">불러오는 중…</div></div>
+        <div class="dash-foot"></div>
+      </a>
+      <a class="dash-card" id="dash-cash" href="cash-gauge.html">
+        <div class="t">예수금 온도계 <span class="go">상세 →</span></div>
+        <div class="sub">권장 현금 비중 (10~80%)</div>
+        <div class="dash-rows"><div class="dash-err">불러오는 중…</div></div>
+        <div class="dash-foot"></div>
+      </a>
+      <a class="dash-card" id="dash-crypto" href="crypto-gauge.html">
+        <div class="t">코인 온도계 <span class="go">상세 →</span></div>
+        <div class="sub">가격 과열도 · 높을수록 과열</div>
+        <div class="dash-rows"><div class="dash-err">불러오는 중…</div></div>
+        <div class="dash-foot"></div>
+      </a>
     </div>
   </div>
 </section>
@@ -545,6 +607,73 @@ document.querySelectorAll('.filter-btn').forEach(function(btn){
   </div>
 </footer>
 
+<script>
+(function(){
+  function clamp(n){return Math.max(0,Math.min(100,n));}
+  function heatCol(v){if(v>=75)return'#c62828';if(v>=60)return'#e8830c';if(v>40)return'#8a94a6';if(v>25)return'#2e6ff2';return'#0b5cad';}
+  function goodCol(v){if(v>=60)return'#1a7f37';if(v>40)return'#8a94a6';if(v>25)return'#e8830c';return'#c62828';}
+  function ymd(s){s=String(s||'').replace(/[^0-9]/g,'').slice(0,8);if(s.length<8)return null;return new Date(s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8)+'T00:00:00');}
+  function setCard(id,rows,dateStr){
+    var el=document.getElementById(id);if(!el)return;
+    var html='';
+    rows.forEach(function(r){
+      html+='<div class="dash-row"><div class="lbl-line"><span class="name">'+r.name+'</span><span class="val" style="color:'+r.color+'">'+r.txt+'</span></div><div class="dash-bar"><i style="width:'+clamp(r.fill)+'%;background:'+r.color+'"></i></div></div>';
+    });
+    el.querySelector('.dash-rows').innerHTML=html;
+    var d=ymd(dateStr);
+    if(d){
+      var days=Math.floor((Date.now()-d.getTime())/864e5);
+      var iso=d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0');
+      el.querySelector('.dash-foot').innerHTML='<span>기준일 '+iso+'</span>'+(days>3?'<span class="dash-stale">'+days+'일 전 데이터</span>':'');
+    }
+  }
+  function fail(id){
+    var el=document.getElementById(id);if(!el)return;
+    el.querySelector('.dash-rows').innerHTML='<div class="dash-err">데이터를 불러오지 못했습니다.</div>';
+  }
+  function load(f){return fetch('data/'+f).then(function(r){if(!r.ok)throw new Error(f);return r.json();});}
+  function lastOf(a){return a&&a.length?a[a.length-1]:null;}
+
+  load('market-gauge.json').then(function(d){
+    var rows=[['kospi','코스피'],['kosdaq','코스닥']].map(function(p){
+      var m=d[p[0]];return{name:p[1],txt:Math.round(m.score)+'° · '+m.zone,fill:m.score,color:heatCol(m.score)};
+    });
+    setCard('dash-market',rows,d.kospi&&d.kospi.date);
+  }).catch(function(){fail('dash-market');});
+
+  load('macro-gauge.json').then(function(d){
+    var rows=[['KOSPI','코스피'],['KOSDAQ','코스닥'],['NASDAQ','나스닥']].map(function(p){
+      var m=lastOf(d.assets[p[0]].history);return{name:p[1],txt:Math.round(m.score)+'° · '+m.zone,fill:m.score,color:goodCol(m.score)};
+    });
+    setCard('dash-macro',rows,lastOf(d.assets.KOSPI.history).date);
+  }).catch(function(){fail('dash-macro');});
+
+  load('crowd-gauge.json').then(function(d){
+    var zmap={FRENZY:'광기',HOT:'과열',NEUTRAL:'중립',COLD:'냉각',CAPITULATION:'투매'};
+    var rows=[['kospi','코스피'],['kosdaq','코스닥']].map(function(p){
+      var m=lastOf(d.market[p[0]]);return{name:p[1],txt:Math.round(m.temp)+'° · '+(zmap[m.zone]||m.zone),fill:m.temp,color:heatCol(m.temp)};
+    });
+    setCard('dash-crowd',rows,lastOf(d.market.kospi).date);
+  }).catch(function(){fail('dash-crowd');});
+
+  load('cash-gauge.json').then(function(d){
+    var h=lastOf(d.history);
+    var rows=[
+      {name:'종합',txt:h.cash_pct+'% · '+h.stance,fill:h.cash_pct,color:'#2e6ff2'},
+      {name:'코스피',txt:h.markets.kospi.cash_pct+'%',fill:h.markets.kospi.cash_pct,color:'#5b8def'},
+      {name:'코스닥',txt:h.markets.kosdaq.cash_pct+'%',fill:h.markets.kosdaq.cash_pct,color:'#5b8def'}
+    ];
+    setCard('dash-cash',rows,h.date);
+  }).catch(function(){fail('dash-cash');});
+
+  load('crypto-gauge.json').then(function(d){
+    var rows=['BTC','ETH','XRP'].map(function(c){
+      var m=lastOf(d.coins[c].history);return{name:c,txt:Math.round(m.score)+'° · '+m.zone,fill:m.score,color:heatCol(m.score)};
+    });
+    setCard('dash-crypto',rows,lastOf(d.coins.BTC.history).date);
+  }).catch(function(){fail('dash-crypto');});
+})();
+</script>
 <script>
 (function(){
   var toggle=document.getElementById('nav-toggle');
