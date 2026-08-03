@@ -194,6 +194,23 @@
   .dash-foot{margin-top:12px;padding-top:10px;border-top:1px solid var(--bg-soft);font-size:.72rem;color:#9aa6b6;display:flex;justify-content:space-between;align-items:center;min-height:16px;}
   .dash-stale{color:#c77700;font-weight:700;}
   .dash-err{font-size:.82rem;color:#9aa6b6;}
+  .dash-gauges{margin-top:10px;display:flex;justify-content:space-evenly;align-items:flex-end;gap:6px;min-height:118px;flex-wrap:wrap;}
+  .mini-g{text-align:center;flex:1;min-width:86px;max-width:150px;}
+  .mini-g .glabel{font-size:.76rem;font-weight:700;color:var(--text);margin-bottom:2px;white-space:nowrap;}
+  .mini-g svg{width:100%;max-width:130px;display:block;margin:0 auto;}
+  .mini-g .gscore{font-size:1.28rem;font-weight:800;color:var(--navy);line-height:1.1;margin-top:2px;}
+  .mini-g .gscore small{font-size:.72rem;font-weight:700;color:#8a94a6;}
+  .mini-g .gzone{display:inline-block;margin-top:4px;padding:2px 10px;border-radius:999px;font-size:.7rem;font-weight:700;white-space:nowrap;}
+  .z-ob{background:#fdecea;color:#c62828}.z-nob{background:#fff3e0;color:#e8830c}.z-n{background:#eef2f8;color:#39506e}.z-nos{background:#e3f2fd;color:#1565c0}.z-os{background:#e8f5e9;color:#2e7d32}
+  .z-good{background:#e8f5e9;color:#1a7f37}.z-bad{background:#fdecea;color:#c62828}
+  .sig-title{margin:34px 0 14px;font-size:1.05rem;font-weight:800;color:var(--navy);}
+  .sig-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;}
+  .sig-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px 12px;display:block;text-decoration:none;transition:transform .15s, box-shadow .15s;}
+  .sig-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(11,31,63,.09);}
+  .sig-card .n{font-size:.76rem;font-weight:700;color:#8a94a6;}
+  .sig-card .v{font-size:1.06rem;font-weight:800;color:var(--navy);margin-top:4px;line-height:1.25;}
+  .sig-card .d{font-size:.7rem;color:#9aa6b6;margin-top:6px;}
+  .sig-card .d .dash-stale{margin-left:6px;}
 
   /* Footer */
   footer{background:#081830;color:#7d8aa0;padding:40px 0;font-size:.85rem;}
@@ -294,9 +311,8 @@
       <div class="nav-group">
         <button type="button" class="nav-group-btn">소개 <span class="caret">▾</span></button>
         <div class="nav-dropdown">
-          <a href="#services">서비스</a>
-          <a href="#about">회사소개</a>
-          <a href="#mv">미션·비전</a>
+          <a href="about.html">회사소개</a>
+          <a href="about.html#mv">미션·비전</a>
           <a href="#contact">문의하기</a>
         </div>
       </div>
@@ -314,8 +330,8 @@
         <h1>숫자 너머의 흐름을 읽다,<br><em>트렌드 인사이트</em></h1>
         <p>주식은 대중의 흐름을 타고 흘러가는 것. 재무제표와 공시 데이터에 기반한 철저한 기업분석으로, 시장의 소음이 아닌 본질에 집중하는 투자 인사이트를 제공합니다.</p>
         <div class="hero-actions">
-          <a href="#services" class="btn-primary">서비스 살펴보기</a>
-          <a href="#about" class="btn-ghost">회사 소개</a>
+          <a href="#dashboard" class="btn-primary">오늘의 계기판</a>
+          <a href="about.html" class="btn-ghost">회사 소개</a>
         </div>
       </div>
       <div class="hero-card">
@@ -374,81 +390,23 @@
         <div class="dash-foot"></div>
       </a>
     </div>
-  </div>
-</section>
 
-<section id="services">
-  <div class="container">
-    <div class="section-label">Services</div>
-    <h2 class="section-title">무엇을 제공하나요</h2>
-    <p class="section-desc">기업의 펀더멘털부터 시장 트렌드까지, 투자 판단에 필요한 핵심 정보를 체계적으로 정리해 드립니다.</p>
-    <div class="cards">
-      <div class="card">
-        <div class="icon">📊</div>
-        <h3>기업분석 리포트</h3>
-        <p>재무제표, 사업보고서, 공시자료를 심층 분석하여 기업의 실질 가치와 성장성을 평가합니다.</p>
-      </div>
-      <div class="card">
-        <div class="icon">📈</div>
-        <h3>시장 트렌드 분석</h3>
-        <p>산업별 사이클과 수급 흐름, 거래량·이동평균 등 기술적 지표를 결합한 트렌드 분석을 제공합니다.</p>
-      </div>
-      <div class="card">
-        <div class="icon">🔍</div>
-        <h3>종목 스크리닝</h3>
-        <p>정량 기준에 따른 체계적인 스크리닝으로 시장에서 주목할 만한 종목을 선별해 드립니다.</p>
-      </div>
-      <div class="card">
-        <div class="icon">📅</div>
-        <h3>이벤트·캘린더 브리핑</h3>
-        <p>실적 발표, 공시 일정 등 주가에 영향을 주는 주요 이벤트를 미리 정리해 드립니다.</p>
-      </div>
+    <div class="sig-title">🚦 전략 신호 <span style="font-size:.78rem;font-weight:600;color:#9aa6b6;">각 보드의 최신 판정</span></div>
+    <div class="sig-grid">
+      <a class="sig-card" id="sig-switch" href="switch-gauge.html"><div class="n">레버리지 스위치</div><div class="v">—</div><div class="d"></div></a>
+      <a class="sig-card" id="sig-bear" href="bear-gauge.html"><div class="n">하락장 레이더</div><div class="v">—</div><div class="d"></div></a>
+      <a class="sig-card" id="sig-style" href="style-rotation.html"><div class="n">스타일 로테이션</div><div class="v">—</div><div class="d"></div></a>
+      <a class="sig-card" id="sig-thesis" href="thesis-board.html"><div class="n">논거 보드</div><div class="v">—</div><div class="d"></div></a>
+      <a class="sig-card" id="sig-horizon" href="horizon-picks.html"><div class="n">기간별 시장 게이트</div><div class="v">—</div><div class="d"></div></a>
     </div>
   </div>
 </section>
 
-<section id="about" class="about">
-  <div class="container about-grid">
-    <div>
-      <div class="section-label">About Us</div>
-      <h2 class="section-title">원칙 있는 분석,<br>신뢰할 수 있는 인사이트</h2>
-      <p class="section-desc" style="margin-bottom:0;">트렌드 인사이트는 추측이 아닌 데이터에 근거합니다. 모든 분석은 검증 가능한 공시·재무 데이터에서 출발하며, 결론까지의 과정을 투명하게 공개합니다.</p>
-      <ul class="about-points">
-        <li><span class="check">✓</span>DART 공시·재무제표 기반의 정량 분석</li>
-        <li><span class="check">✓</span>산업 사이클과 기업 펀더멘털을 함께 보는 통합 관점</li>
-        <li><span class="check">✓</span>매수·매도 근거를 명확히 제시하는 투명한 리포트</li>
-      </ul>
-    </div>
-    <div class="about-visual">
-      <h4>RESEARCH PROCESS</h4>
-      <ol class="process">
-        <li><div><b>데이터 수집</b><span>공시·재무·시장 데이터 통합 수집</span></div></li>
-        <li><div><b>정량 분석</b><span>밸류에이션·수익성·성장성 지표 평가</span></div></li>
-        <li><div><b>정성 검증</b><span>사업 모델·경쟁 환경·리스크 점검</span></div></li>
-        <li><div><b>인사이트 도출</b><span>투자 시사점과 핵심 모니터링 포인트 제시</span></div></li>
-      </ol>
-    </div>
-  </div>
-</section>
 
-<section id="mv" class="mv">
-  <div class="container">
-    <div class="section-label">Mission &amp; Vision</div>
-    <h2 class="section-title">우리가 일하는 이유</h2>
-    <div class="mv-grid">
-      <div class="mv-card mission">
-        <div class="label">Mission</div>
-        <p class="ko">모든 이해관계자의 행복을 위해 자본을 지킨다</p>
-        <p class="en">We protect capital for the happiness of all stakeholders.</p>
-      </div>
-      <div class="mv-card vision">
-        <div class="label">Vision</div>
-        <p class="ko">신뢰받는 리스크 관리 투자 조직</p>
-        <p class="en">A trusted investment organization built on risk management.</p>
-      </div>
-    </div>
-  </div>
-</section>
+
+
+
+
 
 <section id="reports" class="reports">
   <div class="container">
@@ -704,69 +662,134 @@
 
 <script>
 (function(){
-  function clamp(n){return Math.max(0,Math.min(100,n));}
-  function heatCol(v){if(v>=75)return'#c62828';if(v>=60)return'#e8830c';if(v>40)return'#8a94a6';if(v>25)return'#2e6ff2';return'#0b5cad';}
-  function goodCol(v){if(v>=60)return'#1a7f37';if(v>40)return'#8a94a6';if(v>25)return'#e8830c';return'#c62828';}
   function ymd(s){s=String(s||'').replace(/[^0-9]/g,'').slice(0,8);if(s.length<8)return null;return new Date(s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8)+'T00:00:00');}
-  function setCard(id,rows,dateStr){
-    var el=document.getElementById(id);if(!el)return;
-    var html='';
-    rows.forEach(function(r){
-      html+='<div class="dash-row"><div class="lbl-line"><span class="name">'+r.name+'</span><span class="val" style="color:'+r.color+'">'+r.txt+'</span></div><div class="dash-bar"><i style="width:'+clamp(r.fill)+'%;background:'+r.color+'"></i></div></div>';
+  function fdate(s){var d=ymd(s);if(!d)return'';return d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0');}
+  function staleTag(s){var d=ymd(s);if(!d)return'';var days=Math.floor((Date.now()-d.getTime())/864e5);return days>3?'<span class="dash-stale">'+days+'일 전 데이터</span>':'';}
+
+  // 반원 게이지 (시장 온도계 페이지와 동일 문법)
+  var HEAT=[[0,25,"#66bb6a"],[25,40,"#90caf9"],[40,60,"#cfd8e3"],[60,75,"#ffb74d"],[75,100,"#e57373"]];       // 높을수록 과열(빨강)
+  var GOOD=[[0,25,"#e57373"],[25,40,"#ffb74d"],[40,60,"#cfd8e3"],[60,75,"#aed581"],[75,100,"#66bb6a"]];       // 높을수록 순풍(초록)
+  function gaugeSVG(score,segs){
+    var r=80,cx=100,cy=95,a=Math.PI*(1-Math.max(0,Math.min(100,score))/100);
+    var x=cx+r*Math.cos(a),y=cy-r*Math.sin(a),p='';
+    segs.forEach(function(s){
+      var a1=Math.PI*(1-s[0]/100),a2=Math.PI*(1-s[1]/100);
+      p+='<path d="M '+(cx+r*Math.cos(a1))+' '+(cy-r*Math.sin(a1))+' A '+r+' '+r+' 0 0 1 '+(cx+r*Math.cos(a2))+' '+(cy-r*Math.sin(a2))+'" stroke="'+s[2]+'" stroke-width="14" fill="none"/>';
     });
+    return '<svg viewBox="0 0 200 108">'+p
+      +'<line x1="'+cx+'" y1="'+cy+'" x2="'+x.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="#0b1f3f" stroke-width="3.5" stroke-linecap="round"/>'
+      +'<circle cx="'+cx+'" cy="'+cy+'" r="5" fill="#0b1f3f"/>'
+      +'<text x="12" y="106" font-size="9" fill="#9aa6b6">0</text><text x="178" y="106" font-size="9" fill="#9aa6b6">100</text></svg>';
+  }
+  var MZC={"과매수":"z-ob","과열 근접":"z-nob","중립":"z-n","과매도 근접":"z-nos","과매도":"z-os"};
+  function heatZC(z){return MZC[z]||"z-n";}
+  function goodZC(v){return v>=60?"z-good":v>25?"z-n":"z-bad";}
+
+  function setGauges(id,items,dateStr){
+    var el=document.getElementById(id);if(!el)return;
+    var html='<div class="dash-gauges">';
+    items.forEach(function(g){
+      html+='<div class="mini-g"><div class="glabel">'+g.label+'</div>'+gaugeSVG(g.score,g.segs)
+        +'<div class="gscore">'+g.score+'<small>'+(g.unit||'%')+'</small></div>'
+        +'<span class="gzone '+g.zc+'">'+g.zone+'</span></div>';
+    });
+    html+='</div>';
     el.querySelector('.dash-rows').innerHTML=html;
-    var d=ymd(dateStr);
-    if(d){
-      var days=Math.floor((Date.now()-d.getTime())/864e5);
-      var iso=d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0');
-      el.querySelector('.dash-foot').innerHTML='<span>기준일 '+iso+'</span>'+(days>3?'<span class="dash-stale">'+days+'일 전 데이터</span>':'');
-    }
+    el.querySelector('.dash-foot').innerHTML='<span>기준일 '+fdate(dateStr)+'</span>'+staleTag(dateStr);
   }
   function fail(id){
     var el=document.getElementById(id);if(!el)return;
-    el.querySelector('.dash-rows').innerHTML='<div class="dash-err">데이터를 불러오지 못했습니다.</div>';
+    var r=el.querySelector('.dash-rows')||el.querySelector('.v');
+    if(r)r.innerHTML='<div class="dash-err">데이터를 불러오지 못했습니다.</div>';
   }
   function load(f){return fetch('data/'+f).then(function(r){if(!r.ok)throw new Error(f);return r.json();});}
   function lastOf(a){return a&&a.length?a[a.length-1]:null;}
+  function R1(v){return Math.round(v*10)/10;}
 
+  // ── 시장 온도계 (KV 실시간)
   load('market-gauge.json').then(function(d){
-    var rows=[['kospi','코스피'],['kosdaq','코스닥']].map(function(p){
-      var m=d[p[0]];return{name:p[1],txt:Math.round(m.score)+'° · '+m.zone,fill:m.score,color:heatCol(m.score)};
-    });
-    setCard('dash-market',rows,d.kospi&&d.kospi.date);
+    setGauges('dash-market',[
+      {label:'코스피',score:R1(d.kospi.score),segs:HEAT,zone:d.kospi.zone,zc:heatZC(d.kospi.zone)},
+      {label:'코스닥',score:R1(d.kosdaq.score),segs:HEAT,zone:d.kosdaq.zone,zc:heatZC(d.kosdaq.zone)}
+    ],d.kospi&&d.kospi.date);
   }).catch(function(){fail('dash-market');});
 
+  // ── 거시 온도계 (높을수록 순풍 — 초록)
   load('macro-gauge.json').then(function(d){
-    var rows=[['KOSPI','코스피'],['KOSDAQ','코스닥'],['NASDAQ','나스닥']].map(function(p){
-      var m=lastOf(d.assets[p[0]].history);return{name:p[1],txt:Math.round(m.score)+'° · '+m.zone,fill:m.score,color:goodCol(m.score)};
+    var items=[['KOSPI','코스피'],['KOSDAQ','코스닥']].map(function(p){
+      var m=lastOf(d.assets[p[0]].history);
+      return {label:p[1],score:R1(m.score),segs:GOOD,zone:m.zone,zc:goodZC(m.score)};
     });
-    setCard('dash-macro',rows,lastOf(d.assets.KOSPI.history).date);
+    setGauges('dash-macro',items,lastOf(d.assets.KOSPI.history).date);
   }).catch(function(){fail('dash-macro');});
 
+  // ── 군중심리 온도계
   load('crowd-gauge.json').then(function(d){
     var zmap={FRENZY:'광기',HOT:'과열',NEUTRAL:'중립',COLD:'냉각',CAPITULATION:'투매'};
-    var rows=[['kospi','코스피'],['kosdaq','코스닥']].map(function(p){
-      var m=lastOf(d.market[p[0]]);return{name:p[1],txt:Math.round(m.temp)+'° · '+(zmap[m.zone]||m.zone),fill:m.temp,color:heatCol(m.temp)};
+    var zc={FRENZY:'z-ob',HOT:'z-nob',NEUTRAL:'z-n',COLD:'z-nos',CAPITULATION:'z-os'};
+    var items=[['kospi','코스피'],['kosdaq','코스닥']].map(function(p){
+      var m=lastOf(d.market[p[0]]);
+      return {label:p[1],score:R1(m.temp),segs:HEAT,zone:zmap[m.zone]||m.zone,zc:zc[m.zone]||'z-n'};
     });
-    setCard('dash-crowd',rows,lastOf(d.market.kospi).date);
+    setGauges('dash-crowd',items,lastOf(d.market.kospi).date);
   }).catch(function(){fail('dash-crowd');});
 
+  // ── 예수금 온도계 (권장 현금 비중)
   load('cash-gauge.json').then(function(d){
     var h=lastOf(d.history);
-    var rows=[
-      {name:'종합',txt:h.cash_pct+'% · '+h.stance,fill:h.cash_pct,color:'#2e6ff2'},
-      {name:'코스피',txt:h.markets.kospi.cash_pct+'%',fill:h.markets.kospi.cash_pct,color:'#5b8def'},
-      {name:'코스닥',txt:h.markets.kosdaq.cash_pct+'%',fill:h.markets.kosdaq.cash_pct,color:'#5b8def'}
-    ];
-    setCard('dash-cash',rows,h.date);
+    var szc={'공격':'z-good','적극':'z-nos','중립':'z-n','경계':'z-nob','방어':'z-ob'};
+    setGauges('dash-cash',[
+      {label:'종합 권장 현금',score:R1(h.cash_pct),segs:HEAT,zone:h.stance+' · 코스피 '+R1(h.markets.kospi.cash_pct)+'% · 코스닥 '+R1(h.markets.kosdaq.cash_pct)+'%',zc:szc[h.stance]||'z-n'}
+    ],h.date);
   }).catch(function(){fail('dash-cash');});
 
+  // ── 코인 온도계
   load('crypto-gauge.json').then(function(d){
-    var rows=['BTC','ETH','XRP'].map(function(c){
-      var m=lastOf(d.coins[c].history);return{name:c,txt:Math.round(m.score)+'° · '+m.zone,fill:m.score,color:heatCol(m.score)};
+    var items=['BTC','ETH','XRP'].map(function(c){
+      var m=lastOf(d.coins[c].history);
+      return {label:c,score:R1(m.score),segs:HEAT,zone:m.zone,zc:heatZC(m.zone)};
     });
-    setCard('dash-crypto',rows,lastOf(d.coins.BTC.history).date);
+    setGauges('dash-crypto',items,lastOf(d.coins.BTC.history).date);
   }).catch(function(){fail('dash-crypto');});
+
+  // ══ 전략 신호 카드 ══
+  function setSig(id,valHTML,dateStr){
+    var el=document.getElementById(id);if(!el)return;
+    el.querySelector('.v').innerHTML=valHTML;
+    el.querySelector('.d').innerHTML=(dateStr?'기준일 '+fdate(dateStr):'')+staleTag(dateStr);
+  }
+  // 레버리지 스위치
+  load('switch-gauge.json').then(function(d){
+    var h=lastOf(d.history);
+    var col={LEV:'#1a7f37',CASH:'#39506e',INV:'#c62828'}[h.state]||'#39506e';
+    var ko={LEV:'레버리지 보유',CASH:'전량 현금',INV:'인버스 보유'}[h.state]||h.state;
+    setSig('sig-switch','<span style="color:'+col+'">'+h.state+'</span> <small style="font-weight:600;color:#8a94a6">'+ko+' · 점수 '+R1(h.score)+'</small>',h.date);
+  }).catch(function(){fail('sig-switch');});
+  // 하락장 레이더
+  load('bear-gauge.json').then(function(d){
+    var h=lastOf(d.history);
+    var ko={BULL:'강세',NEUTRAL:'중립',CORRECTION:'조정',BEAR:'하락장',CAPITULATION:'투매'};
+    var col={BULL:'#1a7f37',NEUTRAL:'#39506e',CORRECTION:'#e8830c',BEAR:'#c62828',CAPITULATION:'#7b1fa2'}[h.regime]||'#39506e';
+    setSig('sig-bear','<span style="color:'+col+'">'+h.regime+'</span> <small style="font-weight:600;color:#8a94a6">'+(ko[h.regime]||'')+' · '+R1(h.final_score)+'점</small>',h.date);
+  }).catch(function(){fail('sig-bear');});
+  // 스타일 로테이션
+  load('style-rotation.json').then(function(d){
+    var h=lastOf(d.history);
+    setSig('sig-style','가치 <span style="color:#0b5cad">'+h.style.value_pct+'</span> : 성장 <span style="color:#c62828">'+h.style.growth_pct+'</span> <small style="font-weight:600;color:#8a94a6">'+h.phase_ko+'</small>',h.date);
+  }).catch(function(){fail('sig-style');});
+  // 논거 보드
+  load('thesis-board.json').then(function(d){
+    var c=d.counts||{};
+    setSig('sig-thesis','<span style="color:#1a7f37">유지 '+(c.INTACT||0)+'</span> · <span style="color:#e8830c">약화 '+(c.WEAKENED||0)+'</span> · <span style="color:#c62828">훼손 '+(c.BROKEN||0)+'</span>',(d.updated||'').slice(0,10));
+  }).catch(function(){fail('sig-thesis');});
+  // 기간별 시장 게이트
+  load('horizon-picks.json').then(function(d){
+    var h=lastOf(d.history);
+    var v=(h.gate&&h.gate.verdict)||'—';
+    var col={GREEN:'#1a7f37',YELLOW:'#e8830c',RED:'#c62828'}[v]||'#39506e';
+    var ko={GREEN:'매수 우호',YELLOW:'선별 접근',RED:'신규 매수 자제'}[v]||'';
+    setSig('sig-horizon','<span style="color:'+col+'">'+v+'</span> <small style="font-weight:600;color:#8a94a6">'+ko+'</small>',h.date);
+  }).catch(function(){fail('sig-horizon');});
 })();
 </script>
 <script>

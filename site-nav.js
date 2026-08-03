@@ -33,7 +33,9 @@
     ['리포트',[
       ['최신 글 (검색)','/#insights'],['리포트 요약 (데일리)','/research-digest.html'],
       ['리포트 요약 요청','/report-summary.html'],['크립토 리포트','/crypto-report.html'],
-      ['오늘의 격언','/proverb.html']]]
+      ['오늘의 격언','/proverb.html']]],
+    ['소개',[
+      ['회사소개','/about.html'],['문의하기','/#contact']]]
   ];
 
   var css=
