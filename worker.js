@@ -2830,7 +2830,7 @@ async function handleReceipts(req, url, env, ctx) {
 const AUTH_COOKIE = "ti_sess";
 const AUTH_SESSION_DAYS = 90;
 const AUTH_PW_ITER = 50000;
-const AUTH_OPEN_PAGES = new Set(["/login.html", "/signup.html", "/login", "/signup"]);
+const AUTH_OPEN_PAGES = new Set(["/login.html", "/signup.html", "/login", "/signup", "/terms.html", "/terms"]);
 
 async function authEnsureTables(env) {
   await env.RISK_DB.batch([
@@ -2838,12 +2838,14 @@ async function authEnsureTables(env) {
       "CREATE TABLE IF NOT EXISTS site_members(" +
       "id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE," +
       "pw_hash TEXT NOT NULL, pw_salt TEXT NOT NULL, pw_iter INTEGER NOT NULL," +
-      "status TEXT NOT NULL DEFAULT 'active', created_at TEXT NOT NULL, last_login_at TEXT)"),
+      "status TEXT NOT NULL DEFAULT 'active', created_at TEXT NOT NULL, last_login_at TEXT, agreed_at TEXT)"),
     env.RISK_DB.prepare(
       "CREATE TABLE IF NOT EXISTS site_sessions(" +
       "token_hash TEXT PRIMARY KEY, member_id INTEGER NOT NULL," +
       "created_at TEXT NOT NULL, expires_at TEXT NOT NULL)"),
   ]);
+  // 기존 테이블 보강 (컬럼이 이미 있으면 무시)
+  try { await env.RISK_DB.prepare("ALTER TABLE site_members ADD COLUMN agreed_at TEXT").run(); } catch (e) {}
 }
 
 function authRandHex(n) {
@@ -2943,13 +2945,15 @@ async function authHandle(req, url, env, ctx) {
         return authJson(400, { ok: false, error: "올바른 이메일 주소를 입력해 주세요" });
       if (pw.length < 8 || pw.length > 100)
         return authJson(400, { ok: false, error: "비밀번호는 8자 이상이어야 합니다" });
+      if (b.agree !== true)
+        return authJson(400, { ok: false, error: "이용약관 및 개인정보처리방침에 동의해 주세요" });
       const dup = await env.RISK_DB.prepare("SELECT id FROM site_members WHERE email=?").bind(email).first();
       if (dup) return authJson(409, { ok: false, error: "이미 가입된 이메일입니다. 로그인해 주세요." });
       const salt = authRandHex(16);
       const hash = await authHashPw(pw, salt, AUTH_PW_ITER);
       await env.RISK_DB.prepare(
-        "INSERT INTO site_members(name,email,pw_hash,pw_salt,pw_iter,status,created_at) VALUES(?,?,?,?,?,'active',?)")
-        .bind(name, email, hash, salt, AUTH_PW_ITER, new Date().toISOString()).run();
+        "INSERT INTO site_members(name,email,pw_hash,pw_salt,pw_iter,status,created_at,agreed_at) VALUES(?,?,?,?,?,'active',?,?)")
+        .bind(name, email, hash, salt, AUTH_PW_ITER, new Date().toISOString(), new Date().toISOString()).run();
       const row = await env.RISK_DB.prepare("SELECT id FROM site_members WHERE email=?").bind(email).first();
       const token = await authNewSession(env, row.id);
       ctx.waitUntil((async () => {
@@ -3003,7 +3007,7 @@ async function authHandle(req, url, env, ctx) {
         return authJson(401, { ok: false, error: "unauthorized" });
       await authEnsureTables(env);
       const rows = await env.RISK_DB.prepare(
-        "SELECT id,name,email,status,created_at,last_login_at FROM site_members ORDER BY id DESC").all();
+        "SELECT id,name,email,status,created_at,last_login_at,agreed_at FROM site_members ORDER BY id DESC").all();
       return authJson(200, { ok: true, count: rows.results.length, members: rows.results });
     }
 

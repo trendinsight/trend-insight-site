@@ -27,6 +27,10 @@ html[data-theme=dark] .err{background:#3d1f1f;color:#ff9e94}
 .foot{text-align:center;margin-top:20px;font-size:13.5px;color:var(--muted)}
 .foot a{color:var(--accent);text-decoration:none;font-weight:600}
 .notice{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.agree{display:flex;align-items:flex-start;gap:8px;margin:20px 0 0;font-size:13px;font-weight:500;color:var(--muted);line-height:1.5;cursor:pointer}
+.agree input{width:auto;flex:0 0 auto;margin-top:3px}
+.agree a{color:var(--accent);font-weight:600}
+.agree b{color:var(--t-red);font-weight:700}
 </style>
 </head>
 <body>
@@ -42,11 +46,13 @@ html[data-theme=dark] .err{background:#3d1f1f;color:#ff9e94}
     <input id="pw" type="password" autocomplete="new-password" minlength="8" required>
     <label for="pw2">비밀번호 확인</label>
     <input id="pw2" type="password" autocomplete="new-password" minlength="8" required>
+    <label class="agree"><input id="agree" type="checkbox" required>
+      <span><a href="/terms.html" target="_blank">이용약관</a> 및 <a href="/terms.html#privacy" target="_blank">개인정보처리방침</a>에 동의합니다 <b>(필수)</b></span></label>
     <button id="btn" type="submit">무료로 가입하기</button>
   </form>
   <div class="err" id="err"></div>
   <div class="foot">이미 회원이신가요? <a id="loginlink" href="/login.html">로그인</a></div>
-  <div class="notice">· 입력하신 이름·이메일은 회원 확인 용도로만 사용됩니다.<br>· Trend Insight의 콘텐츠는 투자 참고 자료이며, 투자 판단과 책임은 이용자 본인에게 있습니다.</div>
+  <div class="notice">· 입력하신 이름·이메일은 회원 확인 용도로만 사용됩니다.<br>· Trend Insight의 콘텐츠는 투자 참고 자료이며, 투자 판단과 책임은 이용자 본인에게 있습니다.<br>· 현재 모든 서비스는 무료로 제공되며, 이용료를 받지 않습니다.</div>
 </div>
 <script>
 var next=new URLSearchParams(location.search).get('next')||'/';
@@ -57,10 +63,11 @@ document.getElementById('f').addEventListener('submit',async function(e){
   var btn=document.getElementById('btn'),err=document.getElementById('err');
   var pw=document.getElementById('pw').value;
   if(pw!==document.getElementById('pw2').value){err.textContent='비밀번호가 서로 다릅니다';err.style.display='block';return;}
+  if(!document.getElementById('agree').checked){err.textContent='이용약관 및 개인정보처리방침에 동의해 주세요';err.style.display='block';return;}
   btn.disabled=true;err.style.display='none';
   try{
     var r=await fetch('/api/auth/signup',{method:'POST',headers:{'content-type':'application/json'},
-      body:JSON.stringify({name:document.getElementById('name').value,email:document.getElementById('email').value,password:pw})});
+      body:JSON.stringify({name:document.getElementById('name').value,email:document.getElementById('email').value,password:pw,agree:document.getElementById('agree').checked})});
     var j=await r.json();
     if(j.ok){location.href=next;return;}
     err.textContent=j.error||'가입에 실패했습니다';err.style.display='block';
