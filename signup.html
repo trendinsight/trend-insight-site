@@ -69,7 +69,7 @@ document.getElementById('f').addEventListener('submit',async function(e){
     var r=await fetch('/api/auth/signup',{method:'POST',headers:{'content-type':'application/json'},
       body:JSON.stringify({name:document.getElementById('name').value,email:document.getElementById('email').value,password:pw,agree:document.getElementById('agree').checked})});
     var j=await r.json();
-    if(j.ok){location.href=next;return;}
+    if(j.ok){location.href=(next==='/'?'/my-stocks.html?welcome=1':next);return;}
     err.textContent=j.error||'가입에 실패했습니다';err.style.display='block';
   }catch(x){err.textContent='네트워크 오류가 발생했습니다';err.style.display='block';}
   btn.disabled=false;

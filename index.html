@@ -1050,8 +1050,9 @@
     if(!j.ok)return;
     var b=document.getElementById('auth-box');if(!b)return;
     var n=document.createElement('span');n.className='auth-name';n.textContent=j.member.name+'님';
+    var w=document.createElement('a');w.className='auth-join';w.href='/my-stocks.html';w.textContent='내 종목';
     var o=document.createElement('a');o.className='auth-login';o.style.display='inline';o.href='/api/auth/logout';o.textContent='로그아웃';
-    b.innerHTML='';b.appendChild(n);b.appendChild(o);
+    b.innerHTML='';b.appendChild(n);b.appendChild(w);b.appendChild(o);
   }).catch(function(){});
 })();
 </script>

@@ -25,7 +25,7 @@
       ['결재 보드','/decision-board.html'],['공명 책략','/kongming-board.html'],
       ['트레이딩 데스크','/trading-desk.html']]],
     ['웹앱 도구',[
-      ['적정주가','/fair-value.html'],['시그널','/signal.html'],
+      ['내 종목','/my-stocks.html'],['적정주가','/fair-value.html'],['시그널','/signal.html'],
       ['일목균형표','/ichimoku.html'],['고레가와','/korekawa.html'],
       ['피셔','/fisher.html'],['피라미드 계산기','/pyramid-calc.html'],
       ['종목 그래프','/stock-graph.html'],['수급 콕핏','/supply.html'],

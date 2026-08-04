@@ -2846,6 +2846,10 @@ async function authEnsureTables(env) {
   ]);
   // 기존 테이블 보강 (컬럼이 이미 있으면 무시)
   try { await env.RISK_DB.prepare("ALTER TABLE site_members ADD COLUMN agreed_at TEXT").run(); } catch (e) {}
+  await env.RISK_DB.prepare(
+    "CREATE TABLE IF NOT EXISTS site_watchlist(" +
+    "member_id INTEGER NOT NULL, code TEXT NOT NULL, name TEXT NOT NULL," +
+    "added_at TEXT NOT NULL, PRIMARY KEY(member_id, code))").run();
 }
 
 function authRandHex(n) {
@@ -2928,6 +2932,36 @@ function authJson(status, obj, extraHeaders) {
 async function authHandle(req, url, env, ctx) {
   const p = url.pathname.slice("/api/auth/".length).replace(/\/+$/, "");
   try {
+    if (p === "watchlist") {
+      const m = await authMember(req, env);
+      if (!m) return authJson(401, { ok: false, error: "로그인이 필요합니다" });
+      await authEnsureTables(env);
+      if (req.method === "GET") {
+        const rows = await env.RISK_DB.prepare(
+          "SELECT code,name,added_at FROM site_watchlist WHERE member_id=? ORDER BY added_at").bind(m.id).all();
+        return authJson(200, { ok: true, stocks: rows.results });
+      }
+      if (req.method === "POST") {
+        const b = await req.json().catch(() => ({}));
+        const op = String(b.op || "add");
+        const code = String(b.code || "").replace(/[^0-9A-Za-z]/g, "").slice(0, 8);
+        if (!code) return authJson(400, { ok: false, error: "종목코드가 올바르지 않습니다" });
+        if (op === "remove") {
+          await env.RISK_DB.prepare("DELETE FROM site_watchlist WHERE member_id=? AND code=?").bind(m.id, code).run();
+          return authJson(200, { ok: true });
+        }
+        const name = String(b.name || "").trim().slice(0, 40);
+        if (!name) return authJson(400, { ok: false, error: "종목명이 필요합니다" });
+        const cnt = await env.RISK_DB.prepare("SELECT COUNT(*) AS c FROM site_watchlist WHERE member_id=?").bind(m.id).first();
+        if (cnt && cnt.c >= 30) return authJson(400, { ok: false, error: "종목은 최대 30개까지 등록할 수 있습니다" });
+        await env.RISK_DB.prepare(
+          "INSERT OR REPLACE INTO site_watchlist(member_id,code,name,added_at) VALUES(?,?,?,?)")
+          .bind(m.id, code, name, new Date().toISOString()).run();
+        return authJson(200, { ok: true });
+      }
+      return authJson(405, { ok: false, error: "method not allowed" });
+    }
+
     if (p === "me" && req.method === "GET") {
       const m = await authMember(req, env);
       if (!m) return authJson(401, { ok: false, error: "로그인이 필요합니다" });

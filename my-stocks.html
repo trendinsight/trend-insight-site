@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<script>(function(){try{var t=localStorage.getItem('ti-theme');if(t==='dark'||(!t&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();</script>
+<title>내 종목 | Trend Insight</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 125'%3E%3Ccircle cx='50' cy='17' r='15' fill='%234a7ebd'/%3E%3Ctext x='50' y='115' font-size='105' font-family='Georgia,serif' font-weight='bold' fill='%23b22f2f' text-anchor='middle'%3ET%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--navy:#0b1f3f;--accent:#2e6ff2;--accent-2:#1e5ae0;--t-red:#b22f2f;--i-blue:#4a7ebd;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg-soft:#f5f7fb;--card:#fff;--up:#d32f2f;--down:#1565c0;}
+html[data-theme=dark]{--bg-soft:#111a2e;--card:#16223a;--line:#26334d;--text:#d4deee;--muted:#8fa0b9;--navy:#e8effc;--up:#ff8a80;--down:#82b1ff;}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg-soft);color:var(--text);line-height:1.6;font-size:15px}
+a{text-decoration:none;color:inherit}
+.wrap{max-width:920px;margin:0 auto;padding:0 20px 60px}
+header{background:var(--card);border-bottom:1px solid var(--line);padding:15px 0;position:sticky;top:0;z-index:20}
+.hrow{max-width:920px;margin:0 auto;padding:0 20px;display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:8px;font-family:Georgia,serif;font-weight:700;font-size:19px;color:var(--navy)}
+.logo .r{color:#b22f2f}.logo .b{color:#4a7ebd}
+.home{font-size:13.5px;font-weight:600;color:var(--muted)}
+h1{font-size:24px;margin:30px 0 4px;color:var(--navy);letter-spacing:-.4px}
+.sub{color:var(--muted);font-size:13.5px;margin-bottom:22px}
+.welcome{display:none;background:linear-gradient(115deg,#0b1f3f,#1c3f74);color:#fff;border-radius:14px;padding:18px 22px;margin:22px 0 4px;font-size:14px;line-height:1.7}
+.welcome b{color:#ffd77a}
+.addbox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:22px;position:relative}
+.addbox label{display:block;font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text)}
+.srow{position:relative}
+.srow input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:transparent;color:var(--text)}
+.srow input:focus{outline:none;border-color:var(--accent)}
+.sugg{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(11,31,63,.15);z-index:10;max-height:280px;overflow-y:auto}
+.sugg button{display:flex;justify-content:space-between;width:100%;padding:11px 14px;border:none;background:none;font-size:14px;color:var(--text);cursor:pointer;text-align:left}
+.sugg button:hover{background:var(--bg-soft)}
+.sugg .c{color:var(--muted);font-size:12.5px}
+.hintline{margin-top:8px;font-size:12px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.stk{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;position:relative}
+.stk .del{position:absolute;top:10px;right:12px;border:none;background:none;color:var(--muted);font-size:16px;cursor:pointer;padding:4px}
+.stk .del:hover{color:var(--t-red)}
+.stk .nm{font-size:16px;font-weight:800;color:var(--navy)}
+.stk .cd{font-size:12px;color:var(--muted);margin-left:6px;font-weight:500}
+.stk .px{margin-top:6px;font-size:19px;font-weight:800}
+.stk .chg{font-size:13px;font-weight:700;margin-left:8px}
+.up{color:var(--up)}.down{color:var(--down)}.flat{color:var(--muted)}
+.tools{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.tools a{font-size:12px;font-weight:700;padding:6px 10px;border-radius:8px;background:var(--bg-soft);border:1px solid var(--line);color:var(--text)}
+.tools a:hover{border-color:var(--accent);color:var(--accent)}
+.empty{background:var(--card);border:1px dashed var(--line);border-radius:14px;padding:40px 20px;text-align:center;color:var(--muted);font-size:14px}
+.sec{margin-top:34px}
+.sec h2{font-size:17px;color:var(--navy);margin-bottom:12px;padding-left:10px;border-left:4px solid var(--accent)}
+.plist{display:flex;flex-direction:column;gap:8px}
+.plist a{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 16px;font-size:14px;display:flex;justify-content:space-between;gap:12px;align-items:center}
+.plist a:hover{border-color:var(--accent)}
+.plist .pt{font-weight:600}
+.plist .pm{font-size:12px;color:var(--muted);white-space:nowrap}
+.pnote{font-size:12.5px;color:var(--muted);margin-top:10px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0b1f3f;color:#fff;padding:11px 20px;border-radius:10px;font-size:13.5px;display:none;z-index:50}
+@media(max-width:560px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <a href="/" class="logo"><svg width="22" height="27" viewBox="0 0 100 125" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="17" r="15" fill="#4a7ebd"/><text x="50" y="115" font-size="105" font-family="Georgia,serif" font-weight="bold" fill="#b22f2f" text-anchor="middle">T</text></svg><span><span class="r">Trend</span> <span class="b">Insight</span></span></a>
+    <a href="/" class="home">← 홈으로</a>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="welcome" id="welcome"><b>가입을 환영합니다!</b> 보유하고 있거나 관심 있는 종목을 등록해 보세요.<br>등록한 종목은 이 페이지에서 시세와 함께 적정주가·시그널·일목균형표 등 분석 도구로 바로 연결됩니다.</div>
+  <h1>📌 내 종목</h1>
+  <div class="sub" id="subline">보유·관심 종목을 등록하면 시세와 분석 도구 바로가기, 관련 리포트를 한곳에서 볼 수 있습니다. (최대 30개)</div>
+
+  <div class="addbox">
+    <label>종목 추가</label>
+    <div class="srow">
+      <input id="q" type="text" placeholder="종목명 또는 코드 검색 (예: 삼성전자, 005930)" autocomplete="off" enterkeyhint="search">
+      <div class="sugg" id="sugg"></div>
+    </div>
+    <div class="hintline">※ 종목명만 저장됩니다. 수량·평단가 등 재산 정보는 수집하지 않습니다.</div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none">아직 등록한 종목이 없습니다.<br>위 검색창에서 첫 종목을 추가해 보세요.</div>
+
+  <div class="sec" id="postsec" style="display:none">
+    <h2>내 종목이 언급된 최근 글</h2>
+    <div class="plist" id="plist"></div>
+    <div class="pnote">최근 게시물 제목·요약에서 등록 종목명을 찾아 보여줍니다.</div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+var TOOLS=[['💰 적정주가','fair-value.html'],['📶 시그널','signal.html'],['☁️ 일목','ichimoku.html'],['🧲 수급','supply.html'],['🌡️ 온도계','stock-gauge.html']];
+var stocks=[];
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(function(){t.style.display='none';},2200);}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function render(){
+  var g=document.getElementById('grid');
+  document.getElementById('empty').style.display=stocks.length?'none':'block';
+  g.innerHTML=stocks.map(function(s){
+    var tools=TOOLS.map(function(t){return '<a href="'+t[1]+'?q='+encodeURIComponent(s.name)+'">'+t[0]+'</a>';}).join('');
+    return '<div class="stk" data-code="'+esc(s.code)+'">'
+      +'<button class="del" title="삭제" onclick="removeStock(\''+esc(s.code)+'\')">✕</button>'
+      +'<span class="nm">'+esc(s.name)+'</span><span class="cd">'+esc(s.code)+'</span>'
+      +'<div class="px" id="px-'+esc(s.code)+'">—</div>'
+      +'<div class="tools">'+tools+'</div></div>';
+  }).join('');
+  stocks.forEach(function(s){loadQuote(s.code);});
+  matchPosts();
+}
+
+function loadQuote(code){
+  fetch('/api/cockpit/quote/'+code).then(function(r){return r.json();}).then(function(j){
+    var d=j.data||{};var el=document.getElementById('px-'+code);if(!el||d.price==null)return;
+    var ch=d.change,rt=d.change_rate,cls=ch>0?'up':(ch<0?'down':'flat'),sign=ch>0?'▲':(ch<0?'▼':'');
+    el.innerHTML=d.price.toLocaleString()+'<span class="chg '+cls+'">'+sign+' '+(ch==null?'':Math.abs(ch).toLocaleString())+(rt!=null?' ('+rt.toFixed(2)+'%)':'')+'</span>';
+  }).catch(function(){});
+}
+
+function load(){
+  fetch('/api/auth/watchlist').then(function(r){return r.json();}).then(function(j){
+    if(!j.ok){location.href='/login.html?next=%2Fmy-stocks.html';return;}
+    stocks=j.stocks||[];render();
+  });
+}
+
+function addStock(code,name){
+  fetch('/api/auth/watchlist',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({op:'add',code:code,name:name})})
+  .then(function(r){return r.json();}).then(function(j){
+    if(!j.ok){toast(j.error||'추가 실패');return;}
+    toast(name+' 추가됨');load();
+  });
+}
+function removeStock(code){
+  fetch('/api/auth/watchlist',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({op:'remove',code:code})})
+  .then(function(r){return r.json();}).then(function(){load();});
+}
+
+/* 검색 자동완성 */
+(function(){
+  var q=document.getElementById('q'),sg=document.getElementById('sugg'),tm;
+  q.addEventListener('input',function(){
+    clearTimeout(tm);var v=q.value.trim();
+    if(v.length<1){sg.style.display='none';return;}
+    tm=setTimeout(function(){
+      fetch('/api/cockpit/search?q='+encodeURIComponent(v)).then(function(r){return r.json();}).then(function(j){
+        var items=(j.data||[]).slice(0,8);
+        if(!items.length){sg.style.display='none';return;}
+        sg.innerHTML=items.map(function(it){
+          return '<button data-code="'+esc(it.code)+'" data-name="'+esc(it.name)+'"><span>'+esc(it.name)+'</span><span class="c">'+esc(it.code)+'</span></button>';
+        }).join('');
+        sg.style.display='block';
+        [].forEach.call(sg.querySelectorAll('button'),function(b){
+          b.addEventListener('click',function(){sg.style.display='none';q.value='';addStock(b.dataset.code,b.dataset.name);});
+        });
+      }).catch(function(){});
+    },250);
+  });
+  document.addEventListener('click',function(e){if(!sg.contains(e.target)&&e.target!==q)sg.style.display='none';});
+})();
+
+/* 내 종목 언급 최근 글 */
+function matchPosts(){
+  if(!stocks.length){document.getElementById('postsec').style.display='none';return;}
+  fetch('/').then(function(r){return r.text();}).then(function(html){
+    var doc=new DOMParser().parseFromString(html,'text/html');
+    var cards=doc.querySelectorAll('article.insight');
+    var names=stocks.map(function(s){return s.name;});
+    var out=[];
+    [].forEach.call(cards,function(c){
+      var a=c.querySelector('.body a'),h=c.querySelector('h3'),p=c.querySelector('p'),d=c.querySelector('.date');
+      if(!a||!h)return;
+      var txt=h.textContent+' '+(p?p.textContent:'');
+      var hit=names.filter(function(n){return txt.indexOf(n)>=0;});
+      if(hit.length)out.push({href:a.getAttribute('href'),title:h.textContent,date:d?d.textContent:'',hit:hit});
+    });
+    var sec=document.getElementById('postsec'),pl=document.getElementById('plist');
+    if(!out.length){sec.style.display='none';return;}
+    pl.innerHTML=out.slice(0,10).map(function(o){
+      return '<a href="/'+esc(o.href).replace(/^\//,'')+'"><span class="pt">'+esc(o.title)+'</span><span class="pm">'+esc(o.hit.join('·'))+' · '+esc(o.date)+'</span></a>';
+    }).join('');
+    sec.style.display='block';
+  }).catch(function(){});
+}
+
+if(new URLSearchParams(location.search).get('welcome')==='1')document.getElementById('welcome').style.display='block';
+load();
+</script>
+</body>
+</html>
