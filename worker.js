@@ -2313,6 +2313,22 @@ export default {
       }
     }
 
+    if (url.pathname === "/data/watchlist-top.json") {
+      const cached = await env.GAUGE_KV.get("wl-top-cache");
+      if (cached) return new Response(cached, { headers: JSON_HEADERS });
+      try {
+        const s = await authWatchlistStats(env);
+        const body = JSON.stringify({
+          ok: true, updated: new Date().toISOString(), members: s.members,
+          top: s.top.slice(0, 10).map(t => ({ code: t.code, name: t.name, holders: t.holders })),
+        });
+        await env.GAUGE_KV.put("wl-top-cache", body, { expirationTtl: 600 });
+        return new Response(body, { headers: JSON_HEADERS });
+      } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
+      }
+    }
+
     if (url.pathname === "/data/market-gauge.json") {
       const v = await env.GAUGE_KV.get("market-gauge");
       if (v) return new Response(v, { headers: JSON_HEADERS });

@@ -102,6 +102,15 @@
   .btn-ghost{border:1px solid rgba(255,255,255,.35);color:#fff;padding:14px 30px;border-radius:10px;font-weight:600;font-size:1rem;transition:background .2s;}
   .btn-ghost:hover{background:rgba(255,255,255,.08);}
   .hero-stats{display:flex;gap:48px;margin-top:60px;flex-wrap:wrap;}
+  .wl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;}
+  .wl-item{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 14px;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+  .wl-item:hover{border-color:var(--accent);box-shadow:0 6px 16px rgba(46,111,242,.12);}
+  .wl-rank{flex:0 0 26px;height:26px;border-radius:8px;background:var(--bg-soft);color:var(--muted);font-size:12.5px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+  .wl-item:nth-child(-n+3) .wl-rank{background:#2e6ff2;color:#fff;}
+  .wl-nm{font-size:14px;font-weight:700;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .wl-cd{font-size:11px;color:var(--muted);font-weight:500;margin-left:4px;}
+  .wl-cnt{font-size:12px;font-weight:700;color:var(--accent);white-space:nowrap;}
+  .wl-note{margin-top:10px;font-size:.76rem;color:#9aa6b6;}
   .hero-proverb{display:none;margin-top:48px;text-decoration:none;animation:hpFade .8s ease;}
   .hp-label{display:inline-block;font-size:.75rem;font-weight:800;letter-spacing:.12em;color:#92a1b8;margin-bottom:12px;}
   .hp-quote{display:block;font-family:Georgia,'Nanum Myeongjo',serif;font-size:1.4rem;font-weight:700;line-height:1.55;color:#fff;letter-spacing:-.2px;}
@@ -502,6 +511,12 @@
       <a class="sig-card" id="sig-style" href="style-rotation.html"><div class="n">스타일 로테이션</div><div class="v">—</div><div class="d"></div></a>
       <a class="sig-card" id="sig-thesis" href="thesis-board.html"><div class="n">논거 보드</div><div class="v">—</div><div class="d"></div></a>
       <a class="sig-card" id="sig-horizon" href="horizon-picks.html"><div class="n">기간별 시장 게이트</div><div class="v">—</div><div class="d"></div></a>
+    </div>
+
+    <div class="wl-top" id="wl-top" style="display:none">
+      <div class="sig-title" style="margin-top:28px">👥 회원들이 많이 담은 종목 TOP 10 <span style="font-size:.78rem;font-weight:600;color:#9aa6b6;">회원 보유·관심 등록 집계 (익명)</span></div>
+      <div class="wl-grid" id="wl-grid"></div>
+      <div class="wl-note">종목을 누르면 통합 검색에 담깁니다 · 개별 회원 정보는 공개되지 않습니다</div>
     </div>
   </div>
 </section>
@@ -1045,6 +1060,24 @@
     var d=String(q.date||'').replace(/-/g,'.');
     document.getElementById('hp-meta').textContent='\u2014 '+(q.author||'증시 격언')+' \u00b7 '+d;
     box.style.display='block';
+  }).catch(function(){});
+  fetch('/data/watchlist-top.json').then(function(r){return r.json();}).then(function(j){
+    if(!j.ok||!j.top||!j.top.length)return;
+    var g=document.getElementById('wl-grid');
+    g.innerHTML=j.top.map(function(t,i){
+      return '<div class="wl-item" data-name="'+t.name.replace(/"/g,'&quot;')+'">'
+        +'<span class="wl-rank">'+(i+1)+'</span>'
+        +'<span class="wl-nm">'+t.name+'<span class="wl-cd">'+t.code+'</span></span>'
+        +'<span class="wl-cnt">'+t.holders+'명</span></div>';
+    }).join('');
+    [].forEach.call(g.querySelectorAll('.wl-item'),function(el){
+      el.addEventListener('click',function(){
+        var q=document.getElementById('ss-q');
+        if(q){q.value=el.dataset.name;q.dispatchEvent(new Event('input'));q.focus();
+          q.scrollIntoView({behavior:'smooth',block:'center'});}
+      });
+    });
+    document.getElementById('wl-top').style.display='block';
   }).catch(function(){});
   fetch('/api/auth/me').then(function(r){return r.json();}).then(function(j){
     if(!j.ok)return;
