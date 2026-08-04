@@ -102,6 +102,14 @@
   .btn-ghost{border:1px solid rgba(255,255,255,.35);color:#fff;padding:14px 30px;border-radius:10px;font-weight:600;font-size:1rem;transition:background .2s;}
   .btn-ghost:hover{background:rgba(255,255,255,.08);}
   .hero-stats{display:flex;gap:48px;margin-top:60px;flex-wrap:wrap;}
+  .hero-proverb{display:none;margin-top:44px;padding:26px 34px;border-radius:16px;background:linear-gradient(135deg,#2e6ff2,#1e5ae0);color:#fff;box-shadow:0 14px 34px rgba(30,90,224,.35);text-decoration:none;position:relative;overflow:hidden;animation:hpFade .8s ease;}
+  .hero-proverb::before{content:'\201C';position:absolute;top:-18px;left:16px;font-family:Georgia,serif;font-size:110px;color:rgba(255,255,255,.14);line-height:1;}
+  .hp-label{display:inline-block;font-size:.75rem;font-weight:800;letter-spacing:.12em;color:#cfe0ff;background:rgba(255,255,255,.14);padding:4px 12px;border-radius:20px;margin-bottom:12px;}
+  .hp-quote{display:block;font-family:Georgia,'Nanum Myeongjo',serif;font-size:1.35rem;font-weight:700;line-height:1.55;color:#fff;letter-spacing:-.2px;}
+  .hp-meta{display:block;margin-top:10px;font-size:.84rem;color:#bcd2ff;}
+  .hero-proverb:hover{box-shadow:0 18px 42px rgba(30,90,224,.5);}
+  @keyframes hpFade{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
+  @media (max-width:640px){.hero-proverb{padding:20px 22px;}.hp-quote{font-size:1.12rem;}}
   .stat b{display:block;font-size:1.9rem;font-weight:800;color:#fff;}
   .stat span{font-size:.88rem;color:#92a1b8;}
   .hero-flex{display:flex;gap:56px;align-items:center;justify-content:space-between;position:relative;z-index:1;}
@@ -421,6 +429,11 @@
       <div class="stat"><b>20년+</b><span>주식 시장 경력</span></div>
       <div class="stat"><b>KOSPI·KOSDAQ</b><span>국내 전 종목 커버리지</span></div>
     </div>
+    <a href="proverb.html" class="hero-proverb" id="hero-proverb">
+      <span class="hp-label">오늘의 격언</span>
+      <span class="hp-quote" id="hp-quote"></span>
+      <span class="hp-meta" id="hp-meta"></span>
+    </a>
   </div>
 </section>
 
@@ -1023,6 +1036,15 @@
 </script>
 <script>
 (function(){
+  fetch('/data/proverb-history.json',{cache:'no-store'}).then(function(r){return r.json();}).then(function(a){
+    if(!Array.isArray(a)||!a.length)return;
+    a.sort(function(x,y){return String(y.date).localeCompare(String(x.date));});
+    var q=a[0],box=document.getElementById('hero-proverb');if(!q||!q.text||!box)return;
+    document.getElementById('hp-quote').textContent=q.text;
+    var d=String(q.date||'').replace(/-/g,'.');
+    document.getElementById('hp-meta').textContent='\u2014 '+(q.author||'증시 격언')+' \u00b7 '+d;
+    box.style.display='block';
+  }).catch(function(){});
   fetch('/api/auth/me').then(function(r){return r.json();}).then(function(j){
     if(!j.ok)return;
     var b=document.getElementById('auth-box');if(!b)return;
