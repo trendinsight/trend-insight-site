@@ -2977,6 +2977,18 @@ async function authHandle(req, url, env, ctx) {
           "INSERT OR REPLACE INTO site_watchlist(member_id,code,name,added_at) VALUES(?,?,?,?)")
           .bind(m.id, code, name, new Date().toISOString()).run();
         ctx.waitUntil(env.GAUGE_KV.delete("wl-top-cache").catch(() => {}));
+        ctx.waitUntil((async () => {
+          const tot = await env.RISK_DB.prepare(
+            "SELECT COUNT(*) AS c FROM site_watchlist WHERE code=?").bind(code).first().catch(() => null);
+          const mine = await env.RISK_DB.prepare(
+            "SELECT COUNT(*) AS c FROM site_watchlist WHERE member_id=?").bind(m.id).first().catch(() => null);
+          await slTelegram(env,
+            "\uD83D\uDCCC <b>\uD68C\uC6D0 \uC885\uBAA9 \uB4F1\uB85D</b>\n" +
+            "\uD68C\uC6D0: " + authEsc(m.name) + " (" + authEsc(m.email) + ")\n" +
+            "\uC885\uBAA9: " + authEsc(name) + " (" + code + ")\n" +
+            "\uC774 \uC885\uBAA9 \uB4F1\uB85D \uD68C\uC6D0: " + (tot ? tot.c : "?") + "\uBA85 \u00B7 \uBCF8\uC778 \uB4F1\uB85D: " + (mine ? mine.c : "?") + "\uAC1C\n" +
+            authNowKST() + " KST");
+        })().catch(() => {}));
         return authJson(200, { ok: true });
       }
       return authJson(405, { ok: false, error: "method not allowed" });
