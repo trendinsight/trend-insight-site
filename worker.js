@@ -2201,6 +2201,8 @@ export default {
       ctx.waitUntil(updateCryptoGauge(env));
     }
     if (weekday) ctx.waitUntil(slRefresh(env, { notify: true, session }));
+    // 매주 월요일 16:00 KST — 회원 보유종목 주간 집계 텔레그램
+    if (session === "close" && day === 1) ctx.waitUntil(authWatchlistTelegram(env, "주간 집계").catch(() => {}));
   },
 
   async fetch(req, env, ctx) {
@@ -3045,8 +3047,60 @@ async function authHandle(req, url, env, ctx) {
       return authJson(200, { ok: true, count: rows.results.length, members: rows.results });
     }
 
+    if (p === "watchlist-stats" && req.method === "GET") {
+      const auth = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+      const rowT = await env.RISK_DB.prepare("SELECT value FROM meta WHERE key='sync_token_hash'").first();
+      if (!rowT || !auth || (await rkSha256(auth)) !== rowT.value)
+        return authJson(401, { ok: false, error: "unauthorized" });
+      return authJson(200, { ok: true, ...(await authWatchlistStats(env)) });
+    }
+
+    if (p === "watchlist-stats/notify" && req.method === "POST") {
+      // 집계를 운영자 텔레그램으로 발송 (10분 쿨다운)
+      const last = await env.GAUGE_KV.get("wl-stats-notify-at");
+      if (last && Date.now() - Number(last) < 600e3)
+        return authJson(429, { ok: false, error: "잠시 후 다시 시도해 주세요 (10분 간격)" });
+      await env.GAUGE_KV.put("wl-stats-notify-at", String(Date.now()), { expirationTtl: 3600 });
+      ctx.waitUntil(authWatchlistTelegram(env, "요청 집계").catch(() => {}));
+      return authJson(200, { ok: true });
+    }
+
     return authJson(404, { ok: false, error: "unknown endpoint" });
   } catch (e) {
     return authJson(500, { ok: false, error: String(e) });
   }
+}
+
+async function authWatchlistStats(env) {
+  await authEnsureTables(env);
+  const [members, entries, top] = await Promise.all([
+    env.RISK_DB.prepare("SELECT COUNT(*) AS c FROM site_members WHERE status='active'").first(),
+    env.RISK_DB.prepare("SELECT COUNT(*) AS c, COUNT(DISTINCT code) AS u, COUNT(DISTINCT member_id) AS m FROM site_watchlist").first(),
+    env.RISK_DB.prepare(
+      "SELECT code, name, COUNT(*) AS holders FROM site_watchlist GROUP BY code ORDER BY holders DESC, MAX(added_at) DESC LIMIT 20").all(),
+  ]);
+  return {
+    members: members ? members.c : 0,
+    registrations: entries ? entries.c : 0,
+    unique_stocks: entries ? entries.u : 0,
+    members_with_stocks: entries ? entries.m : 0,
+    top: top.results,
+  };
+}
+
+async function authWatchlistTelegram(env, label) {
+  const s = await authWatchlistStats(env);
+  let msg = "📊 <b>회원 보유종목 집계</b> (" + label + ")\n" +
+    "회원 " + s.members + "명 · 종목 등록 " + s.members_with_stocks + "명\n" +
+    "등록 " + s.registrations + "건 · 고유 종목 " + s.unique_stocks + "개\n";
+  if (s.top.length) {
+    msg += "\n<b>상위 종목</b>\n";
+    s.top.slice(0, 10).forEach((t, i) => {
+      msg += (i + 1) + ". " + authEsc(t.name) + " (" + t.code + ") — " + t.holders + "명\n";
+    });
+  } else {
+    msg += "\n아직 등록된 종목이 없습니다.";
+  }
+  msg += "\n" + authNowKST() + " KST";
+  await slTelegram(env, msg);
 }
