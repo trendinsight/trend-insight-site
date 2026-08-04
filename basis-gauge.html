@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>선물 베이시스 — Trend Insight</title>
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--line:#252a34;--txt:#e6e9ef;--sub:#9aa4b2;
+        --bull:#12b886;--neu:#7c8598;--bear:#e5484d;--act:#3e8ef7;--warn:#f5a524;--kq:#b083f0;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+  header{padding:22px 18px 8px;max-width:1040px;margin:0 auto}
+  h1{font-size:21px;margin:0 0 4px}
+  .sub{color:var(--sub);font-size:13px;line-height:1.5}
+  .wrap{max-width:1040px;margin:0 auto;padding:12px 18px 60px}
+  .row{display:flex;gap:14px;flex-wrap:wrap}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;flex:1;min-width:300px}
+  .card h2{font-size:15px;margin:0 0 2px}
+  .meta{color:var(--sub);font-size:12px;margin-bottom:10px}
+  .gauge{position:relative;width:240px;height:138px;margin:6px auto 2px}
+  .temp{position:absolute;bottom:0;left:0;right:0;text-align:center}
+  .temp b{font-size:32px}
+  .zone{display:inline-block;padding:3px 12px;border-radius:999px;font-size:12px;font-weight:700;color:#0b0d10;margin-top:4px}
+  table.mx{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:10px}
+  table.mx td{padding:4px 6px;border-bottom:1px solid var(--line)}
+  table.mx td:first-child{color:var(--sub)}
+  table.mx td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+  .chip{display:inline-block;font-size:11px;border:1px solid var(--line);border-radius:999px;padding:2px 9px;color:var(--sub);margin-left:6px}
+  .warn{color:var(--warn)}
+  .ctrl{margin:6px 0 2px;font-size:13px;color:var(--sub);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  select{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px}
+  .chart-card{margin-top:14px}
+  svg text{font-family:inherit}
+  .doc{margin-top:26px;color:var(--sub);font-size:12px;line-height:1.7;border-top:1px solid var(--line);padding-top:14px}
+  a{color:var(--act)}
+  .legend{font-size:11px;color:var(--sub);margin-top:4px}
+  .legend i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:4px;vertical-align:middle}
+</style>
+</head>
+<body>
+<header>
+  <h1>📐 선물 베이시스 <span id="hdrDate" class="chip"></span><span id="hdrProv" class="chip warn" style="display:none">장중 잠정치</span></h1>
+  <div class="sub">코스피200·코스닥150 지수와 선물의 괴리(베이시스·이론가 대비 괴리율)로 방향을 판정합니다.
+  점수 ≥65 BULL(콘탱고 우위·순풍) / ≤35 BEAR(백워데이션 압력·역풍). <a href="index.html">← Trend Insight</a></div>
+</header>
+<div class="wrap">
+  <div class="ctrl">날짜별 조회: <select id="dateSel"></select> <span id="cd91"></span></div>
+  <div class="row" id="cards"></div>
+  <div class="card chart-card">
+    <h2>괴리율 추이 (이론가 대비 %)</h2>
+    <div class="legend"><i style="background:var(--act)"></i>코스피200 <i style="background:var(--kq)"></i>코스닥150</div>
+    <svg id="chDisc" width="100%" height="180" viewBox="0 0 1000 180" preserveAspectRatio="none"></svg>
+  </div>
+  <div class="card chart-card">
+    <h2>방향점수 추이 (0~100)</h2>
+    <div class="legend"><i style="background:var(--act)"></i>코스피200 <i style="background:var(--kq)"></i>코스닥150 · 점선: 65(BULL) / 35(BEAR)</div>
+    <svg id="chScore" width="100%" height="180" viewBox="0 0 1000 180" preserveAspectRatio="none"></svg>
+  </div>
+  <div class="doc">
+    <b>산출 방식</b><br>
+    베이시스 = 선물 − 현물 · 이론 베이시스 = 현물 × (CD91 − 배당수익률) × 잔존일/365 (K200 배당 1.8%, KQ150 0.8%)<br>
+    괴리율 = (선물 − 이론가) / 현물 × 100 · z-score는 괴리율 60일 롤링, 모멘텀 = 5일 − 20일 평균<br>
+    방향점수 = 50 + 20·clip(괴리율/0.30) + 20·clip(z/2) + 10·clip(모멘텀/0.15)<br>
+    선물은 최근월물(미결제약정 최대 계약), 만기 D-5 이내는 롤오버 왜곡에 유의. 데이터: KRX 정보데이터시스템.<br>
+    본 자료는 투자 참고용이며 매수·매도를 권유하지 않습니다.
+  </div>
+</div>
+<script>
+const MKTS=[["k200","코스피200","var(--act)"],["kq150","코스닥150","var(--kq)"]];
+const zoneColor=v=>v==="BULL"?"var(--bull)":v==="BEAR"?"var(--bear)":"var(--neu)";
+const zoneLabel=v=>v==="BULL"?"BULL — 콘탱고 우위·순풍":v==="BEAR"?"BEAR — 백워데이션 압력·역풍":"NEUTRAL — 중립";
+let H=[];
+function gaugeSVG(score,color){
+  const a=Math.PI*(1-Math.max(0,Math.min(100,score))/100);
+  const x=120+100*Math.cos(a), y=128-100*Math.sin(a);
+  return `<svg width="240" height="138" viewBox="0 0 240 138">
+   <path d="M20 128 A100 100 0 0 1 220 128" fill="none" stroke="#252a34" stroke-width="14" stroke-linecap="round"/>
+   <path d="M20 128 A100 100 0 0 1 ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${color}" stroke-width="14" stroke-linecap="round"/>
+   <text x="20" y="120" fill="#9aa4b2" font-size="10" text-anchor="middle">0</text>
+   <text x="220" y="120" fill="#9aa4b2" font-size="10" text-anchor="middle">100</text></svg>`;
+}
+function fmt(n,d=2){return n==null?"—":Number(n).toLocaleString("ko-KR",{minimumFractionDigits:d,maximumFractionDigits:d});}
+function render(date){
+  const rec=H.find(h=>h.date===date); if(!rec) return;
+  document.getElementById("hdrDate").textContent=date;
+  const cards=document.getElementById("cards"); cards.innerHTML="";
+  for(const [k,name,color] of MKTS){
+    const s=rec[k];
+    const el=document.createElement("div"); el.className="card";
+    if(!s){el.innerHTML=`<h2>${name}</h2><div class="meta">데이터 없음</div>`;cards.appendChild(el);continue;}
+    const zc=zoneColor(s.verdict);
+    el.innerHTML=`<h2>${name} <span class="chip">${s.contract||""} 만기 D-${s.d_to_exp}</span></h2>
+      <div class="meta">${s.expiry} 만기 최근월물${s.d_to_exp<=5?' · <span class="warn">롤오버 주의</span>':''}</div>
+      <div class="gauge">${gaugeSVG(s.score,zc)}
+        <div class="temp"><b style="color:${zc}">${fmt(s.score,1)}</b>
+        <span class="zone" style="background:${zc}">${zoneLabel(s.verdict)}</span></div></div>
+      <table class="mx">
+        <tr><td>현물</td><td>${fmt(s.spot)}</td></tr>
+        <tr><td>선물</td><td>${fmt(s.fut)}</td></tr>
+        <tr><td>베이시스 (이론)</td><td>${s.basis>=0?"+":""}${fmt(s.basis)} (이론 ${s.theo>=0?"+":""}${fmt(s.theo)})</td></tr>
+        <tr><td>괴리율</td><td style="color:${s.disc>=0?"var(--bull)":"var(--bear)"}">${s.disc>=0?"+":""}${fmt(s.disc,3)}%</td></tr>
+        <tr><td>z-score (60일)</td><td>${s.z==null?"—":(s.z>=0?"+":"")+fmt(s.z)}</td></tr>
+        <tr><td>모멘텀 (5일−20일)</td><td>${s.mom==null?"—":(s.mom>=0?"+":"")+fmt(s.mom,3)}</td></tr>
+        <tr><td>미결제약정</td><td>${s.oi==null?"—":s.oi.toLocaleString()}${s.oi_chg==null?"":` (${s.oi_chg>=0?"+":""}${s.oi_chg.toLocaleString()})`}</td></tr>
+      </table>`;
+    cards.appendChild(el);
+  }
+  drawCharts(date);
+}
+function drawCharts(selDate){
+  const idx=H.findIndex(h=>h.date===selDate);
+  const win=H.slice(Math.max(0,idx-89),idx+1);
+  lineChart("chDisc",win,k=>s=>s?s.disc:null,{zero:true});
+  lineChart("chScore",win,k=>s=>s?s.score:null,{min:0,max:100,bands:[65,35]});
+}
+function lineChart(id,win,accF,opt){
+  const svg=document.getElementById(id); const W=1000,Hh=180,P=24;
+  let vals=[];
+  for(const [k] of MKTS) for(const h of win){const v=accF(k)(h[k]); if(v!=null)vals.push(v);}
+  if(!vals.length){svg.innerHTML="";return;}
+  let mn=opt.min!=null?opt.min:Math.min(...vals), mx=opt.max!=null?opt.max:Math.max(...vals);
+  if(opt.zero){mn=Math.min(mn,0);mx=Math.max(mx,0);}
+  if(mx-mn<1e-9){mx=mn+1;}
+  const X=i=>P+(W-2*P)*(win.length<2?0.5:i/(win.length-1));
+  const Y=v=>Hh-P-(Hh-2*P)*((v-mn)/(mx-mn));
+  let out="";
+  if(opt.zero) out+=`<line x1="${P}" y1="${Y(0)}" x2="${W-P}" y2="${Y(0)}" stroke="#252a34" stroke-width="1"/>`;
+  for(const b of (opt.bands||[])) out+=`<line x1="${P}" y1="${Y(b)}" x2="${W-P}" y2="${Y(b)}" stroke="#4a5262" stroke-dasharray="4 4" stroke-width="1"/>`;
+  const colors={k200:"#3e8ef7",kq150:"#b083f0"};
+  for(const [k] of MKTS){
+    let d="",pen=false;
+    win.forEach((h,i)=>{const v=accF(k)(h[k]);
+      if(v==null){pen=false;return;}
+      d+=(pen?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1);pen=true;});
+    out+=`<path d="${d}" fill="none" stroke="${colors[k]}" stroke-width="2"/>`;
+  }
+  out+=`<text x="${P}" y="12" fill="#9aa4b2" font-size="10">${fmt(mx,2)}</text>
+        <text x="${P}" y="${Hh-6}" fill="#9aa4b2" font-size="10">${fmt(mn,2)}</text>`;
+  if(win.length){out+=`<text x="${W-P}" y="${Hh-6}" fill="#9aa4b2" font-size="10" text-anchor="end">${win[win.length-1].date}</text>
+  <text x="${P+52}" y="${Hh-6}" fill="#9aa4b2" font-size="10">${win[0].date}</text>`;}
+  svg.innerHTML=out;
+}
+fetch("data/basis-gauge.json?cb="+Date.now()).then(r=>r.json()).then(d=>{
+  H=(d.history||[]).slice().sort((a,b)=>a.date<b.date?-1:1);
+  if(!H.length){document.getElementById("cards").innerHTML='<div class="card">데이터가 아직 없습니다.</div>';return;}
+  const sel=document.getElementById("dateSel");
+  [...H].reverse().forEach(h=>{const o=document.createElement("option");o.value=h.date;o.textContent=h.date;sel.appendChild(o);});
+  sel.onchange=()=>render(sel.value);
+  document.getElementById("cd91").textContent=d.cd91?`CD91 ${d.cd91}%`:"";
+  if(d.provisional) document.getElementById("hdrProv").style.display="";
+  render(H[H.length-1].date);
+}).catch(e=>{document.getElementById("cards").innerHTML='<div class="card">데이터 로드 실패: '+e+'</div>';});
+</script>
+</body>
+</html>
