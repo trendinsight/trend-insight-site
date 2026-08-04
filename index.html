@@ -102,14 +102,15 @@
   .btn-ghost{border:1px solid rgba(255,255,255,.35);color:#fff;padding:14px 30px;border-radius:10px;font-weight:600;font-size:1rem;transition:background .2s;}
   .btn-ghost:hover{background:rgba(255,255,255,.08);}
   .hero-stats{display:flex;gap:48px;margin-top:60px;flex-wrap:wrap;}
-  .hero-proverb{display:none;margin-top:44px;padding:26px 34px;border-radius:16px;background:linear-gradient(135deg,#2e6ff2,#1e5ae0);color:#fff;box-shadow:0 14px 34px rgba(30,90,224,.35);text-decoration:none;position:relative;overflow:hidden;animation:hpFade .8s ease;}
-  .hero-proverb::before{content:'\201C';position:absolute;top:-18px;left:16px;font-family:Georgia,serif;font-size:110px;color:rgba(255,255,255,.14);line-height:1;}
-  .hp-label{display:inline-block;font-size:.75rem;font-weight:800;letter-spacing:.12em;color:#cfe0ff;background:rgba(255,255,255,.14);padding:4px 12px;border-radius:20px;margin-bottom:12px;}
-  .hp-quote{display:block;font-family:Georgia,'Nanum Myeongjo',serif;font-size:1.35rem;font-weight:700;line-height:1.55;color:#fff;letter-spacing:-.2px;}
-  .hp-meta{display:block;margin-top:10px;font-size:.84rem;color:#bcd2ff;}
-  .hero-proverb:hover{box-shadow:0 18px 42px rgba(30,90,224,.5);}
+  .hero-proverb{display:none;margin-top:48px;text-decoration:none;animation:hpFade .8s ease;}
+  .hp-label{display:inline-block;font-size:.75rem;font-weight:800;letter-spacing:.12em;color:#92a1b8;margin-bottom:12px;}
+  .hp-quote{display:block;font-family:Georgia,'Nanum Myeongjo',serif;font-size:1.4rem;font-weight:700;line-height:1.55;color:#fff;letter-spacing:-.2px;}
+  .hp-quote::before{content:'\201C';font-family:Georgia,serif;color:#fff;margin-right:6px;}
+  .hp-quote::after{content:'\201D';font-family:Georgia,serif;color:#fff;margin-left:6px;}
+  .hp-meta{display:block;margin-top:10px;font-size:.84rem;color:#92a1b8;}
+  .hero-proverb:hover .hp-quote{text-decoration:underline;text-underline-offset:6px;text-decoration-thickness:1px;}
   @keyframes hpFade{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
-  @media (max-width:640px){.hero-proverb{padding:20px 22px;}.hp-quote{font-size:1.12rem;}}
+  @media (max-width:640px){.hp-quote{font-size:1.15rem;}}
   .stat b{display:block;font-size:1.9rem;font-weight:800;color:#fff;}
   .stat span{font-size:.88rem;color:#92a1b8;}
   .hero-flex{display:flex;gap:56px;align-items:center;justify-content:space-between;position:relative;z-index:1;}
