@@ -2966,6 +2966,7 @@ async function authHandle(req, url, env, ctx) {
         if (!code) return authJson(400, { ok: false, error: "종목코드가 올바르지 않습니다" });
         if (op === "remove") {
           await env.RISK_DB.prepare("DELETE FROM site_watchlist WHERE member_id=? AND code=?").bind(m.id, code).run();
+          ctx.waitUntil(env.GAUGE_KV.delete("wl-top-cache").catch(() => {}));
           return authJson(200, { ok: true });
         }
         const name = String(b.name || "").trim().slice(0, 40);
@@ -2975,6 +2976,7 @@ async function authHandle(req, url, env, ctx) {
         await env.RISK_DB.prepare(
           "INSERT OR REPLACE INTO site_watchlist(member_id,code,name,added_at) VALUES(?,?,?,?)")
           .bind(m.id, code, name, new Date().toISOString()).run();
+        ctx.waitUntil(env.GAUGE_KV.delete("wl-top-cache").catch(() => {}));
         return authJson(200, { ok: true });
       }
       return authJson(405, { ok: false, error: "method not allowed" });
