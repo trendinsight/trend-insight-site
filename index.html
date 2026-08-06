@@ -317,7 +317,8 @@
     .hero{padding:130px 0 80px;}
   }
 
-  #stance-bar{display:block;background:linear-gradient(90deg,#0b1f3f,#13294b);border-bottom:1px solid rgba(255,255,255,.08);}
+  #stance-bar{display:block;position:absolute;top:118px;left:0;right:0;z-index:5;background:rgba(8,18,38,.55);border-top:1px solid rgba(255,255,255,.07);border-bottom:1px solid rgba(255,255,255,.07);backdrop-filter:blur(4px);}
+  @media(max-width:960px){#stance-bar{top:100px}}
   #stance-bar .sb-in{max-width:1180px;margin:0 auto;padding:9px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;color:#c9d6ea;font-size:.86rem;}
   #stance-bar .sb-t{font-weight:700;color:#8fa4c4;white-space:nowrap;}
   #stance-bar .sb-stance{font-size:1rem;padding:2px 12px;border-radius:8px;white-space:nowrap;}
@@ -429,6 +430,7 @@
   </div>
 </header>
 
+<section class="hero">
 <a id="stance-bar" href="cash-gauge.html" style="display:none;text-decoration:none;">
   <div class="sb-in">
     <span class="sb-t">🧭 오늘 스탠스</span>
@@ -438,8 +440,6 @@
     <span class="sb-date" id="sb-date"></span>
   </div>
 </a>
-
-<section class="hero">
   <div class="container">
     <div class="hero-flex">
       <div>
