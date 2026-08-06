@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0c111c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>트랙레코드 · Trend Insight</title>
+<meta name="description" content="전략 보드들의 판정 이력을 판정 시점 가격과 현재가로 대조해 적중률과 수익률을 공개합니다.">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c111c; --panel:#141c2b; --panel2:#1a2336; --line:#26314a;
+  --ink:#e9eef7; --muted:#8896ae; --faint:#5d6b85;
+  --acc:#E8621B; --acc2:#f08a4f;
+  --up:#f0454e; --down:#3b82f6;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Pretendard',sans-serif;
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+.up{color:var(--up)} .down{color:var(--down)}
+a{color:inherit}
+header{display:flex;align-items:center;gap:14px;padding:12px 18px;flex-wrap:wrap;
+  background:linear-gradient(180deg,#101827,#0c111c);border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:30}
+.brand{display:flex;align-items:baseline;gap:9px;white-space:nowrap;text-decoration:none}
+.brand .ti{font-family:'JetBrains Mono';font-weight:700;font-size:20px;color:var(--acc);
+  letter-spacing:1px;border:1.5px solid var(--acc);border-radius:6px;padding:1px 8px}
+.brand h1{font-size:15px;font-weight:700}
+.brand small{color:var(--faint);font-size:11px;letter-spacing:1.5px;text-transform:uppercase}
+.home{margin-left:auto;color:var(--muted);font-size:12.5px;text-decoration:none}
+.home:hover{color:var(--ink)}
+main{max-width:1180px;margin:0 auto;padding:18px 16px 60px}
+.desc{color:var(--muted);font-size:13px;margin:4px 2px 16px}
+#status{color:var(--faint);font-size:12.5px;margin:8px 2px}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:14px 16px}
+.stat .k{color:var(--muted);font-size:12px;font-weight:600}
+.stat .v{font-size:22px;font-weight:800;margin-top:4px}
+.stat .s{color:var(--faint);font-size:11.5px;margin-top:2px}
+
+.boards{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:16px}
+.bcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.bcard .n{font-size:13px;font-weight:700}
+.bcard .m{color:var(--muted);font-size:11.5px;margin-top:5px;line-height:1.6}
+
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
+.filters button{background:var(--panel2);border:1px solid var(--line);color:var(--muted);
+  border-radius:18px;padding:6px 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
+.filters button.on{background:rgba(232,98,27,.14);border-color:var(--acc);color:var(--acc2)}
+.filters .sep{width:1px;background:var(--line);margin:2px 4px}
+
+section{background:var(--panel);border:1px solid var(--line);border-radius:13px;overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{color:var(--faint);font-size:11.5px;font-weight:600;text-align:left;padding:10px 12px;
+  border-bottom:1px solid var(--line);white-space:nowrap;background:var(--panel2)}
+td{padding:9px 12px;border-bottom:1px solid rgba(38,49,74,.55);white-space:nowrap;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(232,98,27,.04)}
+td a{text-decoration:none;font-weight:700;color:#cfe0f5}
+td a:hover{color:var(--acc2)}
+.cd{color:var(--faint);font-size:11px;font-family:'JetBrains Mono';margin-left:5px}
+.tag{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:5px;
+  color:var(--muted);font-size:10.5px;padding:2px 7px}
+.vd{display:inline-block;border-radius:6px;padding:2px 9px;font-size:11.5px;font-weight:700}
+.vd.L{background:rgba(240,69,78,.13);color:#f4707a}
+.vd.S{background:rgba(59,130,246,.13);color:#6ba0f5}
+.vd.N{background:rgba(136,150,174,.13);color:var(--muted)}
+.hit{font-weight:800}
+.hit.ok{color:#4cc26a}.hit.no{color:#f4707a}.hit.na{color:var(--faint);font-weight:400}
+.ret{font-weight:700}
+.none{color:var(--faint);padding:26px;text-align:center}
+.notes{color:var(--faint);font-size:11.5px;line-height:1.7;margin-top:14px}
+footer{max-width:1180px;margin:0 auto;padding:0 16px 40px;color:var(--faint);font-size:11.5px;line-height:1.6}
+@media(max-width:900px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  main{padding:14px 8px 50px}
+  .tbl-wrap{overflow-x:auto}
+}
+</style>
+</head>
+<body>
+<header>
+  <a class="brand" href="index.html"><span class="ti">TI</span><h1>트랙레코드</h1><small>track record</small></a>
+  <a class="home" href="index.html">← 홈</a>
+</header>
+
+<main>
+  <div class="desc">전략 보드(고레가와·피셔·필립 피셔·추세 라이더·논거 보드·팀장/공명 결재)에 기록된 모든 판정을 <b>판정 시점 가격</b>과 <b>현재가</b>로 대조합니다. 롱 판정은 상승 시, 회피·매도 판정은 하락 시 적중으로 집계합니다.</div>
+  <div id="status">보드 데이터 불러오는 중…</div>
+
+  <div class="stats" id="stats" style="display:none">
+    <div class="stat"><div class="k">전체 판정</div><div class="v" id="s-total">—</div><div class="s" id="s-total-s"></div></div>
+    <div class="stat"><div class="k">방향 적중률</div><div class="v" id="s-hit">—</div><div class="s" id="s-hit-s"></div></div>
+    <div class="stat"><div class="k">평균 방향 수익률</div><div class="v" id="s-avg">—</div><div class="s">롱=수익률 · 회피/매도=−수익률</div></div>
+    <div class="stat"><div class="k">최고 / 최악</div><div class="v" id="s-best" style="font-size:15px;line-height:1.5">—</div><div class="s" id="s-worst"></div></div>
+  </div>
+
+  <div class="boards" id="boards"></div>
+
+  <div class="filters" id="f-board"></div>
+  <div class="filters" id="f-dir">
+    <button data-d="ALL" class="on">전체 방향</button>
+    <button data-d="L">🔴 롱(매수·보유)</button>
+    <button data-d="S">🔵 회피·매도</button>
+    <button data-d="N">⚪ 중립·관망</button>
+  </div>
+
+  <section>
+    <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>판정일</th><th>보드</th><th>종목</th><th>판정</th>
+        <th style="text-align:right">판정가</th><th style="text-align:right">현재가</th>
+        <th style="text-align:right">수익률</th><th>경과</th><th>적중</th>
+      </tr></thead>
+      <tbody id="tbody"><tr><td colspan="9" class="none">계산 중…</td></tr></tbody>
+    </table>
+    </div>
+  </section>
+
+  <div class="notes">
+    · 판정가: 보드에 기록된 판정 당시 종가(없으면 판정일 종가를 차트에서 역산). 현재가: 최근 체결가/종가.<br>
+    · 적중 기준 — 롱(매수·보유): 판정 이후 상승, 회피·매도·축소·손절: 판정 이후 하락. 중립·관망 판정은 적중률 집계에서 제외.<br>
+    · 수수료·세금·슬리피지 미반영. 판정일이 차트 조회 범위(약 6개월)를 벗어나면 수익률 계산에서 제외됩니다.
+  </div>
+</main>
+
+<footer>본 페이지의 모든 정보는 투자 참고 자료이며, 특정 종목의 매수·매도를 권유하지 않습니다. 투자에 대한 최종 판단과 책임은 투자자 본인에게 있습니다.</footer>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmt=n=>n==null||isNaN(n)?'—':Number(n).toLocaleString('ko-KR');
+
+/* verdict → 방향: L(롱) S(회피·매도) N(중립) */
+function dirOf(v){
+  v=String(v||'');
+  if(/KAME_BUY|BUY|매수|승인|INTACT|RIDEABLE|RIDE$|위대한기업|HOLD|보유/.test(v))return 'L';
+  if(/AVOID|SELL|매도|손절|축소|BROKEN|EXIT|제외|회피/.test(v))return 'S';
+  return 'N';
+}
+
+const BOARDS=[
+ {id:'korekawa',label:'고레가와',page:'korekawa-board.html',file:'data/korekawa-board.json',
+  extract(j,out){const js=j.judgments||{};for(const c in js)(js[c].history||[]).forEach(h=>out.push({src:this.id,date:h.date,code:c,name:js[c].name,verdict:h.verdict,price:h.close}));}},
+ {id:'fisher',label:'피셔',page:'fisher-board.html',file:'data/fisher-board.json',
+  extract(j,out){const js=j.judgments||{};for(const c in js)(js[c].history||[]).forEach(h=>out.push({src:this.id,date:h.date,code:c,name:js[c].name,verdict:h.verdict,price:h.close}));}},
+ {id:'pf',label:'필립 피셔',page:'philip-fisher-board.html',file:'data/philip-fisher-board.json',
+  extract(j,out){const sc=j.scores||{};for(const c in sc)(sc[c].history||[]).forEach(h=>out.push({src:this.id,date:h.date,code:c,name:sc[c].name,verdict:h.grade,price:h.close}));}},
+ {id:'rider',label:'추세 라이더',page:'trend-rider-board.html',file:'data/trend-rider-board.json',
+  extract(j,out){const st=j.stocks||{};for(const c in st)(st[c].history||[]).forEach(h=>out.push({src:this.id,date:h.date,code:c,name:st[c].name,verdict:h.verdict,price:h.price}));}},
+ {id:'thesis',label:'논거 보드',page:'thesis-board.html',file:'data/thesis-board.json',
+  extract(j,out){(j.stocks||[]).forEach(s=>out.push({src:this.id,date:s.registered,code:s.code,name:s.name,verdict:s.status,price:s.entry_price||null}));}},
+ {id:'decision',label:'팀장·공명 결재',page:'decision-board.html',file:'data/decision-board.json',
+  extract(j,out){(j.decisions||[]).forEach(d=>{if(d.stock&&d.stock.length<=12)out.push({src:this.id,date:d.date,code:null,name:d.stock,verdict:d.verdict,price:null});});}},
+];
+const BL=Object.fromEntries(BOARDS.map(b=>[b.id,b]));
+
+let ENTRIES=[],fBoard='ALL',fDir='ALL';
+
+async function fetchJson(u){const r=await fetch(u+(u.includes('?')?'&':'?')+'t='+Date.now());if(!r.ok)throw 0;return r.json();}
+
+/* 종목별 차트 캐시 (판정일 종가 + 현재가) */
+const CHARTS={};
+async function chartOf(code){
+  if(CHARTS[code])return CHARTS[code];
+  try{
+    const r=await(await fetch('/api/cockpit/analyze/'+code)).json();
+    if(!r.ok)throw 0;
+    const d=r.data;
+    CHARTS[code]={dates:d.chart.date,closes:d.chart.close,cur:(d.quote&&d.quote.price)||d.chart.close[d.chart.close.length-1]};
+  }catch(e){CHARTS[code]=null;}
+  return CHARTS[code];
+}
+function closeOn(ch,date){
+  if(!ch)return null;
+  let best=null;
+  for(let i=0;i<ch.dates.length;i++){if(ch.dates[i]<=date)best=ch.closes[i];else break;}
+  return best;
+}
+
+/* 이름 → 코드 (팀장 결재 보드용) */
+const NAME2CODE={};
+async function resolveCode(name){
+  if(NAME2CODE[name]!==undefined)return NAME2CODE[name];
+  try{
+    const r=await(await fetch('/api/cockpit/search?q='+encodeURIComponent(name))).json();
+    const x=(r.data||[]).find(v=>/^[0-9A-Z]{6}$/.test(v.code)&&v.name===name)||(r.data||[]).find(v=>/^[0-9A-Z]{6}$/.test(v.code));
+    NAME2CODE[name]=x?x.code:null;
+  }catch(e){NAME2CODE[name]=null;}
+  return NAME2CODE[name];
+}
+
+async function main(){
+  const res=await Promise.allSettled(BOARDS.map(b=>fetchJson(b.file)));
+  const out=[];
+  res.forEach((r,i)=>{if(r.status==='fulfilled')try{BOARDS[i].extract(r.value,out);}catch(e){}});
+  ENTRIES=out.filter(e=>e.date);
+  $('status').textContent=`판정 ${ENTRIES.length}건 수집 — 종목코드·가격 계산 중…`;
+
+  /* 결재 보드 이름 → 코드 */
+  for(const e of ENTRIES.filter(x=>!x.code))e.code=await resolveCode(e.name);
+  ENTRIES=ENTRIES.filter(e=>e.code);
+
+  /* 차트 로드 (동시 4) */
+  const codes=[...new Set(ENTRIES.map(e=>e.code))];
+  let done=0;
+  const q=codes.slice();
+  await Promise.all(Array.from({length:4},async()=>{
+    while(q.length){const c=q.shift();await chartOf(c);done++;
+      $('status').textContent=`가격 계산 중… (${done}/${codes.length} 종목)`;}
+  }));
+
+  /* 수익률 계산 */
+  const today=new Date();
+  ENTRIES.forEach(e=>{
+    const ch=CHARTS[e.code];
+    e.base=e.price!=null?e.price:closeOn(ch,e.date);
+    e.cur=ch?ch.cur:null;
+    e.ret=(e.base&&e.cur)?(e.cur/e.base-1)*100:null;
+    e.dir=dirOf(e.verdict);
+    e.hit=e.ret==null||e.dir==='N'?null:(e.dir==='L'?e.ret>0:e.ret<0);
+    e.dret=e.ret==null?null:(e.dir==='L'?e.ret:e.dir==='S'?-e.ret:null);
+    e.days=Math.max(0,Math.round((today-new Date(e.date))/864e5));
+  });
+  ENTRIES.sort((a,b)=>b.date.localeCompare(a.date));
+
+  renderStats();renderBoards();renderFilters();renderTable();
+  $('status').textContent=`판정 ${ENTRIES.length}건 · ${codes.length}개 종목 · 기준 ${new Date().toLocaleString('ko-KR')}`;
+}
+
+function renderStats(){
+  const dirs=ENTRIES.filter(e=>e.hit!==null);
+  const hits=dirs.filter(e=>e.hit).length;
+  const drets=dirs.map(e=>e.dret).filter(v=>v!=null);
+  const avg=drets.length?drets.reduce((a,b)=>a+b,0)/drets.length:null;
+  $('s-total').textContent=ENTRIES.length+'건';
+  $('s-total-s').textContent=`방향 판정 ${dirs.length}건 · 중립 ${ENTRIES.length-dirs.length}건`;
+  $('s-hit').textContent=dirs.length?Math.round(hits/dirs.length*100)+'%':'—';
+  $('s-hit').style.color=dirs.length?(hits/dirs.length>=0.5?'#4cc26a':'#f4707a'):'';
+  $('s-hit-s').textContent=dirs.length?`${hits}건 적중 / ${dirs.length}건`:'';
+  $('s-avg').textContent=avg==null?'—':(avg>0?'+':'')+avg.toFixed(1)+'%';
+  $('s-avg').style.color=avg==null?'':(avg>0?'#4cc26a':'#f4707a');
+  const valid=dirs.filter(e=>e.dret!=null);
+  if(valid.length){
+    const best=valid.reduce((a,b)=>a.dret>b.dret?a:b), worst=valid.reduce((a,b)=>a.dret<b.dret?a:b);
+    $('s-best').innerHTML=`<span style="color:#4cc26a">${best.name} ${best.dret>0?'+':''}${best.dret.toFixed(1)}%</span>`;
+    $('s-worst').textContent=`최악: ${worst.name} ${worst.dret>0?'+':''}${worst.dret.toFixed(1)}%`;
+  }
+  $('stats').style.display='grid';
+}
+
+function renderBoards(){
+  $('boards').innerHTML=BOARDS.map(b=>{
+    const es=ENTRIES.filter(e=>e.src===b.id);
+    if(!es.length)return '';
+    const dirs=es.filter(e=>e.hit!==null),hits=dirs.filter(e=>e.hit).length;
+    const drets=dirs.map(e=>e.dret).filter(v=>v!=null);
+    const avg=drets.length?drets.reduce((a,b)=>a+b,0)/drets.length:null;
+    return `<a class="bcard" href="${b.page}" style="text-decoration:none">
+      <div class="n">${b.label}</div>
+      <div class="m">판정 ${es.length}건${dirs.length?` · 적중 ${Math.round(hits/dirs.length*100)}%`:''}${avg!=null?`<br>평균 ${(avg>0?'+':'')+avg.toFixed(1)}%`:''}</div></a>`;
+  }).join('');
+}
+
+function renderFilters(){
+  const ids=BOARDS.filter(b=>ENTRIES.some(e=>e.src===b.id));
+  $('f-board').innerHTML=`<button data-b="ALL" class="on">전체 보드</button>`+
+    ids.map(b=>`<button data-b="${b.id}">${b.label}</button>`).join('');
+  [...$('f-board').children].forEach(el=>el.addEventListener('click',()=>{
+    fBoard=el.dataset.b;[...$('f-board').children].forEach(x=>x.classList.toggle('on',x===el));renderTable();}));
+  [...$('f-dir').children].forEach(el=>el.addEventListener('click',()=>{
+    fDir=el.dataset.d;[...$('f-dir').children].forEach(x=>x.classList.toggle('on',x===el));renderTable();}));
+}
+
+function renderTable(){
+  const rows=ENTRIES.filter(e=>(fBoard==='ALL'||e.src===fBoard)&&(fDir==='ALL'||e.dir===fDir));
+  $('tbody').innerHTML=rows.length?rows.map(e=>{
+    const dirKo={L:'롱',S:'회피·매도',N:'중립'}[e.dir];
+    const retHtml=e.ret==null?'<span class="cd">범위 밖</span>':
+      `<span class="ret ${e.ret>0?'up':e.ret<0?'down':''} mono">${e.ret>0?'+':''}${e.ret.toFixed(1)}%</span>`;
+    const hit=e.hit===null?'<span class="hit na">—</span>':e.hit?'<span class="hit ok">✓</span>':'<span class="hit no">✗</span>';
+    return `<tr>
+      <td class="mono">${e.date}</td>
+      <td><span class="tag">${BL[e.src].label}</span></td>
+      <td><a href="stock-hub.html?code=${e.code}&name=${encodeURIComponent(e.name)}">${e.name}</a><span class="cd">${e.code}</span></td>
+      <td><span class="vd ${e.dir}" title="${dirKo}">${e.verdict}</span></td>
+      <td class="mono" style="text-align:right">${fmt(e.base)}</td>
+      <td class="mono" style="text-align:right">${fmt(e.cur)}</td>
+      <td style="text-align:right">${retHtml}</td>
+      <td class="cd">${e.days}일</td>
+      <td>${hit}</td></tr>`;
+  }).join(''):'<tr><td colspan="9" class="none">해당 조건의 판정이 없습니다.</td></tr>';
+}
+
+main().catch(e=>{$('status').textContent='데이터를 불러오지 못했습니다. 잠시 후 새로고침해 주세요.';});
+</script>
+</body>
+</html>

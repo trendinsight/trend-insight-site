@@ -19,7 +19,7 @@
       ['레버리지 스위치','/switch-gauge.html'],['하락장 레이더','/bear-gauge.html'],
       ['숏 후보 레이더','/short-radar.html']]],
     ['전략 보드',[
-      ['고레가와 보드','/korekawa-board.html'],['피셔 보드','/fisher-board.html'],
+      ['트랙레코드','/track-record.html'],['고레가와 보드','/korekawa-board.html'],['피셔 보드','/fisher-board.html'],
       ['위대한 기업','/philip-fisher-board.html'],['추세 라이더','/trend-rider-board.html'],
       ['거장 자문단','/masters.html'],['논거 보드','/thesis-board.html'],
       ['결재 보드','/decision-board.html'],['공명 책략','/kongming-board.html'],
