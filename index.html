@@ -515,6 +515,11 @@
       <a class="sig-card" id="sig-horizon" href="horizon-picks.html"><div class="n">기간별 시장 게이트</div><div class="v">—</div><div class="d"></div></a>
     </div>
 
+    <div class="wl-top" id="my-wl" style="display:none">
+      <div class="sig-title" style="margin-top:28px">⭐ 내 관심종목 <span style="font-size:.78rem;font-weight:600;color:#9aa6b6;">종목을 누르면 종목 360° 허브로 이동</span> <a href="my-stocks.html" style="font-size:.78rem;font-weight:700;color:#2e6ff2;text-decoration:none;margin-left:6px;">관리 →</a></div>
+      <div class="wl-grid" id="my-wl-grid"></div>
+    </div>
+
     <div class="wl-top" id="wl-top" style="display:none">
       <div class="sig-title" style="margin-top:28px">👥 회원들이 많이 담은 종목 TOP 10 <span style="font-size:.78rem;font-weight:600;color:#9aa6b6;">회원 보유·관심 등록 집계 (익명)</span></div>
       <div class="wl-grid" id="wl-grid"></div>
@@ -1088,6 +1093,21 @@
     var w=document.createElement('a');w.className='auth-join';w.href='/my-stocks.html';w.textContent='내 종목';
     var o=document.createElement('a');o.className='auth-login';o.style.display='inline';o.href='/api/auth/logout';o.textContent='로그아웃';
     b.innerHTML='';b.appendChild(n);b.appendChild(w);b.appendChild(o);
+    fetch('/api/auth/watchlist').then(function(r){return r.json();}).then(function(k){
+      if(!k.ok||!k.stocks||!k.stocks.length)return;
+      var g=document.getElementById('my-wl-grid');if(!g)return;
+      g.innerHTML=k.stocks.map(function(t){
+        return '<div class="wl-item" data-code="'+t.code+'" data-name="'+t.name.replace(/"/g,'&quot;')+'">'
+          +'<span class="wl-rank">★</span>'
+          +'<span class="wl-nm">'+t.name+'<span class="wl-cd">'+t.code+'</span></span></div>';
+      }).join('');
+      [].forEach.call(g.querySelectorAll('.wl-item'),function(el){
+        el.addEventListener('click',function(){
+          location.href='stock-hub.html?code='+el.dataset.code+'&name='+encodeURIComponent(el.dataset.name);
+        });
+      });
+      document.getElementById('my-wl').style.display='block';
+    }).catch(function(){});
   }).catch(function(){});
 })();
 </script>
