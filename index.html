@@ -372,6 +372,7 @@
       <div class="nav-group">
         <button type="button" class="nav-group-btn">웹앱 도구 <span class="caret">▾</span></button>
         <div class="nav-dropdown">
+          <a href="stock-hub.html" style="color:#ff7a45;">종목 360°</a>
           <a href="fair-value.html" style="color:#e6b422;">적정주가</a>
           <a href="korekawa.html" style="color:#0e7c5a;">고레가와</a>
           <a href="fisher.html" style="color:#f5a524;">피셔</a>
@@ -456,13 +457,14 @@
     </div>
 
     <div class="stock-search">
-      <div class="ss-label"><b>🔎 종목 통합 검색</b><span>한 번 입력하고 원하는 분석 도구로 바로 이동</span></div>
+      <div class="ss-label"><b>🔎 종목 통합 검색</b><span>한 번 입력하면 360° 허브 또는 개별 도구로 바로 이동</span></div>
       <div class="ss-row">
         <div class="ss-box">
           <input id="ss-q" type="text" placeholder="종목명 또는 코드 (예: 삼성전자, 005930)" autocomplete="off" enterkeyhint="go">
           <div class="ss-sugg" id="ss-sugg"></div>
         </div>
         <div class="ss-chips">
+          <button type="button" data-href="stock-hub.html">🧭 종목 360°</button>
           <button type="button" data-href="fair-value.html">💰 적정주가</button>
           <button type="button" data-href="signal.html">📶 시그널</button>
           <button type="button" data-href="ichimoku.html">☁️ 일목균형표</button>
@@ -959,7 +961,7 @@
       Array.prototype.forEach.call(sug.children,function(el,i){el.classList.toggle('sel',i===selIdx);});
     }else if(e.key==='Enter'){
       if(selIdx>=0){pick(selIdx);}
-      else{hide();go('fair-value.html');}
+      else{hide();go('stock-hub.html');}
     }else if(e.key==='Escape'){hide();}
   });
   document.addEventListener('click',function(e){if(!e.target.closest('.ss-box'))hide();});
