@@ -316,6 +316,21 @@
     section{padding:72px 0;}
     .hero{padding:130px 0 80px;}
   }
+
+  #stance-bar{display:block;background:linear-gradient(90deg,#0b1f3f,#13294b);border-bottom:1px solid rgba(255,255,255,.08);}
+  #stance-bar .sb-in{max-width:1180px;margin:0 auto;padding:9px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;color:#c9d6ea;font-size:.86rem;}
+  #stance-bar .sb-t{font-weight:700;color:#8fa4c4;white-space:nowrap;}
+  #stance-bar .sb-stance{font-size:1rem;padding:2px 12px;border-radius:8px;white-space:nowrap;}
+  #stance-bar .sb-stance.st-agg{background:rgba(26,127,55,.25);color:#5fd382;}
+  #stance-bar .sb-stance.st-act{background:rgba(26,127,55,.18);color:#8fd9a5;}
+  #stance-bar .sb-stance.st-neu{background:rgba(120,140,170,.2);color:#c9d6ea;}
+  #stance-bar .sb-stance.st-cau{background:rgba(199,119,0,.25);color:#f0b357;}
+  #stance-bar .sb-stance.st-def{background:rgba(198,40,40,.25);color:#f28b8b;}
+  #stance-bar .sb-alloc{font-weight:800;color:#fff;white-space:nowrap;}
+  #stance-bar .sb-why{color:#8fa4c4;}
+  #stance-bar .sb-date{margin-left:auto;color:#5d7195;font-size:.76rem;white-space:nowrap;}
+  #stance-bar:hover .sb-why{color:#c9d6ea;}
+  @media(max-width:700px){#stance-bar .sb-date{display:none}#stance-bar .sb-why{font-size:.78rem}}
 </style>
 </head>
 <body>
@@ -413,6 +428,16 @@
     <a href="#contact" class="nav-cta">상담 문의</a>
   </div>
 </header>
+
+<a id="stance-bar" href="cash-gauge.html" style="display:none;text-decoration:none;">
+  <div class="sb-in">
+    <span class="sb-t">🧭 오늘 스탠스</span>
+    <b class="sb-stance" id="sb-stance">—</b>
+    <span class="sb-alloc mono" id="sb-alloc"></span>
+    <span class="sb-why" id="sb-why"></span>
+    <span class="sb-date" id="sb-date"></span>
+  </div>
+</a>
 
 <section class="hero">
   <div class="container">
@@ -1113,6 +1138,32 @@
       });
       document.getElementById('my-wl').style.display='block';
     }).catch(function(){});
+  }).catch(function(){});
+})();
+</script>
+<script>
+(function(){
+  fetch('data/cash-gauge.json').then(function(r){return r.json();}).then(function(d){
+    var h=d.history?d.history[d.history.length-1]:d;
+    if(!h||h.cash_pct==null)return;
+    var cash=Math.round(h.cash_pct),stock=100-cash;
+    var st=h.stance||'중립';
+    var cls={'공격':'st-agg','적극':'st-act','중립':'st-neu','경계':'st-cau','방어':'st-def'}[st]||'st-neu';
+    var el=function(id){return document.getElementById(id);};
+    el('sb-stance').textContent=st;el('sb-stance').className='sb-stance '+cls;
+    el('sb-alloc').textContent='주식 '+stock+' · 현금 '+cash;
+    var t=(h.total&&h.total.temps)||{};
+    var why=[];
+    if(t.market!=null)why.push('시장 '+Math.round(t.market)+'°');
+    if(t.macro!=null)why.push('거시 '+Math.round(t.macro)+'°');
+    if(t.crowd!=null)why.push('심리 '+Math.round(t.crowd)+'°');
+    var mk=h.markets||{};
+    if(mk.kospi&&mk.kosdaq)why.push('코스피 현금 '+Math.round(mk.kospi.cash_pct)+'% · 코스닥 '+Math.round(mk.kosdaq.cash_pct)+'%');
+    el('sb-why').textContent=why.join('  |  ');
+    var ds=String(h.date||'');
+    if(/^\d{8}$/.test(ds))ds=ds.slice(0,4)+'.'+ds.slice(4,6)+'.'+ds.slice(6);
+    el('sb-date').textContent='예수금 온도계 기준 '+ds+' · 상세 →';
+    document.getElementById('stance-bar').style.display='block';
   }).catch(function(){});
 })();
 </script>
