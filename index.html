@@ -10,6 +10,17 @@
 <script>(function(){try{var t=localStorage.getItem('ti-theme');if(t==='dark'||(!t&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();</script>
 <title>Trend Insight | 데이터 기반 기업분석 &amp; 투자 인사이트</title>
 <meta name="description" content="Trend Insight는 철저한 기업분석을 바탕으로 신뢰할 수 있는 투자 인사이트를 제공합니다.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Trend Insight">
+<meta property="og:title" content="Trend Insight | 데이터 기반 기업분석 &amp; 투자 인사이트">
+<meta property="og:description" content="숫자 너머의 흐름을 읽다 — 온도계·스크리닝·전략 보드·트랙레코드로 보는 코스피·코스닥.">
+<meta property="og:url" content="https://trend-insight-site.sungsangkyung77.workers.dev/">
+<meta property="og:image" content="https://trend-insight-site.sungsangkyung77.workers.dev/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Trend Insight | 데이터 기반 기업분석 &amp; 투자 인사이트">
+<meta name="twitter:image" content="https://trend-insight-site.sungsangkyung77.workers.dev/og-image.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 125'%3E%3Ccircle cx='50' cy='17' r='15' fill='%234a7ebd'/%3E%3Ctext x='50' y='115' font-size='105' font-family='Georgia,serif' font-weight='bold' fill='%23b22f2f' text-anchor='middle'%3ET%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
@@ -1166,6 +1177,9 @@
     document.getElementById('stance-bar').style.display='block';
   }).catch(function(){});
 })();
+</script>
+<script>
+if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}
 </script>
 </body>
 </html>

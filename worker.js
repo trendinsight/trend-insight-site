@@ -2313,6 +2313,17 @@ export default {
       }
     }
 
+    if (url.pathname === "/data/watchlist-all.json") {
+      try {
+        await authEnsureTables(env);
+        const rows = await env.RISK_DB.prepare(
+          "SELECT code, name, COUNT(*) AS holders, MAX(added_at) AS last_added FROM site_watchlist GROUP BY code ORDER BY holders DESC, last_added DESC").all();
+        return new Response(JSON.stringify({ ok: true, updated: new Date().toISOString(), stocks: rows.results }), { headers: JSON_HEADERS });
+      } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
+      }
+    }
+
     if (url.pathname === "/data/watchlist-top.json") {
       const cached = await env.GAUGE_KV.get("wl-top-cache");
       if (cached) return new Response(cached, { headers: JSON_HEADERS });
