@@ -67,6 +67,11 @@ main{max-width:1180px;margin:0 auto;padding:18px 16px 60px}
   color:var(--muted);font-size:11px;padding:2px 8px}
 .hero .px{font-size:24px;font-weight:700;margin-left:auto}
 .hero .chg{font-size:15px;font-weight:600}
+.wlbtn{background:var(--panel2);border:1px solid var(--line);color:var(--muted);
+  border-radius:9px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+.wlbtn:hover{border-color:#e6b422;color:#e6b422}
+.wlbtn.on{background:rgba(230,180,34,.14);border-color:#e6b422;color:#e6b422}
+.wlbtn:disabled{opacity:.5;cursor:default}
 .updated{width:100%;color:var(--faint);font-size:11.5px}
 
 /* 요약 카드 */
@@ -151,7 +156,8 @@ footer{max-width:1180px;margin:0 auto;padding:0 16px 40px;color:var(--faint);fon
     <input id="q" type="text" placeholder="종목명 또는 코드 검색 (예: 삼성전자, 005930)" autocomplete="off" enterkeyhint="search">
     <div id="qresults"></div>
   </div>
-  <a class="home" href="index.html">← 홈</a>
+  <a class="home" href="my-stocks.html">⭐ 내 종목</a>
+  <a class="home" href="index.html" style="margin-left:0">← 홈</a>
 </header>
 
 <main>
@@ -172,6 +178,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 16px 40px;color:var(--faint);fon
       <span class="nm" id="h-name">—</span>
       <span class="cd mono" id="h-code"></span>
       <span class="mk" id="h-mkt"></span>
+      <button type="button" class="wlbtn" id="wl-btn" title="내 종목(관심종목)에 추가/제거">☆ 관심종목</button>
       <span class="px mono" id="h-px">—</span>
       <span class="chg mono" id="h-chg"></span>
       <span class="updated" id="h-upd"></span>
@@ -231,6 +238,38 @@ const API='/api/cockpit';
 const $=id=>document.getElementById(id);
 const fmt=n=>n==null||isNaN(n)?'—':Number(n).toLocaleString('ko-KR');
 let CUR=null;
+
+/* ── 관심종목 (내 종목 연동) ── */
+let WL=null; // Set of codes
+async function loadWatchlist(){
+  try{
+    const r=await(await fetch('/api/auth/watchlist')).json();
+    WL=new Set((r.stocks||[]).map(x=>x.code));
+  }catch(e){WL=new Set();}
+  renderWlBtn();
+}
+function renderWlBtn(){
+  const b=$('wl-btn');
+  if(!CUR||WL===null){b.textContent='☆ 관심종목';b.classList.remove('on');return;}
+  const on=WL.has(CUR.code);
+  b.textContent=on?'★ 관심종목 등록됨':'☆ 관심종목 추가';
+  b.classList.toggle('on',on);
+}
+$('wl-btn').addEventListener('click',async()=>{
+  if(!CUR)return;
+  const b=$('wl-btn');b.disabled=true;
+  const on=WL&&WL.has(CUR.code);
+  try{
+    const r=await(await fetch('/api/auth/watchlist',{method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify(on?{op:'remove',code:CUR.code}:{op:'add',code:CUR.code,name:CUR.name})})).json();
+    if(r.ok===false&&/로그인/.test(r.error||'')){alert('로그인이 필요합니다');b.disabled=false;return;}
+    if(WL===null)WL=new Set();
+    if(on)WL.delete(CUR.code);else WL.add(CUR.code);
+  }catch(e){alert('관심종목 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.');}
+  b.disabled=false;renderWlBtn();
+});
+loadWatchlist();
 
 /* ── 검색 ── */
 (function(){
@@ -317,6 +356,7 @@ async function analyze(code,name,market){
   $('rep-body').innerHTML='<div class="none">불러오는 중…</div>';
   $('lnk-thermo').href=`stock-gauge.html?q=${encodeURIComponent(CUR.name)}`;
   $('lnk-sig').href=`signal.html?q=${encodeURIComponent(CUR.name)}`;
+  renderWlBtn();
   loadTool();
 
   loadQuoteTech(code);
