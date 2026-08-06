@@ -248,7 +248,7 @@
   .dash-bar{height:6px;border-radius:999px;background:#e9edf4;overflow:hidden;}
   .dash-bar i{display:block;height:100%;border-radius:999px;}
   .dash-foot{margin-top:12px;padding-top:10px;border-top:1px solid var(--bg-soft);font-size:.72rem;color:#9aa6b6;display:flex;justify-content:space-between;align-items:center;min-height:16px;}
-  .dash-stale{color:#c77700;font-weight:700;}
+  .dash-stale{color:#c62828;font-weight:700;} .dash-mid{color:#c77700;font-weight:700;} .dash-fresh{color:#1a7f37;font-weight:700;}
   .dash-err{font-size:.82rem;color:#9aa6b6;}
   .dash-gauges{margin-top:10px;display:flex;justify-content:space-evenly;align-items:flex-end;gap:6px;min-height:118px;flex-wrap:wrap;}
   .mini-g{text-align:center;flex:1;min-width:86px;max-width:150px;}
@@ -793,7 +793,11 @@
 (function(){
   function ymd(s){s=String(s||'').replace(/[^0-9]/g,'').slice(0,8);if(s.length<8)return null;return new Date(s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8)+'T00:00:00');}
   function fdate(s){var d=ymd(s);if(!d)return'';return d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0');}
-  function staleTag(s){var d=ymd(s);if(!d)return'';var days=Math.floor((Date.now()-d.getTime())/864e5);return days>3?'<span class="dash-stale">'+days+'일 전 데이터</span>':'';}
+  function staleTag(s){var d=ymd(s);if(!d)return'';var days=Math.floor((Date.now()-d.getTime())/864e5);
+    if(days<=0)return'<span class="dash-fresh">● 오늘 갱신</span>';
+    if(days<=1)return'<span class="dash-fresh" style="color:#8a94a6">● 1일 전</span>';
+    if(days<=3)return'<span class="dash-mid">● '+days+'일 전</span>';
+    return'<span class="dash-stale">● '+days+'일 전 데이터</span>';}
 
   // 반원 게이지 (시장 온도계 페이지와 동일 문법)
   var HEAT=[[0,25,"#66bb6a"],[25,40,"#90caf9"],[40,60,"#cfd8e3"],[60,75,"#ffb74d"],[75,100,"#e57373"]];       // 높을수록 과열(빨강)
