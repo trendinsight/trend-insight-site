@@ -68,10 +68,11 @@
       hd.appendChild(home);
     }
 
-    /* ② 'PDF 다운로드' 링크는 항상 원본 파일을 받도록 raw 플래그를 붙인다
-          (서버가 최상위 이동만 래퍼 HTML로 감싸므로, 다운로드가 HTML로 저장되는 것을 방지) */
+    /* ② 'PDF 다운로드' 링크는 ?dl=1 로 — 서버가 첨부파일로 내려보내므로
+          아이폰에서도 브라우저 PDF 화면으로 넘어가지 않고 파일로 저장된다 */
     Array.prototype.forEach.call(document.querySelectorAll('a[href$=".pdf"]'), function (a) {
-      a.setAttribute('href', a.getAttribute('href') + '?raw=1');
+      a.setAttribute('href', a.getAttribute('href') + '?dl=1');
+      a.removeAttribute('download'); // Content-Disposition 이 처리한다
     });
 
     /* ③ 우하단 플로팅 버튼 */

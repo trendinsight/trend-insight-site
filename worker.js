@@ -2380,9 +2380,17 @@ export default {
     // PDF를 주소창/링크로 직접 열면(모바일에서 흔함) 브라우저 기본 PDF 화면으로 넘어가
     // 우리 HTML이 사라져 뒤로·홈 버튼이 없어진다. 최상위 이동이면 뒤로/홈 바 + 자체 뷰어가
     // 붙은 HTML로 감싸 돌려준다. ?raw=1 이면 원본 PDF를 그대로 준다(다운로드·뷰어 fetch용).
-    if ((assetRes.headers.get("content-type") || "").includes("application/pdf")
-        && assetRes.status === 200 && !url.searchParams.has("raw") && isPdfNavigation(req)) {
-      return pdfWrapperPage(url);
+    if ((assetRes.headers.get("content-type") || "").includes("application/pdf") && assetRes.status === 200) {
+      // ?dl=1 : 다운로드 전용 — 첨부파일로 내려 화면에 인라인 표시되지 않게 한다
+      if (url.searchParams.has("dl")) {
+        const fn = decodeURIComponent(url.pathname.split("/").pop() || "report.pdf");
+        const h = new Headers(assetRes.headers);
+        h.set("content-disposition", `attachment; filename="${fn.replace(/"/g, "")}"`);
+        return new Response(assetRes.body, { status: 200, headers: h });
+      }
+      // 최상위 이동(주소창·링크 탭)이면 ?raw 여부와 무관하게 항상 래퍼 HTML로 감싼다.
+      // PDF.js·iframe의 요청은 dest가 document가 아니므로 원본 PDF를 그대로 받는다.
+      if (isPdfNavigation(req)) return pdfWrapperPage(url);
     }
 
     if ((assetRes.headers.get("content-type") || "").includes("text/html")) {
@@ -3168,7 +3176,7 @@ function isPdfNavigation(req) {
 function pdfWrapperPage(url) {
   const file = decodeURIComponent(url.pathname.split("/").pop() || "");
   const name = file.replace(/\.pdf$/i, "");
-  const raw = url.pathname + "?raw=1";
+  const dl = url.pathname + "?dl=1";
   const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -3181,7 +3189,7 @@ main{max-width:1000px;margin:0 auto;padding:20px 14px 40px}
 .viewer{width:100%;height:85vh;border:1px solid #e4e9f1;border-radius:12px;background:#fff}
 .fallback{font-size:.85rem;color:#9aa6b6;margin-top:10px}</style></head>
 <body><header><a href="/index.html">← Trend Insight</a></header><main>
-<div class="actions"><a class="dl" href="${esc(raw)}" download>PDF 다운로드</a></div>
+<div class="actions"><a class="dl" href="${esc(dl)}">PDF 다운로드</a></div>
 <iframe class="viewer" src="${esc(url.pathname)}"></iframe>
 <p class="fallback">PDF가 보이지 않으면 위의 'PDF 다운로드' 버튼을 눌러 파일을 직접 여세요.</p>
 </main>
