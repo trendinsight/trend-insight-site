@@ -2376,6 +2376,15 @@ export default {
     }
 
     const assetRes = await env.ASSETS.fetch(req);
+
+    // PDF를 주소창/링크로 직접 열면(모바일에서 흔함) 브라우저 기본 PDF 화면으로 넘어가
+    // 우리 HTML이 사라져 뒤로·홈 버튼이 없어진다. 최상위 이동이면 뒤로/홈 바 + 자체 뷰어가
+    // 붙은 HTML로 감싸 돌려준다. ?raw=1 이면 원본 PDF를 그대로 준다(다운로드·뷰어 fetch용).
+    if ((assetRes.headers.get("content-type") || "").includes("application/pdf")
+        && assetRes.status === 200 && !url.searchParams.has("raw") && isPdfNavigation(req)) {
+      return pdfWrapperPage(url);
+    }
+
     if ((assetRes.headers.get("content-type") || "").includes("text/html")) {
       const isPost = url.pathname.startsWith("/posts/");
       const isHome = url.pathname === "/" || url.pathname === "/index.html";
@@ -2387,6 +2396,8 @@ export default {
           if (isPost) el.append(`<script defer src="/post-tools.js"></script>`, { html: true });
           // 리포트·PDF 뷰어 페이지에는 뒤로/홈 내비를 자동 주입 (상단 고정 + 우하단 플로팅)
           if (isPost || isPdfView) el.append(`<script defer src="/post-nav.js"></script>`, { html: true });
+          // PDF는 페이지 안에서 직접 렌더링 (iOS Safari가 PDF 주소로 통째 이동하는 것을 방지)
+          if (isPost || isPdfView) el.append(`<script defer src="/pdf-viewer.js"></script>`, { html: true });
           // 홈을 제외한 모든 페이지에 공용 플로팅 내비 주입
           if (!isHome) el.append(`<script defer src="/site-nav.js"></script>`, { html: true });
         }
@@ -3143,4 +3154,40 @@ async function authWatchlistTelegram(env, label) {
   }
   msg += "\n" + authNowKST() + " KST";
   await slTelegram(env, msg);
+}
+
+/* ═══════════════════ PDF 직접 열람 래퍼 ═══════════════════
+   iOS Safari 등에서 PDF 파일 주소로 최상위 이동이 일어나면 브라우저 기본 뷰어가 뜨고
+   뒤로/홈 버튼이 사라진다. 그런 요청만 골라 HTML 껍데기로 감싼다. */
+function isPdfNavigation(req) {
+  const dest = req.headers.get("sec-fetch-dest");
+  if (dest) return dest === "document";
+  return (req.headers.get("accept") || "").includes("text/html");
+}
+
+function pdfWrapperPage(url) {
+  const file = decodeURIComponent(url.pathname.split("/").pop() || "");
+  const name = file.replace(/\.pdf$/i, "");
+  const raw = url.pathname + "?raw=1";
+  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>${esc(name)} | Trend Insight</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>body{font-family:'Pretendard',sans-serif;margin:0;color:#1c2533;line-height:1.7;background:#f5f7fb}
+header{background:#0b1f3f;padding:16px 24px;font-weight:800}header a{color:#fff;text-decoration:none}
+main{max-width:1000px;margin:0 auto;padding:20px 14px 40px}
+.actions{margin-bottom:14px}.dl{display:inline-block;background:#2e6ff2;color:#fff;text-decoration:none;padding:10px 20px;border-radius:9px;font-weight:700;font-size:.92rem}
+.viewer{width:100%;height:85vh;border:1px solid #e4e9f1;border-radius:12px;background:#fff}
+.fallback{font-size:.85rem;color:#9aa6b6;margin-top:10px}</style></head>
+<body><header><a href="/index.html">← Trend Insight</a></header><main>
+<div class="actions"><a class="dl" href="${esc(raw)}" download>PDF 다운로드</a></div>
+<iframe class="viewer" src="${esc(url.pathname)}"></iframe>
+<p class="fallback">PDF가 보이지 않으면 위의 'PDF 다운로드' 버튼을 눌러 파일을 직접 여세요.</p>
+</main>
+<script defer src="/post-nav.js"></script>
+<script defer src="/pdf-viewer.js"></script>
+<script defer src="/site-nav.js"></script>
+</body></html>`;
+  return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
 }

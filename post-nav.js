@@ -68,7 +68,13 @@
       hd.appendChild(home);
     }
 
-    /* ② 우하단 플로팅 버튼 */
+    /* ② 'PDF 다운로드' 링크는 항상 원본 파일을 받도록 raw 플래그를 붙인다
+          (서버가 최상위 이동만 래퍼 HTML로 감싸므로, 다운로드가 HTML로 저장되는 것을 방지) */
+    Array.prototype.forEach.call(document.querySelectorAll('a[href$=".pdf"]'), function (a) {
+      a.setAttribute('href', a.getAttribute('href') + '?raw=1');
+    });
+
+    /* ③ 우하단 플로팅 버튼 */
     var fb = document.createElement('button');
     fb.type = 'button';
     fb.id = 'pn-fab-back';
