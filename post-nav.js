@@ -41,9 +41,9 @@
   document.head.appendChild(st);
 
   function build() {
-    /* ① 상단 header 고정 + 버튼 삽입 */
+    /* ① 상단 header 고정 + 버튼 삽입 (서버가 이미 버튼을 넣은 페이지면 건너뜀) */
     var hd = document.querySelector('body > header') || document.querySelector('header');
-    if (hd) {
+    if (hd && !hd.querySelector('.pn-btn')) {
       hd.classList.add('pn-sticky');
       var link = hd.querySelector('a');
       if (link) {
@@ -68,11 +68,27 @@
       hd.appendChild(home);
     }
 
-    /* ② 'PDF 다운로드' 링크는 ?dl=1 로 — 서버가 첨부파일로 내려보내므로
-          아이폰에서도 브라우저 PDF 화면으로 넘어가지 않고 파일로 저장된다 */
+    /* ② 'PDF 다운로드' 버튼을 [크게 보기 | 다운로드] 둘로 분리
+          - 크게 보기: PDF 주소로 이동 → 서버가 뒤로/홈 바 달린 뷰어 페이지로 감싸준다
+          - 다운로드: ?dl=1 → 첨부파일로 저장 (화면 전환 없음)
+          래퍼 페이지(주소가 .pdf) 위에서는 '크게 보기'가 무의미하므로 다운로드만 정리 */
+    var onWrapper = /\.pdf$/i.test(location.pathname);
     Array.prototype.forEach.call(document.querySelectorAll('a[href$=".pdf"]'), function (a) {
-      a.setAttribute('href', a.getAttribute('href') + '?dl=1');
+      var href = a.getAttribute('href');
+      a.setAttribute('href', href + '?dl=1');
       a.removeAttribute('download'); // Content-Disposition 이 처리한다
+      if (a.classList.contains('dl')) {
+        a.textContent = '⬇ 다운로드';
+        if (!onWrapper) {
+          var view = document.createElement('a');
+          view.className = 'dl';
+          view.href = href; // 원 주소 그대로 → 서버 래퍼(내장 뷰어 + 뒤로/홈)
+          view.textContent = '📄 크게 보기';
+          view.style.marginRight = '8px';
+          a.parentNode.insertBefore(view, a);
+          a.style.background = '#5b6779';
+        }
+      }
     });
 
     /* ③ 우하단 플로팅 버튼 */

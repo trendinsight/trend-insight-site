@@ -2401,13 +2401,13 @@ export default {
         element(el) {
           el.append(`<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "33e842c948b94e4787347cd2487af700"}'></script>`, { html: true });
           // 리포트 페이지에는 종목 도구 연결 위젯을 자동 주입 (기존·신규 게시물 공통)
-          if (isPost) el.append(`<script defer src="/post-tools.js?v=20260808"></script>`, { html: true });
+          if (isPost) el.append(`<script defer src="/post-tools.js?v=2026080802"></script>`, { html: true });
           // 리포트·PDF 뷰어 페이지에는 뒤로/홈 내비를 자동 주입 (상단 고정 + 우하단 플로팅)
-          if (isPost || isPdfView) el.append(`<script defer src="/post-nav.js?v=20260808"></script>`, { html: true });
+          if (isPost || isPdfView) el.append(`<script defer src="/post-nav.js?v=2026080802"></script>`, { html: true });
           // PDF는 페이지 안에서 직접 렌더링 (iOS Safari가 PDF 주소로 통째 이동하는 것을 방지)
-          if (isPost || isPdfView) el.append(`<script defer src="/pdf-viewer.js?v=20260808"></script>`, { html: true });
+          if (isPost || isPdfView) el.append(`<script defer src="/pdf-viewer.js?v=2026080802"></script>`, { html: true });
           // 홈을 제외한 모든 페이지에 공용 플로팅 내비 주입
-          if (!isHome) el.append(`<script defer src="/site-nav.js?v=20260808"></script>`, { html: true });
+          if (!isHome) el.append(`<script defer src="/site-nav.js?v=2026080802"></script>`, { html: true });
         }
       }).transform(assetRes);
     }
@@ -3188,14 +3188,18 @@ main{max-width:1000px;margin:0 auto;padding:20px 14px 40px}
 .actions{margin-bottom:14px}.dl{display:inline-block;background:#2e6ff2;color:#fff;text-decoration:none;padding:10px 20px;border-radius:9px;font-weight:700;font-size:.92rem}
 .viewer{width:100%;height:85vh;border:1px solid #e4e9f1;border-radius:12px;background:#fff}
 .fallback{font-size:.85rem;color:#9aa6b6;margin-top:10px}</style></head>
-<body><header><a href="/index.html">← Trend Insight</a></header><main>
+<body><header style="display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:99988">
+<button type="button" class="pn-btn" onclick="(history.length>1&&document.referrer.indexOf(location.origin)===0)?history.back():location.href='/'" style="flex:none;display:inline-flex;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:6px 13px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit">← 뒤로</button>
+<a href="/index.html" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Trend Insight</a>
+<a href="/index.html" class="pn-btn" style="flex:none;display:inline-flex;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:6px 13px;font-size:.82rem;font-weight:700;text-decoration:none">홈</a>
+</header><main>
 <div class="actions"><a class="dl" href="${esc(dl)}">PDF 다운로드</a></div>
 <iframe class="viewer" src="${esc(url.pathname)}"></iframe>
 <p class="fallback">PDF가 보이지 않으면 위의 'PDF 다운로드' 버튼을 눌러 파일을 직접 여세요.</p>
 </main>
-<script defer src="/post-nav.js?v=20260808"></script>
-<script defer src="/pdf-viewer.js?v=20260808"></script>
-<script defer src="/site-nav.js?v=20260808"></script>
+<script defer src="/post-nav.js?v=2026080802"></script>
+<script defer src="/pdf-viewer.js?v=2026080802"></script>
+<script defer src="/site-nav.js?v=2026080802"></script>
 </body></html>`;
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
 }
