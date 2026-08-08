@@ -2388,9 +2388,11 @@ export default {
         h.set("content-disposition", `attachment; filename="${fn.replace(/"/g, "")}"`);
         return new Response(assetRes.body, { status: 200, headers: h });
       }
-      // 최상위 이동(주소창·링크 탭)이면 ?raw 여부와 무관하게 항상 래퍼 HTML로 감싼다.
-      // PDF.js·iframe의 요청은 dest가 document가 아니므로 원본 PDF를 그대로 받는다.
-      if (isPdfNavigation(req)) return pdfWrapperPage(url);
+      // ?raw=1 : 원본 PDF 바이트 (내장 뷰어 PDF.js·iframe 전용)
+      if (url.searchParams.has("raw")) return assetRes;
+      // 그 외 PDF 주소는 무조건 뒤로/홈 바 + 내장 뷰어가 달린 래퍼 HTML.
+      // 헤더 판별(sec-fetch/accept)은 iOS Safari·서비스워커 경유 시 신뢰할 수 없어 쓰지 않는다.
+      return pdfWrapperPage(url);
     }
 
     if ((assetRes.headers.get("content-type") || "").includes("text/html")) {
@@ -3194,7 +3196,7 @@ main{max-width:1000px;margin:0 auto;padding:20px 14px 40px}
 <a href="/index.html" class="pn-btn" style="flex:none;display:inline-flex;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:6px 13px;font-size:.82rem;font-weight:700;text-decoration:none">홈</a>
 </header><main>
 <div class="actions"><a class="dl" href="${esc(dl)}">PDF 다운로드</a></div>
-<iframe class="viewer" src="${esc(url.pathname)}"></iframe>
+<iframe class="viewer" src="${esc(url.pathname)}?raw=1"></iframe>
 <p class="fallback">PDF가 보이지 않으면 위의 'PDF 다운로드' 버튼을 눌러 파일을 직접 여세요.</p>
 </main>
 <script defer src="/post-nav.js?v=2026080802"></script>
