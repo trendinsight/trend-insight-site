@@ -173,12 +173,23 @@ function nextBizDays(last,cnt){
   return out;}
 function computeIchimoku(c){
   const h=c.high,l=c.low,cl=c.close,n=cl.length;
-  const tenkan=[],kijun=[],sbRaw=[],saRaw=[];
-  for(let i=0;i<n;i++){
-    tenkan.push(hhll(h,l,i,T));kijun.push(hhll(h,l,i,K));sbRaw.push(hhll(h,l,i,SB));
-    saRaw.push(tenkan[i]!=null&&kijun[i]!=null?(tenkan[i]+kijun[i])/2:null);}
+  // 클라이언트 계산(윈도 내 데이터만 사용 — 앞부분은 null)
+  const tkC=[],kjC=[],sbC=[],saC=[];
+  for(let i0=0;i0<n;i0++){
+    tkC.push(hhll(h,l,i0,T));kjC.push(hhll(h,l,i0,K));sbC.push(hhll(h,l,i0,SB));
+    saC.push(tkC[i0]!=null&&kjC[i0]!=null?(tkC[i0]+kjC[i0])/2:null);}
+  // 서버(API)가 전체 히스토리로 계산해 보내주는 배열이 있으면 우선 사용 —
+  // 윈도 앞부분(전환선 8봉·기준선 25봉·구름 77봉)의 결측을 없애 차트 좌측이 잘리지 않게 한다
+  const srv=a=>Array.isArray(a)&&a.length===n&&a.some(x=>x!=null)?a:null;
+  const tenkan=srv(c.tenkan)||tkC, kijun=srv(c.kijun)||kjC;
+  const dispA=srv(c.senkou_a), dispB=srv(c.senkou_b);
+  // 화면에 그리는 구름(이미 26일 선행 이동된 값)
+  const cloudAt=j=>({a: dispA?dispA[j]:(j-SH>=0?saC[j-SH]:null),
+                     b: dispB?dispB[j]:(j-SH>=0?sbC[j-SH]:null)});
+  // 미래 26일 구름의 원천값(아직 이동 전) — 마지막 26봉에서만 사용
+  const saRaw=tenkan.map((v,k)=>(v!=null&&kijun[k]!=null)?(v+kijun[k])/2:null), sbRaw=sbC;
   const i=n-1,price=cl[i];
-  const saAt=j=>j-SH>=0?saRaw[j-SH]:null, sbAt=j=>j-SH>=0?sbRaw[j-SH]:null;
+  const saAt=j=>cloudAt(j).a, sbAt=j=>cloudAt(j).b;
   const ct=Math.max(saAt(i),sbAt(i)),cb=Math.min(saAt(i),sbAt(i));
   const pos=price>ct?'위':(price<cb?'아래':'내부');
   const tk=tenkan[i]>kijun[i];
@@ -208,7 +219,7 @@ function computeIchimoku(c){
   if(pos==='내부')nb+=8;
   let neu=Math.max(100-up-dn,5)+nb;const tot=up+dn+neu;
   up=Math.round(up/tot*100);dn=Math.round(dn/tot*100);neu=100-up-dn;
-  return {i,n,price,tenkan,kijun,saRaw,sbRaw,saAt,sbAt,ct,cb,pos,tk,cross,chikouOk,chikouGap,
+  return {i,n,price,tenkan,kijun,saRaw,sbRaw,saAt,sbAt,cloudAt,ct,cb,pos,tk,cross,chikouOk,chikouGap,
     futBull,twist,kjS,tkS,thick,sc,score,sanyaku,zone,up,dn,neu};
 }
 
@@ -366,43 +377,96 @@ function clean(arr){
   for(const x of arr){if(!x||!x.time)continue;m.set(x.time,x);}
   return [...m.values()].sort((a,b)=>a.time<b.time?-1:a.time>b.time?1:0);
 }
+/* 구름 전용 커스텀 시리즈 — 선행A·선행B 사이만 정확히 채운다.
+   (기존의 "배경색 area로 덮어 지우기" 방식은 패널 배경색과 어긋나 사각형 얼룩이 생기고
+    격자선까지 가려서 차트가 깨져 보였다. 교차 지점은 선형보간해 색을 전환한다.) */
+class CloudRenderer{
+  update(d,o){this._d=d;this._o=o;}
+  draw(target,priceToY){
+    const d=this._d,o=this._o;
+    if(!d||!d.bars||!d.bars.length||!d.visibleRange)return;
+    target.useBitmapCoordinateSpace(scope=>{
+      const ctx=scope.context,hx=scope.horizontalPixelRatio,hy=scope.verticalPixelRatio;
+      const pts=[];
+      for(let k=d.visibleRange.from;k<d.visibleRange.to;k++){
+        const bar=d.bars[k],od=bar&&bar.originalData;
+        if(!od||od.a==null||od.b==null)continue;
+        const ya=priceToY(od.a),yb=priceToY(od.b);
+        if(ya==null||yb==null)continue;
+        pts.push({x:bar.x,ya,yb,bull:od.a>=od.b});
+      }
+      if(pts.length<2)return;
+      const fill=s=>{
+        if(s.length<2)return;
+        ctx.beginPath();
+        ctx.moveTo(s[0].x*hx,s[0].ya*hy);
+        for(let k=1;k<s.length;k++)ctx.lineTo(s[k].x*hx,s[k].ya*hy);
+        for(let k=s.length-1;k>=0;k--)ctx.lineTo(s[k].x*hx,s[k].yb*hy);
+        ctx.closePath();
+        ctx.fillStyle=s[0].bull?o.bullColor:o.bearColor;
+        ctx.fill();
+      };
+      let seg=[pts[0]];
+      for(let k=1;k<pts.length;k++){
+        const p=pts[k-1],q=pts[k];
+        if(p.bull!==q.bull){
+          const g0=p.ya-p.yb,g1=q.ya-q.yb,den=g0-g1;
+          const t=den?Math.min(Math.max(g0/den,0),1):0.5;
+          const cx=p.x+(q.x-p.x)*t, cy=p.ya+(q.ya-p.ya)*t;
+          seg.push({x:cx,ya:cy,yb:cy,bull:p.bull});fill(seg);
+          seg=[{x:cx,ya:cy,yb:cy,bull:q.bull},q];
+        }else seg.push(q);
+      }
+      fill(seg);
+    });
+  }
+}
+class CloudView{
+  constructor(){this._r=new CloudRenderer();}
+  priceValueBuilder(d){return [d.b,d.a];}
+  isWhitespace(d){return d.a==null||d.b==null;}
+  renderer(){return this._r;}
+  update(d,o){this._r.update(d,o);}
+  defaultOptions(){return {...(LightweightCharts.customSeriesDefaultOptions||{}),
+    bullColor:'rgba(232,98,27,.22)',bearColor:'rgba(59,130,246,.20)',
+    lastValueVisible:false,priceLineVisible:false};}
+}
 function drawChart(c,r){
   const P=$('#cloud-chart');P.innerHTML='';
   const isM=window.innerWidth<=980;
   chart=LightweightCharts.createChart(P,{
     layout:{background:{color:'transparent'},textColor:'#8896ae'},
-    grid:{vertLines:{visible:false},horzLines:{color:'#161f31'}},
-    rightPriceScale:{borderColor:'#26314a'},timeScale:{borderColor:'#26314a',rightOffset:4},
+    grid:{vertLines:{visible:false},horzLines:{color:'#1c2739'}},
+    rightPriceScale:{borderColor:'#26314a',scaleMargins:{top:.08,bottom:.08}},
+    timeScale:{borderColor:'#26314a',rightOffset:4},
     crosshair:{mode:0},height:isM?320:420,width:P.clientWidth});
   const n=r.n, dates=c.date, fut=nextBizDays(dates[n-1],SH);
-  const axis=dates.concat(fut);
-  // 구름: 시점 j의 raw가 axis[j+26]에 투영
-  const bull=[],bear=[],eraseLo=[];
-  for(let j=0;j<n;j++){
-    const t=axis[j+SH];if(!t)break;
-    const a=r.saRaw[j],b=r.sbRaw[j];
-    if(a==null||b==null)continue;
-    const hi=Math.max(a,b),lo=Math.min(a,b);
-    if(a>=b){bull.push({time:t,value:hi});bear.push({time:t});}
-    else{bear.push({time:t,value:hi});bull.push({time:t});}
-    eraseLo.push({time:t,value:lo});
-  }
-  const areaOpt={priceLineVisible:false,lastValueVisible:false,lineWidth:1,crosshairMarkerVisible:false};
-  const aBull=chart.addAreaSeries({...areaOpt,lineColor:'rgba(232,98,27,.55)',topColor:'rgba(232,98,27,.16)',bottomColor:'rgba(232,98,27,.16)'});
-  aBull.setData(clean(bull));
-  const aBear=chart.addAreaSeries({...areaOpt,lineColor:'rgba(58,114,214,.55)',topColor:'rgba(59,130,246,.14)',bottomColor:'rgba(59,130,246,.14)'});
-  aBear.setData(clean(bear));
-  const aErase=chart.addAreaSeries({...areaOpt,lineColor:'rgba(93,107,133,.4)',topColor:'#0c111c',bottomColor:'#0c111c'});
-  aErase.setData(clean(eraseLo));
+  // ① 과거~현재 구름: API/계산된 '이동 완료' 값을 해당 날짜에 그대로
+  const cloud=[];
+  for(let j=0;j<n;j++){const v=r.cloudAt(j);
+    if(v.a!=null&&v.b!=null)cloud.push({time:dates[j],a:v.a,b:v.b});}
+  // ② 미래 26일 구름: 마지막 26봉의 원천값을 앞으로 투영
+  for(let j=Math.max(n-SH,0);j<n;j++){
+    const a=r.saRaw[j],b=r.sbRaw[j],t=fut[j-(n-SH)];
+    if(t&&a!=null&&b!=null)cloud.push({time:t,a,b});}
+  const cloudData=clean(cloud);
+  const band=chart.addCustomSeries(new CloudView(),{
+    bullColor:'rgba(232,98,27,.22)',bearColor:'rgba(59,130,246,.20)',
+    lastValueVisible:false,priceLineVisible:false});
+  band.setData(cloudData);
+  const line=(data,color,w,dash)=>{const ls=chart.addLineSeries({color,lineWidth:w||1.4,
+    priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,
+    lineStyle:dash?LightweightCharts.LineStyle.Dotted:0});
+    ls.setData(clean(data.filter(x=>x.value!=null)));return ls;};
+  // 구름 경계선(선행A·선행B)
+  line(cloudData.map(x=>({time:x.time,value:x.a})),'rgba(232,98,27,.75)',1);
+  line(cloudData.map(x=>({time:x.time,value:x.b})),'rgba(58,114,214,.75)',1);
   const candle=chart.addCandlestickSeries({upColor:'#f0454e',downColor:'#3b82f6',
     wickUpColor:'#f0454e',wickDownColor:'#3b82f6',borderVisible:false});
   candle.setData(clean(dates.map((t,i)=>({time:t,open:c.open[i],high:c.high[i],low:c.low[i],close:c.close[i]})).filter(x=>x.close!=null)));
-  const line=(data,color,w,dash)=>{const ls=chart.addLineSeries({color,lineWidth:w||1.4,
-    priceLineVisible:false,lastValueVisible:false,lineStyle:dash?LightweightCharts.LineStyle.Dotted:0});
-    ls.setData(clean(data.filter(x=>x.value!=null)));};
   line(dates.map((t,i)=>({time:t,value:r.tenkan[i]})),'#f0454e',1.3);
   line(dates.map((t,i)=>({time:t,value:r.kijun[i]})),'#E8621B',1.6);
-  // 후행스팬: close[i] → axis[i-26]
+  // 후행스팬: close[i] → dates[i-26]
   line(c.close.map((v,i)=>i>=SH?{time:dates[i-SH],value:v}:{time:dates[0]}).filter(x=>x.value!=null),'#9aa7c0',1.2,true);
   chart.timeScale().fitContent();
 }
