@@ -164,9 +164,11 @@ function hhll(h,l,i,n){if(i+1<n)return null;
   for(let j=i-n+1;j<=i;j++){if(h[j]>hh)hh=h[j];if(l[j]<ll)ll=l[j];}
   return (hh+ll)/2;}
 function nextBizDays(last,cnt){
-  const out=[];let d=new Date(last+'T00:00:00');
-  while(out.length<cnt){d.setDate(d.getDate()+1);
-    const w=d.getDay();if(w===0||w===6)continue;
+  // UTC 기준으로 계산해 toISOString 시 로컬 시간대(KST 등)에 의한 하루 밀림 방지
+  const out=[];const p=last.split('-').map(Number);
+  let d=new Date(Date.UTC(p[0],p[1]-1,p[2]));
+  while(out.length<cnt){d.setUTCDate(d.getUTCDate()+1);
+    const w=d.getUTCDay();if(w===0||w===6)continue;
     out.push(d.toISOString().slice(0,10));}
   return out;}
 function computeIchimoku(c){
@@ -358,6 +360,12 @@ function render(d,fallbackName){
 }
 
 /* ── 차트 ── */
+/* 시계열 정리: time 오름차순 정렬 + 중복 time 제거(뒤엣것 우선) — LWC setData 예외 방지 */
+function clean(arr){
+  const m=new Map();
+  for(const x of arr){if(!x||!x.time)continue;m.set(x.time,x);}
+  return [...m.values()].sort((a,b)=>a.time<b.time?-1:a.time>b.time?1:0);
+}
 function drawChart(c,r){
   const P=$('#cloud-chart');P.innerHTML='';
   const isM=window.innerWidth<=980;
@@ -381,17 +389,17 @@ function drawChart(c,r){
   }
   const areaOpt={priceLineVisible:false,lastValueVisible:false,lineWidth:1,crosshairMarkerVisible:false};
   const aBull=chart.addAreaSeries({...areaOpt,lineColor:'rgba(232,98,27,.55)',topColor:'rgba(232,98,27,.16)',bottomColor:'rgba(232,98,27,.16)'});
-  aBull.setData(bull);
+  aBull.setData(clean(bull));
   const aBear=chart.addAreaSeries({...areaOpt,lineColor:'rgba(58,114,214,.55)',topColor:'rgba(59,130,246,.14)',bottomColor:'rgba(59,130,246,.14)'});
-  aBear.setData(bear);
+  aBear.setData(clean(bear));
   const aErase=chart.addAreaSeries({...areaOpt,lineColor:'rgba(93,107,133,.4)',topColor:'#0c111c',bottomColor:'#0c111c'});
-  aErase.setData(eraseLo);
+  aErase.setData(clean(eraseLo));
   const candle=chart.addCandlestickSeries({upColor:'#f0454e',downColor:'#3b82f6',
     wickUpColor:'#f0454e',wickDownColor:'#3b82f6',borderVisible:false});
-  candle.setData(dates.map((t,i)=>({time:t,open:c.open[i],high:c.high[i],low:c.low[i],close:c.close[i]})).filter(x=>x.close!=null));
+  candle.setData(clean(dates.map((t,i)=>({time:t,open:c.open[i],high:c.high[i],low:c.low[i],close:c.close[i]})).filter(x=>x.close!=null)));
   const line=(data,color,w,dash)=>{const ls=chart.addLineSeries({color,lineWidth:w||1.4,
     priceLineVisible:false,lastValueVisible:false,lineStyle:dash?LightweightCharts.LineStyle.Dotted:0});
-    ls.setData(data.filter(x=>x.value!=null));};
+    ls.setData(clean(data.filter(x=>x.value!=null)));};
   line(dates.map((t,i)=>({time:t,value:r.tenkan[i]})),'#f0454e',1.3);
   line(dates.map((t,i)=>({time:t,value:r.kijun[i]})),'#E8621B',1.6);
   // 후행스팬: close[i] → axis[i-26]
