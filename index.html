@@ -361,7 +361,8 @@
           <a href="gauge.html" style="color:#b22f2f;">시장 온도계</a>
           <a href="macro-gauge.html" style="color:#2e6ff2;">거시 온도계</a>
           <a href="crowd-gauge.html" style="color:#e5484d;">군중심리 온도계</a>
-          <a href="cash-gauge.html" style="color:#f5a524;">예수금 온도계</a> <a href="basis-gauge.html" style="color:#3e8ef7;font-weight:700;">선물 베이시스</a>
+          <a href="basis-gauge.html" style="color:#3e8ef7;">선물 온도계</a>
+          <a href="cash-gauge.html" style="color:#f5a524;">예수금 온도계</a>
           <a href="stock-gauge.html" style="color:#c62828;">종목 온도계</a>
           <a href="crypto-gauge.html" style="color:#e8830c;">코인 온도계</a>
         </div>
@@ -526,6 +527,12 @@
       <a class="dash-card" id="dash-crowd" href="crowd-gauge.html">
         <div class="t">군중심리 온도계 <span class="go">상세 →</span></div>
         <div class="sub">심리 과열도 · 높을수록 쏠림</div>
+        <div class="dash-rows"><div class="dash-err">불러오는 중…</div></div>
+        <div class="dash-foot"></div>
+      </a>
+      <a class="dash-card" id="dash-basis" href="basis-gauge.html">
+        <div class="t">선물 온도계 <span class="go">상세 →</span></div>
+        <div class="sub">현·선물 괴리 방향점수 · 높을수록 순풍</div>
         <div class="dash-rows"><div class="dash-err">불러오는 중…</div></div>
         <div class="dash-foot"></div>
       </a>
@@ -907,6 +914,19 @@
     });
     setGauges('dash-crowd',items,lastOf(d.market.kospi).date);
   }).catch(function(){fail('dash-crowd');});
+
+  // ── 선물 온도계 (현·선물 괴리 방향점수 — 높을수록 순풍)
+  load('basis-gauge.json').then(function(d){
+    var zmap={BULL:'순풍',NEUTRAL:'중립',BEAR:'역풍'};
+    var h=lastOf(d.history);
+    var items=[['k200','코스피200'],['kq150','코스닥150']].map(function(p){
+      var m=h[p[0]];
+      return {label:p[1],score:R1(m.score),segs:GOOD,
+        zone:(zmap[m.verdict]||m.verdict)+' · 괴리 '+(m.disc>=0?'+':'')+Number(m.disc).toFixed(3)+'%',
+        zc:goodZC(m.score)};
+    });
+    setGauges('dash-basis',items,h.date);
+  }).catch(function(){fail('dash-basis');});
 
   // ── 예수금 온도계 (권장 현금 비중)
   load('cash-gauge.json').then(function(d){
