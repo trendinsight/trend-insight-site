@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>리포트 요약 | Trend Insight</title>
-<meta name="description" content="한경 컨센서스 발간 증권사 리포트를 리포트당 2~3문장으로 요약한 PDF 아카이브 (최근 5회 보관)">
+<meta name="description" content="한경 컨센서스 발간 증권사 리포트를 리포트당 2~3문장으로 요약한 PDF 아카이브. 종목명·증권사로 지난 리포트의 목표주가와 요약을 검색할 수 있습니다.">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
 :root{--navy:#0b1f3f;--navy2:#13294b;--accent:#2e6ff2;--red:#b22f2f;--orange:#e8830c;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg:#f5f7fb}
@@ -39,6 +39,48 @@ h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
 #err{background:#fdecea;color:#c62828;border:none}
 .note{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin-top:22px;font-size:.85rem;color:var(--muted)}
 .note h3{font-size:.95rem;color:var(--navy);margin-bottom:6px}
+
+/* ---- 종목 검색 ---- */
+.srch{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-bottom:26px;box-shadow:0 1px 3px rgba(11,31,63,.05)}
+.srch h2{font-size:1.05rem;color:var(--navy);margin-bottom:4px}
+.srch .shint{font-size:.8rem;color:var(--muted);margin-bottom:12px}
+.sbar{display:flex;gap:8px;align-items:center}
+.sbar input{flex:1;font-family:inherit;font-size:.95rem;font-weight:600;color:var(--navy);border:1.5px solid var(--line);border-radius:10px;padding:11px 14px;background:#fff;outline:none;min-width:0}
+.sbar input:focus{border-color:var(--accent)}
+.sbar button{font-family:inherit;font-size:.86rem;font-weight:700;color:#fff;background:var(--navy);border:none;border-radius:10px;padding:11px 16px;cursor:pointer;white-space:nowrap}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+.chip{background:#eef3fb;color:var(--navy);border:1px solid #dbe5f5;border-radius:999px;padding:4px 12px;font-size:.79rem;font-weight:700;cursor:pointer}
+.chip:hover{background:#dfe9fa}
+.chip .cn{color:var(--muted);font-weight:600;margin-left:4px}
+.scount{font-size:.82rem;color:var(--muted);margin:16px 0 8px}
+.scount b{color:var(--navy)}
+.grp{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 20px;margin-bottom:12px;box-shadow:0 1px 3px rgba(11,31,63,.05)}
+.grp .gh{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:9px;margin-bottom:4px}
+.grp .gh b{font-size:1.05rem;color:var(--navy)}
+.grp .gh .gc{font-size:.78rem;color:#9aa6b6;font-weight:600}
+.grp .gh .gn{font-size:.78rem;color:var(--muted);margin-left:auto}
+.trend{display:flex;flex-wrap:wrap;gap:6px;margin:9px 0 4px}
+.tp{background:#f5f7fb;border:1px solid var(--line);border-radius:8px;padding:4px 9px;font-size:.76rem;color:var(--muted);font-weight:600}
+.tp b{color:var(--navy);font-size:.83rem}
+.rep{border-top:1px dashed var(--line);padding:11px 0 3px}
+.rep:first-of-type{border-top:none}
+.rline{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+.rline .rd{font-size:.76rem;color:#9aa6b6;font-weight:700}
+.rline .rb{font-size:.87rem;color:var(--navy);font-weight:700}
+.rline .ra{font-size:.76rem;color:var(--muted)}
+.bg{display:inline-block;border-radius:999px;padding:1px 9px;font-size:.71rem;font-weight:800;color:#fff}
+.b-up{background:#c62828}.b-dn{background:#1e56b0}.b-keep{background:#8a8f98}.b-new{background:#0f8a8a}.b-nr{background:#c9ced8;color:#555}.b-ind{background:#2e7d32}
+.rtp{font-size:.86rem;color:var(--text);margin:4px 0 0}
+.rtp b{font-size:.98rem;color:var(--navy)}
+.rtp s{color:#9aa6b6;font-weight:600}
+.rttl{font-size:.82rem;color:var(--muted);margin-top:3px}
+.rsum{font-size:.85rem;color:var(--text);margin-top:5px;line-height:1.55}
+.rlinks{margin-top:6px;display:flex;gap:8px;flex-wrap:wrap}
+.rlinks a{font-size:.76rem;font-weight:700;color:var(--accent);border:1px solid #dbe5f5;border-radius:999px;padding:3px 11px;background:#f7faff}
+.rlinks span.gone{font-size:.76rem;color:#9aa6b6;border:1px solid var(--line);border-radius:999px;padding:3px 11px}
+#sempty{display:none;background:#fff;border:1px solid var(--line);border-radius:14px;padding:26px;text-align:center;color:var(--muted);font-size:.9rem}
+@media(max-width:560px){.sbar{flex-wrap:wrap}.sbar input{width:100%;flex:auto}.sbar button{width:100%}}
+
 .disclaimer{margin-top:26px;font-size:.76rem;color:#9aa6b6;border-top:1px solid var(--line);padding-top:14px}
 </style>
 </head>
@@ -46,8 +88,23 @@ h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
 <header><a href="index.html">&larr; Trend Insight</a></header>
 <div class="wrap">
   <h1>리포트 요약 <span style="font-size:.9rem;color:var(--orange)">RESEARCH DIGEST</span></h1>
-  <p class="sub">한경 컨센서스에 발간된 증권사 기업·산업 리포트 원문(PDF)을 읽고 리포트당 2~3문장(투자의견·목표가 변동 / 핵심 논거 / 실적 수치)으로 압축한 요약 PDF 아카이브입니다. 최근 <b>5회</b>분만 보관하며, 새 요약이 발간되면 가장 오래된 것부터 자동 삭제됩니다.</p>
+  <p class="sub">한경 컨센서스에 발간된 증권사 기업·산업 리포트 원문(PDF)을 읽고 리포트당 2~3문장(투자의견·목표가 변동 / 핵심 논거 / 실적 수치)으로 압축한 요약 PDF 아카이브입니다. PDF는 최근 <b>5회</b>분만 보관하지만, <b>종목 검색 색인은 계속 누적</b>되어 지난 리포트의 목표주가·요약도 찾아볼 수 있습니다.</p>
   <div class="asof">마지막 발간 <span id="updated">—</span></div>
+
+
+  <div class="srch">
+    <h2>종목으로 리포트 찾기</h2>
+    <div class="shint">종목명·종목코드·증권사·업종·키워드로 검색합니다. PDF가 보관 기간(5회분)을 지나 삭제돼도
+    요약과 목표주가 기록은 계속 검색됩니다.</div>
+    <div class="sbar">
+      <input type="search" id="q" placeholder="예: 삼성전기 / 051600 / 유안타증권 / 반도체" autocomplete="off">
+      <button id="qclear">지우기</button>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+  <div class="scount" id="scount" style="display:none"></div>
+  <div id="results"></div>
+  <div id="sempty">검색 결과가 없습니다. 종목명 일부만 입력해 보세요.</div>
 
   <div class="reqbox">
     <h2>새 요약 요청</h2>
@@ -100,6 +157,111 @@ h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
     }).join('');
   }).catch(function(){document.getElementById('err').style.display='block';});
 })();
+
+/* ---- 종목 검색 ---- */
+(function(){
+  var IDX=[], ALIVE={}, HK='https://consensus.hankyung.com/analysis/downpdf?report_idx=';
+  var qEl=document.getElementById('q'), resEl=document.getElementById('results'),
+      cntEl=document.getElementById('scount'), empEl=document.getElementById('sempty'),
+      chipEl=document.getElementById('chips');
+  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function norm(s){return String(s==null?'':s).toLowerCase().replace(/\s+/g,'');}
+  function badge(d,ty){
+    if(ty==='IN')return '<span class="bg b-ind">산업</span>';
+    if(d==='▲')return '<span class="bg b-up">▲ 상향</span>';
+    if(d==='▼')return '<span class="bg b-dn">▼ 하향</span>';
+    if(d==='유지')return '<span class="bg b-keep">유지</span>';
+    if(d==='신규')return '<span class="bg b-new">신규 개시</span>';
+    if(d==='NR')return '<span class="bg b-nr">NR</span>';
+    return '';
+  }
+  function won(v){return v==null?'':Number(v).toLocaleString()+'원';}
+
+  function render(q){
+    var nq=norm(q), hits;
+    if(!nq){ resEl.innerHTML=''; cntEl.style.display='none'; empEl.style.display='none'; return; }
+    hits=IDX.filter(function(i){
+      return norm(i.n).indexOf(nq)>=0 || norm(i.c).indexOf(nq)>=0 || norm(i.b).indexOf(nq)>=0
+          || norm(i.sec).indexOf(nq)>=0 || norm(i.t).indexOf(nq)>=0 || norm(i.s).indexOf(nq)>=0;
+    });
+    if(!hits.length){ resEl.innerHTML=''; cntEl.style.display='none'; empEl.style.display='block'; return; }
+    empEl.style.display='none';
+    var groups={}, order=[];
+    hits.forEach(function(i){
+      var k=i.n||('[산업] '+(i.sec||'기타'));
+      if(!groups[k]){groups[k]=[];order.push(k);}
+      groups[k].push(i);
+    });
+    order.sort(function(a,b){
+      var ma=Math.max.apply(null,groups[a].map(function(x){return x.d;})),
+          mb=Math.max.apply(null,groups[b].map(function(x){return x.d;}));
+      return ma<mb?1:ma>mb?-1:groups[b].length-groups[a].length;
+    });
+    cntEl.style.display='block';
+    cntEl.innerHTML='<b>'+hits.length+'건</b>의 리포트 · '+order.length+'개 그룹';
+    resEl.innerHTML=order.map(function(k){
+      var rs=groups[k].slice().sort(function(a,b){return a.d<b.d?1:a.d>b.d?-1:0;});
+      var code=rs[0].c, tps=rs.filter(function(r){return r.tp;});
+      var trend='';
+      if(tps.length>1){
+        trend='<div class="trend">'+tps.map(function(r){
+          return '<span class="tp">'+esc(r.d.slice(5))+' '+esc(r.b)+' <b>'+won(r.tp)+'</b></span>';
+        }).join('')+'</div>';
+      }
+      return '<div class="grp"><div class="gh"><b>'+esc(k)+'</b>'
+        +(code?'<span class="gc">'+esc(code)+'</span>':'')
+        +'<span class="gn">리포트 '+rs.length+'건</span></div>'+trend
+        + rs.map(function(r){
+          var pdf = ALIVE[r.slug]
+            ? '<a href="'+esc(ALIVE[r.slug])+'" target="_blank">요약 PDF</a>'
+            : '<span class="gone">요약 PDF 보관 만료</span>';
+          var hk = r.idx ? '<a href="'+HK+esc(r.idx)+'" target="_blank">원문 리포트</a>' : '';
+          var tpline='';
+          if(r.tp){ tpline='<div class="rtp">목표주가 <b>'+won(r.tp)+'</b>'
+              +(r.pv?' <s>'+won(r.pv)+'</s>':'')
+              +(r.px?' · 현재가 '+won(r.px)+' · 상승여력 <b>'+Math.round((r.tp/r.px-1)*100)+'%</b>':'')
+              +'</div>'; }
+          return '<div class="rep"><div class="rline"><span class="rd">'+esc(r.d)+'</span>'
+            +'<span class="rb">'+esc(r.b)+'</span>'
+            +(r.an?'<span class="ra">'+esc(r.an)+'</span>':'')
+            +badge(r.dir,r.ty)+'</div>'
+            + tpline
+            +'<div class="rttl">'+esc(r.t)+'</div>'
+            +(r.s?'<div class="rsum">'+esc(r.s)+'</div>':'')
+            +'<div class="rlinks">'+pdf+hk+'</div></div>';
+        }).join('')
+        +'</div>';
+    }).join('');
+  }
+
+  var tmr;
+  qEl.addEventListener('input',function(){clearTimeout(tmr);tmr=setTimeout(function(){render(qEl.value);},160);});
+  document.getElementById('qclear').onclick=function(){qEl.value='';render('');qEl.focus();};
+
+  Promise.all([
+    fetch('data/digest-index.json?t='+Date.now()).then(function(r){return r.json();}),
+    fetch('data/research-digest.json?t='+Date.now()).then(function(r){return r.json();}).catch(function(){return {};})
+  ]).then(function(a){
+    IDX=(a[0].items)||[];
+    ((a[1].digests)||[]).forEach(function(g){ALIVE[g.slug]=g.pdf;});
+    var cnt={};
+    IDX.forEach(function(i){ if(i.n) cnt[i.n]=(cnt[i.n]||0)+1; });
+    var top=Object.keys(cnt).sort(function(x,y){return cnt[y]-cnt[x]||(x<y?-1:1);}).slice(0,10);
+    chipEl.innerHTML='<span style="font-size:.78rem;color:#9aa6b6;font-weight:600;align-self:center">자주 다뤄진 종목</span>'
+      + top.map(function(n){return '<span class="chip" data-n="'+esc(n)+'">'+esc(n)
+        +'<span class="cn">'+cnt[n]+'</span></span>';}).join('');
+    [].forEach.call(chipEl.querySelectorAll('.chip'),function(el){
+      el.onclick=function(){qEl.value=el.getAttribute('data-n');render(qEl.value);
+        qEl.scrollIntoView({behavior:'smooth',block:'center'});};
+    });
+    var m=location.hash.match(/^#q=(.+)$/);
+    if(m){qEl.value=decodeURIComponent(m[1]);render(qEl.value);}
+  }).catch(function(){
+    chipEl.innerHTML='<span style="font-size:.78rem;color:#9aa6b6">검색 색인을 불러오지 못했습니다.</span>';
+  });
+})();
+
 </script>
 </body>
 </html>
