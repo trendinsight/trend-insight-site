@@ -44,6 +44,7 @@ h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
 .srch{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-bottom:26px;box-shadow:0 1px 3px rgba(11,31,63,.05)}
 .srch h2{font-size:1.05rem;color:var(--navy);margin-bottom:4px}
 .srch .shint{font-size:.8rem;color:var(--muted);margin-bottom:12px}
+.srch .shint #cov b{display:inline-block;margin-top:5px;color:var(--navy)}
 .sbar{display:flex;gap:8px;align-items:center}
 .sbar input{flex:1;font-family:inherit;font-size:.95rem;font-weight:600;color:var(--navy);border:1.5px solid var(--line);border-radius:10px;padding:11px 14px;background:#fff;outline:none;min-width:0}
 .sbar input:focus{border-color:var(--accent)}
@@ -78,7 +79,10 @@ h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
 .rlinks{margin-top:6px;display:flex;gap:8px;flex-wrap:wrap}
 .rlinks a{font-size:.76rem;font-weight:700;color:var(--accent);border:1px solid #dbe5f5;border-radius:999px;padding:3px 11px;background:#f7faff}
 .rlinks span.gone{font-size:.76rem;color:#9aa6b6;border:1px solid var(--line);border-radius:999px;padding:3px 11px}
-#sempty{display:none;background:#fff;border:1px solid var(--line);border-radius:14px;padding:26px;text-align:center;color:var(--muted);font-size:.9rem}
+#sempty{display:none;background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 24px;color:var(--muted);font-size:.88rem}
+#sempty b{color:var(--navy)}
+#sempty .ehint{margin-top:8px;font-size:.83rem;line-height:1.65}
+#sempty ol{margin:6px 0 8px 18px}#sempty li{margin:2px 0}
 @media(max-width:560px){.sbar{flex-wrap:wrap}.sbar input{width:100%;flex:auto}.sbar button{width:100%}}
 
 .disclaimer{margin-top:26px;font-size:.76rem;color:#9aa6b6;border-top:1px solid var(--line);padding-top:14px}
@@ -94,8 +98,9 @@ h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
 
   <div class="srch">
     <h2>종목으로 리포트 찾기</h2>
-    <div class="shint">종목명·종목코드·증권사·업종·키워드로 검색합니다. PDF가 보관 기간(5회분)을 지나 삭제돼도
-    요약과 목표주가 기록은 계속 검색됩니다.</div>
+    <div class="shint">종목명·종목코드·증권사·업종·키워드로 검색합니다. 옛 사명·약칭(엔씨소프트, YG, 에쓰오일 등)도 인식합니다.
+    PDF가 보관 기간(5회분)을 지나 삭제돼도 요약과 목표주가 기록은 계속 검색됩니다.
+    <span id="cov"></span></div>
     <div class="sbar">
       <input type="search" id="q" placeholder="예: 삼성전기 / 051600 / 유안타증권 / 반도체" autocomplete="off">
       <button id="qclear">지우기</button>
@@ -104,7 +109,7 @@ h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
   </div>
   <div class="scount" id="scount" style="display:none"></div>
   <div id="results"></div>
-  <div id="sempty">검색 결과가 없습니다. 종목명 일부만 입력해 보세요.</div>
+  <div id="sempty"></div>
 
   <div class="reqbox">
     <h2>새 요약 요청</h2>
@@ -160,7 +165,7 @@ h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
 
 /* ---- 종목 검색 ---- */
 (function(){
-  var IDX=[], ALIVE={}, HK='https://consensus.hankyung.com/analysis/downpdf?report_idx=';
+  var IDX=[], ALIVE={}, META={}, NSTOCK=0, HK='https://consensus.hankyung.com/analysis/downpdf?report_idx=';
   var qEl=document.getElementById('q'), resEl=document.getElementById('results'),
       cntEl=document.getElementById('scount'), empEl=document.getElementById('sempty'),
       chipEl=document.getElementById('chips');
@@ -183,9 +188,20 @@ h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
     if(!nq){ resEl.innerHTML=''; cntEl.style.display='none'; empEl.style.display='none'; return; }
     hits=IDX.filter(function(i){
       return norm(i.n).indexOf(nq)>=0 || norm(i.c).indexOf(nq)>=0 || norm(i.b).indexOf(nq)>=0
-          || norm(i.sec).indexOf(nq)>=0 || norm(i.t).indexOf(nq)>=0 || norm(i.s).indexOf(nq)>=0;
+          || norm(i.sec).indexOf(nq)>=0 || norm(i.t).indexOf(nq)>=0 || norm(i.s).indexOf(nq)>=0
+          || (i.al||[]).some(function(x){return norm(x).indexOf(nq)>=0;});
     });
-    if(!hits.length){ resEl.innerHTML=''; cntEl.style.display='none'; empEl.style.display='block'; return; }
+    if(!hits.length){
+      resEl.innerHTML=''; cntEl.style.display='none';
+      empEl.innerHTML='<b>\u2018'+esc(q)+'\u2019 검색 결과가 없습니다.</b>'
+        +'<div class="ehint">이 색인은 <b>'+esc(META.range?META.range[0]:'')+' ~ '
+        +esc(META.range?META.range[1]:'')+'</b> 사이 발간된 리포트 <b>'+(META.count||0)+'건</b>'
+        +'(종목 '+NSTOCK+'개)만 담고 있습니다. 결과가 없는 흔한 이유는 세 가지입니다.'
+        +'<ol><li>그 기간에 해당 종목 리포트가 발간되지 않았다 — 가장 흔한 경우입니다.</li>'
+        +'<li>표기가 다르다 — <b>종목코드 6자리</b>로 검색하면 확실합니다 (예: 엔씨소프트 → 036570).</li>'
+        +'<li>본문에만 언급됐다 — 요약이 있는 회차 외에는 제목·종목명·증권사만 검색됩니다.</li></ol>'
+        +'증권사명(예: 유안타증권)이나 업종으로도 찾을 수 있습니다.</div>';
+      empEl.style.display='block'; return; }
     empEl.style.display='none';
     var groups={}, order=[];
     hits.forEach(function(i){
@@ -215,7 +231,8 @@ h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
         + rs.map(function(r){
           var pdf = ALIVE[r.slug]
             ? '<a href="'+esc(ALIVE[r.slug])+'" target="_blank">요약 PDF</a>'
-            : '<span class="gone">요약 PDF 보관 만료</span>';
+            : (r.s ? '<span class="gone">요약 PDF 보관 만료</span>'
+                   : '<span class="gone">요약 미발간 · 원문만</span>');
           var hk = r.idx ? '<a href="'+HK+esc(r.idx)+'" target="_blank">원문 리포트</a>' : '';
           var tpline='';
           if(r.tp){ tpline='<div class="rtp">목표주가 <b>'+won(r.tp)+'</b>'
@@ -243,10 +260,11 @@ h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
     fetch('data/digest-index.json?t='+Date.now()).then(function(r){return r.json();}),
     fetch('data/research-digest.json?t='+Date.now()).then(function(r){return r.json();}).catch(function(){return {};})
   ]).then(function(a){
-    IDX=(a[0].items)||[];
+    IDX=(a[0].items)||[]; META=a[0];
     ((a[1].digests)||[]).forEach(function(g){ALIVE[g.slug]=g.pdf;});
     var cnt={};
     IDX.forEach(function(i){ if(i.n) cnt[i.n]=(cnt[i.n]||0)+1; });
+    NSTOCK=Object.keys(cnt).length;
     var top=Object.keys(cnt).sort(function(x,y){return cnt[y]-cnt[x]||(x<y?-1:1);}).slice(0,10);
     chipEl.innerHTML='<span style="font-size:.78rem;color:#9aa6b6;font-weight:600;align-self:center">자주 다뤄진 종목</span>'
       + top.map(function(n){return '<span class="chip" data-n="'+esc(n)+'">'+esc(n)
@@ -255,6 +273,8 @@ h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
       el.onclick=function(){qEl.value=el.getAttribute('data-n');render(qEl.value);
         qEl.scrollIntoView({behavior:'smooth',block:'center'});};
     });
+    var cov=document.getElementById('cov');
+    if(cov&&META.range){cov.innerHTML='<b>수록 범위: '+META.range[0]+' ~ '+META.range[1]+' · 리포트 '+META.count+'건 · 종목 '+NSTOCK+'개</b>';}
     var m=location.hash.match(/^#q=(.+)$/);
     if(m){qEl.value=decodeURIComponent(m[1]);render(qEl.value);}
   }).catch(function(){
