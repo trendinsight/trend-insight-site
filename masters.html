@@ -374,7 +374,8 @@ function render(name,code,d,isMkt,dr){
   const thin=all.filter(x=>x.r.score==null);
   const scores=res.map(x=>x.r.score);
   const mean=Math.round(avg(scores)*10)/10;
-  const vetos=res.filter(x=>x.r.veto);
+  /* VETO는 개별 종목 매수 판단용 규칙(적자·희석·능선 추격)이라 지수에는 적용하지 않는다 */
+  const vetos=isMkt?[]:res.filter(x=>x.r.veto);
   let vIdx=mean>=7?0:mean>=5.5?1:mean>=4?2:3;
   if(vetos.length)vIdx=Math.min(3,vIdx+1);
   const VN=['매수 우위','관망(조건부)','유보','회피'],VC=['v-buy','v-watch','v-hold','v-avoid'];
@@ -404,12 +405,12 @@ function render(name,code,d,isMkt,dr){
     for(const {m,r} of camps[ck]){
       const col=ck==='val'?'var(--val)':ck==='spec'?'var(--spec)':'var(--tech)';
       h+=`<div class="card" onclick="this.classList.toggle('open')">
-        <div class="top"><div><span class="who">${m.who}</span>${r.veto?'<span class="veto">VETO</span>':''}${r.na?`<span class="badge-na">N/A ${r.na}</span>`:''}
+        <div class="top"><div><span class="who">${m.who}</span>${(r.veto&&!isMkt)?'<span class="veto">VETO</span>':''}${r.na?`<span class="badge-na">N/A ${r.na}</span>`:''}
         <div class="role">${m.role}</div></div>
         <span class="sc" style="color:${col}">${r.score}<small>/10</small></span></div>
         <div class="sbar"><i style="width:${r.score*10}%;background:${col}"></i></div>
         <div class="prio">${(m.prio||[]).map((p,i)=>`<span><b>${i+1}순위</b>${p}</span>`).join('')}</div>
-        <p class="quote">"${r.say}"${r.vetoWhy?`<br><span style="color:var(--up)">⛔ ${r.vetoWhy}</span>`:''}</p>
+        <p class="quote">"${r.say}"${(r.vetoWhy&&!isMkt)?`<br><span style="color:var(--up)">⛔ ${r.vetoWhy}</span>`:''}</p>
         <div class="detail"><table>${r.items.map(i=>`<tr><td>${i.k}</td><td>${i.v??'—'}</td><td>${i.pts==null?'N/A':i.pts+'/2'}</td></tr>`).join('')}</table></div></div>`;
     }
     h+='</div>';
