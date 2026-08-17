@@ -1688,6 +1688,151 @@ async function handleForensic(req, url, env) {
 }
 
 
+/* ═══════════════ Masters DART (/api/masters/dart/{code}) ═══════════════
+   거장 자문단(masters.html) 전용 DART 정량 입력.
+   forensic 쪽 헬퍼(getDartKey·dartGet·dartCorpMap·fPick)를 그대로 재사용한다.
+   수집: ① 주요재무지표 최신연도 3분류(수익성·안정성·성장성)
+        ② 전체재무제표 3개년(매출·영업이익·순이익·영업활동현금흐름·자본총계)
+        ③ CB/BW/유상증자 발행 이력(최근 5년) — 멍거 인버전·희석 리스크용
+   결과는 GAUGE_KV에 12시간 캐시(md:{code}). */
+
+// 주요 재무지표 코드 → 우리가 쓰는 이름
+const MD_IDX = {
+  M211550: "roe",           // ROE
+  M211200: "netMargin",     // 순이익률
+  M211300: "grossMargin",   // 매출총이익률
+  M221100: "debtRatio",     // 부채비율
+  M221200: "currentRatio",  // 유동비율
+  M221600: "interestCover", // 이자보상배율
+  M223000: "reserveRatio",  // 자본유보율
+  M231000: "revGrowth",     // 매출액증가율 YoY
+  M231400: "opGrowth",      // 영업이익증가율 YoY
+  M231800: "niGrowth",      // 순이익증가율 YoY
+};
+
+// sj_div(재무제표 구분)까지 맞춰 계정 금액을 뽑는다. fPick은 구분을 안 봐서
+// 당기순이익처럼 IS/CIS/CF에 중복 등장하는 계정이 엉킬 수 있다.
+function mdPick(list, sjDivs, exact, incl) {
+  const norm = s => (s || "").replace(/\s/g, "");
+  const rows = list.filter(a => sjDivs.includes(a.sj_div));
+  for (const a of rows) if (exact.includes(norm(a.account_nm))) { const n = fNum(a.thstrm_amount); if (n != null) return n; }
+  if (incl) for (const a of rows) { const nm = norm(a.account_nm); if (incl.some(k => nm.includes(k))) { const n = fNum(a.thstrm_amount); if (n != null) return n; } }
+  return null;
+}
+
+async function mdIndicators(env, cc, year) {
+  const cls = ["M210000", "M220000", "M230000"];
+  const rs = await Promise.all(cls.map(c =>
+    dartGet(env, "fnlttSinglIndx.json", { corp_code: cc, bsns_year: String(year), reprt_code: "11011", idx_cl_code: c })));
+  const out = {};
+  for (const r of rs) {
+    if (r.status !== "000" || !Array.isArray(r.list)) continue;
+    for (const row of r.list) {
+      const key = MD_IDX[row.idx_code];
+      if (!key) continue;
+      const v = fNum(row.idx_val);
+      if (v != null) out[key] = v;
+    }
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+async function mdFinancials(env, cc, year) {
+  let f = await dartGet(env, "fnlttSinglAcntAll.json", { corp_code: cc, bsns_year: String(year), reprt_code: "11011", fs_div: "CFS" });
+  let div = "CFS";
+  if (f.status !== "000") {
+    f = await dartGet(env, "fnlttSinglAcntAll.json", { corp_code: cc, bsns_year: String(year), reprt_code: "11011", fs_div: "OFS" });
+    div = "OFS";
+  }
+  if (f.status !== "000" || !Array.isArray(f.list)) return null;
+  const L = f.list;
+  return {
+    year, fs_div: div,
+    revenue: mdPick(L, ["IS", "CIS"], ["매출액", "수익(매출액)", "영업수익", "매출"], ["매출액"]),
+    opIncome: mdPick(L, ["IS", "CIS"], ["영업이익", "영업이익(손실)", "영업손실"], ["영업이익"]),
+    netIncome: mdPick(L, ["IS", "CIS"], ["당기순이익", "당기순이익(손실)", "당기순손실"], ["당기순이익"]),
+    ocf: mdPick(L, ["CF"], ["영업활동현금흐름", "영업활동으로인한현금흐름", "영업활동순현금흐름"], ["영업활동"]),
+    equity: mdPick(L, ["BS"], ["자본총계"], ["자본총계"]),
+    assets: mdPick(L, ["BS"], ["자산총계"], ["자산총계"]),
+  };
+}
+
+async function handleMastersDart(req, url, env) {
+  const code = url.pathname.slice("/api/masters/dart/".length).replace(/[^0-9A-Za-z]/g, "").padStart(6, "0");
+  const ck = "md:" + code;
+  try {
+    const cached = await env.GAUGE_KV.get(ck);
+    if (cached && url.searchParams.get("fresh") !== "1") return FJ(JSON.parse(cached));
+
+    const dkey = await getDartKey(env);
+    if (!dkey) return FJ({ ok: false, error: "DART 키 미설정" });
+    const map = await dartCorpMap(env);
+    const hit = map && map[code];
+    if (!hit) return FJ({ ok: false, error: "corp_code 매핑 없음 (신규상장·비상장 가능)", stock: code });
+    const cc = hit.corp_code;
+
+    // 사업보고서 기준연도: 올해 것은 아직 안 나왔으므로 작년부터 역순 3개년
+    const now = new Date();
+    const base = now.getFullYear() - 1;
+    const years = [base - 2, base - 1, base];
+
+    const bgn = fYmd(new Date(now.getFullYear() - 5, now.getMonth(), now.getDate()));
+    const end = fYmd(now);
+
+    const [idx, f0, f1, f2, cb, bw, rights] = await Promise.all([
+      mdIndicators(env, cc, base),
+      mdFinancials(env, cc, years[0]),
+      mdFinancials(env, cc, years[1]),
+      mdFinancials(env, cc, years[2]),
+      dartGet(env, "cvbdIsDecsn.json", { corp_code: cc, bgn_de: bgn, end_de: end }),
+      dartGet(env, "bdwtIsDecsn.json", { corp_code: cc, bgn_de: bgn, end_de: end }),
+      dartGet(env, "piicDecsn.json", { corp_code: cc, bgn_de: bgn, end_de: end }),
+    ]);
+
+    const fin = [f0, f1, f2].filter(Boolean);
+    const latest = fin.length ? fin[fin.length - 1] : null;
+    const cnt = x => (x && x.status === "000" && Array.isArray(x.list)) ? x.list.length : 0;
+
+    // 파생 판정값
+    const niAll = fin.map(f => f.netIncome).filter(v => v != null);
+    const profit3y = niAll.length >= 3 ? niAll.every(v => v > 0) : null;   // 3년 연속 흑자
+    const lossYears = niAll.filter(v => v <= 0).length;
+    const opAll = fin.map(f => f.opIncome).filter(v => v != null);
+    const opProfit3y = opAll.length >= 3 ? opAll.every(v => v > 0) : null;
+    // 이익의 질: 영업활동현금흐름이 양(+)이면서 순이익보다 클 것 (버핏)
+    // 적자기업은 OCF(-43억) > 순손실(-405억)이어도 "질이 좋다"고 볼 수 없으므로 양수 조건 필수.
+    const earnQuality = (latest && latest.ocf != null && latest.netIncome != null)
+      ? (latest.ocf > 0 && latest.ocf > latest.netIncome) : null;
+    const ocfPositive = latest && latest.ocf != null ? latest.ocf > 0 : null;
+    // 3년 매출 CAGR
+    let revCagr = null;
+    if (fin.length >= 3 && fin[0].revenue > 0 && fin[fin.length - 1].revenue > 0) {
+      revCagr = Math.round((Math.pow(fin[fin.length - 1].revenue / fin[0].revenue, 1 / (fin.length - 1)) - 1) * 1000) / 10;
+    }
+    const dilution = cnt(cb) + cnt(bw) + cnt(rights);
+
+    const body = {
+      ok: true, stock: code, corp_code: cc, corp_name: hit.corp_name,
+      base_year: base, years: fin.map(f => f.year), fs_div: latest ? latest.fs_div : null,
+      idx: idx || null,
+      revenue: latest ? latest.revenue : null,
+      netIncome: latest ? latest.netIncome : null,
+      opIncome: latest ? latest.opIncome : null,
+      ocf: latest ? latest.ocf : null,
+      equity: latest ? latest.equity : null,
+      fin,
+      profit3y, opProfit3y, lossYears, earnQuality, ocfPositive, revCagr,
+      dilution: { cb: cnt(cb), bw: cnt(bw), rights: cnt(rights), total: dilution },
+      updated: new Date().toISOString(),
+    };
+    await env.GAUGE_KV.put(ck, JSON.stringify(body), { expirationTtl: 43200 }); // 12h
+    return FJ(body);
+  } catch (e) {
+    return FJ({ ok: false, error: "DART 조회 오류: " + String((e && e.message) || e).slice(0, 120), stock: code }, 502);
+  }
+}
+
+
 /* ═══════════════════ 나의 하루 투두 (/api/todo/*) ═══════════════════
    todo.html용 백엔드.
    - GET/POST /api/todo/state?k=KEY  : 할 일·루틴·설정을 KV에 저장 (PC↔폰 동기화)
@@ -2258,6 +2403,9 @@ export default {
       return handleSupply(req, url, env, ctx);
     }
 
+    if (url.pathname.startsWith("/api/masters/dart/")) {
+      return handleMastersDart(req, url, env);
+    }
     if (url.pathname.startsWith("/api/masters/fund/")) {
       const mcode = url.pathname.slice("/api/masters/fund/".length).replace(/[^0-9A-Za-z]/g, "");
       try {
