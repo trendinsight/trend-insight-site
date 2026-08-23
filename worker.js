@@ -3386,6 +3386,14 @@ async function aiSecret(env, key, fallbackEnvName) {
 }
 
 
+async function aiBaseUrl(env) {
+  // D1 secrets.ai_base_url 이 있으면 그 경로로 나간다.
+  // 예: https://gateway.ai.cloudflare.com/v1/<account>/<gateway>/anthropic
+  // Anthropic 은 Cloudflare Worker 직결 요청을 403 으로 막는다 (2026-08-24 실측).
+  const u = await aiSecret(env, "ai_base_url", "AI_BASE_URL");
+  return (u || "https://api.anthropic.com").replace(/\/+$/, "");
+}
+
 function aiApiHeaders(apiKey) {
   return {
     "content-type": "application/json",
@@ -3612,14 +3620,15 @@ async function aiHandle(req, url, env, ctx) {
     const k = await aiSecret(env, "anthropic_api_key", "ANTHROPIC_API_KEY");
     if (!k) return aiJ({ error: "키 없음" }, 503);
     try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
+      const base = await aiBaseUrl(env);
+      const r = await fetch(base + "/v1/messages", {
         method: "POST",
         headers: aiApiHeaders(k),
         body: JSON.stringify({ model: AI_MODEL, max_tokens: 16,
                                messages: [{ role: "user", content: "ping" }] }),
       });
       const t = await r.text();
-      return aiJ({ status: r.status, body: t.slice(0, 500) });
+      return aiJ({ base: base, status: r.status, body: t.slice(0, 500) });
     } catch (e) {
       return aiJ({ error: String(e && e.message || e) }, 502);
     }
@@ -3632,6 +3641,7 @@ async function aiHandle(req, url, env, ctx) {
       owner: isOwner,
       key_set: !!key,
       brain_bound: !!env.BRAIN_DB,
+      api_base: await aiBaseUrl(env),
       model: AI_MODEL,
     });
   }
@@ -3659,6 +3669,7 @@ async function aiHandle(req, url, env, ctx) {
 
   const todayKST = new Date(Date.now() + 9 * 36e5).toISOString().slice(0, 10);
   const system = aiSystemPrompt(todayKST);
+  const apiBase = await aiBaseUrl(env);
   const trace = [];
   let usage = { input_tokens: 0, output_tokens: 0 };
 
@@ -3666,7 +3677,7 @@ async function aiHandle(req, url, env, ctx) {
   for (let turn = 0; turn < AI_MAX_TURNS; turn++) {
     let resp;
     try {
-      resp = await fetch("https://api.anthropic.com/v1/messages", {
+      resp = await fetch(apiBase + "/v1/messages", {
         method: "POST",
         headers: {
           "content-type": "application/json",
