@@ -3624,6 +3624,23 @@ async function aiHandle(req, url, env, ctx) {
       return aiJ({ error: "unauthorized" }, 401);
     const k = await aiSecret(env, "anthropic_api_key", "ANTHROPIC_API_KEY");
     if (!k) return aiJ({ error: "키 없음" }, 503);
+    if (url.searchParams.get("mode") === "binding") {
+      if (!env.AI) return aiJ({ error: "AI 바인딩 없음" }, 500);
+      try {
+        const r = await env.AI.gateway("ti-ai").run({
+          provider: "anthropic",
+          endpoint: "v1/messages",
+          headers: { "x-api-key": k, "anthropic-version": "2023-06-01",
+                     "content-type": "application/json" },
+          query: { model: AI_MODEL, max_tokens: 16,
+                   messages: [{ role: "user", content: "ping" }] },
+        });
+        const t = await r.text();
+        return aiJ({ mode: "binding", status: r.status, body: t.slice(0, 500) });
+      } catch (e) {
+        return aiJ({ mode: "binding", error: String((e && e.message) || e).slice(0, 400) }, 502);
+      }
+    }
     try {
       const base = await aiBaseUrl(env);
       const r = await fetch(base + "/v1/messages", {
