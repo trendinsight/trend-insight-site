@@ -2365,6 +2365,11 @@ export default {
       return aiHandle(req, url, env, ctx);
     }
 
+    // Phase 2 로컬 브리지 — 무거운 계산 작업 큐
+    if (url.pathname.startsWith("/api/jobs")) {
+      return jobsHandle(req, url, env, ctx);
+    }
+
     if (url.pathname.startsWith("/api/todo/")) {
       return tdHandle(req, url, env, ctx);
     }
@@ -3519,11 +3524,85 @@ const AI_TOOLS = [
       required: ["sql"],
     },
   },
+  {
+    name: "enqueue_job",
+    description:
+      "ti-brain에 없는 것을 '새로 계산'해야 할 때 PC 작업 큐에 등록한다. " +
+      "이 챗봇은 이미 저장된 기억만 읽는다. 현재가 조회, 스크리닝, 진입 타이밍(VCP·피벗), " +
+      "수급 분석, 종합분석, 결재, 온도계 재산출처럼 실제 계산·수집이 필요한 요청은 " +
+      "추측하지 말고 반드시 이 도구로 넘긴다. " +
+      "등록하면 PC 에이전트가 실행될 때 처리되고 텔레그램으로 결과가 온다. " +
+      "PC가 꺼져 있으면 대기한다는 점을 사용자에게 반드시 함께 알린다.",
+    input_schema: {
+      type: "object",
+      properties: {
+        request: { type: "string", description: "PC에서 실행할 작업을 한국어 한 문장으로. 종목명·기간 등 필요한 조건을 모두 포함." },
+        task: { type: "string", description: "알려진 작업이면 지정: entry_timer|stop_loss|screener|supply_demand|stock_analysis|thermometer|portfolio_check" },
+        args: { type: "object", description: "작업 인자 (예: {\"ticker\":\"093320\"})" },
+      },
+      required: ["request"],
+    },
+  },
+  {
+    name: "job_status",
+    description: "작업 큐 상태를 확인한다. '아까 시킨 거 됐어?', '대기 중인 작업 있어?' 류 질문에 쓴다.",
+    input_schema: {
+      type: "object",
+      properties: { id: { type: "integer", description: "특정 작업 번호 (없으면 최근 목록)" } },
+    },
+  },
 ];
 
 async function aiRunTool(env, name, inp) {
   inp = inp || {};
   if (name === "query_brain") return aiQuery(env, inp.sql);
+
+  if (name === "enqueue_job") {
+    if (!env.BRAIN_DB) return { error: "BRAIN_DB 바인딩 없음" };
+    const request = String(inp.request || "").trim().slice(0, 2000);
+    if (!request) return { error: "request 가 비어 있습니다." };
+    try {
+      const r = await env.BRAIN_DB.prepare(
+        "INSERT INTO jobs(request,mode,task,args_json,status,requested_by,created_at) " +
+        "VALUES(?,?,?,?,'queued','chat',?)"
+      ).bind(
+        request,
+        inp.task ? "whitelist" : "auto",
+        inp.task ? String(inp.task).slice(0, 80) : null,
+        inp.args ? JSON.stringify(inp.args).slice(0, 4000) : null,
+        jobsNowKst()
+      ).run();
+      const q = await env.BRAIN_DB.prepare("SELECT COUNT(*) AS n FROM jobs WHERE status='queued'").first();
+      return {
+        enqueued: true,
+        job_id: r.meta && r.meta.last_row_id,
+        queued_total: (q && q.n) || 1,
+        note: "PC 에이전트가 실행될 때 처리됩니다. PC가 꺼져 있으면 대기합니다. 완료 시 텔레그램 알림.",
+      };
+    } catch (e) {
+      return { error: "작업 등록 실패: " + String(e && e.message || e) };
+    }
+  }
+
+  if (name === "job_status") {
+    if (!env.BRAIN_DB) return { error: "BRAIN_DB 바인딩 없음" };
+    try {
+      if (inp.id) {
+        const row = await env.BRAIN_DB.prepare(
+          "SELECT id,request,status,runner,error,created_at,finished_at,duration_ms," +
+          "substr(COALESCE(result,''),1,6000) AS result FROM jobs WHERE id=?"
+        ).bind(parseInt(inp.id, 10)).first();
+        return row || { error: "없는 작업 번호" };
+      }
+      const r = await env.BRAIN_DB.prepare(
+        "SELECT id,request,status,created_at,finished_at,substr(COALESCE(result,''),1,1500) AS result " +
+        "FROM jobs ORDER BY id DESC LIMIT 10"
+      ).all();
+      return { jobs: (r && r.results) || [] };
+    } catch (e) {
+      return { error: String(e && e.message || e) };
+    }
+  }
 
   if (name === "entity_timeline") {
     const e = await aiResolveEntity(env, inp.query);
@@ -3602,6 +3681,9 @@ function aiSystemPrompt(todayKST) {
     "   논거가 BROKEN인데 보유 중이거나, 관련 실수 패턴(hit_count≥2)이 있으면 **그 사실을 답변 맨 앞에 먼저 알린다.**",
     "4. 매수·매도 방향을 말할 때는 **반드시 무효화 조건(손절가·훼손 조건)을 함께** 제시한다. 없으면 없다고 밝힌다.",
     "5. 데이터가 오래됐으면(포트 30일↑, 온도 7일↑) 그 사실을 먼저 경고한다. 낡은 수치를 현재처럼 말하지 않는다.",
+    "6. **너는 저장된 기억만 읽는다. 새로 계산하지 못한다.** 현재가·스크리닝·진입 타이밍·수급·"
+    "종합분석·결재처럼 실제 계산이 필요하면 추측하지 말고 enqueue_job 으로 PC에 넘기고, "
+    "\"PC 에이전트 실행 시 처리되며 꺼져 있으면 대기한다\"고 알린다.",
     "",
     "## 태도",
     "- 리스크 우선 보고: 경고 → 사실 → 해석 순서. 좋은 소식보다 나쁜 소식을 먼저.",
@@ -3613,6 +3695,157 @@ function aiSystemPrompt(todayKST) {
     "이 답변은 내부 의사결정 참고용이며 투자 권유가 아니다. 매매 실행·주문은 하지 않는다.",
     "최종 판단과 책임은 대표 본인에게 있다.",
   ].join("\n");
+}
+
+
+/* ══ Phase 2 로컬 브리지 — 작업 큐 ═══════════════════════════════
+   폰에서 던진 "계산이 필요한 요청"이 여기 쌓인다. PC 에이전트를 수동으로
+   켜면 큐를 가져가 처리하고 결과를 되돌려준다. PC가 꺼져 있으면 그냥
+   쌓인 채로 기다린다 — 그 상태를 UI에 정직하게 표시하는 것이 중요하다. */
+
+const JOB_MAX_REQ = 2000;      // 요청 원문 길이 상한
+const JOB_MAX_RESULT = 200000; // 결과 보관 상한
+
+function jobsNowKst() {
+  return new Date(Date.now() + 9 * 36e5).toISOString().replace("T", " ").slice(0, 19);
+}
+
+// 에이전트(PC)는 sync_token 을 Bearer 로 제시한다. 사람은 세션 쿠키.
+async function jobsAuth(req, env) {
+  const me = await authMember(req, env);
+  const owner = await aiOwnerEmail(env);
+  const isOwner = !!(me && String(me.email || "").toLowerCase() === String(owner).toLowerCase());
+  let isAgent = false;
+  const bearer = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  if (bearer) {
+    try {
+      const row = await env.RISK_DB.prepare("SELECT value FROM meta WHERE key='sync_token_hash'").first();
+      if (row && (await rkSha256(bearer)) === row.value) isAgent = true;
+    } catch (e) {}
+  }
+  return { me, isOwner, isAgent };
+}
+
+async function jobsHandle(req, url, env, ctx) {
+  if (!env.BRAIN_DB) return aiJ({ error: "ti-brain 바인딩(BRAIN_DB) 없음" }, 500);
+  const { isOwner, isAgent } = await jobsAuth(req, env);
+  if (!isOwner && !isAgent) return aiJ({ error: "운영자 전용입니다.", need_login: true }, 401);
+
+  const seg = url.pathname.replace(/^\/api\/jobs\/?/, "").split("/").filter(Boolean);
+  const db = env.BRAIN_DB;
+
+  // ── 에이전트: 대기 중인 작업 1건 선점 ──
+  if (seg[0] === "claim" && req.method === "POST") {
+    if (!isAgent) return aiJ({ error: "에이전트 전용" }, 403);
+    const now = jobsNowKst();
+    let job = null;
+    try {
+      const r = await db.prepare(
+        "UPDATE jobs SET status='running', claimed_at=?, attempts=attempts+1 " +
+        "WHERE id=(SELECT id FROM jobs WHERE status='queued' ORDER BY id LIMIT 1) RETURNING *"
+      ).bind(now).all();
+      job = (r && r.results && r.results[0]) || null;
+    } catch (e) {
+      return aiJ({ error: "claim 실패: " + String(e && e.message || e) }, 500);
+    }
+    return aiJ({ job: job });
+  }
+
+  // ── 에이전트: 결과 제출 ──
+  if (seg[1] === "finish" && req.method === "POST") {
+    if (!isAgent) return aiJ({ error: "에이전트 전용" }, 403);
+    const id = parseInt(seg[0], 10);
+    if (!id) return aiJ({ error: "id 없음" }, 400);
+    let b; try { b = await req.json(); } catch (e) { return aiJ({ error: "JSON 필요" }, 400); }
+    const ok = !!b.ok;
+    const now = jobsNowKst();
+    await db.prepare(
+      "UPDATE jobs SET status=?, result=?, error=?, runner=?, finished_at=?, duration_ms=? WHERE id=?"
+    ).bind(
+      ok ? "done" : "error",
+      ok ? String(b.result || "").slice(0, JOB_MAX_RESULT) : null,
+      ok ? null : String(b.error || "알 수 없는 오류").slice(0, 2000),
+      String(b.runner || "").slice(0, 120) || null,
+      now,
+      parseInt(b.duration_ms, 10) || null,
+      id
+    ).run();
+
+    // 텔레그램 통보 — 봇 토큰은 Worker 만 알면 된다.
+    try {
+      const row = await db.prepare("SELECT request FROM jobs WHERE id=?").bind(id).first();
+      const reqTxt = (row && row.request) ? String(row.request).slice(0, 120) : ("#" + id);
+      const head = ok ? "✅ <b>작업 완료</b>" : "❌ <b>작업 실패</b>";
+      const bodyTxt = ok
+        ? String(b.result || "").replace(/<[^>]*>/g, "").slice(0, 600)
+        : String(b.error || "").slice(0, 300);
+      const text = [head, "요청: " + reqTxt, "", bodyTxt, "",
+        "https://trend-insight-site.sungsangkyung77.workers.dev/ai.html"].join("\n");
+      if (ctx && ctx.waitUntil) ctx.waitUntil(slTelegram(env, text));
+      else await slTelegram(env, text);
+    } catch (e) {}
+
+    return aiJ({ ok: true, id: id });
+  }
+
+  // ── 작업 취소 (운영자) ──
+  if (seg[1] === "cancel" && req.method === "POST") {
+    if (!isOwner) return aiJ({ error: "운영자 전용" }, 403);
+    const id = parseInt(seg[0], 10);
+    await db.prepare("UPDATE jobs SET status='canceled', finished_at=? WHERE id=? AND status IN ('queued','running')")
+      .bind(jobsNowKst(), id).run();
+    return aiJ({ ok: true });
+  }
+
+  // ── 단건 조회 (폴링) ──
+  if (seg[0] && /^\d+$/.test(seg[0]) && req.method === "GET") {
+    const row = await db.prepare("SELECT * FROM jobs WHERE id=?").bind(parseInt(seg[0], 10)).first();
+    if (!row) return aiJ({ error: "없는 작업" }, 404);
+    return aiJ({ job: row });
+  }
+
+  // ── 목록 ──
+  if (!seg.length && req.method === "GET") {
+    const st = url.searchParams.get("status");
+    const lim = Math.max(1, Math.min(50, parseInt(url.searchParams.get("limit"), 10) || 20));
+    const sql = st
+      ? "SELECT id,request,mode,task,status,runner,error,created_at,claimed_at,finished_at,duration_ms," +
+        "substr(COALESCE(result,''),1,4000) AS result FROM jobs WHERE status=? ORDER BY id DESC LIMIT " + lim
+      : "SELECT id,request,mode,task,status,runner,error,created_at,claimed_at,finished_at,duration_ms," +
+        "substr(COALESCE(result,''),1,4000) AS result FROM jobs ORDER BY id DESC LIMIT " + lim;
+    const q = st ? db.prepare(sql).bind(st) : db.prepare(sql);
+    const r = await q.all();
+    const pend = await db.prepare("SELECT COUNT(*) AS n FROM jobs WHERE status='queued'").first();
+    const run = await db.prepare("SELECT COUNT(*) AS n FROM jobs WHERE status='running'").first();
+    return aiJ({ jobs: (r && r.results) || [], queued: (pend && pend.n) || 0, running: (run && run.n) || 0 });
+  }
+
+  // ── 등록 ──
+  if (!seg.length && req.method === "POST") {
+    let b; try { b = await req.json(); } catch (e) { return aiJ({ error: "JSON 필요" }, 400); }
+    const request = String(b.request || "").trim().slice(0, JOB_MAX_REQ);
+    if (!request) return aiJ({ error: "request 가 비어 있습니다." }, 400);
+    const mode = ["auto", "whitelist", "headless"].includes(b.mode) ? b.mode : "auto";
+    const now = jobsNowKst();
+    const jobKey = b.job_key ? String(b.job_key).slice(0, 120) : null;
+
+    if (jobKey) {
+      const dup = await db.prepare("SELECT id,status FROM jobs WHERE job_key=?").bind(jobKey).first();
+      if (dup) return aiJ({ ok: true, id: dup.id, status: dup.status, duplicate: true });
+    }
+    const r = await db.prepare(
+      "INSERT INTO jobs(job_key,request,mode,task,args_json,status,requested_by,created_at) " +
+      "VALUES(?,?,?,?,?,'queued',?,?)"
+    ).bind(
+      jobKey, request, mode,
+      b.task ? String(b.task).slice(0, 80) : null,
+      b.args ? JSON.stringify(b.args).slice(0, 4000) : null,
+      String(b.requested_by || "owner").slice(0, 80), now
+    ).run();
+    return aiJ({ ok: true, id: r.meta && r.meta.last_row_id, status: "queued" });
+  }
+
+  return aiJ({ error: "지원하지 않는 경로/메서드" }, 405);
 }
 
 /* ── 요청 핸들러 ─────────────────────────────────────────────── */
