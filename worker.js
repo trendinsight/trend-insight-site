@@ -3406,6 +3406,11 @@ async function aiApiHeaders(env, apiKey) {
   // AI Gateway 의 Authenticated Gateway 가 켜져 있으면 필요한 헤더.
   const gt = await aiSecret(env, "ai_gateway_token", "AI_GATEWAY_TOKEN");
   if (gt) h["cf-aig-authorization"] = "Bearer " + gt;
+  // 외부 중계기(Deno Deploy)를 쓸 때의 공유 토큰. 중계기는 이 헤더를
+  // 확인만 하고 버린다. API 키는 중계기에 저장되지 않고 위 x-api-key 로
+  // 매 요청 실려 나간다.
+  const rt = await aiSecret(env, "ai_relay_token", "AI_RELAY_TOKEN");
+  if (rt) h["x-relay-token"] = rt;
   return h;
 }
 
