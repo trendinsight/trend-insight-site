@@ -3385,6 +3385,17 @@ async function aiSecret(env, key, fallbackEnvName) {
   return (fallbackEnvName && env[fallbackEnvName]) ? String(env[fallbackEnvName]) : null;
 }
 
+
+function aiApiHeaders(apiKey) {
+  return {
+    "content-type": "application/json",
+    "x-api-key": apiKey,
+    "anthropic-version": "2023-06-01",
+    "user-agent": "trend-insight-ai/1.0",
+    "accept": "application/json",
+  };
+}
+
 async function aiOwnerEmail(env) {
   return (await aiSecret(env, "owner_email", null)) || AI_OWNER_EMAIL;
 }
@@ -3593,6 +3604,27 @@ async function aiHandle(req, url, env, ctx) {
   const owner = await aiOwnerEmail(env);
   const isOwner = !!(me && String(me.email || "").toLowerCase() === String(owner).toLowerCase());
 
+  if (url.pathname === "/api/chat/ping") {
+    const auth = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+    const row = await env.RISK_DB.prepare("SELECT value FROM meta WHERE key='sync_token_hash'").first();
+    if (!row || !auth || (await rkSha256(auth)) !== row.value)
+      return aiJ({ error: "unauthorized" }, 401);
+    const k = await aiSecret(env, "anthropic_api_key", "ANTHROPIC_API_KEY");
+    if (!k) return aiJ({ error: "키 없음" }, 503);
+    try {
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: aiApiHeaders(k),
+        body: JSON.stringify({ model: AI_MODEL, max_tokens: 16,
+                               messages: [{ role: "user", content: "ping" }] }),
+      });
+      const t = await r.text();
+      return aiJ({ status: r.status, body: t.slice(0, 500) });
+    } catch (e) {
+      return aiJ({ error: String(e && e.message || e) }, 502);
+    }
+  }
+
   if (url.pathname === "/api/chat/status") {
     const key = await aiSecret(env, "anthropic_api_key", "ANTHROPIC_API_KEY");
     return aiJ({
@@ -3640,6 +3672,10 @@ async function aiHandle(req, url, env, ctx) {
           "content-type": "application/json",
           "x-api-key": apiKey,
           "anthropic-version": "2023-06-01",
+          // Worker fetch 에는 기본 User-Agent 가 없다 — 없으면 Anthropic 이
+          // 403 "Request not allowed" 로 거절한다 (DART 와 같은 계열, 2026-08-24 실측).
+          "user-agent": "trend-insight-ai/1.0",
+          "accept": "application/json",
         },
         body: JSON.stringify({
           model: AI_MODEL,
