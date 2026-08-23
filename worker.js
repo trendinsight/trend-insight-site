@@ -3394,14 +3394,19 @@ async function aiBaseUrl(env) {
   return (u || "https://api.anthropic.com").replace(/\/+$/, "");
 }
 
-function aiApiHeaders(apiKey) {
-  return {
+async function aiApiHeaders(env, apiKey) {
+  const h = {
     "content-type": "application/json",
     "x-api-key": apiKey,
     "anthropic-version": "2023-06-01",
+    // Worker fetch 에는 기본 User-Agent 가 없다.
     "user-agent": "trend-insight-ai/1.0",
     "accept": "application/json",
   };
+  // AI Gateway 의 Authenticated Gateway 가 켜져 있으면 필요한 헤더.
+  const gt = await aiSecret(env, "ai_gateway_token", "AI_GATEWAY_TOKEN");
+  if (gt) h["cf-aig-authorization"] = "Bearer " + gt;
+  return h;
 }
 
 async function aiOwnerEmail(env) {
@@ -3623,7 +3628,7 @@ async function aiHandle(req, url, env, ctx) {
       const base = await aiBaseUrl(env);
       const r = await fetch(base + "/v1/messages", {
         method: "POST",
-        headers: aiApiHeaders(k),
+        headers: await aiApiHeaders(env, k),
         body: JSON.stringify({ model: AI_MODEL, max_tokens: 16,
                                messages: [{ role: "user", content: "ping" }] }),
       });
@@ -3642,6 +3647,7 @@ async function aiHandle(req, url, env, ctx) {
       key_set: !!key,
       brain_bound: !!env.BRAIN_DB,
       api_base: await aiBaseUrl(env),
+      gateway_token_set: !!(await aiSecret(env, "ai_gateway_token", "AI_GATEWAY_TOKEN")),
       model: AI_MODEL,
     });
   }
@@ -3679,15 +3685,7 @@ async function aiHandle(req, url, env, ctx) {
     try {
       resp = await fetch(apiBase + "/v1/messages", {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-          // Worker fetch 에는 기본 User-Agent 가 없다 — 없으면 Anthropic 이
-          // 403 "Request not allowed" 로 거절한다 (DART 와 같은 계열, 2026-08-24 실측).
-          "user-agent": "trend-insight-ai/1.0",
-          "accept": "application/json",
-        },
+        headers: await aiApiHeaders(env, apiKey),
         body: JSON.stringify({
           model: AI_MODEL,
           max_tokens: 2000,
