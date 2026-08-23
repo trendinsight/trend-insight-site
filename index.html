@@ -243,6 +243,16 @@
 
   /* Dashboard (오늘의 계기판) */
   .dash{background:var(--bg-soft);padding:52px 0 60px;border-bottom:1px solid var(--line);}
+  #ai-entry{display:flex;align-items:center;gap:14px;background:linear-gradient(115deg,#0b1f3f,#1c3f74);
+    color:#fff;border-radius:14px;padding:16px 20px;margin-bottom:18px;text-decoration:none;
+    box-shadow:0 10px 26px rgba(11,31,63,.18);transition:transform .15s}
+  #ai-entry:hover{transform:translateY(-2px)}
+  #ai-entry .ai-ico{font-size:26px;line-height:1}
+  #ai-entry .ai-txt{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+  #ai-entry .ai-txt b{font-size:15.5px;font-weight:800;letter-spacing:-.2px}
+  #ai-entry .ai-txt em{font-style:normal;font-size:12.5px;opacity:.82}
+  #ai-entry .ai-go{font-size:13px;font-weight:700;color:#ffd77a;white-space:nowrap}
+  @media(max-width:560px){#ai-entry .ai-txt em{display:none}}
   .dash-head{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:22px;}
   .dash-head h2{font-size:1.35rem;font-weight:800;color:var(--navy);letter-spacing:-.01em;}
   .dash-head .hint{font-size:.8rem;color:var(--muted);}
@@ -493,6 +503,13 @@
       <span class="hint">카드를 누르면 상세 페이지로 이동합니다</span>
       <button type="button" id="gauge-refresh" class="gauge-refresh">🔄 온도계 일괄 갱신 요청</button>
     </div>
+
+    <!-- Trend Insight AI — 운영자 본인에게만 노출 (기본 숨김, /api/chat/status 확인 후 표시) -->
+    <a href="/ai.html" id="ai-entry" style="display:none">
+      <span class="ai-ico">🤖</span>
+      <span class="ai-txt"><b>Trend Insight AI</b><em>ti-brain 정본 기억에 직접 물어보기 — 온도·논거·판정·교훈</em></span>
+      <span class="ai-go">열기 →</span>
+    </a>
 
     <div class="stock-search">
       <div class="ss-label"><b>🔎 종목 통합 검색</b><span>한 번 입력하면 360° 허브 또는 개별 도구로 바로 이동</span></div>
@@ -1045,6 +1062,15 @@
 })();
 </script>
 <script>
+/* Trend Insight AI 진입 배너 — 운영자 본인 로그인일 때만 노출.
+   비회원·다른 회원에게는 요소가 숨김 상태로 남는다. */
+(function(){
+  var a=document.getElementById('ai-entry');
+  if(!a)return;
+  fetch('/api/chat/status').then(function(r){return r.json();}).then(function(s){
+    if(s&&s.owner)a.style.display='flex';
+  }).catch(function(){});
+})();
 (function(){
   var b=document.getElementById('gauge-refresh');
   if(!b)return;
