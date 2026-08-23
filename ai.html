@@ -135,8 +135,17 @@ function traceHtml(tr){
   return '<details class="trace"><summary>근거 '+tr.length+'건 (도구 호출 내역)</summary><pre>'+rows+'</pre></details>';
 }
 
+/* 준비 안 된 상태에서 전송을 누르면 조용히 무시하지 않고 이유를 알린다 */
+function nudge(){
+  notice.style.display='block';
+  notice.scrollIntoView({behavior:'smooth',block:'center'});
+  notice.animate([{opacity:1},{opacity:.35},{opacity:1}],{duration:520,iterations:2});
+}
+
 async function ask(text){
-  if(busy||!ready||!text.trim()) return;
+  if(busy) return;
+  if(!ready){ nudge(); return; }
+  if(!text.trim()) return;
   busy=true; send.disabled=true; chips.style.display='none';
   add('u',esc(text));
   q.value=''; q.style.height='auto';
@@ -163,21 +172,55 @@ q.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefau
 q.addEventListener('input',()=>{q.style.height='auto';q.style.height=Math.min(q.scrollHeight,140)+'px';});
 chips.querySelectorAll('button').forEach(b=>b.onclick=()=>ask(b.textContent));
 
-(async function(){
+function lock(label, html, hint){
+  ready=false;
+  badge.textContent=label;
+  notice.style.display='block';
+  notice.innerHTML=html+'<div style="margin-top:10px"><button id="recheck" style="border:1px solid var(--line);'+
+    'background:var(--bg-soft);color:var(--text);border-radius:8px;padding:6px 13px;font-size:12.5px;'+
+    'cursor:pointer;font-family:inherit">↻ 다시 확인</button></div>';
+  q.disabled=true; send.disabled=true;
+  q.placeholder=hint||'아직 사용할 수 없습니다 — 위 안내를 확인하세요';
+  const rb=document.getElementById('recheck');
+  if(rb) rb.onclick=()=>{rb.textContent='확인 중…';rb.disabled=true;check();};
+}
+
+function unlock(model){
+  ready=true;
+  badge.textContent=model;
+  notice.style.display='none';
+  q.disabled=false; send.disabled=false;
+  q.placeholder='예: HD현대중공업 판정 타임라인 보여줘';
+  q.focus();
+}
+
+async function check(){
   try{
-    const s=await (await fetch('/api/chat/status')).json();
-    if(!s.logged_in){badge.textContent='로그인 필요';notice.style.display='block';
-      notice.innerHTML='<strong>로그인이 필요합니다.</strong> <a href="/login.html" style="color:var(--accent)">로그인하기 →</a>';return;}
-    if(!s.owner){badge.textContent='운영자 전용';notice.style.display='block';
-      notice.innerHTML='<strong>이 기능은 운영자 전용입니다.</strong> 다른 페이지의 온도계·보드는 그대로 이용하실 수 있습니다.';return;}
-    if(!s.brain_bound){badge.textContent='DB 미연결';notice.style.display='block';
-      notice.innerHTML='<strong>ti-brain 바인딩(BRAIN_DB)이 없습니다.</strong> wrangler 설정 배포를 확인하세요.';return;}
-    if(!s.key_set){badge.textContent='API 키 필요';notice.style.display='block';
-      notice.innerHTML='<strong>Anthropic API 키가 없습니다.</strong> D1(risk-manager)의 <code>secrets</code> 테이블에 '+
-        '<code>anthropic_api_key</code> 를 넣으면 즉시 활성화됩니다.';return;}
-    badge.textContent=s.model; ready=true; q.focus();
-  }catch(e){badge.textContent='상태 확인 실패';}
-})();
+    const s=await (await fetch('/api/chat/status?cb='+Date.now())).json();
+    if(!s.logged_in) return lock('로그인 필요',
+      '<strong>로그인이 필요합니다.</strong> <a href="/login.html" style="color:var(--accent)">로그인하기 →</a>',
+      '로그인 후 사용할 수 있습니다');
+    if(!s.owner) return lock('운영자 전용',
+      '<strong>이 기능은 운영자 전용입니다.</strong> 다른 페이지의 온도계·보드는 그대로 이용하실 수 있습니다.',
+      '운영자 계정에서만 사용할 수 있습니다');
+    if(!s.brain_bound) return lock('DB 미연결',
+      '<strong>ti-brain 바인딩(BRAIN_DB)이 없습니다.</strong> wrangler 설정 배포를 확인하세요.',
+      'ti-brain 연결 후 사용할 수 있습니다');
+    if(!s.key_set) return lock('API 키 필요',
+      '<strong>Anthropic API 키가 아직 등록되지 않았습니다.</strong> 아래 명령 한 줄이면 재배포 없이 즉시 켜집니다.'+
+      '<pre style="margin-top:9px;background:var(--bg-soft);border:1px solid var(--line);border-radius:8px;'+
+      'padding:9px 11px;font-size:11.5px;overflow-x:auto;white-space:pre-wrap;word-break:break-all">'+
+      'npx wrangler d1 execute risk-manager --remote --command "INSERT OR REPLACE INTO secrets(key,value) '+
+      'VALUES (\'anthropic_api_key\',\'sk-ant-...\');"</pre>'+
+      '넣은 뒤 아래 <b>다시 확인</b>을 누르면 새로고침 없이 활성화됩니다.',
+      'API 키 등록 후 사용할 수 있습니다');
+    unlock(s.model);
+  }catch(e){
+    lock('상태 확인 실패','<strong>상태를 확인하지 못했습니다.</strong> 네트워크를 확인한 뒤 다시 시도하세요.',
+      '상태 확인 실패');
+  }
+}
+check();
 </script>
 </body>
 </html>
