@@ -58,6 +58,29 @@ html[data-theme=dark] .msg.u{background:#2a3f66;color:#e8effc}
 #send{background:var(--accent);color:#fff;border:none;border-radius:12px;padding:12px 20px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
 #send:disabled{opacity:.45;cursor:default}
 .foot{max-width:900px;margin:8px auto 0;padding:0 20px;font-size:11.5px;color:var(--muted);text-align:center}
+/* ── PC 작업 큐 ── */
+#jobs{display:none;margin:0 0 18px}
+.jhead{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--muted);margin-bottom:8px}
+.jhead b{color:var(--navy);font-size:13px}
+.job{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:11px 14px;margin-bottom:8px;font-size:13.5px}
+.job .jt{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.job .st{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.st.queued{background:#fff4e0;color:#9a6407}
+.st.running{background:#e4edff;color:#1f4fd8}
+.st.done{background:#e6f6ec;color:#1d7a45}
+.st.error{background:#fdeaea;color:#b22f2f}
+.st.canceled{background:var(--bg-soft);color:var(--muted)}
+html[data-theme=dark] .st.queued{background:#4a3a12;color:#f0c96a}
+html[data-theme=dark] .st.running{background:#1e2f57;color:#8fb4ff}
+html[data-theme=dark] .st.done{background:#173a27;color:#7fd6a3}
+html[data-theme=dark] .st.error{background:#4a1f1f;color:#ff9a9a}
+.job .jq{flex:1;font-weight:600;color:var(--navy)}
+.job .jm{font-size:11.5px;color:var(--muted)}
+.job details{margin-top:8px}
+.job details summary{font-size:12px;color:var(--accent);cursor:pointer;list-style:none}
+.job details summary::-webkit-details-marker{display:none}
+.job .jr{margin-top:9px;border-top:1px dashed var(--line);padding-top:9px;font-size:13.5px}
+.offline{background:var(--card);border:1px solid var(--line);border-left:3px solid #d9a441;border-radius:0 11px 11px 0;padding:10px 14px;font-size:12.5px;color:var(--muted);margin-bottom:9px}
 </style>
 </head>
 <body>
@@ -78,8 +101,10 @@ html[data-theme=dark] .msg.u{background:#2a3f66;color:#e8effc}
     <button>30일 넘게 재점검 안 한 논거 알려줘</button>
     <button>내 반복 실수 패턴 top 5</button>
     <button>데이터 신선도 점검</button>
+    <button>케이아이엔엑스 진입 타이밍 지금 계산해줘</button>
   </div>
 
+  <div id="jobs"></div>
   <div id="log"></div>
 </div>
 
@@ -165,7 +190,63 @@ async function ask(text){
     th.innerHTML='<p><strong>통신 오류</strong> — '+esc(e.message||e)+'</p>';
   }
   busy=false; send.disabled=false; q.focus();
+  loadJobs();   // 방금 답변이 PC에 작업을 넘겼을 수 있다
 }
+
+/* ── PC 작업 큐 ────────────────────────────────────────────────
+   챗봇은 저장된 기억만 읽는다. 새로 계산해야 하는 요청은 큐에 쌓이고,
+   PC 브리지를 켠 동안 처리된다. 켜져 있지 않으면 그 사실을 숨기지 않는다. */
+const jobsEl=document.getElementById('jobs');
+let jobTimer=null, seenDone={};
+
+function ago(ts){
+  if(!ts) return '';
+  const t=new Date(ts.replace(' ','T')+'+09:00').getTime();
+  if(isNaN(t)) return ts;
+  const s=Math.max(0,(Date.now()-t)/1000);
+  if(s<60) return Math.round(s)+'초 전';
+  if(s<3600) return Math.round(s/60)+'분 전';
+  if(s<86400) return Math.round(s/3600)+'시간 전';
+  return Math.round(s/86400)+'일 전';
+}
+
+function jobCard(j){
+  const label={queued:'대기',running:'실행 중',done:'완료',error:'실패',canceled:'취소'}[j.status]||j.status;
+  let meta='등록 '+ago(j.created_at);
+  if(j.status==='done'||j.status==='error') meta+=' · 종료 '+ago(j.finished_at);
+  if(j.runner) meta+=' · '+esc(j.runner);
+  let body='';
+  if(j.status==='done'&&j.result){
+    body='<details'+(seenDone[j.id]?'':' open')+'><summary>결과 보기</summary><div class="jr">'+md(j.result)+'</div></details>';
+    seenDone[j.id]=1;
+  }else if(j.status==='error'&&j.error){
+    body='<div class="jr" style="color:var(--t-red)">'+esc(j.error).slice(0,600)+'</div>';
+  }
+  return '<div class="job"><div class="jt"><span class="jq">'+esc(j.request||'').slice(0,110)+'</span>'+
+    '<span class="st '+j.status+'">'+label+'</span></div><div class="jm">#'+j.id+' · '+meta+'</div>'+body+'</div>';
+}
+
+async function loadJobs(){
+  let d;
+  try{ d=await (await fetch('/api/jobs?limit=8&cb='+Date.now())).json(); }
+  catch(e){ return; }
+  const list=d.jobs||[];
+  if(!list.length){ jobsEl.style.display='none'; stopPoll(); return; }
+  const active=(d.queued||0)+(d.running||0);
+  let head='<div class="jhead"><b>PC 작업</b><span>'+
+    (active?('대기 '+(d.queued||0)+' · 실행 '+(d.running||0)):'대기 없음')+'</span></div>';
+  let off='';
+  if(d.queued && !d.running){
+    off='<div class="offline">대기 중인 작업이 있습니다. PC에서 <b>「브리지 켜기」</b>를 실행하면 처리됩니다. '+
+        '완료되면 텔레그램으로 알림이 옵니다.</div>';
+  }
+  jobsEl.innerHTML=head+off+list.map(jobCard).join('');
+  jobsEl.style.display='block';
+  active?startPoll():stopPoll();
+}
+
+function startPoll(){ if(!jobTimer) jobTimer=setInterval(loadJobs,5000); }
+function stopPoll(){ if(jobTimer){clearInterval(jobTimer);jobTimer=null;} }
 
 send.onclick=()=>ask(q.value);
 q.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();ask(q.value);}});
@@ -192,6 +273,7 @@ function unlock(model){
   q.disabled=false; send.disabled=false;
   q.placeholder='예: HD현대중공업 판정 타임라인 보여줘';
   q.focus();
+  loadJobs();
 }
 
 async function check(){
