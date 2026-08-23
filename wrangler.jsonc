@@ -18,7 +18,9 @@
     { "binding": "GAUGE_KV", "id": "7e25f0908b2f4a08b715b8736f859ec8" }
   ],
   "d1_databases": [
-    { "binding": "RISK_DB", "database_name": "risk-manager", "database_id": "f08a8f96-b737-4674-80d4-79eb4c7e6ec1" }
+    { "binding": "RISK_DB", "database_name": "risk-manager", "database_id": "f08a8f96-b737-4674-80d4-79eb4c7e6ec1" },
+    // Trend Insight AI 통합 두뇌 (정본). /api/chat 이 읽기 전용으로만 접근한다.
+    { "binding": "BRAIN_DB", "database_name": "ti-brain", "database_id": "e0730895-8a74-4391-a368-63e642e9890d" }
   ],
   "triggers": {
     // 04:00 UTC(13:00 KST) 평일: 손절 장중 스캔 / 07:00 UTC(16:00 KST) 매일: 시장(평일)·코인(매일) 온도계 + 손절 종가 스캔(평일)

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<script>(function(){try{var t=localStorage.getItem('ti-theme');if(t==='dark'||(!t&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();</script>
+<title>Trend Insight AI</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 125'%3E%3Ccircle cx='50' cy='17' r='15' fill='%234a7ebd'/%3E%3Ctext x='50' y='115' font-size='105' font-family='Georgia,serif' font-weight='bold' fill='%23b22f2f' text-anchor='middle'%3ET%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--navy:#0b1f3f;--accent:#2e6ff2;--t-red:#b22f2f;--i-blue:#4a7ebd;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg-soft:#f5f7fb;--card:#fff;}
+html[data-theme=dark]{--bg-soft:#111a2e;--card:#16223a;--line:#26334d;--text:#d4deee;--muted:#8fa0b9;--navy:#e8effc;}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg-soft);color:var(--text);line-height:1.65;font-size:15px}
+a{text-decoration:none;color:inherit}
+header{background:var(--card);border-bottom:1px solid var(--line);padding:14px 0;position:sticky;top:0;z-index:20}
+.hrow{max-width:900px;margin:0 auto;padding:0 20px;display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:8px;font-family:Georgia,serif;font-weight:700;font-size:19px;color:var(--navy)}
+.logo .r{color:#b22f2f}.logo .b{color:#4a7ebd}
+.home{font-size:13.5px;font-weight:600;color:var(--muted)}
+.wrap{max-width:900px;margin:0 auto;padding:0 20px 150px}
+h1{font-size:23px;margin:26px 0 3px;color:var(--navy);letter-spacing:-.4px}
+.sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+.badge{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:99px;border:1px solid var(--line);color:var(--muted);margin-left:6px;vertical-align:middle}
+.notice{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--t-red);border-radius:0 12px 12px 0;padding:14px 18px;margin:14px 0;font-size:14px;display:none}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px}
+.chips button{border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:99px;padding:7px 13px;font-size:13px;cursor:pointer;font-family:inherit}
+.chips button:hover{border-color:var(--accent);color:var(--accent)}
+#log{display:flex;flex-direction:column;gap:16px}
+.msg{max-width:100%}
+.msg.u{align-self:flex-end;background:var(--navy);color:#fff;border-radius:14px 14px 4px 14px;padding:11px 16px;font-size:14.5px;max-width:80%}
+html[data-theme=dark] .msg.u{background:#2a3f66;color:#e8effc}
+.msg.a{background:var(--card);border:1px solid var(--line);border-radius:14px 14px 14px 4px;padding:16px 19px}
+.msg.a h2{font-size:16px;margin:14px 0 6px;color:var(--navy)}
+.msg.a h3{font-size:14.5px;margin:12px 0 4px;color:var(--navy)}
+.msg.a p{margin:.45em 0}
+.msg.a ul,.msg.a ol{margin:.45em 0;padding-left:1.2em}
+.msg.a li{margin:.2em 0}
+.msg.a table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13.5px;display:block;overflow-x:auto}
+.msg.a th,.msg.a td{border:1px solid var(--line);padding:6px 9px;text-align:left;white-space:nowrap}
+.msg.a th{background:var(--bg-soft);font-weight:700}
+.msg.a code{background:var(--bg-soft);padding:1px 5px;border-radius:4px;font-size:13px}
+.msg.a strong{color:var(--navy);font-weight:700}
+.trace{margin-top:12px;border-top:1px dashed var(--line);padding-top:9px}
+.trace summary{font-size:12px;color:var(--muted);cursor:pointer;list-style:none}
+.trace summary::-webkit-details-marker{display:none}
+.trace summary:before{content:"🔎 ";}
+.trace pre{margin-top:8px;background:var(--bg-soft);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:11.5px;line-height:1.5;overflow-x:auto;color:var(--muted);white-space:pre-wrap;word-break:break-all}
+.think{color:var(--muted);font-size:13.5px;padding:12px 4px}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:3px;animation:b 1.2s infinite}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@keyframes b{0%,60%,100%{opacity:.25}30%{opacity:1}}
+.bar{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);padding:12px 0 14px}
+.brow{max-width:900px;margin:0 auto;padding:0 20px;display:flex;gap:9px;align-items:flex-end}
+#q{flex:1;padding:12px 15px;border:1px solid var(--line);border-radius:12px;font-size:15px;font-family:inherit;background:transparent;color:var(--text);resize:none;max-height:140px;line-height:1.5}
+#q:focus{outline:none;border-color:var(--accent)}
+#send{background:var(--accent);color:#fff;border:none;border-radius:12px;padding:12px 20px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+#send:disabled{opacity:.45;cursor:default}
+.foot{max-width:900px;margin:8px auto 0;padding:0 20px;font-size:11.5px;color:var(--muted);text-align:center}
+</style>
+</head>
+<body>
+<header><div class="hrow">
+  <a href="/" class="logo"><span class="r">T</span>rend <span class="b">I</span>nsight</a>
+  <a href="/" class="home">← 홈</a>
+</div></header>
+
+<div class="wrap">
+  <h1>Trend Insight AI<span class="badge" id="badge">확인 중…</span></h1>
+  <p class="sub">ti-brain 정본 기억을 읽어 답합니다. 기록에 없는 것은 지어내지 않습니다.</p>
+
+  <div class="notice" id="notice"></div>
+
+  <div class="chips" id="chips">
+    <button>오늘 시장·거시·심리 온도 요약해줘</button>
+    <button>훼손된 논거인데 아직 보유 중인 종목 있어?</button>
+    <button>30일 넘게 재점검 안 한 논거 알려줘</button>
+    <button>내 반복 실수 패턴 top 5</button>
+    <button>데이터 신선도 점검</button>
+  </div>
+
+  <div id="log"></div>
+</div>
+
+<div class="bar">
+  <div class="brow">
+    <textarea id="q" rows="1" placeholder="예: HD현대중공업 판정 타임라인 보여줘"></textarea>
+    <button id="send">전송</button>
+  </div>
+  <div class="foot">내부 의사결정 참고용이며 투자 권유가 아닙니다. 최종 판단과 책임은 본인에게 있습니다.</div>
+</div>
+
+<script src="/site-nav.js" defer></script>
+<script>
+const log=document.getElementById('log'), q=document.getElementById('q'), send=document.getElementById('send');
+const badge=document.getElementById('badge'), notice=document.getElementById('notice'), chips=document.getElementById('chips');
+let history=[], busy=false, ready=false;
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+/* 최소 마크다운 — 표·목록·헤딩·강조만 */
+function md(t){
+  const lines=esc(t).split('\n'); let out=[], i=0;
+  while(i<lines.length){
+    const L=lines[i];
+    if(/^\s*\|.*\|\s*$/.test(L) && /^\s*\|[\s:|-]+\|\s*$/.test(lines[i+1]||'')){
+      const cells=r=>r.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim());
+      let h='<table><tr>'+cells(L).map(c=>'<th>'+c+'</th>').join('')+'</tr>'; i+=2;
+      while(i<lines.length && /^\s*\|.*\|\s*$/.test(lines[i])){h+='<tr>'+cells(lines[i]).map(c=>'<td>'+c+'</td>').join('')+'</tr>';i++;}
+      out.push(h+'</table>'); continue;
+    }
+    if(/^###\s+/.test(L)){out.push('<h3>'+L.replace(/^###\s+/,'')+'</h3>');i++;continue;}
+    if(/^##\s+/.test(L)){out.push('<h2>'+L.replace(/^##\s+/,'')+'</h2>');i++;continue;}
+    if(/^#\s+/.test(L)){out.push('<h2>'+L.replace(/^#\s+/,'')+'</h2>');i++;continue;}
+    if(/^\s*[-*]\s+/.test(L)){
+      let h='<ul>'; while(i<lines.length&&/^\s*[-*]\s+/.test(lines[i])){h+='<li>'+lines[i].replace(/^\s*[-*]\s+/,'')+'</li>';i++;}
+      out.push(h+'</ul>'); continue;
+    }
+    if(/^\s*\d+\.\s+/.test(L)){
+      let h='<ol>'; while(i<lines.length&&/^\s*\d+\.\s+/.test(lines[i])){h+='<li>'+lines[i].replace(/^\s*\d+\.\s+/,'')+'</li>';i++;}
+      out.push(h+'</ol>'); continue;
+    }
+    if(L.trim()==='' ){i++;continue;}
+    out.push('<p>'+L+'</p>'); i++;
+  }
+  return out.join('').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>');
+}
+
+function add(cls,html){const d=document.createElement('div');d.className='msg '+cls;d.innerHTML=html;log.appendChild(d);d.scrollIntoView({behavior:'smooth',block:'end'});return d;}
+
+function traceHtml(tr){
+  if(!tr||!tr.length) return '';
+  const rows=tr.map(t=>(t.ok?'✅':'⚠️')+' '+t.tool+' — '+esc(t.note||'')+'\n   '+esc(JSON.stringify(t.input||{}))).join('\n');
+  return '<details class="trace"><summary>근거 '+tr.length+'건 (도구 호출 내역)</summary><pre>'+rows+'</pre></details>';
+}
+
+async function ask(text){
+  if(busy||!ready||!text.trim()) return;
+  busy=true; send.disabled=true; chips.style.display='none';
+  add('u',esc(text));
+  q.value=''; q.style.height='auto';
+  const th=add('a','<div class="think"><span class="dot"></span><span class="dot"></span><span class="dot"></span> ti-brain 조회 중…</div>');
+  try{
+    const r=await fetch('/api/chat',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({message:text,messages:history})});
+    const d=await r.json();
+    if(d.ok){
+      history=d.messages||[];
+      th.innerHTML=md(d.answer)+traceHtml(d.trace);
+    }else{
+      th.innerHTML='<p><strong>오류</strong> — '+esc(d.error||('HTTP '+r.status))+'</p>'+
+        (d.detail?'<pre style="font-size:11.5px;white-space:pre-wrap">'+esc(d.detail)+'</pre>':'')+traceHtml(d.trace);
+    }
+  }catch(e){
+    th.innerHTML='<p><strong>통신 오류</strong> — '+esc(e.message||e)+'</p>';
+  }
+  busy=false; send.disabled=false; q.focus();
+}
+
+send.onclick=()=>ask(q.value);
+q.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();ask(q.value);}});
+q.addEventListener('input',()=>{q.style.height='auto';q.style.height=Math.min(q.scrollHeight,140)+'px';});
+chips.querySelectorAll('button').forEach(b=>b.onclick=()=>ask(b.textContent));
+
+(async function(){
+  try{
+    const s=await (await fetch('/api/chat/status')).json();
+    if(!s.logged_in){badge.textContent='로그인 필요';notice.style.display='block';
+      notice.innerHTML='<strong>로그인이 필요합니다.</strong> <a href="/login.html" style="color:var(--accent)">로그인하기 →</a>';return;}
+    if(!s.owner){badge.textContent='운영자 전용';notice.style.display='block';
+      notice.innerHTML='<strong>이 기능은 운영자 전용입니다.</strong> 다른 페이지의 온도계·보드는 그대로 이용하실 수 있습니다.';return;}
+    if(!s.brain_bound){badge.textContent='DB 미연결';notice.style.display='block';
+      notice.innerHTML='<strong>ti-brain 바인딩(BRAIN_DB)이 없습니다.</strong> wrangler 설정 배포를 확인하세요.';return;}
+    if(!s.key_set){badge.textContent='API 키 필요';notice.style.display='block';
+      notice.innerHTML='<strong>Anthropic API 키가 없습니다.</strong> D1(risk-manager)의 <code>secrets</code> 테이블에 '+
+        '<code>anthropic_api_key</code> 를 넣으면 즉시 활성화됩니다.';return;}
+    badge.textContent=s.model; ready=true; q.focus();
+  }catch(e){badge.textContent='상태 확인 실패';}
+})();
+</script>
+</body>
+</html>

@@ -83,6 +83,15 @@
   var body=el('div',{id:'sn-body'});
   body.appendChild(el('a',{class:'sn-home',href:'/'},'🏠 홈 · 오늘의 계기판'));
   body.appendChild(el('a',{class:'sn-home',href:'/skill-map.html'},'🧭 스킬 맵'));
+  // Trend Insight AI — 운영자 본인에게만 노출 (다른 회원 메뉴에는 나타나지 않는다)
+  try{
+    fetch('/api/chat/status').then(function(r){return r.json();}).then(function(s){
+      if(s&&s.owner){
+        var a=el('a',{class:'sn-home',href:'/ai.html'},'🤖 Trend Insight AI');
+        body.insertBefore(a, body.children[2]||null);
+      }
+    }).catch(function(){});
+  }catch(e){}
   GROUPS.forEach(function(g){
     var d=document.createElement('details');
     d.appendChild(el('summary',{},g[0]));

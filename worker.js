@@ -2360,6 +2360,11 @@ export default {
     const authRedir = await authGate(req, url, env);
     if (authRedir) return authRedir;
 
+    // Trend Insight AI — 소유자 전용 대화형 두뇌 조회 (읽기 전용)
+    if (url.pathname.startsWith("/api/chat")) {
+      return aiHandle(req, url, env, ctx);
+    }
+
     if (url.pathname.startsWith("/api/todo/")) {
       return tdHandle(req, url, env, ctx);
     }
@@ -3352,4 +3357,351 @@ main{max-width:1000px;margin:0 auto;padding:20px 14px 40px}
 <script defer src="/site-nav.js?v=2026080802"></script>
 </body></html>`;
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   Trend Insight AI — 소유자 전용 대화형 두뇌 (/api/chat)
+   ti-brain(D1, BRAIN_DB)을 읽기 전용으로만 조회한다. 쓰기 경로 없음.
+   키: RISK_DB.secrets 의 anthropic_api_key (env.ANTHROPIC_API_KEY 폴백)
+   ══════════════════════════════════════════════════════════════════ */
+
+const AI_OWNER_EMAIL = "sungsangkyung77@gmail.com";
+const AI_MODEL = "claude-sonnet-5";
+const AI_MAX_TURNS = 6;
+
+function aiJ(o, status) {
+  return new Response(JSON.stringify(o), {
+    status: status || 200,
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+  });
+}
+
+async function aiSecret(env, key, fallbackEnvName) {
+  try {
+    const r = await env.RISK_DB.prepare("SELECT value FROM secrets WHERE key=?").bind(key).first();
+    if (r && r.value) return String(r.value);
+  } catch (e) {}
+  return (fallbackEnvName && env[fallbackEnvName]) ? String(env[fallbackEnvName]) : null;
+}
+
+async function aiOwnerEmail(env) {
+  return (await aiSecret(env, "owner_email", null)) || AI_OWNER_EMAIL;
+}
+
+/* ── SELECT 전용 안전 실행기 ──────────────────────────────────────
+   방어는 프롬프트가 아니라 코드로 한다. 쓰기 SQL은 도달 자체가 불가능하다. */
+const AI_SQL_BANNED = /\b(insert|update|delete|drop|alter|create|attach|detach|pragma|replace|vacuum|reindex|analyze|begin|commit|rollback)\b/i;
+
+function aiSafeSql(raw) {
+  let s = String(raw || "").trim();
+  if (!s) return { err: "빈 쿼리" };
+  s = s.replace(/;+\s*$/, "");                       // 끝 세미콜론만 제거
+  if (s.includes(";")) return { err: "여러 문장은 허용되지 않습니다 (SELECT 1개만)" };
+  if (!/^\s*(select|with)\b/i.test(s)) return { err: "SELECT 또는 WITH 로 시작하는 조회만 허용됩니다" };
+  if (AI_SQL_BANNED.test(s)) return { err: "쓰기·스키마 변경 구문은 허용되지 않습니다" };
+  if (!/\blimit\b/i.test(s)) s += " LIMIT 200";
+  return { sql: s };
+}
+
+async function aiQuery(env, sql) {
+  const chk = aiSafeSql(sql);
+  if (chk.err) return { error: chk.err };
+  try {
+    const r = await env.BRAIN_DB.prepare(chk.sql).all();
+    const rows = (r && r.results) || [];
+    return { sql: chk.sql, row_count: rows.length, rows: rows.slice(0, 200) };
+  } catch (e) {
+    return { error: "SQL 오류: " + (e && e.message ? e.message : String(e)), sql: chk.sql };
+  }
+}
+
+/* 종목 식별 — 코드(6자리)든 이름이든 받는다 */
+async function aiResolveEntity(env, q) {
+  const s = String(q || "").trim();
+  if (!s) return null;
+  try {
+    let r = await env.BRAIN_DB.prepare(
+      "SELECT id,ticker,name,market,kind,status FROM entities WHERE ticker=? OR name=?").bind(s, s).first();
+    if (!r) {
+      r = await env.BRAIN_DB.prepare(
+        "SELECT id,ticker,name,market,kind,status FROM entities WHERE name LIKE ? ORDER BY length(name) LIMIT 1")
+        .bind("%" + s + "%").first();
+    }
+    return r || null;
+  } catch (e) { return null; }
+}
+
+/* ── 도구 4종 ─────────────────────────────────────────────────── */
+const AI_TOOLS = [
+  {
+    name: "entity_timeline",
+    description:
+      "한 종목의 전체 기록을 한 번에 가져온다. 종목에 대한 질문이면 가장 먼저 이 도구를 쓴다. " +
+      "종목 마스터·판정 타임라인(스킬 경계를 넘어 시간순)·투자 논거(목표가/손절가/훼손조건)·" +
+      "관련 교훈·최근 포트 비중·최근 심리온도를 함께 반환한다.",
+    input_schema: {
+      type: "object",
+      properties: { query: { type: "string", description: "종목명 또는 6자리 종목코드 (예: 삼성전자 또는 005930)" } },
+      required: ["query"],
+    },
+  },
+  {
+    name: "market_snapshot",
+    description:
+      "최근 시장·거시·군중심리·예수금·선물·코인 온도와 거시변수 실측값을 한 번에 가져온다. " +
+      "'오늘 시장 어때', '지금 스탠스', '현금 얼마' 류 질문에 쓴다.",
+    input_schema: {
+      type: "object",
+      properties: { days: { type: "integer", description: "최근 며칠치를 볼지 (기본 10)" } },
+    },
+  },
+  {
+    name: "search_brain",
+    description:
+      "전문검색(FTS5). 스킬 경계를 넘어 과거 기록 본문을 회수한다. " +
+      "'오버행', '유상증자', '수주잔고' 같은 키워드로 관련 기록을 찾을 때 쓴다. " +
+      "OR/AND 연산자 사용 가능.",
+    input_schema: {
+      type: "object",
+      properties: {
+        q: { type: "string", description: "검색어 (예: 오버행 OR 유상증자)" },
+        limit: { type: "integer", description: "최대 건수 (기본 10)" },
+      },
+      required: ["q"],
+    },
+  },
+  {
+    name: "query_brain",
+    description:
+      "ti-brain에 임의의 SELECT를 실행한다(읽기 전용). 위 3개 도구로 안 되는 집계·교차 질의에 쓴다.\n" +
+      "테이블: entities(id,ticker,name,market,kind,status) / " +
+      "snapshots(entity_id,scope,subject,metric,value,label,meta_json,asof_date,skill) / " +
+      "judgments(entity_id,scope,skill,verdict,score,horizon,rationale,evidence_json,invalidation,asof_date) / " +
+      "theses(entity_id,title,thesis,assumptions_json,break_conditions_json,target_price,stop_price,state,opened_at) / " +
+      "trades(entity_id,side,qty,price,traded_at) / lessons(entity_id,pattern,lesson,severity,hit_count) / " +
+      "sources(entity_id,kind,title,url,quote,published_at) / brain_fts(body,entity,skill,asof).\n" +
+      "scope 값: market/macro/macro_var/crowd/cash/futures/crypto/portfolio/stock. " +
+      "metric 값: temp/value/score/cash_pct/weight. " +
+      "theses.state: ACTIVE/WEAKENED/BROKEN/CLOSED. entities.status: hold/watch/closed.",
+    input_schema: {
+      type: "object",
+      properties: { sql: { type: "string", description: "SELECT 문 1개. 세미콜론 없이." } },
+      required: ["sql"],
+    },
+  },
+];
+
+async function aiRunTool(env, name, inp) {
+  inp = inp || {};
+  if (name === "query_brain") return aiQuery(env, inp.sql);
+
+  if (name === "entity_timeline") {
+    const e = await aiResolveEntity(env, inp.query);
+    if (!e) return { error: "종목을 찾을 수 없습니다: " + (inp.query || "") + " — ti-brain entities 에 없는 종목입니다." };
+    const one = async (sql, ...b) => {
+      try { const r = await env.BRAIN_DB.prepare(sql).bind(...b).all(); return (r && r.results) || []; }
+      catch (err) { return []; }
+    };
+    return {
+      entity: e,
+      judgments: await one(
+        "SELECT asof_date,skill,verdict,score,horizon,invalidation,substr(COALESCE(rationale,''),1,400) AS rationale " +
+        "FROM judgments WHERE entity_id=? ORDER BY asof_date DESC LIMIT 20", e.id),
+      theses: await one(
+        "SELECT state,title,target_price,stop_price,break_conditions_json,assumptions_json,opened_at," +
+        "substr(COALESCE(thesis,''),1,600) AS thesis FROM theses WHERE entity_id=? ORDER BY opened_at DESC", e.id),
+      lessons: await one(
+        "SELECT pattern,lesson,severity,hit_count FROM lessons WHERE entity_id=? OR entity_id IS NULL " +
+        "ORDER BY hit_count DESC LIMIT 6", e.id),
+      portfolio: await one(
+        "SELECT value AS weight_pct,meta_json,asof_date FROM snapshots WHERE entity_id=? AND scope='portfolio' " +
+        "ORDER BY asof_date DESC LIMIT 1", e.id),
+      crowd: await one(
+        "SELECT value AS temp,label,meta_json,asof_date FROM snapshots WHERE entity_id=? AND scope='crowd' " +
+        "ORDER BY asof_date DESC LIMIT 3", e.id),
+      sources: await one(
+        "SELECT title,url,published_at FROM sources WHERE entity_id=? ORDER BY published_at DESC LIMIT 8", e.id),
+    };
+  }
+
+  if (name === "market_snapshot") {
+    const d = Math.max(1, Math.min(60, parseInt(inp.days, 10) || 10));
+    const sql =
+      "SELECT scope,subject,metric,value,label,asof_date FROM snapshots " +
+      "WHERE scope IN ('market','macro','macro_var','crowd','cash','futures','crypto') " +
+      "AND asof_date >= date('now','-" + d + " day') " +
+      "AND entity_id IS NULL ORDER BY scope, subject, asof_date DESC LIMIT 200";
+    const r = await aiQuery(env, sql);
+    const fresh = await aiQuery(env,
+      "SELECT skill, MAX(asof_date) AS latest, CAST(julianday('now')-julianday(MAX(asof_date)) AS INT) AS days_stale " +
+      "FROM snapshots GROUP BY skill ORDER BY days_stale DESC LIMIT 12");
+    return { window_days: d, snapshots: r.rows || [], error: r.error, freshness: fresh.rows || [] };
+  }
+
+  if (name === "search_brain") {
+    const lim = Math.max(1, Math.min(30, parseInt(inp.limit, 10) || 10));
+    try {
+      const r = await env.BRAIN_DB.prepare(
+        "SELECT entity, skill, asof, snippet(brain_fts,0,'[',']','…',18) AS hit " +
+        "FROM brain_fts WHERE brain_fts MATCH ? LIMIT ?").bind(String(inp.q || ""), lim).all();
+      return { q: inp.q, rows: (r && r.results) || [] };
+    } catch (e) {
+      return { error: "검색 오류: " + (e && e.message ? e.message : String(e)) };
+    }
+  }
+
+  return { error: "알 수 없는 도구: " + name };
+}
+
+/* ── 답변 품질 규약 (설계도 5항) ─────────────────────────────── */
+function aiSystemPrompt(todayKST) {
+  return [
+    "당신은 Trend Insight AI — 1인 자산운용사(20년 경력 애널리스트·트레이더)의 전용 리서치 어시스턴트다.",
+    "오늘은 " + todayKST + " (KST) 이다.",
+    "",
+    "## 당신이 아는 것",
+    "ti-brain은 이 운용사의 정본 기억이다. 78개 투자 스킬(온도계·스크리너·진입·손절·포렌식·논거·결재·복기)이",
+    "내린 판정이 전부 여기 쌓인다. 도구로만 이 기억에 접근할 수 있고, 그 밖의 지식은 신뢰하지 않는다.",
+    "",
+    "## 절대 규칙 (위반 금지)",
+    "1. 수치는 반드시 도구로 조회한 값만 인용하고, **항상 기준일(asof_date)을 함께 밝힌다.**",
+    "   예: \"코스피 온도 63.2 (8/21 기준)\". 날짜 없는 수치는 쓰지 않는다.",
+    "2. 도구 결과에 없으면 **\"ti-brain에 데이터 없음\"이라고 말한다.** 추정·기억·일반지식으로 채우지 않는다.",
+    "   현재가·실시간 시세는 ti-brain에 없다 — 물으면 없다고 답하고 해당 스킬 실행을 권한다.",
+    "3. 종목 판단을 말하기 전 **entity_timeline으로 논거 상태와 교훈을 먼저 확인한다.**",
+    "   논거가 BROKEN인데 보유 중이거나, 관련 실수 패턴(hit_count≥2)이 있으면 **그 사실을 답변 맨 앞에 먼저 알린다.**",
+    "4. 매수·매도 방향을 말할 때는 **반드시 무효화 조건(손절가·훼손 조건)을 함께** 제시한다. 없으면 없다고 밝힌다.",
+    "5. 데이터가 오래됐으면(포트 30일↑, 온도 7일↑) 그 사실을 먼저 경고한다. 낡은 수치를 현재처럼 말하지 않는다.",
+    "",
+    "## 태도",
+    "- 리스크 우선 보고: 경고 → 사실 → 해석 순서. 좋은 소식보다 나쁜 소식을 먼저.",
+    "- 간결하게. 표가 명확하면 표로. 서론·인사말 없이 본론부터.",
+    "- 과거의 자신과 충돌하는 판단을 할 때는 무엇이 바뀌었는지 명시한다.",
+    "- 확신이 없으면 없다고 말한다. 애매한 것을 단정으로 포장하지 않는다.",
+    "",
+    "## 경계",
+    "이 답변은 내부 의사결정 참고용이며 투자 권유가 아니다. 매매 실행·주문은 하지 않는다.",
+    "최종 판단과 책임은 대표 본인에게 있다.",
+  ].join("\n");
+}
+
+/* ── 요청 핸들러 ─────────────────────────────────────────────── */
+async function aiHandle(req, url, env, ctx) {
+  // 1) 소유자 게이트 — 본인 계정 외에는 어떤 응답도 하지 않는다
+  const me = await authMember(req, env);
+  const owner = await aiOwnerEmail(env);
+  const isOwner = !!(me && String(me.email || "").toLowerCase() === String(owner).toLowerCase());
+
+  if (url.pathname === "/api/chat/status") {
+    const key = await aiSecret(env, "anthropic_api_key", "ANTHROPIC_API_KEY");
+    return aiJ({
+      logged_in: !!me,
+      owner: isOwner,
+      key_set: !!key,
+      brain_bound: !!env.BRAIN_DB,
+      model: AI_MODEL,
+    });
+  }
+
+  if (!me) return aiJ({ error: "로그인이 필요합니다.", need_login: true }, 401);
+  if (!isOwner) return aiJ({ error: "이 기능은 운영자 전용입니다." }, 403);
+  if (req.method !== "POST") return aiJ({ error: "POST만 허용" }, 405);
+  if (!env.BRAIN_DB) return aiJ({ error: "ti-brain D1 바인딩(BRAIN_DB)이 없습니다. wrangler 설정을 확인하세요." }, 500);
+
+  const apiKey = await aiSecret(env, "anthropic_api_key", "ANTHROPIC_API_KEY");
+  if (!apiKey) {
+    return aiJ({ error: "Anthropic API 키 미설정 — D1(risk-manager) secrets 테이블에 anthropic_api_key 를 넣으세요." }, 503);
+  }
+
+  let body;
+  try { body = await req.json(); } catch (e) { return aiJ({ error: "JSON 본문이 필요합니다." }, 400); }
+
+  // 대화 이력: [{role, content}] — content는 문자열(사용자) 또는 블록 배열(어시스턴트 재개용)
+  const history = Array.isArray(body.messages) ? body.messages.slice(-20) : [];
+  const question = String(body.message || "").trim();
+  if (!question && !history.length) return aiJ({ error: "질문이 비어 있습니다." }, 400);
+
+  const messages = history.slice();
+  if (question) messages.push({ role: "user", content: question });
+
+  const todayKST = new Date(Date.now() + 9 * 36e5).toISOString().slice(0, 10);
+  const system = aiSystemPrompt(todayKST);
+  const trace = [];
+  let usage = { input_tokens: 0, output_tokens: 0 };
+
+  // 2) 에이전트 루프 — 도구 호출이 없을 때까지 (최대 AI_MAX_TURNS)
+  for (let turn = 0; turn < AI_MAX_TURNS; turn++) {
+    let resp;
+    try {
+      resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: AI_MODEL,
+          max_tokens: 2000,
+          system: system,
+          tools: AI_TOOLS,
+          messages: messages,
+        }),
+      });
+    } catch (e) {
+      return aiJ({ error: "Anthropic API 연결 실패: " + (e && e.message ? e.message : String(e)) }, 502);
+    }
+
+    if (!resp.ok) {
+      const t = await resp.text().catch(() => "");
+      return aiJ({ error: "Anthropic API 오류 " + resp.status, detail: t.slice(0, 600) }, 502);
+    }
+
+    const data = await resp.json();
+    if (data.usage) {
+      usage.input_tokens += data.usage.input_tokens || 0;
+      usage.output_tokens += data.usage.output_tokens || 0;
+    }
+    const blocks = data.content || [];
+    messages.push({ role: "assistant", content: blocks });
+
+    const toolUses = blocks.filter((b) => b.type === "tool_use");
+    if (!toolUses.length) {
+      const text = blocks.filter((b) => b.type === "text").map((b) => b.text).join("\n").trim();
+      return aiJ({
+        ok: true,
+        answer: text || "(빈 응답)",
+        trace: trace,
+        messages: messages.slice(-20),
+        usage: usage,
+        turns: turn + 1,
+      });
+    }
+
+    const results = [];
+    for (const tu of toolUses) {
+      const out = await aiRunTool(env, tu.name, tu.input);
+      trace.push({
+        tool: tu.name,
+        input: tu.input,
+        ok: !out.error,
+        note: out.error || (out.sql ? out.sql : (out.row_count != null ? out.row_count + "건" : "")),
+      });
+      results.push({
+        type: "tool_result",
+        tool_use_id: tu.id,
+        content: JSON.stringify(out).slice(0, 60000),
+        is_error: !!out.error,
+      });
+    }
+    messages.push({ role: "user", content: results });
+  }
+
+  return aiJ({
+    ok: false,
+    error: "도구 호출이 " + AI_MAX_TURNS + "회를 넘었습니다. 질문을 좁혀서 다시 물어보세요.",
+    trace: trace,
+    usage: usage,
+  }, 504);
 }
