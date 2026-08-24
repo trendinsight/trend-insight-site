@@ -3527,20 +3527,31 @@ const AI_TOOLS = [
   {
     name: "enqueue_job",
     description:
-      "ti-brain에 없는 것을 '새로 계산'해야 할 때 PC 작업 큐에 등록한다. " +
-      "이 챗봇은 이미 저장된 기억만 읽는다. 현재가 조회, 스크리닝, 진입 타이밍(VCP·피벗), " +
-      "수급 분석, 종합분석, 결재, 온도계 재산출처럼 실제 계산·수집이 필요한 요청은 " +
-      "추측하지 말고 반드시 이 도구로 넘긴다. " +
-      "등록하면 PC 에이전트가 실행될 때 처리되고 텔레그램으로 결과가 온다. " +
-      "PC가 꺼져 있으면 대기한다는 점을 사용자에게 반드시 함께 알린다.",
+      "ti-brain에 없는 것을 '새로 계산'해야 할 때 PC 작업 큐에 등록한다. 이 챗봇은 저장된 기억만 읽으므로 " +
+      "실시간 계산은 PC가 대신한다.\n" +
+      "**아래 6개 작업만 실행 가능하다. task 를 반드시 지정한다.**\n" +
+      "- entry_timer: 진입 타이밍(VCP 피벗·다바스 박스·터틀 사이징) — 종목코드 필수\n" +
+      "- signal: 5대 보조지표 매수/매도 점수(MACD·RSI·볼린저·OBV·ADX) — 종목코드 필수\n" +
+      "- trend_rider: 추세 단계·강도·상대강도·트레일링 출구 — 종목코드 필수\n" +
+      "- supply_demand: 투자자별 수급(매집수량·분산비율·매수여력) — 종목코드 필수\n" +
+      "- volume: 거래량 판독 — 종목코드 있으면 개별, 없으면 전 시장 스캔\n" +
+      "- stop_loss: 보유종목 손절 스크리닝 — 종목코드 불필요\n" +
+      "종목코드가 필요한 작업인데 6자리 코드를 모르면 먼저 entity_timeline 으로 확인한 뒤 args.ticker 에 넣는다.\n" +
+      "이 목록에 없는 요청(종합분석·결재·리포트 작성·거시 분석 등)은 **등록하지 말고**, " +
+      "PC에서 직접 해당 스킬을 실행해야 한다고 안내한다.\n" +
+      "등록 후에는 'PC 브리지를 켜면 처리되고, 꺼져 있으면 대기하며, 완료 시 텔레그램 알림이 간다'고 알린다.",
     input_schema: {
       type: "object",
       properties: {
-        request: { type: "string", description: "PC에서 실행할 작업을 한국어 한 문장으로. 종목명·기간 등 필요한 조건을 모두 포함." },
-        task: { type: "string", description: "알려진 작업이면 지정: entry_timer|stop_loss|screener|supply_demand|stock_analysis|thermometer|portfolio_check" },
-        args: { type: "object", description: "작업 인자 (예: {\"ticker\":\"093320\"})" },
+        request: { type: "string", description: "PC에서 실행할 작업을 한국어 한 문장으로. 종목명·종목코드를 포함." },
+        task: {
+          type: "string",
+          enum: ["entry_timer", "signal", "trend_rider", "supply_demand", "volume", "stop_loss"],
+          description: "실행할 작업. 6개 중 하나여야 한다.",
+        },
+        args: { type: "object", description: "작업 인자. 종목은 {\"ticker\":\"093320\"} 형태의 6자리 코드." },
       },
-      required: ["request"],
+      required: ["request", "task"],
     },
   },
   {
@@ -3561,14 +3572,25 @@ async function aiRunTool(env, name, inp) {
     if (!env.BRAIN_DB) return { error: "BRAIN_DB 바인딩 없음" };
     const request = String(inp.request || "").trim().slice(0, 2000);
     if (!request) return { error: "request 가 비어 있습니다." };
+    // 브리지가 실제로 실행할 수 있는 작업만 큐에 넣는다.
+    // 못 하는 일을 등록해두면 사용자가 기다리다 실패를 보게 된다.
+    const ALLOWED = ["entry_timer", "signal", "trend_rider", "supply_demand", "volume", "stop_loss"];
+    const task = String(inp.task || "").trim();
+    if (!ALLOWED.includes(task)) {
+      return {
+        error: "PC 브리지가 실행할 수 없는 작업입니다. 등록하지 않았습니다.",
+        allowed_tasks: ALLOWED,
+        advice: "이 요청은 큐에 넣지 말고, PC에서 해당 스킬을 직접 실행해야 한다고 사용자에게 안내하세요.",
+      };
+    }
     try {
       const r = await env.BRAIN_DB.prepare(
         "INSERT INTO jobs(request,mode,task,args_json,status,requested_by,created_at) " +
         "VALUES(?,?,?,?,'queued','chat',?)"
       ).bind(
         request,
-        inp.task ? "whitelist" : "auto",
-        inp.task ? String(inp.task).slice(0, 80) : null,
+        "whitelist",
+        task,
         inp.args ? JSON.stringify(inp.args).slice(0, 4000) : null,
         jobsNowKst()
       ).run();
@@ -3681,9 +3703,10 @@ function aiSystemPrompt(todayKST) {
     "   논거가 BROKEN인데 보유 중이거나, 관련 실수 패턴(hit_count≥2)이 있으면 **그 사실을 답변 맨 앞에 먼저 알린다.**",
     "4. 매수·매도 방향을 말할 때는 **반드시 무효화 조건(손절가·훼손 조건)을 함께** 제시한다. 없으면 없다고 밝힌다.",
     "5. 데이터가 오래됐으면(포트 30일↑, 온도 7일↑) 그 사실을 먼저 경고한다. 낡은 수치를 현재처럼 말하지 않는다.",
-    "6. **너는 저장된 기억만 읽는다. 새로 계산하지 못한다.** 현재가·스크리닝·진입 타이밍·수급·" +
-    "종합분석·결재처럼 실제 계산이 필요하면 추측하지 말고 enqueue_job 으로 PC에 넘기고, " +
-    "\"PC 에이전트 실행 시 처리되며 꺼져 있으면 대기한다\"고 알린다.",
+    "6. **너는 저장된 기억만 읽는다. 새로 계산하지 못한다.** 진입 타이밍·보조지표 점수·추세 진단·" +
+    "수급·거래량·손절 스크리닝 6종은 enqueue_job 으로 PC에 넘긴다(추측 금지). " +
+    "그 6종 밖의 계산(종합분석·결재·리포트·거시분석 등)은 큐에 넣지 말고 " +
+    "\"PC에서 해당 스킬을 직접 실행해야 한다\"고 안내한다.",
     "",
     "## 태도",
     "- 리스크 우선 보고: 경고 → 사실 → 해석 순서. 좋은 소식보다 나쁜 소식을 먼저.",
