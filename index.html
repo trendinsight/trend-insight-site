@@ -889,7 +889,7 @@
   function heatZC(z){return MZC[z]||"z-n";}
   function goodZC(v){return v>=60?"z-good":v>25?"z-n":"z-bad";}
 
-  function setGauges(id,items,dateStr){
+  function setGauges(id,items,dateStr,runDate){
     var el=document.getElementById(id);if(!el)return;
     var html='<div class="dash-gauges">';
     items.forEach(function(g){
@@ -899,7 +899,7 @@
     });
     html+='</div>';
     el.querySelector('.dash-rows').innerHTML=html;
-    el.querySelector('.dash-foot').innerHTML='<span>기준일 '+fdate(dateStr)+'</span>'+staleTag(dateStr);
+    el.querySelector('.dash-foot').innerHTML='<span>기준일 '+fdate(dateStr)+'</span>'+staleTag(runDate||dateStr);
   }
   function fail(id){
     var el=document.getElementById(id);if(!el)return;
@@ -935,7 +935,7 @@
       var m=lastOf(d.market[p[0]]);
       return {label:p[1],score:R1(m.temp),segs:HEAT,zone:zmap[m.zone]||m.zone,zc:zc[m.zone]||'z-n'};
     });
-    setGauges('dash-crowd',items,lastOf(d.market.kospi).date);
+    var _ck=lastOf(d.market.kospi);setGauges('dash-crowd',items,_ck.date,d.updated||_ck.run_date);
   }).catch(function(){fail('dash-crowd');});
 
   // ── 선물 온도계 (현·선물 괴리 방향점수 — 높을수록 순풍)
