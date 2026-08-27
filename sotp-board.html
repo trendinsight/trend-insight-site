@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0c111c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>SOTP 보드 · 부분합산 목표가 누적</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c111c; --panel:#141c2b; --panel2:#1a2336; --line:#26314a;
+  --ink:#e9eef7; --muted:#8896ae; --faint:#5d6b85;
+  --gold:#e6b422; --gold2:#f2ca4c; --buy:#E8621B; --buy2:#f08a4f;
+  --sell:#3b82f6; --sell2:#6ba0f5; --up:#f0454e; --down:#3b82f6; --ok:#2fbf71;
+  --sub:#7c9cf5; --seg:#2fbf71; --ast:#c9a227; --unl:#b57edc;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Pretendard',sans-serif;
+  font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+.up{color:var(--up)} .down{color:var(--down)}
+header{display:flex;align-items:center;gap:14px;padding:12px 18px;flex-wrap:wrap;
+  background:linear-gradient(180deg,#101827,#0c111c);border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:30}
+.brand{display:flex;align-items:baseline;gap:9px;white-space:nowrap}
+.brand .ti{font-family:'JetBrains Mono';font-weight:700;font-size:20px;color:var(--gold);
+  letter-spacing:1px;border:1.5px solid var(--gold);border-radius:6px;padding:1px 8px}
+.brand h1{font-size:15px;font-weight:700}
+.brand small{color:var(--faint);font-size:11px;letter-spacing:1.5px;text-transform:uppercase}
+.hlinks{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+.hlinks a{color:var(--muted);font-size:12px;text-decoration:none;border:1px solid var(--line);
+  border-radius:7px;padding:5px 10px}
+.hlinks a:hover{color:var(--gold2);border-color:var(--gold)}
+main{max-width:1280px;margin:0 auto;padding:18px 22px 60px}
+.filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.filters input,.filters select{background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+  color:var(--ink);padding:8px 12px;font-size:13px;font-family:inherit;outline:none}
+.filters input:focus,.filters select:focus{border-color:var(--gold)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:20px;
+  padding:5px 12px;font-size:12px;cursor:pointer}
+.chip.on{color:var(--gold2);border-color:var(--gold);background:rgba(230,180,34,.08)}
+.count{margin-left:auto;font-size:12px;color:var(--faint)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+  cursor:pointer;transition:border-color .15s,transform .15s}
+.card:hover{border-color:var(--gold);transform:translateY(-2px)}
+.card .top{display:flex;align-items:baseline;gap:8px;margin-bottom:10px}
+.card .nm{font-size:16px;font-weight:800}
+.card .cd{font-size:11px;color:var(--faint);font-family:'JetBrains Mono'}
+.card .dt{margin-left:auto;font-size:11px;color:var(--faint);font-family:'JetBrains Mono'}
+.card .tgt{display:flex;align-items:baseline;gap:9px;margin-bottom:9px}
+.card .tgt .p{font-size:22px;font-weight:800;font-family:'JetBrains Mono';color:var(--gold2)}
+.card .tgt .u{font-size:13px;font-weight:700;font-family:'JetBrains Mono'}
+.card .meta{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--muted)}
+.card .meta b{color:var(--ink);font-family:'JetBrains Mono'}
+.card .bar{height:7px;border-radius:4px;background:var(--panel2);margin:10px 0 8px;position:relative;overflow:hidden}
+.card .bar i{position:absolute;top:0;bottom:0;left:0;border-radius:4px;background:linear-gradient(90deg,#2fbf71,#e6b422)}
+.card .bot{display:flex;align-items:center;gap:8px;margin-top:10px}
+.vb{font-size:11.5px;font-weight:700;border-radius:16px;padding:3px 11px}
+.v-buy{background:rgba(232,98,27,.18);color:var(--buy2);border:1px solid rgba(232,98,27,.55)}
+.v-watch{background:rgba(230,180,34,.14);color:var(--gold2);border:1px solid rgba(230,180,34,.45)}
+.v-hold{background:rgba(47,191,113,.12);color:#5fd398;border:1px solid rgba(47,191,113,.4)}
+.v-neu{background:rgba(136,150,174,.13);color:var(--muted);border:1px solid var(--line)}
+.v-sell{background:rgba(59,130,246,.15);color:var(--sell2);border:1px solid rgba(59,130,246,.5)}
+.card .pos{margin-left:auto;font-size:11px;color:var(--faint)}
+.card .wc{font-size:11px;color:#ffb84d}
+.empty{text-align:center;color:var(--faint);padding:14vh 20px}
+.empty .big{font-size:44px;opacity:.3;margin-bottom:12px}
+.empty h2{color:var(--ink);font-size:18px;margin-bottom:10px}
+.empty p{font-size:13px;line-height:1.9}
+.empty code{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:2px 7px;
+  font-family:'JetBrains Mono';font-size:12px;color:var(--gold2)}
+dialog{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:14px;
+  padding:0;max-width:880px;width:94vw;max-height:88vh}
+dialog::backdrop{background:rgba(0,0,0,.68)}
+.dlg-head{display:flex;align-items:baseline;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line);
+  position:sticky;top:0;background:var(--panel);z-index:2;flex-wrap:wrap}
+.dlg-head .nm{font-size:20px;font-weight:800}
+.dlg-head .cd{font-size:12px;color:var(--faint);font-family:'JetBrains Mono'}
+.dlg-head .x{margin-left:auto;cursor:pointer;color:var(--faint);font-size:20px;line-height:1;padding:0 4px}
+.dlg-head .x:hover{color:var(--ink)}
+.dlg-body{padding:16px 20px 22px;overflow-y:auto;max-height:calc(88vh - 62px)}
+.sec{margin-bottom:20px}
+.sec h4{font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);
+  margin-bottom:9px;font-weight:700}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px}
+.kb{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px;text-align:center}
+.kb .c{font-size:10px;color:var(--muted);margin-bottom:3px}
+.kb .n{font-size:16px;font-weight:800;font-family:'JetBrains Mono'}
+.kb.hi .n{color:var(--gold2)}
+table.t{width:100%;border-collapse:collapse;font-size:12.5px}
+table.t th{font-size:10px;letter-spacing:.5px;color:var(--faint);text-align:left;font-weight:600;
+  padding:0 8px 7px;border-bottom:1px solid var(--line)}
+table.t td{padding:7px 8px;border-bottom:1px solid rgba(38,49,74,.6);vertical-align:top}
+table.t tr:last-child td{border-bottom:0}
+table.t td.r,table.t th.r{text-align:right;font-family:'JetBrains Mono'}
+.kd{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:6px}
+.k-listed_sub{background:var(--sub)} .k-unlisted_sub{background:var(--unl)}
+.k-segment{background:var(--seg)} .k-asset{background:var(--ast)} .k-other{background:var(--muted)}
+.nt{font-size:11px;color:var(--faint);line-height:1.55;margin-top:3px}
+.warn{font-size:12px;color:#ffb84d;background:rgba(230,140,30,.08);
+  border:1px solid rgba(230,140,30,.35);border-radius:8px;padding:9px 11px;line-height:1.65;margin-bottom:7px}
+.bandbar{position:relative;height:12px;border-radius:6px;margin:26px 4px 30px}
+.bandbar .mk{position:absolute;top:-7px;width:3px;height:26px;background:#fff;border-radius:2px;
+  box-shadow:0 0 8px rgba(255,255,255,.85)}
+.bandbar .mklab{position:absolute;top:-25px;transform:translateX(-50%);font-size:10.5px;font-weight:700;white-space:nowrap}
+.bandbar .zl{position:absolute;bottom:-18px;font-size:10px;color:var(--faint)}
+.note{font-size:12px;color:var(--muted);line-height:1.75}
+.note b{color:var(--ink)}
+.golink{display:inline-block;margin-top:6px;color:var(--gold2);font-size:12px;text-decoration:none;
+  border:1px solid rgba(230,180,34,.4);border-radius:7px;padding:5px 11px}
+.golink:hover{background:rgba(230,180,34,.1)}
+::-webkit-scrollbar{width:8px} ::-webkit-scrollbar-thumb{background:#243047;border-radius:4px}
+@media(max-width:620px){main{padding:14px 12px 50px}.cards{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="ti">TI</span><h1>SOTP 보드</h1><small>Sum of the Parts</small></div>
+  <div class="hlinks">
+    <a href="/sotp.html">SOTP 계산기</a>
+    <a href="/fair-value.html">적정주가</a>
+    <a href="/">홈</a>
+  </div>
+</header>
+<main>
+  <div class="filters">
+    <input id="fq" type="text" placeholder="종목명·코드 검색" autocomplete="off">
+    <select id="fd"><option value="">전체 날짜</option></select>
+    <div class="chips" id="fv"></div>
+    <span class="count" id="cnt"></span>
+  </div>
+  <div id="body"></div>
+</main>
+<dialog id="dlg"><div id="dlgc"></div></dialog>
+
+<script>
+const EOK=1e8,JO=1e12;
+const $=s=>document.querySelector(s);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function eok(v){
+  if(v==null||!isFinite(v))return '-';
+  const neg=v<0?'-':''; v=Math.abs(v);
+  const jo=Math.floor(v/JO), rem=(v-jo*JO)/EOK;
+  return jo>=1?`${neg}${jo}조 ${rem.toLocaleString('ko',{maximumFractionDigits:0})}억`
+              :`${neg}${(v/EOK).toLocaleString('ko',{maximumFractionDigits:0})}억`;
+}
+const pct=(x,d=1)=>x==null||!isFinite(x)?'-':(x*100).toFixed(d)+'%';
+const won=x=>x==null||!isFinite(x)?'-':Math.round(x).toLocaleString('ko')+'원';
+const sgn=x=>x==null?'':(x>=0?'+':'');
+const VC={'매수검토':'v-buy','관심':'v-watch','보유':'v-hold','관망':'v-neu','회피':'v-sell'};
+const KINDS={listed_sub:'상장자회사',unlisted_sub:'비상장자회사',segment:'사업부문',asset:'비영업자산',other:'기타'};
+const MLAB={mktcap:'시총×지분',ev_ebitda:'EV/EBITDA',ev_sales:'EV/Sales',per:'PER',pbr:'PBR',direct:'직접입력'};
+
+let DATA=[],F={q:'',d:'',v:''};
+
+function bandPos(rank){
+  if(rank==null)return '-';
+  return rank>=.7?'상단(과도 할인)':rank<=.3?'하단(이미 좁혀짐)':'중앙';
+}
+
+function card(r,i){
+  const up=r.upside;
+  const rank=r.band?r.band.rank:null;
+  const w=r.warnings&&r.warnings.length;
+  return `<div class="card" data-i="${i}">
+    <div class="top"><span class="nm">${r.name||r.code}</span><span class="cd">${r.code}</span>
+      <span class="dt">${r.date}</span></div>
+    <div class="tgt"><span class="p">${won(r.target_price)}</span>
+      <span class="u ${up>=0?'up':'down'}">${sgn(up)}${pct(up)}</span></div>
+    <div class="meta">
+      <span>NAV <b>${eok(r.nav)}</b></span>
+      <span>할인율 <b>${pct(r.discount)}</b></span>
+      <span>내재 <b>${pct(r.implied_discount)}</b></span>
+    </div>
+    <div class="bar"><i style="width:${clamp((rank??.5)*100,3,100)}%"></i></div>
+    <div class="meta"><span style="color:var(--faint)">밴드 ${rank!=null?pct(rank,0)+' 분위 · ':''}${bandPos(rank)}</span></div>
+    <div class="bot"><span class="vb ${VC[r.verdict]||'v-neu'}">${r.verdict}</span>
+      ${w?`<span class="wc">⚠ ${w}</span>`:''}
+      <span class="pos">${r.type||''}</span></div>
+  </div>`;
+}
+
+function render(){
+  const list=DATA.filter(r=>{
+    if(F.q){const q=F.q.toLowerCase();
+      if(!((r.name||'').toLowerCase().includes(q)||(r.code||'').includes(q)))return false;}
+    if(F.d&&r.date!==F.d)return false;
+    if(F.v&&r.verdict!==F.v)return false;
+    return true;});
+  $('#cnt').textContent=`${list.length} / ${DATA.length}건`;
+  $('#body').innerHTML=list.length
+    ? `<div class="cards">${list.map((r,i)=>card(r,DATA.indexOf(r))).join('')}</div>`
+    : `<div class="empty"><div class="big">🔍</div><h2>조건에 맞는 분석이 없습니다</h2>
+       <p>필터를 바꾸거나 <a href="/sotp.html" style="color:var(--gold2)">SOTP 계산기</a>에서 새로 산출해 보세요.</p></div>`;
+  document.querySelectorAll('.card').forEach(el=>el.onclick=()=>detail(+el.dataset.i));
+}
+
+function waterfall(r){
+  const rows=[...(r.parts||[])].sort((a,b)=>b.value-a.value);
+  const items=[...rows.map(p=>({n:p.name,v:p.value,k:p.kind})),{n:'순차입금',v:-(r.net_debt||0),k:'debt'}];
+  const total=Math.max(r.gross||1,1);
+  const H=items.length*26+8;
+  let acc=0,s='';
+  items.forEach((it,i)=>{
+    const y=i*26+6, w=Math.abs(it.v)/total*100;
+    const x=it.v>=0?acc/total*100:(acc+it.v)/total*100;
+    const col=it.k==='debt'?'#f0454e':it.k==='listed_sub'?'#7c9cf5':it.k==='unlisted_sub'?'#b57edc'
+      :it.k==='segment'?'#2fbf71':it.k==='asset'?'#c9a227':'#8896ae';
+    s+=`<rect x="${x}%" y="${y}" width="${Math.max(w,.4)}%" height="16" rx="3" fill="${col}" opacity=".85"></rect>
+      <text x="0.6%" y="${y+12}" fill="#8896ae" font-size="11">${(it.n||'').slice(0,16)}</text>
+      <text x="99.4%" y="${y+12}" fill="#e9eef7" font-size="11" text-anchor="end" font-family="JetBrains Mono">${eok(it.v)}</text>`;
+    acc+=it.v;});
+  return `<svg viewBox="0 0 100 ${H}" style="width:100%;height:${H}px" preserveAspectRatio="none">${s}</svg>`;
+}
+
+function bandBlock(b){
+  if(!b)return '<div class="note">과거 할인율 밴드 없음 — 유형 표준값이 적용됐습니다.</div>';
+  const lo=Math.min(b.min,b.current),hi=Math.max(b.max,b.current),span=(hi-lo)||1;
+  const P=v=>clamp((v-lo)/span,0,1)*100;
+  const bar=`<div class="bandbar" style="background:linear-gradient(90deg,#2fbf71 0 ${P(b.p25)}%,#e6b422 ${P(b.p25)}% ${P(b.p75)}%,#3b82f6 ${P(b.p75)}% 100%);opacity:.85">
+    <div class="mk" style="left:${P(b.current)}%"></div>
+    <div class="mklab" style="left:${P(b.current)}%">현재 ${pct(b.current)}</div>
+    <div class="zl" style="left:0">할인 축소 ${pct(lo)}</div>
+    <div class="zl" style="right:0">할인 확대 ${pct(hi)}</div></div>`;
+  let spark='';
+  if(b.series&&b.series.length>3){
+    const s=b.series,n=s.length,H=60,vs=s.map(x=>x.v),
+      mn=Math.min(...vs),mx=Math.max(...vs),sp=(mx-mn)||1;
+    const pts=s.map((x,i)=>`${(i/(n-1)*100).toFixed(2)},${(H-(x.v-mn)/sp*H).toFixed(2)}`).join(' ');
+    const my=H-(b.median-mn)/sp*H;
+    spark=`<svg viewBox="0 0 100 ${H}" style="width:100%;height:${H}px" preserveAspectRatio="none">
+      <line x1="0" y1="${my}" x2="100" y2="${my}" stroke="#e6b422" stroke-width=".5" stroke-dasharray="2 2" opacity=".7"></line>
+      <polyline points="${pts}" fill="none" stroke="#7c9cf5" stroke-width=".8" vector-effect="non-scaling-stroke"></polyline></svg>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--faint);margin-top:3px">
+        <span>${b.from}</span><span style="color:var(--gold)">— 중앙값 ${pct(b.median)}</span><span>${b.to}</span></div>`;
+  }
+  return bar+spark+`<table class="t" style="margin-top:12px">
+    <tr><td>평균 · 표준편차</td><td class="r">${pct(b.mean)} ± ${pct(b.sd)}</td></tr>
+    <tr><td>25% · 중앙 · 75%</td><td class="r">${pct(b.p25)} · ${pct(b.p50)} · ${pct(b.p75)}</td></tr>
+    <tr><td>최저 ~ 최고</td><td class="r">${pct(b.min)} ~ ${pct(b.max)}</td></tr>
+    <tr><td>현재 위치 · 관측</td><td class="r">${pct(b.rank,0)} 분위 · ${b.n}일 (${b.source}·신뢰도 ${b.confidence})</td></tr>
+  </table>`;
+}
+
+function detail(i){
+  const r=DATA[i];if(!r)return;
+  const rank=r.band?r.band.rank:null;
+  $('#dlgc').innerHTML=`
+  <div class="dlg-head">
+    <span class="nm">${r.name||r.code}</span><span class="cd">${r.code}</span>
+    <span class="vb ${VC[r.verdict]||'v-neu'}">${r.verdict}</span>
+    <span style="font-size:11px;color:var(--faint);font-family:'JetBrains Mono'">${r.date} · ${r.type||''}</span>
+    <span class="x" onclick="document.getElementById('dlg').close()">×</span>
+  </div>
+  <div class="dlg-body">
+    <div class="sec"><div class="kpis">
+      <div class="kb hi"><div class="c">목표주가</div><div class="n">${won(r.target_price)}</div></div>
+      <div class="kb"><div class="c">현재가</div><div class="n">${won(r.price)}</div></div>
+      <div class="kb"><div class="c">상승여력</div><div class="n ${r.upside>=0?'up':'down'}">${sgn(r.upside)}${pct(r.upside)}</div></div>
+      <div class="kb"><div class="c">NAV</div><div class="n" style="font-size:13px">${eok(r.nav)}</div></div>
+      <div class="kb"><div class="c">적용 할인율</div><div class="n">${pct(r.discount)}</div></div>
+      <div class="kb"><div class="c">현재 내재할인율</div><div class="n">${pct(r.implied_discount)}</div></div>
+    </div>
+    <div class="note" style="margin-top:8px">판정 근거 — ${r.verdict_reason||''}<br>
+      할인율 적용 근거 — ${r.discount_source||''}</div></div>
+
+    <div class="sec"><h4>부품표</h4>
+      <table class="t"><thead><tr><th>부문</th><th>잣대</th><th class="r">가치</th><th class="r">비중</th></tr></thead>
+      <tbody>${[...(r.parts||[])].sort((a,b)=>b.value-a.value).map(p=>`<tr>
+        <td><i class="kd k-${p.kind}"></i>${p.name}${p.code?` <span style="color:var(--faint);font-size:10.5px" class="mono">${p.code}</span>`:''}
+          <div class="nt">${p.basis||''}${p.note?` · ${p.note}`:''}</div></td>
+        <td style="font-size:11.5px;color:var(--muted)">${MLAB[p.method]||p.method}</td>
+        <td class="r">${eok(p.value)}</td><td class="r" style="color:var(--muted)">${pct(p.weight)}</td></tr>`).join('')}
+      <tr><td colspan="2" style="font-weight:700">합계 (Gross)</td><td class="r" style="font-weight:700">${eok(r.gross)}</td><td></td></tr>
+      <tr><td colspan="2">(−) 지주 순차입금 [${r.net_debt_basis||'별도'}]</td><td class="r">${eok(-(r.net_debt||0))}</td><td></td></tr>
+      <tr><td colspan="2" style="font-weight:700;color:var(--gold2)">= NAV</td>
+        <td class="r" style="font-weight:700;color:var(--gold2)">${eok(r.nav)}</td>
+        <td class="r" style="color:var(--muted)">주당 ${won(r.nav_per_share)}</td></tr>
+      </tbody></table>
+      <div style="margin-top:12px">${waterfall(r)}</div>
+    </div>
+
+    <div class="sec"><h4>지주할인율 밴드 · 현재 ${bandPos(rank)}</h4>${bandBlock(r.band)}</div>
+
+    <div class="sec"><h4>시나리오</h4><table class="t">
+      ${['강세','기본','약세'].map(k=>{const s=(r.scenarios||{})[k];if(!s)return '';
+        return `<tr><td>${k} <span style="color:var(--faint);font-size:11px">할인 ${pct(s.discount)}</span></td>
+        <td class="r">${won(s.price)} <span class="${s.upside>=0?'up':'down'}">${sgn(s.upside)}${pct(s.upside)}</span></td></tr>`;}).join('')}
+    </table></div>
+
+    ${r.sensitivity&&Object.keys(r.sensitivity).length?`<div class="sec"><h4>감응도</h4><table class="t">
+      ${Object.entries(r.sensitivity).map(([k,v])=>`<tr><td>${k}</td>
+        <td class="r">${won(v.price)} <span class="${v.delta>=0?'up':'down'}">${sgn(v.delta)}${pct(v.delta)}</span></td></tr>`).join('')}
+    </table></div>`:''}
+
+    ${(r.warnings||[]).length?`<div class="sec"><h4>경고</h4>
+      ${r.warnings.map(w=>`<div class="warn">⚠ ${w}</div>`).join('')}</div>`:''}
+
+    <div class="sec">
+      <div class="note">SOTP는 <b>멀티플·할인율 두 가정의 합</b>이다. 한국 지주사 할인율은 배당·자사주 소각·
+        자회사 상장·지배구조 개선 같은 <b>실제 촉매 없이는 좁혀지지 않는다</b> — 촉매 없는 NAV 할인은
+        밸류 트랩으로 본다. 참고치이며 매수/매도 지시가 아니다.</div>
+      <a class="golink" href="/sotp.html?code=${r.code}">계산기에서 이 종목 열기 →</a>
+    </div>
+  </div>`;
+  $('#dlg').showModal();
+}
+
+async function boot(){
+  try{
+    const r=await fetch('/data/sotp.json?t='+Date.now());
+    DATA=r.ok?(await r.json()):[];
+  }catch(e){DATA=[];}
+  if(!Array.isArray(DATA))DATA=[];
+  DATA.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if(!DATA.length){
+    $('#body').innerHTML=`<div class="empty"><div class="big">🧩</div>
+      <h2>아직 게시된 SOTP 분석이 없습니다</h2>
+      <p>부분합산 목표가를 산출해 이 보드에 날짜별로 쌓습니다.<br>
+      스킬에서 <code>python3 publish_board.py --record out.json</code> 으로 게시하거나,<br>
+      <a href="/sotp.html" style="color:var(--gold2)">SOTP 계산기</a>에서 직접 부품표를 만들어 보세요.</p></div>`;
+    $('#cnt').textContent='0건';return;
+  }
+  const dates=[...new Set(DATA.map(r=>r.date))].sort().reverse();
+  $('#fd').innerHTML='<option value="">전체 날짜</option>'+dates.map(d=>`<option>${d}</option>`).join('');
+  const vs=[...new Set(DATA.map(r=>r.verdict))].filter(Boolean);
+  $('#fv').innerHTML=`<span class="chip on" data-v="">전체</span>`+
+    vs.map(v=>`<span class="chip" data-v="${v}">${v}</span>`).join('');
+  $('#fv').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
+    F.v=c.dataset.v;$('#fv').querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===c));render();});
+  $('#fq').addEventListener('input',e=>{F.q=e.target.value.trim();render();});
+  $('#fd').addEventListener('change',e=>{F.d=e.target.value;render();});
+  render();
+  const p=new URLSearchParams(location.search).get('code');
+  if(p){const i=DATA.findIndex(r=>r.code===p);if(i>=0)detail(i);}
+}
+boot();
+</script>
+</body>
+</html>
