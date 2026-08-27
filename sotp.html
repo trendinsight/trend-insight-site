@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0c111c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>SOTP · 부분합산 목표가</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c111c; --panel:#141c2b; --panel2:#1a2336; --line:#26314a;
+  --ink:#e9eef7; --muted:#8896ae; --faint:#5d6b85;
+  --gold:#e6b422; --gold2:#f2ca4c; --buy:#E8621B; --buy2:#f08a4f;
+  --sell:#3b82f6; --sell2:#6ba0f5; --up:#f0454e; --down:#3b82f6; --ok:#2fbf71;
+  --sub:#7c9cf5; --seg:#2fbf71; --ast:#c9a227; --unl:#b57edc;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Pretendard',sans-serif;
+  font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+.up{color:var(--up)} .down{color:var(--down)}
+header{display:flex;align-items:center;gap:14px;padding:12px 18px;flex-wrap:wrap;
+  background:linear-gradient(180deg,#101827,#0c111c);border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:30}
+.brand{display:flex;align-items:baseline;gap:9px;white-space:nowrap}
+.brand .ti{font-family:'JetBrains Mono';font-weight:700;font-size:20px;color:var(--gold);
+  letter-spacing:1px;border:1.5px solid var(--gold);border-radius:6px;padding:1px 8px}
+.brand h1{font-size:15px;font-weight:700}
+.brand small{color:var(--faint);font-size:11px;letter-spacing:1.5px;text-transform:uppercase}
+.searchwrap{position:relative;flex:1;min-width:220px;max-width:420px}
+#q{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:9px;
+  color:var(--ink);padding:10px 14px;font-size:14px;font-family:inherit;outline:none}
+#q:focus{border-color:var(--gold)} #q::placeholder{color:var(--faint)}
+#qresults{position:absolute;top:calc(100% + 5px);left:0;right:0;background:var(--panel2);
+  border:1px solid var(--line);border-radius:9px;overflow:hidden;display:none;z-index:50;
+  box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#qresults .qi{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer}
+#qresults .qi:hover,#qresults .qi.hl{background:#232d44}
+#qresults .qi .nm{font-weight:600;font-size:13.5px}
+#qresults .qi .cd{font-family:'JetBrains Mono';font-size:11px;color:var(--faint);margin-left:auto}
+.hlinks{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+.hlinks a{color:var(--muted);font-size:12px;text-decoration:none;border:1px solid var(--line);
+  border-radius:7px;padding:5px 10px}
+.hlinks a:hover{color:var(--gold2);border-color:var(--gold)}
+main{max-width:1320px;margin:0 auto;padding:18px 22px 60px}
+.empty{max-width:720px;margin:6vh auto;color:var(--muted);text-align:center;padding:20px}
+.empty .big{font-size:44px;opacity:.35;margin-bottom:10px}
+.empty h2{font-size:19px;color:var(--ink);margin-bottom:12px}
+.empty .eq{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;
+  font-family:'JetBrains Mono';font-size:12.5px;line-height:2;text-align:left;color:var(--muted);margin:14px 0}
+.empty .eq b{color:var(--gold2)}
+.empty p{font-size:13px;line-height:1.8}
+.dhead{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.dhead .nm{font-size:24px;font-weight:800;letter-spacing:-.4px}
+.dhead .cd{font-size:13px;color:var(--faint);font-family:'JetBrains Mono';margin-bottom:3px}
+.dhead .tp{font-size:11px;color:var(--gold2);border:1px solid rgba(230,180,34,.4);border-radius:5px;
+  padding:2px 7px;margin-bottom:4px}
+.dhead .px{font-size:24px;font-weight:700;margin-left:auto;font-family:'JetBrains Mono'}
+.dhead .px small{font-size:12px;font-weight:600;margin-left:8px;color:var(--muted);font-family:'Pretendard'}
+.grid2{display:grid;grid-template-columns:1fr 372px;gap:18px;align-items:start}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px}
+.box h3{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);
+  margin-bottom:12px;font-weight:700;display:flex;align-items:center;gap:8px}
+.box h3 .rt{margin-left:auto;display:flex;gap:6px}
+button.mini{background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:6px;
+  padding:4px 9px;font-size:11px;cursor:pointer;font-family:inherit}
+button.mini:hover{color:var(--ink);border-color:var(--gold)}
+button.mini.on{color:var(--gold2);border-color:var(--gold)}
+/* 부품표 */
+.parts{width:100%;border-collapse:collapse;font-size:12.5px}
+.parts th{font-size:10.5px;letter-spacing:.5px;color:var(--faint);text-align:left;font-weight:600;
+  padding:0 6px 7px;border-bottom:1px solid var(--line);white-space:nowrap}
+.parts td{padding:5px 6px;border-bottom:1px solid rgba(38,49,74,.6);vertical-align:middle}
+.parts tr:last-child td{border-bottom:0}
+.parts input,.parts select{background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+  color:var(--ink);padding:5px 7px;font-size:12px;font-family:inherit;outline:none;width:100%}
+.parts input:focus,.parts select:focus{border-color:var(--gold)}
+.parts input.mono{font-family:'JetBrains Mono';text-align:right}
+.parts .kd{width:11px;height:11px;border-radius:3px;display:inline-block;flex-shrink:0}
+.k-listed_sub{background:var(--sub)} .k-unlisted_sub{background:var(--unl)}
+.k-segment{background:var(--seg)} .k-asset{background:var(--ast)} .k-other{background:var(--muted)}
+.parts .namecell{display:flex;align-items:center;gap:7px;min-width:150px}
+.parts .val{font-family:'JetBrains Mono';text-align:right;font-weight:700;white-space:nowrap}
+.parts .wt{font-family:'JetBrains Mono';text-align:right;color:var(--muted);font-size:11.5px}
+.parts .del{color:var(--faint);cursor:pointer;padding:2px 5px;border-radius:4px;font-size:13px}
+.parts .del:hover{color:var(--up);background:rgba(240,69,78,.1)}
+.fieldrow{display:flex;gap:5px;flex-wrap:wrap}
+.fieldrow .fw{display:flex;flex-direction:column;gap:2px;min-width:74px;flex:1}
+.fieldrow .fw label{font-size:9.5px;color:var(--faint);letter-spacing:.3px;white-space:nowrap}
+.noteinput{width:100%;margin-top:4px;font-size:11px!important;color:var(--muted)!important}
+.addrow{display:flex;gap:7px;margin-top:11px;flex-wrap:wrap}
+.sumrow td{border-top:1px solid var(--line);padding-top:9px;font-weight:700}
+.sumrow.nav td{color:var(--gold2);font-size:14px}
+/* 결과 패널 */
+.kpi{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center;margin-bottom:10px}
+.kpi .cap{font-size:10.5px;color:var(--muted);letter-spacing:.5px;margin-bottom:4px}
+.kpi .num{font-size:27px;font-weight:800;font-family:'JetBrains Mono';color:var(--gold2);line-height:1.1}
+.kpi .sub{font-size:12px;color:var(--muted);margin-top:5px}
+.kpi .sub b{font-family:'JetBrains Mono';font-size:14px}
+.vbadge{display:block;text-align:center;margin:10px 0 4px;font-size:15px;font-weight:800;
+  border-radius:22px;padding:7px 0;letter-spacing:.5px}
+.v-buy{background:rgba(232,98,27,.18);color:var(--buy2);border:1px solid rgba(232,98,27,.55)}
+.v-watch{background:rgba(230,180,34,.14);color:var(--gold2);border:1px solid rgba(230,180,34,.45)}
+.v-hold{background:rgba(47,191,113,.12);color:#5fd398;border:1px solid rgba(47,191,113,.4)}
+.v-neu{background:rgba(136,150,174,.13);color:var(--muted);border:1px solid var(--line)}
+.v-sell{background:rgba(59,130,246,.15);color:var(--sell2);border:1px solid rgba(59,130,246,.5)}
+.vreason{font-size:12px;color:var(--muted);text-align:center;line-height:1.6;margin-top:6px}
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl td{padding:6px 0;border-bottom:1px solid var(--line)}
+.tbl tr:last-child td{border-bottom:0}
+.tbl td:last-child{text-align:right;font-family:'JetBrains Mono'}
+.tbl td.lab{color:var(--muted)}
+.ctrl{display:flex;align-items:center;gap:10px;margin:9px 0;font-size:12px;color:var(--muted)}
+.ctrl label{width:96px;flex-shrink:0}
+.ctrl input[type=range]{flex:1;accent-color:var(--gold)}
+.ctrl .cv{font-family:'JetBrains Mono';width:52px;text-align:right;color:var(--ink);font-weight:700}
+.warn{margin-top:9px;font-size:11.5px;color:#ffb84d;background:rgba(230,140,30,.08);
+  border:1px solid rgba(230,140,30,.35);border-radius:8px;padding:8px 10px;line-height:1.65}
+.warn+.warn{margin-top:6px}
+.note{font-size:12px;color:var(--muted);line-height:1.7}
+.note b{color:var(--ink)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:9px}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+svg{display:block;width:100%;overflow:visible}
+.bandbar{position:relative;height:13px;border-radius:7px;margin:26px 4px 32px;
+  background:linear-gradient(90deg,#3b82f6 0 30%,#e6b422 30% 70%,#2fbf71 70% 100%);opacity:.85}
+.bandbar .mk{position:absolute;top:-7px;width:3px;height:27px;background:#fff;border-radius:2px;
+  box-shadow:0 0 8px rgba(255,255,255,.85)}
+.bandbar .mklab{position:absolute;top:-25px;transform:translateX(-50%);font-size:10.5px;
+  color:var(--ink);font-weight:700;white-space:nowrap}
+.bandbar .zl{position:absolute;bottom:-19px;font-size:10px;color:var(--faint)}
+.spin{border:2px solid var(--line);border-top-color:var(--gold);border-radius:50%;
+  width:22px;height:22px;animation:sp .7s linear infinite;margin:60px auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--panel2);
+  border:1px solid var(--gold);color:var(--ink);border-radius:9px;padding:10px 18px;font-size:13px;
+  z-index:99;opacity:0;pointer-events:none;transition:opacity .25s}
+.toast.on{opacity:1}
+dialog{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:12px;
+  padding:16px;max-width:640px;width:92vw}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+dialog textarea{width:100%;height:44vh;background:var(--bg);color:var(--ink);border:1px solid var(--line);
+  border-radius:8px;padding:10px;font-family:'JetBrains Mono';font-size:11.5px;resize:vertical}
+::-webkit-scrollbar{width:8px} ::-webkit-scrollbar-thumb{background:#243047;border-radius:4px}
+@media(max-width:1080px){.grid2{grid-template-columns:1fr}}
+@media(max-width:620px){main{padding:14px 12px 50px}.parts th:nth-child(3),.parts td:nth-child(3){display:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="ti">TI</span><h1>SOTP</h1><small>Sum of the Parts</small></div>
+  <div class="searchwrap">
+    <input id="q" type="text" placeholder="종목명 또는 코드 (예: SK, 034730)" autocomplete="off" enterkeyhint="go">
+    <div id="qresults"></div>
+  </div>
+  <div class="hlinks">
+    <a href="/sotp-board.html">SOTP 보드</a>
+    <a href="/fair-value.html">적정주가</a>
+    <a href="/">홈</a>
+  </div>
+</header>
+<main id="main"></main>
+<div class="toast" id="toast"></div>
+<dialog id="jsonDlg">
+  <h3 style="font-size:14px;margin-bottom:10px">부품표 JSON — 스킬 스크립트 입력용</h3>
+  <p class="note" style="margin-bottom:8px">복사해 <code class="mono">parts.json</code>으로 저장한 뒤
+    <code class="mono">python3 sotp.py --parts parts.json</code>으로 3년 할인율 밴드까지 계산할 수 있습니다.</p>
+  <textarea id="jsonTa" readonly></textarea>
+  <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end">
+    <button class="mini" id="jsonCopy">복사</button>
+    <button class="mini" onclick="document.getElementById('jsonDlg').close()">닫기</button>
+  </div>
+</dialog>
+
+<script>
+const API='https://trend-insight-site.sungsangkyung77.workers.dev';
+const EOK=1e8, JO=1e12;
+const TYPE_DISCOUNT={'순수지주':.45,'사업지주':.35,'복합기업':.25,'단일사업':.05};
+const DEP_WARN=.60, MAX_LIQ=.30;
+
+/* ── 유틸 ── */
+const $=s=>document.querySelector(s);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const nz=v=>{const n=parseFloat(v);return isFinite(n)?n:0;};
+function parseKRW(s){
+  if(s==null)return null; if(typeof s==='number')return s;
+  const t=String(s).replace(/[, ]/g,'');
+  const m=t.match(/^(?:([\d.]+)조)?(?:([\d.]+)억)?(?:([\d.]+)만)?$/);
+  if(m&&(m[1]||m[2]||m[3]))return (+(m[1]||0))*JO+(+(m[2]||0))*EOK+(+(m[3]||0))*1e4;
+  const t2=t.replace(/[원배%]/g,''); return /^-?[\d.]+$/.test(t2)?+t2:null;
+}
+function eok(v){
+  if(v==null||!isFinite(v))return '-';
+  const neg=v<0?'-':''; v=Math.abs(v);
+  const jo=Math.floor(v/JO), rem=(v-jo*JO)/EOK;
+  return jo>=1? `${neg}${jo}조 ${rem.toLocaleString('ko',{maximumFractionDigits:0})}억`
+              : `${neg}${(v/EOK).toLocaleString('ko',{maximumFractionDigits:0})}억`;
+}
+const pct=(x,d=1)=>x==null||!isFinite(x)?'-':(x*100).toFixed(d)+'%';
+const won=x=>x==null||!isFinite(x)?'-':Math.round(x).toLocaleString('ko')+'원';
+const sgn=x=>x==null?'':(x>=0?'+':'');
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),1900);}
+function median(a){const s=[...a].sort((x,y)=>x-y);const n=s.length;if(!n)return null;
+  return n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2;}
+function pctl(a,q){const s=[...a].sort((x,y)=>x-y);if(!s.length)return null;
+  const i=clamp(q*(s.length-1),0,s.length-1),lo=Math.floor(i),hi=Math.ceil(i);
+  return lo===hi?s[lo]:s[lo]+(s[hi]-s[lo])*(i-lo);}
+const rankPct=(a,v)=>a.length?a.filter(x=>x<=v).length/a.length:null;
+
+/* ── 부문 잣대 정의 (sotp.py와 동일 규칙) ── */
+const METHODS={
+  mktcap:{label:'시총×지분',fields:[['code','자회사코드','text'],['stake','지분%','num'],['liq_disc','유동성할인%','num']]},
+  ev_ebitda:{label:'EV/EBITDA',fields:[['ebitda','EBITDA(억)','num'],['multiple','배수','num'],['net_debt','부문순차입금(억)','num'],['stake','지분%','num']]},
+  ev_sales:{label:'EV/Sales',fields:[['sales','매출(억)','num'],['multiple','배수','num'],['net_debt','부문순차입금(억)','num'],['stake','지분%','num']]},
+  per:{label:'PER',fields:[['net_income','순이익(억)','num'],['multiple','PER','num'],['stake','지분%','num']]},
+  pbr:{label:'PBR',fields:[['book','장부가(억)','num'],['multiple','PBR','num'],['stake','지분%','num']]},
+  direct:{label:'직접입력',fields:[['value','금액(억)','num'],['stake','지분%','num']]}
+};
+const KINDS={listed_sub:'상장자회사',unlisted_sub:'비상장자회사',segment:'사업부문',asset:'비영업자산',other:'기타'};
+
+/* 부문 1건 가치(원) + 근거 — sotp.py value_part()와 동일 */
+function valuePart(p){
+  const stake=clamp(nz(p.stake==null?100:p.stake)/100,0,1);
+  const liq=clamp(nz(p.liq_disc)/100,0,MAX_LIQ);
+  const nd=nz(p.net_debt)*EOK;
+  let v=0,basis='';
+  switch(p.method){
+    case 'mktcap':{const mc=nz(p._mktcap);v=mc*stake*(1-liq);
+      basis=`시총 ${eok(mc)} × 지분 ${pct(stake)}`+(liq?` × 유동성할인 ${pct(liq)} 차감`:'');break;}
+    case 'ev_ebitda':{const e=nz(p.ebitda)*EOK,m=nz(p.multiple);v=(e*m-nd)*stake;
+      basis=`EBITDA ${eok(e)} × ${m}배`+(nd?` − 순차입금 ${eok(nd)}`:'')+` × 지분 ${pct(stake)}`;break;}
+    case 'ev_sales':{const s=nz(p.sales)*EOK,m=nz(p.multiple);v=(s*m-nd)*stake;
+      basis=`매출 ${eok(s)} × ${m}배`+(nd?` − 순차입금 ${eok(nd)}`:'')+` × 지분 ${pct(stake)}`;break;}
+    case 'per':{const n=nz(p.net_income)*EOK,m=nz(p.multiple);v=n*m*stake;
+      basis=`순이익 ${eok(n)} × PER ${m}배 × 지분 ${pct(stake)}`;break;}
+    case 'pbr':{const b=nz(p.book)*EOK,m=nz(p.multiple);v=b*m*stake;
+      basis=`장부가 ${eok(b)} × PBR ${m}배 × 지분 ${pct(stake)}`;break;}
+    case 'direct':{const x=nz(p.value)*EOK;v=x*stake;
+      basis=`직접 입력 ${eok(x)}`+(stake!==1?` × 지분 ${pct(stake)}`:'');break;}
+  }
+  return {value:v,basis};
+}
+
+/* ── 상태 ── */
+let ST={code:'',name:'',market:'',type:'순수지주',price:0,mcap:0,shares:0,treasury:0,
+        netDebt:0,netDebtBasis:'별도',parts:[],discMode:'auto',discManual:null,band:null,loading:false};
+let qItems=[],qHl=-1;
+
+/* ── 검색 ── */
+const qEl=$('#q'),qBox=$('#qresults');
+function renderQ(){
+  if(!qItems.length){qBox.style.display='none';return;}
+  qBox.innerHTML=qItems.map((x,i)=>`<div class="qi ${i===qHl?'hl':''}" data-i="${i}">
+    <span class="nm">${x.name}</span><span class="cd">${x.code}</span></div>`).join('');
+  qBox.style.display='block';
+  qBox.querySelectorAll('.qi').forEach(el=>el.onclick=()=>pickQ(+el.dataset.i));
+}
+const hideQ=()=>{qBox.style.display='none';qItems=[];qHl=-1;};
+let qT;
+qEl.addEventListener('input',()=>{clearTimeout(qT);const v=qEl.value.trim();
+  if(v.length<1){hideQ();return;}
+  qT=setTimeout(async()=>{
+    try{const r=await(await fetch(`${API}/api/cockpit/search?q=${encodeURIComponent(v)}`)).json();
+      qItems=r.data||[];qHl=qItems.length?0:-1;renderQ();}catch(e){hideQ();}
+  },200);});
+qEl.addEventListener('keydown',e=>{
+  if(!qItems.length)return;
+  if(e.key==='ArrowDown'){qHl=(qHl+1)%qItems.length;renderQ();e.preventDefault();}
+  else if(e.key==='ArrowUp'){qHl=(qHl-1+qItems.length)%qItems.length;renderQ();e.preventDefault();}
+  else if(e.key==='Enter'){if(qHl>=0)pickQ(qHl);e.preventDefault();}
+  else if(e.key==='Escape')hideQ();});
+document.addEventListener('click',e=>{if(!e.target.closest('.searchwrap'))hideQ();});
+function pickQ(i){const x=qItems[i];if(!x)return;qEl.value='';hideQ();load(x.code,x.name,x.market);}
+
+/* ── 시세 조회 ── */
+const quoteCache={};
+async function fetchQuote(code){
+  if(quoteCache[code])return quoteCache[code];
+  let price=null,mcap=null,name=code;
+  try{const a=await(await fetch(`${API}/api/cockpit/analyze/${code}`)).json();
+    if(a.ok){price=parseKRW((a.data.quote||{}).price);name=a.data.name||name;}}catch(e){}
+  try{const f=await(await fetch(`${API}/api/masters/fund/${code}`)).json();
+    if(f.ok){const inf=f.data.info||{};mcap=parseKRW(inf.marketValue);
+      price=price||parseKRW(inf.lastClosePrice);name=f.data.name||name;}}catch(e){}
+  const o={code,name,price,mcap,shares:(mcap&&price)?mcap/price:null};
+  quoteCache[code]=o;return o;
+}
+const seriesCache={};
+async function fetchSeries(code){   /* [{d,mcap}] 120봉 근사 */
+  if(seriesCache[code])return seriesCache[code];
+  try{
+    const a=await(await fetch(`${API}/api/cockpit/analyze/${code}`)).json();
+    if(!a.ok)return seriesCache[code]=[];
+    const q=await fetchQuote(code);
+    if(!q.shares)return seriesCache[code]=[];
+    const ch=a.data.chart;
+    return seriesCache[code]=ch.date.map((d,i)=>({d,mcap:ch.close[i]*q.shares}));
+  }catch(e){return seriesCache[code]=[];}
+}
+
+/* ── 계산 (sotp.py run()과 동일 규칙) ── */
+function compute(){
+  const rows=ST.parts.map(p=>{const r=valuePart(p);return {...p,value:r.value,basisTxt:r.basis};});
+  const gross=rows.reduce((s,r)=>s+r.value,0);
+  rows.forEach(r=>r.weight=gross?r.value/gross:null);
+  const listedVal=rows.filter(r=>r.method==='mktcap').reduce((s,r)=>s+r.value,0);
+  const staticVal=gross-listedVal;
+  const netDebt=nz(ST.netDebt)*EOK;
+  const nav=gross-netDebt;
+  const sharesOut=Math.max(nz(ST.shares)-nz(ST.treasury),1);
+  const dep=gross?listedVal/gross:null;
+
+  let disc,dsrc;
+  if(ST.discMode==='manual'&&ST.discManual!=null){disc=ST.discManual;dsrc='수동 조정';}
+  else if(ST.band){disc=ST.band.median;dsrc=`과거 밴드 중앙값(${ST.band.n}일)`;}
+  else {disc=TYPE_DISCOUNT[ST.type]??.30;dsrc=`유형 표준값(${ST.type})`;}
+  disc=clamp(disc,0,.80);
+
+  const tgtMcap=nav*(1-disc), tgtPrice=tgtMcap/sharesOut;
+  const upside=ST.price?tgtPrice/ST.price-1:null;
+  const implied=(nav>0&&ST.mcap)?1-ST.mcap/nav:null;
+  const rank=ST.band?ST.band.rank:null;
+
+  const scen={};
+  const trio=ST.band?[['강세',ST.band.p25],['기본',disc],['약세',ST.band.p75]]
+                    :[['강세',disc-.10],['기본',disc],['약세',disc+.10]];
+  trio.forEach(([k,dv])=>{dv=clamp(dv,0,.8);const tp=nav*(1-dv)/sharesOut;
+    scen[k]={discount:dv,price:tp,upside:ST.price?tp/ST.price-1:null};});
+
+  const sens=[];
+  if(nav&&ST.price){
+    const tp5=nav*(1-clamp(disc-.05,0,.8))/sharesOut;
+    sens.push({lab:'할인율 −5%p 축소',price:tp5,delta:tgtPrice?tp5/tgtPrice-1:null});
+    const big=rows.filter(r=>r.method==='mktcap').sort((a,b)=>b.value-a.value)[0];
+    if(big&&big.value)[[.10,'+10%'],[-.10,'−10%']].forEach(([s,l])=>{
+      const tp=(nav+big.value*s)*(1-disc)/sharesOut;
+      sens.push({lab:`${big.name} ${l}`,price:tp,delta:tgtPrice?tp/tgtPrice-1:null});});
+  }
+
+  const dbl=rows.some(r=>r.method==='mktcap')&&rows.some(r=>r.basis==='연결');
+  const warnings=[];
+  if(dep!=null&&dep>=DEP_WARN)warnings.push(`자회사 시총 의존 <b>${pct(dep)}</b> — 목표주가가 사실상 상장자회사 주가의 함수다. 이 SOTP는 독립 논거가 아니라 자회사에 대한 뷰의 파생물이며, 자회사가 빠지면 목표가도 자동으로 내려간다.`);
+  if(dbl)warnings.push('더블카운팅 의심 — 기준이 <b>연결</b>인 사업부문과 자회사 지분가치가 함께 계상됐다. 사업부문은 별도 기준으로 잡거나 해당 자회사를 제외할 것.');
+  if(ST.netDebtBasis!=='별도')warnings.push(`순차입금 기준이 <b>${ST.netDebtBasis}</b> — 연결 순차입금은 부문별 순차입금과 이중 차감된다. 지주 별도 기준 권고.`);
+  if(!ST.band)warnings.push(`과거 할인율 밴드 없음 — 유형 표준값 ${pct(disc)}은 종목 고유 이력이 아닌 관행치다. 결론의 근거로 삼지 말 것.`);
+  else warnings.push(`밴드 신뢰도 <b>낮음</b> — 웹앱은 120봉(약 6개월) 근사다. 3년 밴드는 스킬 스크립트(<code class="mono">sotp.py</code>, pykrx)로 재산출 권고.`);
+  if(nav<=0)warnings.push('NAV가 0 이하 — 부문 가치 합계보다 순차입금이 크다. SOTP 적용 대상이 아니다.');
+  const noBasis=rows.filter(r=>!(r.note||'').trim()).map(r=>r.name);
+  if(noBasis.length)warnings.push(`근거(note) 미기재: ${noBasis.slice(0,6).join(', ')} — 근거 없는 멀티플은 SOTP를 '원하는 답이 나오는 도구'로 만든다.`);
+
+  let vd='관망',vr='NAV 근처 — SOTP상 뚜렷한 괴리 없음',vc='v-neu';
+  const hi=rank!=null&&rank>=.7, lo=rank!=null&&rank<=.3;
+  if(upside==null){vd='관망';vr='산출 불가';}
+  else if(upside>=.30&&hi){vd='매수검토';vr='NAV 대비 저평가 + 할인율 밴드 상단(정상화 여지)';vc='v-buy';}
+  else if(upside>=.30&&lo){vd='관심';vr='상승여력은 있으나 할인율이 이미 밴드 하단 — 촉매 없이는 추가 축소 어려움';vc='v-watch';}
+  else if(upside>=.15){vd='관심';vr='완만한 저평가 — 촉매 확인 후 판단';vc='v-watch';}
+  else if(upside<=-.15){vd='회피';vr='NAV 대비 고평가 — 부문 멀티플 가정 재점검 필요';vc='v-sell';}
+
+  return {rows,gross,listedVal,staticVal,netDebt,nav,sharesOut,dep,disc,dsrc,tgtMcap,tgtPrice,
+          upside,implied,rank,scen,sens,warnings,vd,vr,vc,navPS:nav/sharesOut};
+}
+
+/* ── 할인율 밴드 (클라이언트 근사) ── */
+async function computeBand(){
+  const subs=ST.parts.filter(p=>p.method==='mktcap'&&p.code&&p.code.length===6);
+  const parent=await fetchSeries(ST.code);
+  if(!parent.length){ST.band=null;return;}
+  const subSeries={};
+  for(const p of subs){const s=await fetchSeries(p.code); if(s.length)subSeries[p.code]=Object.fromEntries(s.map(x=>[x.d,x.mcap]));}
+  let dates=parent.map(x=>x.d);
+  Object.values(subSeries).forEach(m=>{dates=dates.filter(d=>m[d]!=null);});
+  if(dates.length<40){ST.band=null;return;}
+  const pm=Object.fromEntries(parent.map(x=>[x.d,x.mcap]));
+  const staticVal=ST.parts.filter(p=>p.method!=='mktcap').reduce((s,p)=>s+valuePart(p).value,0);
+  const nd=nz(ST.netDebt)*EOK;
+  const series=[];
+  dates.forEach(d=>{
+    let nav=staticVal-nd;
+    subs.forEach(p=>{const m=subSeries[p.code];if(!m)return;
+      const stake=clamp(nz(p.stake==null?100:p.stake)/100,0,1),liq=clamp(nz(p.liq_disc)/100,0,MAX_LIQ);
+      nav+=m[d]*stake*(1-liq);});
+    if(nav>0)series.push({d,v:clamp(1-pm[d]/nav,-1,.99)});
+  });
+  if(series.length<40){ST.band=null;return;}
+  const vals=series.map(x=>x.v);
+  const mean=vals.reduce((a,b)=>a+b,0)/vals.length;
+  const sd=Math.sqrt(vals.reduce((a,b)=>a+(b-mean)**2,0)/vals.length);
+  ST.band={median:median(vals),mean,sd,p25:pctl(vals,.25),p50:pctl(vals,.5),p75:pctl(vals,.75),
+    min:Math.min(...vals),max:Math.max(...vals),current:vals[vals.length-1],
+    rank:rankPct(vals,vals[vals.length-1]),n:vals.length,from:series[0].d,to:series[series.length-1].d,series};
+}
+
+/* ── 렌더 ── */
+function renderEmpty(){
+  $('#main').innerHTML=`<div class="empty">
+    <div class="big">🧩</div>
+    <h2>부분합산 목표가 (Sum of the Parts)</h2>
+    <p>하나의 PER로 설명되지 않는 회사 — 지주회사·복합기업·분할 스토리 종목을<br>
+       사업부·자회사·비영업자산으로 쪼개 각기 다른 잣대로 평가한 뒤 합산합니다.</p>
+    <div class="eq">
+      Σ 부문가치 <span style="color:var(--faint)">(사업부 + 상장자회사 + 비상장자회사 + 비영업자산)</span><br>
+      − 지주 별도 순차입금<br>
+      = <b>NAV</b><br>
+      NAV × (1 − 지주할인율) ÷ 유통주식수 = <b>목표주가</b>
+    </div>
+    <p style="color:var(--faint)">상단 검색창에 종목을 입력하면 시총·주식수를 자동으로 불러오고,<br>
+       부품표를 채우면 실시간으로 목표주가가 계산됩니다.<br>
+       할인율은 그 종목의 <b style="color:var(--gold2)">과거 실제 할인율 밴드</b>에서 자동으로 정해집니다.</p>
+  </div>`;
+}
+
+function render(){
+  if(!ST.code){renderEmpty();return;}
+  if(ST.loading){$('#main').innerHTML='<div class="spin"></div>';return;}
+  const C=compute();
+  const bandHTML=ST.band?bandBlock(C):'<div class="note">과거 할인율 밴드를 만들 수 없습니다 — 상장자회사 부문이 없거나 시계열이 부족합니다. 유형 표준값을 적용합니다.</div>';
+
+  $('#main').innerHTML=`
+  <div class="dhead">
+    <span class="nm">${ST.name}</span><span class="cd">${ST.code}</span>
+    <select id="typeSel" class="tp" style="background:var(--panel2);border:1px solid var(--line);color:var(--gold2);border-radius:5px;padding:3px 6px;font-size:11px">
+      ${Object.keys(TYPE_DISCOUNT).map(t=>`<option ${t===ST.type?'selected':''}>${t}</option>`).join('')}
+    </select>
+    <span class="px">${won(ST.price)}<small>시총 ${eok(ST.mcap)}</small></span>
+  </div>
+  <div class="grid2">
+    <div>
+      <div class="box">
+        <h3>부품표
+          <span class="rt">
+            <button class="mini" id="btnSave">저장</button>
+            <button class="mini" id="btnJson">JSON</button>
+            <button class="mini" id="btnClear">비우기</button>
+          </span>
+        </h3>
+        <table class="parts"><thead><tr>
+          <th style="width:24%">부문</th><th style="width:13%">잣대</th><th>입력</th>
+          <th style="width:13%;text-align:right">가치</th><th style="width:7%;text-align:right">비중</th><th style="width:22px"></th>
+        </tr></thead><tbody id="partsBody">${C.rows.map(rowHTML).join('')}</tbody>
+        <tfoot>
+          <tr class="sumrow"><td colspan="3">합계 (Gross)</td>
+            <td class="val">${eok(C.gross)}</td><td class="wt">100%</td><td></td></tr>
+          <tr class="sumrow"><td colspan="3">(−) 지주 순차입금
+            <select id="ndBasis" style="background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:5px;font-size:10.5px;padding:1px 4px;margin-left:5px">
+              <option ${ST.netDebtBasis==='별도'?'selected':''}>별도</option>
+              <option ${ST.netDebtBasis==='연결'?'selected':''}>연결</option></select>
+            <input id="ndInput" class="mono" style="width:110px;margin-left:8px;display:inline-block" value="${ST.netDebt}" title="억원">
+            <span style="font-size:10.5px;color:var(--faint)">억원</span></td>
+            <td class="val">${eok(-C.netDebt)}</td><td></td><td></td></tr>
+          <tr class="sumrow nav"><td colspan="3">= NAV (순자산가치)</td>
+            <td class="val">${eok(C.nav)}</td><td class="wt">주당 ${won(C.navPS)}</td><td></td></tr>
+        </tfoot></table>
+        <div class="addrow">
+          <button class="mini" data-add="listed_sub">+ 상장자회사</button>
+          <button class="mini" data-add="unlisted_sub">+ 비상장자회사</button>
+          <button class="mini" data-add="segment">+ 사업부문</button>
+          <button class="mini" data-add="asset">+ 비영업자산</button>
+        </div>
+        <div class="legend">
+          ${Object.entries(KINDS).map(([k,v])=>`<span><i class="k-${k}"></i>${v}</span>`).join('')}
+        </div>
+      </div>
+
+      <div class="box">
+        <h3>부문 구성 (워터폴)</h3>
+        ${waterfall(C)}
+      </div>
+
+      <div class="box">
+        <h3>지주할인율 밴드 <span class="rt" style="color:var(--faint);font-size:10px;text-transform:none;letter-spacing:0">${ST.band?`${ST.band.from} ~ ${ST.band.to} · ${ST.band.n}일 · 신뢰도 낮음(120봉 근사)`:''}</span></h3>
+        ${bandHTML}
+      </div>
+    </div>
+
+    <div>
+      <div class="box">
+        <h3>목표가</h3>
+        <div class="kpi">
+          <div class="cap">목표주가 · 할인율 ${pct(C.disc)}</div>
+          <div class="num">${won(C.tgtPrice)}</div>
+          <div class="sub">현재가 대비 <b class="${C.upside>=0?'up':'down'}">${sgn(C.upside)}${pct(C.upside)}</b></div>
+        </div>
+        <div class="vbadge ${C.vc}">${C.vd}</div>
+        <div class="vreason">${C.vr}</div>
+        <div class="ctrl" style="margin-top:14px">
+          <label>지주할인율</label>
+          <input type="range" id="discSl" min="0" max="70" step="0.5" value="${(C.disc*100).toFixed(1)}">
+          <span class="cv">${pct(C.disc)}</span>
+        </div>
+        <div style="display:flex;gap:6px;justify-content:flex-end;margin-bottom:8px">
+          <button class="mini ${ST.discMode==='auto'?'on':''}" id="btnAuto">자동(밴드 중앙값)</button>
+        </div>
+        <div class="note" style="font-size:11.5px;color:var(--faint)">적용 근거 — ${C.dsrc}</div>
+        <table class="tbl" style="margin-top:12px">
+          <tr><td class="lab">NAV</td><td>${eok(C.nav)}</td></tr>
+          <tr><td class="lab">목표시총</td><td>${eok(C.tgtMcap)}</td></tr>
+          <tr><td class="lab">현재 시총</td><td>${eok(ST.mcap)}</td></tr>
+          <tr><td class="lab">현재 내재할인율</td><td>${pct(C.implied)}</td></tr>
+          <tr><td class="lab">밴드 위치</td><td>${ST.band?`${pct(C.rank,0)} 분위 · ${C.rank>=.7?'상단(과도 할인)':C.rank<=.3?'하단(이미 좁혀짐)':'중앙'}`:'-'}</td></tr>
+          <tr><td class="lab">유통주식수</td><td>${Math.round(C.sharesOut).toLocaleString('ko')}주</td></tr>
+        </table>
+      </div>
+
+      <div class="box">
+        <h3>시나리오</h3>
+        <table class="tbl">
+          ${['강세','기본','약세'].map(k=>{const s=C.scen[k];return `<tr>
+            <td class="lab">${k} <span style="color:var(--faint);font-size:11px">할인 ${pct(s.discount)}</span></td>
+            <td>${won(s.price)} <span class="${s.upside>=0?'up':'down'}" style="font-size:11.5px">${sgn(s.upside)}${pct(s.upside)}</span></td>
+          </tr>`;}).join('')}
+        </table>
+      </div>
+
+      ${C.sens.length?`<div class="box"><h3>감응도</h3><table class="tbl">
+        ${C.sens.map(s=>`<tr><td class="lab">${s.lab}</td>
+          <td>${won(s.price)} <span class="${s.delta>=0?'up':'down'}" style="font-size:11.5px">${sgn(s.delta)}${pct(s.delta)}</span></td></tr>`).join('')}
+      </table></div>`:''}
+
+      <div class="box">
+        <h3>경고</h3>
+        ${C.warnings.length?C.warnings.map(w=>`<div class="warn">⚠ ${w}</div>`).join(''):'<div class="note">특이사항 없음</div>'}
+        <div class="note" style="margin-top:12px;font-size:11.5px;color:var(--faint);line-height:1.75">
+          SOTP는 <b>멀티플·할인율 두 가정의 합</b>이다. 한국 지주사 할인율은 배당·자사주 소각·자회사 상장·
+          지배구조 개선 같은 <b>실제 촉매 없이는 좁혀지지 않는다</b> — 촉매 없는 NAV 할인은 밸류 트랩으로 본다.
+          참고치이며 매수/매도 지시가 아니다.
+        </div>
+      </div>
+    </div>
+  </div>`;
+  bind(C);
+}
+
+function rowHTML(r){
+  const i=r._i;
+  const spec=METHODS[r.method]||METHODS.direct;
+  const fields=spec.fields.map(([k,lab,tp])=>{
+    const v=r[k]==null?(k==='stake'?100:''):r[k];
+    return `<div class="fw"><label>${lab}</label>
+      <input class="${tp==='num'?'mono':''}" data-i="${i}" data-k="${k}" value="${v}"></div>`;}).join('');
+  const isSeg=r.kind==='segment';
+  return `<tr>
+    <td><div class="namecell"><i class="kd k-${r.kind}"></i>
+      <input data-i="${i}" data-k="name" value="${(r.name||'').replace(/"/g,'&quot;')}"></div>
+      ${isSeg?`<div style="margin-top:4px"><select data-i="${i}" data-k="basis" style="font-size:10.5px;padding:2px 4px">
+        <option ${r.basis==='별도'?'selected':''}>별도</option><option ${r.basis==='연결'?'selected':''}>연결</option></select>
+        <span style="font-size:9.5px;color:var(--faint);margin-left:4px">기준</span></div>`:''}</td>
+    <td><select data-i="${i}" data-k="method">
+      ${Object.entries(METHODS).map(([k,m])=>`<option value="${k}" ${k===r.method?'selected':''}>${m.label}</option>`).join('')}
+    </select></td>
+    <td><div class="fieldrow">${fields}</div>
+      <input class="noteinput" data-i="${i}" data-k="note" placeholder="근거 — 어느 피어의 몇 배를 왜 썼는지" value="${(r.note||'').replace(/"/g,'&quot;')}"></td>
+    <td class="val">${eok(r.value)}<div style="font-size:9.5px;color:var(--faint);font-weight:400;font-family:'Pretendard'">${r.basisTxt.slice(0,40)}</div></td>
+    <td class="wt">${pct(r.weight)}</td>
+    <td><span class="del" data-del="${i}">×</span></td>
+  </tr>`;
+}
+
+function waterfall(C){
+  const rows=[...C.rows].sort((a,b)=>b.value-a.value);
+  const W=100,items=[...rows.map(r=>({n:r.name,v:r.value,k:r.kind})),
+    {n:'순차입금',v:-C.netDebt,k:'debt'}];
+  const total=Math.max(C.gross,1);
+  const H=items.length*27+34;
+  let acc=0,bars='';
+  items.forEach((it,i)=>{
+    const y=i*27+8;
+    const w=Math.abs(it.v)/total*W;
+    const x=it.v>=0?acc/total*W:(acc+it.v)/total*W;
+    const col=it.k==='debt'?'#f0454e':it.k==='listed_sub'?'var(--sub)':it.k==='unlisted_sub'?'var(--unl)'
+      :it.k==='segment'?'var(--seg)':it.k==='asset'?'var(--ast)':'var(--muted)';
+    bars+=`<rect x="${x}%" y="${y}" width="${Math.max(w,0.4)}%" height="17" rx="3" fill="${col}" opacity=".85"></rect>
+      <text x="0.6%" y="${y+12.5}" fill="#8896ae" font-size="11">${it.n.slice(0,14)}</text>
+      <text x="99.4%" y="${y+12.5}" fill="#e9eef7" font-size="11" text-anchor="end"
+        font-family="JetBrains Mono">${eok(it.v)}</text>`;
+    acc+=it.v;
+  });
+  const ny=items.length*27+16;
+  bars+=`<line x1="0" y1="${ny-3}" x2="100%" y2="${ny-3}" stroke="#26314a"></line>
+    <text x="0.6%" y="${ny+13}" fill="#f2ca4c" font-size="12" font-weight="700">NAV</text>
+    <text x="99.4%" y="${ny+13}" fill="#f2ca4c" font-size="12" font-weight="700" text-anchor="end"
+      font-family="JetBrains Mono">${eok(C.nav)}</text>
+    <rect x="0" y="${ny+18}" width="${Math.max(C.nav/total*W,0)}%" height="10" rx="3" fill="#e6b422" opacity=".55"></rect>
+    <rect x="0" y="${ny+31}" width="${Math.max(C.tgtMcap/total*W,0)}%" height="10" rx="3" fill="#E8621B" opacity=".6"></rect>
+    <text x="0.6%" y="${ny+55}" fill="#f08a4f" font-size="11">목표시총 (할인 ${pct(C.disc)} 적용) ${eok(C.tgtMcap)}</text>
+    <rect x="0" y="${ny+44}" width="${Math.max(ST.mcap/total*W,0)}%" height="10" rx="3" fill="#8896ae" opacity=".45"></rect>
+    <text x="99.4%" y="${ny+55}" fill="#8896ae" font-size="11" text-anchor="end">현재 시총 ${eok(ST.mcap)}</text>`;
+  return `<svg viewBox="0 0 100 ${H+62}" style="height:${H+62}px" preserveAspectRatio="none">${bars}</svg>`;
+}
+
+function bandBlock(C){
+  const b=ST.band;
+  const lo=Math.min(b.min,b.current),hi=Math.max(b.max,b.current),span=(hi-lo)||1;
+  const P=v=>clamp((v-lo)/span,0,1)*100;
+  // 밴드 바(왼쪽=할인 작음, 오른쪽=할인 큼)
+  const bar=`<div class="bandbar" style="background:linear-gradient(90deg,#2fbf71 0 ${P(b.p25)}%,#e6b422 ${P(b.p25)}% ${P(b.p75)}%,#3b82f6 ${P(b.p75)}% 100%)">
+    <div class="mk" style="left:${P(b.current)}%"></div>
+    <div class="mklab" style="left:${P(b.current)}%">현재 ${pct(b.current)}</div>
+    <div class="zl" style="left:0">할인 축소 ${pct(lo)}</div>
+    <div class="zl" style="right:0">할인 확대 ${pct(hi)}</div>
+  </div>`;
+  // 시계열 스파크라인
+  const s=b.series,n=s.length,W=100,H=64;
+  const vs=s.map(x=>x.v),mn=Math.min(...vs),mx=Math.max(...vs),sp=(mx-mn)||1;
+  const pts=s.map((x,i)=>`${(i/(n-1)*W).toFixed(2)},${(H-(x.v-mn)/sp*H).toFixed(2)}`).join(' ');
+  const medY=H-(b.median-mn)/sp*H;
+  const spark=`<svg viewBox="0 0 100 ${H}" style="height:${H}px" preserveAspectRatio="none">
+    <line x1="0" y1="${medY}" x2="100" y2="${medY}" stroke="#e6b422" stroke-width=".5" stroke-dasharray="2 2" opacity=".7"></line>
+    <polyline points="${pts}" fill="none" stroke="#7c9cf5" stroke-width=".8" vector-effect="non-scaling-stroke"></polyline>
+  </svg>
+  <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--faint);margin-top:3px">
+    <span>${b.from}</span><span style="color:var(--gold)">— 중앙값 ${pct(b.median)}</span><span>${b.to}</span></div>`;
+  const pos=C.rank>=.7?'상단(과도 할인 — 정상화 여지)':C.rank<=.3?'하단(이미 좁혀짐 — 추가 축소엔 촉매 필요)':'중앙(뚜렷한 괴리 없음)';
+  return bar+spark+`
+    <table class="tbl" style="margin-top:12px">
+      <tr><td class="lab">평균 · 표준편차</td><td>${pct(b.mean)} ± ${pct(b.sd)}</td></tr>
+      <tr><td class="lab">25% · 중앙 · 75%</td><td>${pct(b.p25)} · ${pct(b.p50)} · ${pct(b.p75)}</td></tr>
+      <tr><td class="lab">최저 ~ 최고</td><td>${pct(b.min)} ~ ${pct(b.max)}</td></tr>
+      <tr><td class="lab">현재 위치</td><td>${pct(b.rank,0)} 분위</td></tr>
+    </table>
+    <div class="note" style="margin-top:10px">밴드 <b>${pos}</b>.
+      할인율 밴드 위치가 SOTP의 실질 결론이다 — 목표가와 현재가의 괴리보다,
+      그 괴리가 <b>과거 대비 이례적인지</b>가 매매 판단의 근거다.</div>`;
+}
+
+/* ── 이벤트 바인딩 ── */
+function bind(C){
+  $('#partsBody').querySelectorAll('input,select').forEach(el=>{
+    const i=+el.dataset.i,k=el.dataset.k;
+    const ev=el.tagName==='SELECT'?'change':'input';
+    el.addEventListener(ev,async e=>{
+      const p=ST.parts[i];if(!p)return;
+      p[k]=e.target.value;
+      if(k==='method'){p.kind=p.method==='mktcap'?'listed_sub':p.kind==='listed_sub'?'unlisted_sub':p.kind;save();render();return;}
+      if(k==='code'&&/^\d{6}$/.test(e.target.value)){
+        const q=await fetchQuote(e.target.value);
+        p._mktcap=q.mcap||0; if(!p.name||/^자회사|^TODO/.test(p.name))p.name=q.name;
+        seriesCache[e.target.value]=null; await computeBand(); save(); render(); return;}
+      if(k==='stake'||k==='liq_disc'||k==='code'){clearTimeout(window._bT);window._bT=setTimeout(async()=>{await computeBand();save();render();},400);}
+      save(); refreshNumbers();
+    });
+  });
+  $('#partsBody').querySelectorAll('[data-del]').forEach(el=>el.onclick=async()=>{
+    ST.parts.splice(+el.dataset.del,1);reindex();await computeBand();save();render();});
+  document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.add;
+    ST.parts.push({kind:k,name:KINDS[k],method:k==='listed_sub'?'mktcap':k==='asset'?'direct':'ev_ebitda',
+      stake:100,liq_disc:0,multiple:'',note:''});
+    reindex();save();render();});
+  const nd=$('#ndInput');
+  nd.addEventListener('input',e=>{ST.netDebt=nz(e.target.value);save();refreshNumbers();});
+  nd.addEventListener('change',async()=>{await computeBand();render();});
+  $('#ndBasis').onchange=e=>{ST.netDebtBasis=e.target.value;save();render();};
+  $('#typeSel').onchange=e=>{ST.type=e.target.value;save();render();};
+  const sl=$('#discSl');
+  sl.addEventListener('input',e=>{ST.discMode='manual';ST.discManual=+e.target.value/100;refreshNumbers();
+    sl.parentElement.querySelector('.cv').textContent=pct(ST.discManual);});
+  sl.addEventListener('change',()=>{save();render();});
+  $('#btnAuto').onclick=()=>{ST.discMode='auto';ST.discManual=null;save();render();};
+  $('#btnSave').onclick=()=>{save();toast('이 브라우저에 부품표를 저장했습니다');};
+  $('#btnClear').onclick=()=>{if(confirm('부품표를 비울까요?')){ST.parts=[];ST.netDebt=0;save();render();}};
+  $('#btnJson').onclick=()=>{$('#jsonTa').value=JSON.stringify(exportParts(),null,1);$('#jsonDlg').showModal();};
+}
+$('#jsonCopy').onclick=()=>{const t=$('#jsonTa');t.select();document.execCommand('copy');toast('복사했습니다');};
+
+/* 숫자만 빠르게 갱신(입력 중 포커스 유지) */
+function refreshNumbers(){
+  const C=compute();
+  const body=$('#partsBody');
+  [...body.rows].forEach((tr,i)=>{
+    const r=C.rows[i];if(!r)return;
+    tr.querySelector('.val').firstChild.textContent=eok(r.value);
+    tr.querySelector('.wt').textContent=pct(r.weight);
+  });
+  const tf=body.parentElement.tFoot.rows;
+  tf[0].cells[1].textContent=eok(C.gross);
+  tf[1].cells[1].textContent=eok(-C.netDebt);
+  tf[2].cells[1].textContent=eok(C.nav);
+  tf[2].cells[2].textContent='주당 '+won(C.navPS);
+  const kpi=document.querySelector('.kpi');
+  kpi.querySelector('.cap').textContent=`목표주가 · 할인율 ${pct(C.disc)}`;
+  kpi.querySelector('.num').textContent=won(C.tgtPrice);
+  kpi.querySelector('.sub').innerHTML=`현재가 대비 <b class="${C.upside>=0?'up':'down'}">${sgn(C.upside)}${pct(C.upside)}</b>`;
+}
+function reindex(){ST.parts.forEach((p,i)=>p._i=i);}
+
+/* ── 저장/복원 ── */
+const LSKEY=c=>`sotp:${c}`;
+function exportParts(){
+  return {code:ST.code,name:ST.name,market:ST.market,date:new Date().toISOString().slice(0,10),
+    type:ST.type,price:ST.price,mcap:ST.mcap,shares:Math.round(ST.shares),treasury:nz(ST.treasury),
+    net_debt:nz(ST.netDebt)*EOK,net_debt_basis:ST.netDebtBasis,
+    parts:ST.parts.map(p=>{
+      const o={kind:p.kind,name:p.name,method:p.method,stake:clamp(nz(p.stake==null?100:p.stake)/100,0,1)};
+      if(p.code)o.code=p.code;
+      if(p.method==='mktcap')o.liq_disc=clamp(nz(p.liq_disc)/100,0,MAX_LIQ);
+      ['ebitda','sales','net_income','book','value','net_debt'].forEach(k=>{if(p[k]!==''&&p[k]!=null)o[k]=nz(p[k])*EOK;});
+      if(p.multiple!==''&&p.multiple!=null)o.multiple=nz(p.multiple);
+      if(p.basis)o.basis=p.basis;
+      o.note=p.note||'';
+      return o;}),
+    discount:{mode:ST.discMode,manual:ST.discManual}};
+}
+function save(){
+  try{localStorage.setItem(LSKEY(ST.code),JSON.stringify(
+    {type:ST.type,netDebt:ST.netDebt,netDebtBasis:ST.netDebtBasis,treasury:ST.treasury,
+     parts:ST.parts,discMode:ST.discMode,discManual:ST.discManual}));}catch(e){}
+}
+function restore(code){
+  try{const raw=localStorage.getItem(LSKEY(code));if(!raw)return false;
+    const d=JSON.parse(raw);
+    ST.type=d.type||ST.type;ST.netDebt=d.netDebt||0;ST.netDebtBasis=d.netDebtBasis||'별도';
+    ST.treasury=d.treasury||0;ST.parts=d.parts||[];ST.discMode=d.discMode||'auto';
+    ST.discManual=d.discManual??null;reindex();return true;}catch(e){return false;}
+}
+
+/* 보드에 게시된 분석이 있으면 부품표로 불러오기 */
+async function tryBoard(code){
+  try{
+    const r=await(await fetch('/data/sotp.json?t='+Date.now())).json();
+    const rec=(r||[]).filter(x=>x.code===code).sort((a,b)=>b.date<a.date?-1:1)[0];
+    if(!rec||!rec.parts)return false;
+    if(!confirm(`보드에 ${rec.date} 분석 기록이 있습니다. 부품표를 불러올까요?`))return false;
+    ST.type=rec.type||ST.type;ST.netDebt=(rec.net_debt||0)/EOK;ST.netDebtBasis=rec.net_debt_basis||'별도';
+    ST.parts=rec.parts.map(p=>{
+      const raw=p.raw||{};
+      const o={kind:p.kind,name:p.name,code:p.code,method:p.method,
+        stake:(p.stake??1)*100,liq_disc:(p.liq_disc||0)*100,basis:p.basis_type||p.basis,
+        multiple:raw.multiple??'',note:p.note||''};
+      ['ebitda','sales','net_income','book','value','net_debt'].forEach(k=>{
+        if(raw[k]!=null)o[k]=raw[k]/EOK;});
+      return o;});
+    reindex();return true;
+  }catch(e){return false;}
+}
+
+/* ── 로드 ── */
+async function load(code,name,market){
+  ST={...ST,code,name:name||code,market:market||'',parts:[],netDebt:0,band:null,loading:true};
+  render();
+  const q=await fetchQuote(code);
+  ST.name=q.name||ST.name;ST.price=q.price||0;ST.mcap=q.mcap||0;ST.shares=q.shares||0;
+  if(!restore(code))await tryBoard(code);
+  for(const p of ST.parts){if(p.method==='mktcap'&&p.code){const s=await fetchQuote(p.code);p._mktcap=s.mcap||0;}}
+  reindex();
+  await computeBand();
+  ST.loading=false;
+  history.replaceState(null,'',`?code=${code}`);
+  document.title=`${ST.name} SOTP · 부분합산 목표가`;
+  render();
+}
+
+const p0=new URLSearchParams(location.search).get('code');
+if(p0)load(p0); else renderEmpty();
+</script>
+</body>
+</html>
