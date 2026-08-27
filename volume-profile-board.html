@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>매물대 보드 — Trend Insight</title>
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--card2:#1c202a;--line:#252a34;--txt:#e6e9ef;--sub:#9aa4b2;--faint:#5d6b7c;
+        --core:#12b886;--major:#3e8ef7;--minor:#6b7a8f;--res:#e5484d;--sup:#12b886;--warn:#f5a524;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+  header{padding:22px 18px 8px;max-width:1040px;margin:0 auto}
+  h1{font-size:21px;margin:0 0 4px}
+  h2{font-size:15px;margin:22px 0 8px}
+  .sub{color:var(--sub);font-size:13px;line-height:1.6}
+  .sub a{color:var(--core)}
+  .wrap{max-width:1040px;margin:0 auto;padding:12px 18px 60px}
+  select{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px}
+  .ctrl{margin:10px 0 2px;font-size:13px;color:var(--sub);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px;margin-bottom:14px}
+  .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .nm{font-size:16px;font-weight:700}
+  .code{color:var(--faint);font-size:12px;font-weight:400;margin-left:6px}
+  .badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:800;color:#0b0d10}
+  .gb{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:800;color:#0b0d10}
+  .kv{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:11px;font-size:12px;color:var(--sub)}
+  .kv b{color:var(--txt);font-weight:600}
+  .bar{position:relative;height:11px;background:#0c0e12;border-radius:6px;overflow:hidden;margin-top:6px;display:flex}
+  .bar i{display:block;height:100%}
+  .blbl{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-top:5px}
+  .reason{margin-top:10px;font-size:12.5px;line-height:1.65;color:var(--txt);border-top:1px solid var(--line);padding-top:9px}
+  .tag{display:inline-block;font-size:10.5px;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--sub);margin-right:4px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+  th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{color:var(--sub);font-weight:600;font-size:12px}
+  td.r,th.r{text-align:right}
+  .doc{margin-top:28px;color:var(--faint);font-size:12px;line-height:1.8;border-top:1px solid var(--line);padding-top:14px}
+  details.guide{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:14px 0 4px}
+  details.guide summary{cursor:pointer;padding:13px 16px;font-size:14px;font-weight:700;list-style:none}
+  details.guide summary::-webkit-details-marker{display:none}
+  details.guide .gbody{padding:0 16px 16px;font-size:13px;line-height:1.85;color:var(--sub);border-top:1px solid var(--line);padding-top:13px}
+  details.guide .gbody b{color:var(--txt)}
+</style>
+</head>
+<body>
+<header>
+  <h1>📊 매물대 보드</h1>
+  <div class="sub">가격대별 거래량으로 본 지지·저항·바닥·꼭지 — 단기 60일 · 중기 250일 · 장기 750일 다중 기간 판정
+    · <a href="volume-profile.html">종목 검색 앱 →</a></div>
+</header>
+<div class="wrap">
+  <div class="ctrl">
+    종목 <select id="selStock"></select>
+    날짜 <select id="selDate"></select>
+  </div>
+  <div id="latest"></div>
+  <h2>판정 이력</h2>
+  <div style="overflow-x:auto"><table id="hist"><thead><tr>
+    <th>날짜</th><th class="r">종가</th><th>판정</th><th class="r">아래매물</th>
+    <th class="r">1차 지지</th><th class="r">1차 저항</th><th>확인지표</th>
+  </tr></thead><tbody></tbody></table></div>
+  <details class="guide"><summary>읽는 법</summary><div class="gbody">
+    <b>매물대</b>: 그 가격대에서 실제 거래된 물량. 위쪽 매물대는 본전 회복 매도가 나오는 <b>저항</b>,
+    아래쪽 매물대는 되사려는 수요가 있는 <b>지지</b>다.<br>
+    <b>산출</b>: 가격구간(bin) 누적과 거래량가중 KDE 두 방식을 각각 돌려 같은 자리를 가리키면 교차검증 ✓.
+    구간 하나는 약 1.2%, 가격 범위가 1.8배를 넘으면 로그 구간을 쓴다.<br>
+    <b>중요 매물대 점수(100)</b>: 밀도 40 + 지속 20 + 교차검증 20 + 기간중첩 20 →
+    <b>CORE</b> 75↑ · <b>MAJOR</b> 60~74 · <b>MINOR</b> 60↓.<br>
+    <b>판정</b>: 현재가 아래 매물 비중으로 바닥권(15%↓) · 바닥 회복권(35%↓) · 중립(65%↓) ·
+    상단권(85%↓) · 꼭지권(85%↑)을 가르고, 핵심 매물대의 거래량 동반 상향 돌파는 <b>바닥 탈출</b>,
+    하향 이탈은 <b>꼭지 이탈</b>로 보정한다.<br>
+    <b>확인 지표</b>(RSI·MA20·OBV)는 판정 점수에 개입하지 않는 확인 레이어다 —
+    매물대 위치와 추세가 엇갈리면 그대로 표시한다.<br>
+    규칙 기반 참고 정보이며 매매 지시가 아니다.
+  </div></details>
+  <div class="doc">데이터: data/volume-profile-board.json · volume-profile 스킬이 갱신 · Trend Insight</div>
+</div>
+<script>
+const VK={DEEP_BOTTOM:['바닥권','--sup'],BOTTOM:['바닥 회복권','--sup'],
+  BOTTOM_BREAKOUT:['바닥 탈출','--core'],MID:['중립','--minor'],
+  UPPER:['상단권','--warn'],TOP:['꼭지권','--res'],TOP_DISTRIBUTION:['꼭지 이탈','--res']};
+const cv=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt=x=>x==null?'—':Number(x).toLocaleString('ko-KR',{maximumFractionDigits:0});
+let DB=null;
+function badge(v,big){const [t,c]=VK[v]||[v,'--minor'];
+  return `<span class="badge" style="background:${cv(c)}${big?';font-size:13px;padding:4px 13px':''}">${t}</span>`;}
+function gb(g){const c=g==='CORE'?'--core':g==='MAJOR'?'--major':'--minor';
+  return `<span class="gb" style="background:${cv(c)}">${g}</span>`;}
+function rng(z){return z?`${fmt(z.low)}~${fmt(z.high)}`:'없음';}
+function zoneRows(zs){
+  return (zs||[]).map(z=>{
+    const m=[];
+    if(z.confirmed)m.push('<span class="tag">교차검증 ✓</span>');
+    if(z.broke_up)m.push(`<span class="tag" style="color:${cv('--sup')}">상향돌파${z.vol_confirmed?'(거래량↑)':''}</span>`);
+    if(z.broke_down)m.push(`<span class="tag" style="color:${cv('--res')}">하향이탈</span>`);
+    if(z.retest_held)m.push('<span class="tag">저항→지지 전환</span>');
+    if(z.fresh_ratio!=null&&z.fresh_ratio<0.10)m.push('<span class="tag">오래된 매물(소진)</span>');
+    if(z.fresh_ratio!=null&&z.fresh_ratio>0.60)m.push('<span class="tag">최근 형성</span>');
+    const rc=z.role==='저항'?'--res':z.role==='지지'?'--sup':'--warn';
+    return `<tr><td>${gb(z.grade)}<br><span style="font-size:10.5px;font-weight:700;color:${cv(rc)}">${z.role}</span></td>
+      <td><b>${rng(z)}</b><div style="font-size:11px;color:var(--faint)">현재가 대비 ${z.dist_pct>0?'+':''}${z.dist_pct}% · ${(z.periods||[]).join('·')}</div>
+      <div style="margin-top:3px">${m.join('')}</div></td>
+      <td class="r"><b>${z.score}</b></td>
+      <td class="r">${z.vol_share!=null?(z.vol_share*100).toFixed(1)+'%':'—'}
+      <div style="font-size:10.5px;color:var(--faint)">터치 ${z.touches??'—'}회</div></td></tr>`;
+  }).join('');
+}
+function render(){
+  const code=document.getElementById('selStock').value;
+  const o=DB.stocks[code]; if(!o)return;
+  const dates=o.history.map(h=>h.date).reverse();
+  const sd=document.getElementById('selDate');
+  const cur=sd.value&&dates.includes(sd.value)?sd.value:dates[0];
+  sd.innerHTML=dates.map(d=>`<option ${d===cur?'selected':''}>${d}</option>`).join('');
+  const h=o.history.find(x=>x.date===cur);
+  const pb=h.pct_below??0;
+  const L=h.levels||{};
+  document.getElementById('latest').innerHTML=`<div class="card">
+    <div class="top"><span class="nm">${o.name}<span class="code">${code}</span></span>${badge(h.verdict,true)}</div>
+    <div class="kv"><span>기준일 <b>${h.date}</b></span><span>종가 <b>${fmt(h.price)}</b></span>
+      <span>데이터 <b>${h.bars??'—'}봉</b></span><span>${h.verdict_label||''}</span></div>
+    <div class="bar"><i style="width:${pb}%;background:${cv('--sup')}"></i>
+      <i style="width:${100-pb}%;background:${cv('--res')}"></i></div>
+    <div class="blbl"><span>아래 매물(지지) <b style="color:var(--txt)">${pb}%</b></span>
+      <span><b style="color:var(--txt)">${(100-pb).toFixed(1)}%</b> 위 매물(저항)</span></div>
+    <div class="kv" style="margin-top:10px">
+      ${Object.entries(h.period_pct||{}).map(([p,v])=>`<span>${p} 아래매물 <b>${v}%</b></span>`).join('')}</div>
+    <div class="kv" style="margin-top:10px">
+      <span>2차 저항 <b>${rng(L.r2)}</b></span><span>1차 저항 <b>${rng(L.r1)}</b></span>
+      <span>1차 지지 <b>${rng(L.s1)}</b></span><span>2차 지지 <b>${rng(L.s2)}</b></span>
+      ${L.fast_gap?`<span>매물 공백 <b>${rng(L.fast_gap)}</b></span>`:''}</div>
+    ${h.verdict_reason?`<div class="reason">▶ ${h.verdict_reason}</div>`:''}
+    <div class="reason">확인 지표 <b>${h.reliability||'—'}</b> ${h.reliability_hits||''} · ${h.reliability_note||''}</div>
+    <div style="overflow-x:auto"><table><thead><tr><th>등급</th><th>가격대</th><th class="r">점수</th><th class="r">비중</th></tr></thead>
+      <tbody>${zoneRows(h.zones)}</tbody></table></div>
+    ${h.comment?`<div class="reason">${h.comment}</div>`:''}
+  </div>`;
+  document.querySelector('#hist tbody').innerHTML=o.history.slice().reverse().map(x=>{
+    const l=x.levels||{};
+    return `<tr><td>${x.date}</td><td class="r">${fmt(x.price)}</td><td>${badge(x.verdict)}</td>
+      <td class="r">${x.pct_below}%</td><td class="r">${rng(l.s1)}</td><td class="r">${rng(l.r1)}</td>
+      <td>${x.reliability||'—'} ${x.reliability_hits||''}</td></tr>`;}).join('');
+}
+fetch('data/volume-profile-board.json?t='+Date.now()).then(r=>r.json()).then(db=>{
+  DB=db;
+  const codes=Object.entries(db.stocks||{}).sort((a,b)=>{
+    const la=a[1].history[a[1].history.length-1].date,lb=b[1].history[b[1].history.length-1].date;
+    return lb.localeCompare(la);});
+  const ss=document.getElementById('selStock');
+  ss.innerHTML=codes.map(([c,o])=>`<option value="${c}">${o.name} (${c})</option>`).join('');
+  ss.onchange=()=>{document.getElementById('selDate').innerHTML='';render();};
+  document.getElementById('selDate').onchange=render;
+  if(codes.length)render();
+  else document.getElementById('latest').innerHTML='<div class="sub">아직 게시된 판정이 없습니다.</div>';
+}).catch(()=>document.getElementById('latest').innerHTML='<div class="sub">데이터 로드 실패</div>');
+</script>
+</body>
+</html>

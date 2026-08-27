@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f1115">
+<title>매물대 분석 — Trend Insight</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<style>
+:root{--bg:#0f1115;--card:#171a21;--card2:#1c202a;--line:#252a34;--txt:#e6e9ef;--sub:#9aa4b2;--faint:#5d6b7c;
+      --core:#12b886;--major:#3e8ef7;--minor:#6b7a8f;--res:#e5484d;--sup:#12b886;--warn:#f5a524;
+      --up:#f0454e;--down:#3e8ef7;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:'Pretendard',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+.up{color:var(--up)} .down{color:var(--down)}
+header{display:flex;align-items:center;gap:14px;padding:14px 18px;flex-wrap:wrap;
+  background:linear-gradient(180deg,#14171e,#0f1115);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30}
+.brand{display:flex;align-items:baseline;gap:9px;white-space:nowrap}
+.brand .ti{font-weight:800;font-size:19px;color:var(--core);letter-spacing:.5px;border:1.5px solid var(--core);border-radius:6px;padding:1px 8px}
+.brand h1{font-size:15px;font-weight:700;margin:0}
+.brand small{color:var(--faint);font-size:11px;letter-spacing:1px}
+.brand a{color:var(--sub);font-size:11px;text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:3px 8px;margin-left:4px}
+.brand a:hover{border-color:var(--core);color:var(--txt)}
+.searchwrap{position:relative;flex:1;min-width:220px;max-width:420px}
+#q{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:9px;color:var(--txt);
+   padding:10px 14px;font-size:14px;font-family:inherit;outline:none}
+#q:focus{border-color:var(--core)} #q::placeholder{color:var(--faint)}
+#qresults{position:absolute;top:calc(100% + 5px);left:0;right:0;background:var(--card2);border:1px solid var(--line);
+  border-radius:9px;overflow:hidden;display:none;z-index:50;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#qresults .qi{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer}
+#qresults .qi:hover,#qresults .qi.hl{background:#232a38}
+#qresults .qi .nm{font-weight:600;font-size:13.5px}
+#qresults .qi .cd{font-size:11px;color:var(--faint);margin-left:auto}
+#qresults .qi .mk{font-size:10px;color:var(--core);border:1px solid rgba(18,184,134,.4);border-radius:4px;padding:1px 5px}
+.wrap{max-width:1080px;margin:0 auto;padding:14px 18px 60px}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:48vh;color:var(--faint);text-align:center;gap:10px;padding:20px}
+.empty .big{font-size:42px;opacity:.3}
+.quick{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+.quick button{background:var(--card2);border:1px solid var(--line);color:var(--sub);border-radius:999px;
+  padding:5px 13px;font-size:12px;cursor:pointer;font-family:inherit}
+.quick button:hover{border-color:var(--core);color:var(--txt)}
+.ctrlbar{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:12px 0;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--sub)}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:var(--card2);border:0;color:var(--sub);padding:6px 13px;font-size:12.5px;cursor:pointer;font-family:inherit}
+.seg button.on{background:var(--core);color:#0b0d10;font-weight:700}
+.ctrlbar input[type=range]{accent-color:var(--core);width:120px;vertical-align:middle}
+.dhead{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:6px 0 12px}
+.dhead .nm{font-size:22px;font-weight:800;letter-spacing:-.3px}
+.dhead .cd{font-size:12.5px;color:var(--faint);margin-bottom:3px}
+.dhead .px{font-size:23px;font-weight:700;margin-left:auto}
+.dhead .px small{font-size:13px;font-weight:600;margin-left:7px}
+.grid2{display:grid;grid-template-columns:1fr 330px;gap:16px;align-items:start}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 16px;margin-bottom:14px}
+.box h3{font-size:11px;letter-spacing:1.3px;text-transform:uppercase;color:var(--sub);margin:0 0 11px;font-weight:700}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:800;color:#0b0d10}
+.tag{display:inline-block;font-size:10.5px;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--sub);margin-right:4px}
+.kv{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--sub)}
+.kv b{color:var(--txt);font-weight:600}
+.bar{position:relative;height:11px;background:#0c0e12;border-radius:6px;overflow:hidden;margin-top:6px;display:flex}
+.bar i{display:block;height:100%}
+.blbl{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-top:5px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{padding:7px 5px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--sub);font-weight:600;font-size:11.5px}
+td.r,th.r{text-align:right}
+.note{font-size:12px;color:var(--sub);line-height:1.75}
+.warn{color:var(--warn);font-weight:700}
+svg{display:block;width:100%;height:auto}
+details.guide{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:14px 0 4px}
+details.guide summary{cursor:pointer;padding:13px 16px;font-size:13.5px;font-weight:700;list-style:none}
+details.guide summary::-webkit-details-marker{display:none}
+details.guide .gbody{padding:0 16px 16px;font-size:12.5px;line-height:1.85;color:var(--sub);border-top:1px solid var(--line);padding-top:13px}
+details.guide .gbody b{color:var(--txt)}
+.foot{margin-top:18px;color:var(--faint);font-size:11.5px;line-height:1.8;border-top:1px solid var(--line);padding-top:12px}
+.spin{border:2px solid var(--line);border-top-color:var(--core);border-radius:50%;width:22px;height:22px;animation:sp .7s linear infinite;margin:60px auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:8px} ::-webkit-scrollbar-thumb{background:#243047;border-radius:4px}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="ti">TI</span><h1>매물대 분석</h1><small>VOLUME PROFILE</small>
+    <a href="volume-profile-board.html">보드 →</a></div>
+  <div class="searchwrap">
+    <input id="q" placeholder="종목명 또는 코드 검색 (예: 삼성전자, 005930)" autocomplete="off">
+    <div id="qresults"></div>
+  </div>
+</header>
+<div class="wrap">
+  <div id="detail">
+    <div class="empty"><div class="big">📊</div>
+      <div>종목을 검색하면 가격대별 거래량(매물대)을 쌓아<br>지지·저항·바닥·꼭지를 판정합니다</div>
+      <div class="quick">
+        <button data-c="005930" data-n="삼성전자">삼성전자</button>
+        <button data-c="000660" data-n="SK하이닉스">SK하이닉스</button>
+        <button data-c="KOSPI" data-n="코스피">코스피</button>
+        <button data-c="KOSDAQ" data-n="코스닥">코스닥</button>
+      </div></div>
+  </div>
+  <details class="guide"><summary>읽는 법</summary><div class="gbody">
+    <b>매물대</b>: 그 가격대에서 실제로 거래된 물량. 위쪽 매물대는 손실을 본 사람들이 본전에 팔려는
+    <b>저항</b>, 아래쪽 매물대는 이익 구간이라 되사려는 <b>지지</b>가 된다.<br>
+    <b>산출</b>: ① 가격구간(bin) 누적 — 봉의 고가~저가에 거래량을 균등 분배 ② 거래량가중 KDE —
+    대표가(H+L+C)/3에 가우시안 커널. 두 방식이 같은 자리를 가리키면 <b>교차검증 ✓</b>.
+    가격 범위가 1.8배 이상이면 로그 구간을 쓰고, 구간 하나는 항상 약 1.2%다.<br>
+    <b>중요 매물대 점수(100)</b>: 밀도 40 + 지속(그 대역에서 거래된 날 비중) 20 + 교차검증 20 +
+    기간 중첩 20. <b>CORE</b> 75↑ · <b>MAJOR</b> 60~74 · <b>MINOR</b> 60↓.<br>
+    <b>POC</b> 최대 거래량 가격 · <b>밸류에어리어(VA)</b> 거래량 70%가 몰린 구간 ·
+    <b>LVN 공백</b> 매물이 얇아 빠르게 통과하는 구간.<br>
+    <b>바닥/꼭지</b>: 현재가 아래에 쌓인 매물 비중(%)으로 판정. 15%↓ 바닥권(매물 대부분이 머리 위) ·
+    35%↓ 바닥 회복권 · 65%↓ 중립 · 85%↓ 상단권 · 85%↑ 꼭지권(위쪽 매물 공백).
+    핵심 매물대를 거래량 동반 상향 돌파하면 <b>바닥 탈출</b>, 하향 이탈하면 <b>꼭지 이탈</b>로 보정한다.<br>
+    <b>확인 지표</b>(RSI·MA20·OBV)는 판정 점수에 개입하지 않는 확인 레이어다.
+    매물대 위치와 추세가 엇갈리면 그 사실을 그대로 표시한다.<br>
+    <b>데이터 범위</b>: 이 웹앱은 Worker API가 즉시 주는 최근 수개월 일봉으로 브라우저에서 계산한다 —
+    빠르게 훑어보기용이다. 최대 3년(단기60·중기250·장기750일) 다중 기간 정밀 분석은 채팅에서
+    "OO 매물대 분석해줘"로 요청하면 되고, 결과는 매물대 보드에도 누적 게시된다.
+  </div></details>
+  <div class="foot">
+    데이터: Trend Insight Worker API(/api/cockpit) · 브라우저에서 실시간 계산 ·
+    규칙 기반 참고 정보이며 매매 지시가 아닙니다
+  </div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const API='/api/cockpit';
+const fmt=n=>n==null||isNaN(n)?'—':Number(n).toLocaleString('ko-KR',{maximumFractionDigits:0});
+const cv=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const clamp=(x,lo,hi)=>Math.max(lo,Math.min(hi,x));
+
+/* ═══ 계산 규격 — scripts/volume_profile.py 와 동일하게 유지할 것 ═══ */
+const ZONE_CUT=0.60, ZONE_MAX_HALF=5, BIN_STEP=0.012, BIN_MIN=40, BIN_MAX=140;
+const VA_PCT=0.70, SCORE_MIN=50, FAR_MULT=2.5;
+const VK={DEEP_BOTTOM:['바닥권','--sup'],BOTTOM:['바닥 회복권','--sup'],
+  BOTTOM_BREAKOUT:['바닥 탈출','--core'],MID:['중립','--minor'],
+  UPPER:['상단권','--warn'],TOP:['꼭지권','--res'],TOP_DISTRIBUTION:['꼭지 이탈','--res']};
+
+function autoBins(lo,hi){
+  if(!(lo>0)||!(hi>lo))return BIN_MIN;
+  return clamp(Math.round(Math.log(hi/lo)/Math.log(1+BIN_STEP)),BIN_MIN,BIN_MAX);
+}
+function buildProfile(h,l,c,v,bins){
+  const lo=Math.min(...l),hi=Math.max(...h);
+  if(!(hi>lo)||!(lo>0))return null;
+  const useLog=(hi/lo)>=1.8;
+  const f=useLog?Math.log:(x=>x), g=useLog?Math.exp:(x=>x);
+  const flo=f(lo),fhi=f(hi),w=(fhi-flo)/bins;
+  const fe=[],edges=[],fc=[],centers=[];
+  for(let i=0;i<=bins;i++){fe.push(flo+w*i);edges.push(g(flo+w*i));}
+  for(let i=0;i<bins;i++){fc.push((fe[i]+fe[i+1])/2);centers.push(g((fe[i]+fe[i+1])/2));}
+  const a=new Array(bins).fill(0), days=new Array(bins).fill(0), b=new Array(bins).fill(0);
+  for(let j=0;j<c.length;j++){
+    let vol=(v&&v[j])||0; if(!(vol>0))vol=1;
+    const bl=f(l[j]),bh=f(h[j]);
+    if(!(bh>bl)){const i=clamp(Math.floor((bl-flo)/w),0,bins-1);a[i]+=vol;days[i]++;continue;}
+    const i0=clamp(Math.floor((bl-flo)/w),0,bins-1),i1=clamp(Math.floor((bh-flo)/w),0,bins-1);
+    const span=bh-bl;
+    for(let i=i0;i<=i1;i++){
+      const ov=Math.min(bh,fe[i+1])-Math.max(bl,fe[i]);
+      if(ov>0){a[i]+=vol*(ov/span);days[i]++;}
+    }
+  }
+  const bw=Math.max(w*1.2,(fhi-flo)*0.018), inv=1/(2*bw*bw);
+  for(let j=0;j<c.length;j++){
+    const vol=((v&&v[j])||0)||1;
+    const tp=f((h[j]+l[j]+c[j])/3);
+    const i0=clamp(Math.floor((tp-3*bw-flo)/w),0,bins-1),i1=clamp(Math.floor((tp+3*bw-flo)/w),0,bins-1);
+    for(let i=i0;i<=i1;i++){const d=fc[i]-tp;b[i]+=vol*Math.exp(-d*d*inv);}
+  }
+  const sa=a.reduce((x,y)=>x+y,0)||1, sb=b.reduce((x,y)=>x+y,0)||1;
+  return {edges,centers,a:a.map(x=>x/sa),b:b.map(x=>x/sb),days,lo,hi,n:c.length,log:useLog,bins};
+}
+const smooth3=x=>x.map((_,i)=>(x[Math.max(0,i-1)]+x[i]+x[Math.min(x.length-1,i+1)])/3);
+function peaksOf(arr,minRatio=1.10){
+  const s=smooth3(arr), m=(s.reduce((x,y)=>x+y,0)/s.length)||1e-12, out=[];
+  for(let i=0;i<s.length;i++){
+    const L=i>0?s[i-1]:-1, R=i<s.length-1?s[i+1]:-1;
+    if(s[i]>=L&&s[i]>=R&&s[i]>=m*minRatio)out.push(i);
+  }
+  const mg=[];
+  for(const i of out){
+    if(mg.length&&i-mg[mg.length-1]<=2){if(arr[i]>arr[mg[mg.length-1]])mg[mg.length-1]=i;}
+    else mg.push(i);
+  }
+  return mg;
+}
+function valleysOf(arr,maxRatio=0.55){
+  const s=smooth3(arr), m=(s.reduce((x,y)=>x+y,0)/s.length)||1e-12, out=[];
+  for(let i=1;i<s.length-1;i++)if(s[i]<=s[i-1]&&s[i]<=s[i+1]&&s[i]<=m*maxRatio)out.push(i);
+  return out;
+}
+function valueArea(a,poc,pct=VA_PCT){
+  const total=a.reduce((x,y)=>x+y,0)||1;
+  let lo=poc,hi=poc,acc=a[poc];
+  while(acc<total*pct&&(lo>0||hi<a.length-1)){
+    const up=hi<a.length-1?a[hi+1]:-1, dn=lo>0?a[lo-1]:-1;
+    if(up>=dn){hi++;acc+=a[hi];}else{lo--;acc+=a[lo];}
+  }
+  return [lo,hi];
+}
+function zoneFromPeak(prof,arr,pi){
+  const cut=arr[pi]*ZONE_CUT; let lo=pi,hi=pi;
+  while(lo>0&&arr[lo-1]>=cut&&pi-lo<ZONE_MAX_HALF)lo--;
+  while(hi<arr.length-1&&arr[hi+1]>=cut&&hi-pi<ZONE_MAX_HALF)hi++;
+  let vol=0,ds=0;
+  for(let i=lo;i<=hi;i++){vol+=arr[i];ds+=prof.days[i];}
+  return {low:prof.edges[lo],high:prof.edges[hi+1],peak:prof.centers[pi],
+    vol_share:vol,days_ratio:Math.min(1,ds/Math.max(1,prof.n))};
+}
+function zoneHistory(z,c,v){
+  const n=c.length,lo=z.low,hi=z.high;
+  let touches=0,inPrev=false,lastBelow=null,lastAbove=null;
+  for(let j=0;j<n;j++){
+    const ins=c[j]>=lo&&c[j]<=hi;
+    if(ins&&!inPrev)touches++;
+    inPrev=ins;
+    if(c[j]<lo)lastBelow=j;
+    if(c[j]>hi)lastAbove=j;
+  }
+  let vma=null;
+  if(v){const w=v.slice(Math.max(0,n-21),n-1).filter(x=>x);if(w.length)vma=w.reduce((x,y)=>x+y,0)/w.length;}
+  let up=false,dn=false,vc=false,bi=null;
+  if(c[n-1]>hi&&lastBelow!=null&&lastBelow<n-1){up=true;for(let j=lastBelow+1;j<n;j++)if(c[j]>hi){bi=j;break;}}
+  else if(c[n-1]<lo&&lastAbove!=null&&lastAbove<n-1){dn=true;for(let j=lastAbove+1;j<n;j++)if(c[j]<lo){bi=j;break;}}
+  if(bi!=null&&v&&vma)vc=(v[bi]||0)>=vma*1.5;
+  let rev=false;
+  if(up&&bi!=null){
+    for(let j=bi+1;j<n;j++){
+      if(c[j]<=hi){for(let k=j;k<Math.min(n,j+11);k++)if(c[k]>hi){rev=true;break;}break;}
+    }
+  }
+  let fresh=null;
+  if(v){
+    let tot=0,rec=0;
+    for(let j=0;j<n;j++)if(c[j]>=lo&&c[j]<=hi){tot+=v[j]||0;if(j>=n-60)rec+=v[j]||0;}
+    fresh=tot>0?rec/tot:0;
+  }
+  return {touches,broke_up:up,broke_down:dn,vol_confirmed:vc,
+    break_ago:bi!=null?(n-1-bi):null,retest_held:rev,fresh_ratio:fresh};
+}
+function clusterZones(perZones,price,order){
+  const flat=[];
+  for(const p of order)for(const z of (perZones[p]||[]))flat.push(Object.assign({},z,{period:p}));
+  flat.sort((x,y)=>y.vol_share-x.vol_share);
+  const cls=[];
+  for(const z of flat){
+    let placed=false;
+    for(const cl of cls){
+      const ov=Math.min(cl.high,z.high)-Math.max(cl.low,z.low);
+      const span=Math.min(cl.high-cl.low,z.high-z.low);
+      const nlo=Math.min(cl.low,z.low),nhi=Math.max(cl.high,z.high);
+      if(ov>0&&span>0&&ov/span>=0.50&&(nhi-nlo)<=span*1.8){
+        cl.low=nlo;cl.high=nhi;cl.members.push(z);placed=true;break;
+      }
+    }
+    if(!placed)cls.push({low:z.low,high:z.high,members:[z]});
+  }
+  let out=cls.map(cl=>{
+    const ms=cl.members;
+    const periods=order.filter(p=>ms.some(m=>m.period===p));
+    const wsum=ms.reduce((s,m)=>s+m.vol_share,0)||1e-9;
+    const peak=ms.reduce((s,m)=>s+m.peak*m.vol_share,0)/wsum;
+    const vol=Math.max(...ms.map(m=>m.vol_share));
+    const dr=Math.max(...ms.map(m=>m.days_ratio));
+    const conf=ms.some(m=>m.confirmed);
+    const sD=Math.min(1,vol/0.20)*40, sT=Math.min(1,dr/0.35)*20;
+    const sC=conf?20:8, sO={1:5,2:13,3:20}[Math.min(3,periods.length)];
+    const score=Math.round(sD+sT+sC+sO);
+    return {low:cl.low,high:cl.high,peak,score,confirmed:conf,periods,
+      grade:score>=75?'CORE':score>=60?'MAJOR':'MINOR',
+      score_parts:{밀도:+sD.toFixed(1),지속:+sT.toFixed(1),교차검증:sC,기간중첩:sO},
+      vol_share:vol,days_ratio:dr,dist_pct:+((peak/price-1)*100).toFixed(1),
+      role:cl.low>price?'저항':(cl.high<price?'지지':'현재')};
+  });
+  out.sort((x,y)=>y.score-x.score||x.low-y.low);
+  const kept=[];
+  for(const z of out){
+    let dup=false;
+    for(const k of kept){
+      const ov=Math.min(k.high,z.high)-Math.max(k.low,z.low);
+      const span=Math.min(k.high-k.low,z.high-z.low);
+      if(ov>0&&span>0&&ov/span>=0.50){z.periods.forEach(p=>{if(!k.periods.includes(p))k.periods.push(p);});dup=true;break;}
+    }
+    if(!dup)kept.push(z);
+  }
+  return kept;
+}
+function auxInd(c,v){
+  const n=c.length,out={};
+  if(n>15){
+    let g=0,l=0;
+    for(let i=1;i<15;i++){const d=c[i]-c[i-1];g+=Math.max(d,0);l+=Math.max(-d,0);}
+    let ag=g/14,al=l/14;
+    for(let i=15;i<n;i++){const d=c[i]-c[i-1];ag=(ag*13+Math.max(d,0))/14;al=(al*13+Math.max(-d,0))/14;}
+    out.rsi=+(100-100/(1+(al?ag/al:1e9))).toFixed(1);
+  }else out.rsi=null;
+  const ma=k=>n>=k?c.slice(-k).reduce((x,y)=>x+y,0)/k:null;
+  const m20=ma(20);
+  out.ma={ma5:ma(5),ma20:m20,ma60:ma(60),ma120:ma(120),above_ma20:m20?c[n-1]>m20:null};
+  out.obv=null;
+  if(v&&v.length===n&&n>21&&v.some(x=>x)){
+    let o=0,prev=null;const arr=[0];
+    for(let j=1;j<n;j++){o+=c[j]>c[j-1]?(v[j]||0):c[j]<c[j-1]?-(v[j]||0):0;arr.push(o);}
+    out.obv={rising:arr[n-1]>arr[n-21]};
+  }
+  return out;
+}
+function verdictOf(pctBelow,zones){
+  let base,label;
+  if(pctBelow<=15){base='DEEP_BOTTOM';label='바닥권(매물 대부분이 머리 위)';}
+  else if(pctBelow<=35){base='BOTTOM';label='바닥 회복권';}
+  else if(pctBelow<65){base='MID';label='중립(매물대 한가운데)';}
+  else if(pctBelow<85){base='UPPER';label='상단권';}
+  else{base='TOP';label='꼭지권(위쪽 매물 공백)';}
+  const big=zones.filter(z=>z.grade==='CORE'||z.grade==='MAJOR');
+  const up=big.filter(z=>z.history&&z.history.broke_up&&z.history.break_ago!=null&&z.history.break_ago<=20);
+  const dn=big.filter(z=>z.history&&z.history.broke_down&&z.history.break_ago!=null&&z.history.break_ago<=20);
+  if((base==='DEEP_BOTTOM'||base==='BOTTOM')&&up.length){
+    const z=up[0];
+    return ['BOTTOM_BREAKOUT','바닥 탈출 시도',
+      `${fmt(z.low)}~${fmt(z.high)} ${z.grade} 매물대를 ${z.history.vol_confirmed?'거래량 동반 ':''}상향 돌파`
+      +`${z.history.retest_held?' 후 재테스트 지지':''} (${z.history.break_ago}일 전)`];
+  }
+  if((base==='TOP'||base==='UPPER')&&dn.length){
+    const z=dn[0];
+    return ['TOP_DISTRIBUTION','꼭지 이탈(분산) 경계',
+      `${fmt(z.low)}~${fmt(z.high)} ${z.grade} 매물대를 하향 이탈 (${z.history.break_ago}일 전)`];
+  }
+  return [base,label,null];
+}
+function reliabilityOf(verdict,aux){
+  const r=aux.rsi,ma=aux.ma||{},obv=aux.obv;
+  if(verdict==='MID'){
+    const b=[];
+    if(r!=null)b.push('RSI '+r);
+    if(ma.above_ma20!=null)b.push('MA20 '+(ma.above_ma20?'상회':'하회'));
+    if(obv)b.push('OBV '+(obv.rising?'상승':'하락'));
+    return ['해당 없음','0/0','중립 구간은 방향 함의가 없어 일치 여부를 따지지 않는다 ('+b.join(' · ')+')'];
+  }
+  const bull=['DEEP_BOTTOM','BOTTOM','BOTTOM_BREAKOUT'].includes(verdict);
+  let hits=0,checks=0;const det=[];
+  if(r!=null){checks++;const ok=(r>=50)===bull;hits+=ok?1:0;det.push(`RSI ${r}${ok?'✓':'✗'}`);}
+  if(ma.above_ma20!=null){checks++;const ok=ma.above_ma20===bull;hits+=ok?1:0;
+    det.push(`MA20 ${ma.above_ma20?'상회':'하회'}${ok?'✓':'✗'}`);}
+  if(obv){checks++;const ok=obv.rising===bull;hits+=ok?1:0;det.push(`OBV ${obv.rising?'상승':'하락'}${ok?'✓':'✗'}`);}
+  if(!checks)return['판정 불가','0/0',''];
+  const lv=hits===checks?'높음':hits>=checks-1?'보통':'낮음';
+  const note=hits<=checks-2
+    ?('매물대 위치와 추세 지표가 엇갈린다 — '+(bull?'바닥권인데 추세는 아직 하락':'상단·꼭지권인데 추세는 아직 상승(매물 소화 중일 수 있음)'))
+    :'추세 지표가 매물대 판정과 같은 방향';
+  return [lv,`${hits}/${checks}`,`${note} (${det.join(' · ')})`];
+}
+function analyze(d,lookback){
+  const n=d.close.length;
+  if(n<40)return{error:`봉 수 부족(${n}) — 매물대 분석에는 최소 40봉이 필요합니다`};
+  const price=d.close[n-1];
+  // 웹앱은 API가 주는 범위 안에서 두 구간을 쓴다: 단기(60일) · 중기(사용자 지정 룩백)
+  const defs=[['단기',Math.min(60,n)],['중기',Math.min(lookback,n)]];
+  const order=[],perProf={},perZones={},poc={},va={},lvn=[],perPct={};
+  for(const [name,len] of defs){
+    if(len<40||(order.length&&len<=defs[0][1]))continue;
+    const s=n-len;
+    const H=d.high.slice(s),L=d.low.slice(s),C=d.close.slice(s),V=d.volume?d.volume.slice(s):null;
+    const prof=buildProfile(H,L,C,V,autoBins(Math.min(...L),Math.max(...H)));
+    if(!prof)continue;
+    order.push(name);perProf[name]=prof;
+    const pa=peaksOf(prof.a),pb=peaksOf(prof.b);
+    perZones[name]=pa.map(pi=>{
+      const z=zoneFromPeak(prof,prof.a,pi);
+      z.confirmed=pb.some(qi=>Math.abs(pi-qi)<=2);
+      return z;
+    });
+    let pi=0;for(let i=1;i<prof.a.length;i++)if(prof.a[i]>prof.a[pi])pi=i;
+    poc[name]=prof.centers[pi];
+    const [vlo,vhi]=valueArea(prof.a,pi);
+    va[name]={val:prof.edges[vlo],vah:prof.edges[vhi+1]};
+    let below=0;
+    for(let i=0;i<prof.a.length;i++){
+      const e0=prof.edges[i],e1=prof.edges[i+1];
+      if(e1<=price)below+=prof.a[i];
+      else if(e0<price&&price<e1)below+=prof.a[i]*(price-e0)/(e1-e0);
+    }
+    perPct[name]=+(below*100).toFixed(1);
+    if(name==='중기'||order.length===1)
+      valleysOf(prof.a).forEach(i=>lvn.push({low:prof.edges[i],high:prof.edges[i+1],period:name}));
+  }
+  if(!order.length)return{error:'프로파일 생성 실패 — 가격 변동이 없는 데이터'};
+  const W={단기:0.35,중기:0.65};
+  let pb=0,ws=0;
+  order.forEach(p=>{pb+=perPct[p]*W[p];ws+=W[p];});
+  const pctBelow=+(pb/(ws||1)).toFixed(1);
+  const all=clusterZones(perZones,price,order);
+  const near=all.filter(z=>z.peak>=price/FAR_MULT&&z.peak<=price*FAR_MULT);
+  near.forEach(z=>z.history=zoneHistory(z,d.close,d.volume));
+  const zones=(near.filter(z=>z.score>=SCORE_MIN).slice(0,6)).length
+    ?near.filter(z=>z.score>=SCORE_MIN).slice(0,6):near.slice(0,3);
+  const [verdict,vlabel,vreason]=verdictOf(pctBelow,zones);
+  const aux=auxInd(d.close,d.volume);
+  const [rel,hits,relnote]=reliabilityOf(verdict,aux);
+  const res=near.filter(z=>z.role==='저항').sort((a,b)=>a.low-b.low);
+  const sup=near.filter(z=>z.role==='지지').sort((a,b)=>b.high-a.high);
+  const gapUp=lvn.filter(g=>g.low>price).sort((a,b)=>a.low-b.low);
+  return {price,bars:n,order,perProf,poc,va,perPct,pctBelow,zones,near,
+    verdict,vlabel,vreason,aux,rel,hits,relnote,
+    levels:{r1:res[0]||null,r2:res[1]||null,s1:sup[0]||null,s2:sup[1]||null,gap:gapUp[0]||null},
+    series:{date:d.date,close:d.close}};
+}
+
+/* ═══ 검색 ═══ */
+let qTimer=null,qItems=[],qHl=-1;
+const qBox=$('#qresults'),qIn=$('#q');
+function hideQ(){qBox.style.display='none';qHl=-1;}
+function renderQ(){
+  if(!qItems.length){hideQ();return;}
+  qBox.innerHTML=qItems.map((x,i)=>`<div class="qi ${i===qHl?'hl':''}" data-i="${i}">
+    <span class="nm">${x.name}</span><span class="mk">${x.market||''}</span><span class="cd">${x.code}</span></div>`).join('');
+  qBox.style.display='block';
+  qBox.querySelectorAll('.qi').forEach(el=>el.onclick=()=>pickQ(+el.dataset.i));
+}
+function pickQ(i){const x=qItems[i];if(!x)return;hideQ();qIn.value=x.name;qIn.blur();load(x.code,x.name);}
+qIn.addEventListener('input',()=>{
+  clearTimeout(qTimer);const q=qIn.value.trim();
+  if(q.length<1){hideQ();return;}
+  qTimer=setTimeout(async()=>{
+    try{const r=await(await fetch(`${API}/search?q=${encodeURIComponent(q)}`)).json();
+      qItems=r.data||[];qHl=qItems.length?0:-1;renderQ();}catch(e){hideQ();}
+  },250);
+});
+qIn.addEventListener('keydown',e=>{
+  if(qBox.style.display!=='block')return;
+  if(e.key==='ArrowDown'){e.preventDefault();qHl=Math.min(qHl+1,qItems.length-1);renderQ();}
+  else if(e.key==='ArrowUp'){e.preventDefault();qHl=Math.max(qHl-1,0);renderQ();}
+  else if(e.key==='Enter'){e.preventDefault();pickQ(qHl>=0?qHl:0);}
+  else if(e.key==='Escape'){hideQ();}
+});
+document.addEventListener('click',e=>{if(!e.target.closest('.searchwrap'))hideQ();});
+document.querySelectorAll('.quick button').forEach(b=>b.onclick=()=>{qIn.value=b.dataset.n;load(b.dataset.c,b.dataset.n);});
+
+/* ═══ 로드·렌더 ═══ */
+let CUR=null, LOOKBACK=0, BOARD=null;
+async function load(code,name){
+  $('#detail').innerHTML='<div class="spin"></div>';
+  try{
+    const r=await(await fetch(`${API}/analyze/${code}`)).json();
+    if(!r.ok)throw new Error(r.error||'분석 실패');
+    const d=r.data;
+    CUR={code:d.code,name:d.name||name||code,quote:d.quote||{},
+      date:d.chart.date,open:d.chart.open,high:d.chart.high,low:d.chart.low,
+      close:d.chart.close,volume:d.chart.volume};
+    LOOKBACK=CUR.close.length;
+    history.replaceState(null,'',`?code=${d.code}`);
+    run();
+  }catch(e){
+    $('#detail').innerHTML=`<div class="empty"><div class="big">⚠</div><div>${e.message||'연결 실패 · 잠시 후 다시 시도하세요'}</div></div>`;
+  }
+}
+function run(){
+  if(!CUR)return;
+  const r=analyze(CUR,LOOKBACK||CUR.close.length);
+  if(r.error){$('#detail').innerHTML=`<div class="empty"><div class="big">⚠</div><div>${r.error}</div></div>`;return;}
+  render(r);
+}
+function gbadge(g){const c=g==='CORE'?'--core':g==='MAJOR'?'--major':'--minor';
+  return `<span class="badge" style="background:${cv(c)};font-size:10.5px;padding:2px 8px">${g}</span>`;}
+
+/* 매물대 차트 — 좌측 가격선 + 우측 가로 히스토그램 (공통 y축) */
+function chartSVG(r){
+  const W=1000,H=430,PL=6,PR=8,PT=14,PB=22, HW=270; // HW: 히스토그램 폭
+  const CW=W-PL-PR-HW-14;
+  const prof=r.perProf[r.order[r.order.length-1]];
+  const lo=Math.min(prof.lo,Math.min(...r.series.close)), hi=Math.max(prof.hi,Math.max(...r.series.close));
+  const useLog=prof.log;
+  const f=useLog?Math.log:(x=>x);
+  const y=p=>PT+(f(hi)-f(p))/(f(hi)-f(lo)||1)*(H-PT-PB);
+  const N=r.series.close.length;
+  const x=i=>PL+i/(N-1||1)*CW;
+  const maxA=Math.max(...prof.a), maxB=Math.max(...prof.b);
+  const hx=v=>PL+CW+14+(v/(maxA||1))*HW;
+  let s=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:430px">`;
+  // 매물대 밴드
+  for(const z of r.zones){
+    const y1=y(z.high),y2=y(z.low);
+    const col=z.role==='저항'?cv('--res'):z.role==='지지'?cv('--sup'):cv('--warn');
+    const op=z.grade==='CORE'?0.16:z.grade==='MAJOR'?0.10:0.06;
+    s+=`<rect x="${PL}" y="${y1}" width="${W-PL-PR}" height="${Math.max(1,y2-y1)}" fill="${col}" opacity="${op}"/>`;
+    s+=`<text x="${PL+4}" y="${y1+11}" fill="${col}" font-size="10.5" font-weight="700">${z.grade} ${fmt(z.low)}~${fmt(z.high)}</text>`;
+  }
+  // 히스토그램 (A: bin 누적 막대, B: KDE 곡선)
+  for(let i=0;i<prof.a.length;i++){
+    const y1=y(prof.edges[i+1]),y2=y(prof.edges[i]);
+    const w=(prof.a[i]/(maxA||1))*HW;
+    const c0=prof.edges[i+1]<=r.price?cv('--sup'):prof.edges[i]>=r.price?cv('--res'):cv('--warn');
+    s+=`<rect x="${PL+CW+14}" y="${y1}" width="${Math.max(0.6,w)}" height="${Math.max(0.8,y2-y1-0.4)}" fill="${c0}" opacity="0.62"/>`;
+  }
+  let kd='';
+  for(let i=0;i<prof.b.length;i++){
+    const yc=(y(prof.edges[i])+y(prof.edges[i+1]))/2;
+    const xv=PL+CW+14+(prof.b[i]/(maxB||1))*HW;
+    kd+=(i?'L':'M')+xv.toFixed(1)+','+yc.toFixed(1);
+  }
+  s+=`<path d="${kd}" fill="none" stroke="${cv('--txt')}" stroke-width="1.3" opacity="0.55"/>`;
+  // 가격 선
+  let pd='';
+  for(let i=0;i<N;i++)pd+=(i?'L':'M')+x(i).toFixed(1)+','+y(r.series.close[i]).toFixed(1);
+  s+=`<path d="${pd}" fill="none" stroke="${cv('--txt')}" stroke-width="1.6" opacity="0.9"/>`;
+  // POC · 현재가
+  for(const p of r.order){
+    const yy=y(r.poc[p]);
+    s+=`<line x1="${PL}" y1="${yy}" x2="${W-PR}" y2="${yy}" stroke="${cv('--major')}" stroke-width="1" stroke-dasharray="6 4" opacity="0.8"/>
+        <text x="${W-PR-4}" y="${yy-4}" text-anchor="end" fill="${cv('--major')}" font-size="10.5">POC(${p}) ${fmt(r.poc[p])}</text>`;
+  }
+  const yp=y(r.price);
+  s+=`<line x1="${PL}" y1="${yp}" x2="${W-PR}" y2="${yp}" stroke="${cv('--up')}" stroke-width="1.6"/>
+      <text x="${PL+4}" y="${yp-5}" fill="${cv('--up')}" font-size="11.5" font-weight="800">현재가 ${fmt(r.price)}</text>`;
+  s+=`<text x="${PL+CW+14}" y="${H-6}" fill="${cv('--faint')}" font-size="10.5">← 가격 추이 · 매물대(가격대별 거래량) →</text>`;
+  return s+'</svg>';
+}
+function zoneRows(zs,price){
+  return zs.map(z=>{
+    const h=z.history||{};
+    const marks=[];
+    if(z.confirmed)marks.push('<span class="tag">교차검증 ✓</span>');
+    if(h.broke_up)marks.push(`<span class="tag" style="color:${cv('--sup')}">상향돌파${h.vol_confirmed?'(거래량↑)':''}</span>`);
+    if(h.broke_down)marks.push(`<span class="tag" style="color:${cv('--res')}">하향이탈</span>`);
+    if(h.retest_held)marks.push('<span class="tag">저항→지지 전환</span>');
+    if(h.fresh_ratio!=null&&h.fresh_ratio<0.10)marks.push('<span class="tag">오래된 매물(소진)</span>');
+    if(h.fresh_ratio!=null&&h.fresh_ratio>0.60)marks.push('<span class="tag">최근 형성</span>');
+    const rc=z.role==='저항'?'--res':z.role==='지지'?'--sup':'--warn';
+    return `<tr>
+      <td>${gbadge(z.grade)}<br><span style="font-size:10.5px;color:${cv(rc)};font-weight:700">${z.role}</span></td>
+      <td><b>${fmt(z.low)} ~ ${fmt(z.high)}</b>
+        <div style="font-size:11px;color:var(--faint)">중심 ${fmt(z.peak)} · 현재가 대비 ${z.dist_pct>0?'+':''}${z.dist_pct}%</div>
+        <div style="margin-top:3px">${marks.join('')}</div></td>
+      <td class="r"><b>${z.score}</b>
+        <div style="font-size:10.5px;color:var(--faint)">밀도${z.score_parts.밀도}·지속${z.score_parts.지속}<br>검증${z.score_parts.교차검증}·중첩${z.score_parts.기간중첩}</div></td>
+      <td class="r">${(z.vol_share*100).toFixed(1)}%<div style="font-size:10.5px;color:var(--faint)">터치 ${h.touches??'—'}회</div></td>
+    </tr>`;
+  }).join('');
+}
+function render(r){
+  const q=CUR.quote||{};
+  const price=r.price, rate=q.change_rate||0, chg=q.change||0;
+  const [vt,vc]=VK[r.verdict]||[r.verdict,'--minor'];
+  const L=r.levels;
+  const lvl=(z,lab,col)=>z?`<tr><td>${lab}</td><td class="r"><b>${fmt(z.low)}~${fmt(z.high)}</b>
+      <span style="color:var(--faint);font-size:11px"> ${z.dist_pct>0?'+':''}${z.dist_pct}%</span> ${gbadge(z.grade)}</td></tr>`
+    :`<tr><td>${lab}</td><td class="r" style="color:var(--faint)">없음</td></tr>`;
+  const months=Math.max(1,Math.round(r.bars/21));
+  $('#detail').innerHTML=`
+  <div class="dhead">
+    <span class="nm">${CUR.name}</span><span class="cd">${CUR.code}</span>
+    <span class="px">${fmt(price)}<small class="${rate>0?'up':rate<0?'down':''}">${rate>0?'▲':rate<0?'▼':''}${Math.abs(chg||0).toLocaleString('ko-KR')} (${(rate||0).toFixed(2)}%)</small></span>
+  </div>
+  <div class="ctrlbar">
+    <span>룩백 <b style="color:var(--txt)" id="lbTxt">${LOOKBACK}일</b></span>
+    <input type="range" id="lb" min="60" max="${r.bars}" step="5" value="${LOOKBACK}">
+    <span style="color:var(--faint)">기준일 ${CUR.date[CUR.date.length-1]} · 데이터 ${r.bars}봉(약 ${months}개월)</span>
+  </div>
+  <div class="grid2">
+    <div>
+      <div class="box"><h3>매물대 프로파일</h3>${chartSVG(r)}
+        <div class="note" style="margin-top:8px">막대 = 가격구간 누적(A) · 얇은 선 = 거래량가중 KDE(B) ·
+          점선 = POC · 붉은 선 = 현재가. 색 밴드가 중요 매물대(초록 지지 · 빨강 저항 · 노랑 현재 구간).</div>
+      </div>
+      <div class="box"><h3>중요 매물대 (점수순)</h3>
+        <table><thead><tr><th>등급</th><th>가격대</th><th class="r">점수</th><th class="r">비중</th></tr></thead>
+        <tbody>${zoneRows(r.zones,price)}</tbody></table>
+      </div>
+    </div>
+    <div>
+      <div class="box">
+        <h3>바닥 / 꼭지 판정</h3>
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px">
+          <span class="badge" style="background:${cv(vc)};font-size:13px;padding:4px 13px">${vt}</span>
+          <span style="font-size:12.5px;color:var(--sub)">${r.vlabel}</span></div>
+        ${r.vreason?`<div class="note" style="color:var(--txt);margin-bottom:9px">▶ ${r.vreason}</div>`:''}
+        <div class="bar">
+          <i style="width:${r.pctBelow}%;background:${cv('--sup')}"></i>
+          <i style="width:${(100-r.pctBelow)}%;background:${cv('--res')}"></i></div>
+        <div class="blbl"><span>아래 매물(지지) <b style="color:var(--txt)">${r.pctBelow}%</b></span>
+          <span><b style="color:var(--txt)">${(100-r.pctBelow).toFixed(1)}%</b> 위 매물(저항)</span></div>
+        <div class="kv" style="margin-top:11px">
+          ${r.order.map(p=>`<span>${p} 아래매물 <b>${r.perPct[p]}%</b></span>`).join('')}</div>
+        <div class="note" style="margin-top:9px">확인 지표 <b style="color:var(--txt)">${r.rel}</b> ${r.hits}<br>${r.relnote}</div>
+      </div>
+      <div class="box"><h3>핵심 레벨</h3>
+        <table>${lvl(L.r2,'2차 저항')}${lvl(L.r1,'1차 저항')}
+          <tr><td><b>현재가</b></td><td class="r"><b>${fmt(price)}</b></td></tr>
+          ${lvl(L.s1,'1차 지지')}${lvl(L.s2,'2차 지지')}</table>
+        <div class="note" style="margin-top:9px">
+          ${L.gap?`위쪽 매물 공백(LVN) <b style="color:var(--txt)">${fmt(L.gap.low)}~${fmt(L.gap.high)}</b> — 매물이 얇아 빠르게 통과할 수 있는 구간`:'위쪽에 뚜렷한 매물 공백 없음'}
+        </div>
+      </div>
+      <div class="box"><h3>구간별 POC · 밸류에어리어</h3>
+        <table><thead><tr><th>기간</th><th class="r">POC</th><th class="r">VA(70%)</th></tr></thead><tbody>
+        ${r.order.map(p=>`<tr><td>${p} <span style="color:var(--faint);font-size:11px">${r.perProf[p].n}봉</span></td>
+          <td class="r">${fmt(r.poc[p])}</td><td class="r">${fmt(r.va[p].val)}~${fmt(r.va[p].vah)}</td></tr>`).join('')}
+        </tbody></table>
+      </div>
+      <div class="box" style="border-color:${cv('--warn')}">
+        <div class="note" style="color:var(--txt)">⚠ 이 웹앱은 Worker API가 즉시 주는 ${r.bars}봉(약 ${months}개월)으로 계산합니다.
+        3년(단기60·중기250·장기750일) 다중 기간 정밀 분석은 채팅에서
+        <b>"${CUR.name} 매물대 분석해줘"</b>로 요청하세요.</div>
+      </div>
+    </div>
+  </div>`;
+  const lb=$('#lb');
+  if(lb)lb.oninput=()=>{LOOKBACK=+lb.value;$('#lbTxt').textContent=LOOKBACK+'일';
+    clearTimeout(window._lbT);window._lbT=setTimeout(run,120);};
+}
+/* 진입 파라미터 — ?code=005930(직접) · ?q=삼성전자(index.html 통합 검색 칩) */
+(async()=>{
+  const sp=new URLSearchParams(location.search);
+  const code=sp.get('code');
+  if(code){load(code,null);return;}
+  const q=sp.get('q');
+  if(!q)return;
+  qIn.value=q;
+  $('#detail').innerHTML='<div class="spin"></div>';
+  try{
+    const r=await(await fetch(`${API}/search?q=${encodeURIComponent(q)}`)).json();
+    const it=(r.data||[]).filter(x=>/^[0-9]{6}$/.test(x.code));
+    if(it.length)load(it[0].code,it[0].name);
+    else $('#detail').innerHTML=`<div class="empty"><div class="big">🔎</div><div>'${q}' 검색 결과가 없습니다</div></div>`;
+  }catch(e){
+    $('#detail').innerHTML='<div class="empty"><div class="big">⚠</div><div>검색 실패 · 잠시 후 다시 시도하세요</div></div>';
+  }
+})();
+</script>
+</body>
+</html>
