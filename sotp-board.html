@@ -110,6 +110,13 @@ table.t td.r,table.t th.r{text-align:right;font-family:'JetBrains Mono'}
 .bandbar .mklab{position:absolute;top:-25px;transform:translateX(-50%);font-size:10.5px;font-weight:700;white-space:nowrap}
 .bandbar .zl{position:absolute;bottom:-18px;font-size:10px;color:var(--faint)}
 .note{font-size:12px;color:var(--muted);line-height:1.75}
+.wf-row{display:flex;align-items:center;gap:10px;height:25px}
+.wf-n{width:26%;min-width:92px;font-size:11.5px;color:var(--muted);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.wf-track{flex:1;position:relative;height:15px;background:var(--panel2);border-radius:4px}
+.wf-track i{position:absolute;top:0;bottom:0;border-radius:3px;opacity:.85;min-width:2px}
+.wf-v{width:94px;text-align:right;font-family:'JetBrains Mono';font-size:11.5px;white-space:nowrap}
+.wf-sep{height:1px;background:var(--line);margin:7px 0}
 .note b{color:var(--ink)}
 .golink{display:inline-block;margin-top:6px;color:var(--gold2);font-size:12px;text-decoration:none;
   border:1px solid rgba(230,180,34,.4);border-radius:7px;padding:5px 11px}
@@ -200,22 +207,31 @@ function render(){
   document.querySelectorAll('.card').forEach(el=>el.onclick=()=>detail(+el.dataset.i));
 }
 
+const KCOL={debt:'#f0454e',listed_sub:'#7c9cf5',unlisted_sub:'#b57edc',
+            segment:'#2fbf71',asset:'#c9a227',other:'#8896ae'};
+
 function waterfall(r){
   const rows=[...(r.parts||[])].sort((a,b)=>b.value-a.value);
-  const items=[...rows.map(p=>({n:p.name,v:p.value,k:p.kind})),{n:'순차입금',v:-(r.net_debt||0),k:'debt'}];
+  if(!rows.length)return '';
+  const items=rows.map(p=>({n:p.name,v:p.value,k:p.kind}));
+  if(r.net_debt)items.push({n:'(−) 순차입금',v:-r.net_debt,k:'debt'});
   const total=Math.max(r.gross||1,1);
-  const H=items.length*26+8;
-  let acc=0,s='';
-  items.forEach((it,i)=>{
-    const y=i*26+6, w=Math.abs(it.v)/total*100;
+  let acc=0,html='';
+  items.forEach(it=>{
+    const w=Math.abs(it.v)/total*100;
     const x=it.v>=0?acc/total*100:(acc+it.v)/total*100;
-    const col=it.k==='debt'?'#f0454e':it.k==='listed_sub'?'#7c9cf5':it.k==='unlisted_sub'?'#b57edc'
-      :it.k==='segment'?'#2fbf71':it.k==='asset'?'#c9a227':'#8896ae';
-    s+=`<rect x="${x}%" y="${y}" width="${Math.max(w,.4)}%" height="16" rx="3" fill="${col}" opacity=".85"></rect>
-      <text x="0.6%" y="${y+12}" fill="#8896ae" font-size="11">${(it.n||'').slice(0,16)}</text>
-      <text x="99.4%" y="${y+12}" fill="#e9eef7" font-size="11" text-anchor="end" font-family="JetBrains Mono">${eok(it.v)}</text>`;
+    html+=`<div class="wf-row"><span class="wf-n">${it.n||''}</span>
+      <span class="wf-track"><i style="left:${clamp(x,0,100)}%;width:${clamp(Math.max(w,.5),0,100)}%;
+        background:${KCOL[it.k]||KCOL.other}"></i></span>
+      <span class="wf-v">${eok(it.v)}</span></div>`;
     acc+=it.v;});
-  return `<svg viewBox="0 0 100 ${H}" style="width:100%;height:${H}px" preserveAspectRatio="none">${s}</svg>`;
+  const mk=(lab,val,col,op)=>`<div class="wf-row"><span class="wf-n" style="color:${col}">${lab}</span>
+    <span class="wf-track"><i style="left:0;width:${clamp(val/total*100,0,100)}%;background:${col};opacity:${op}"></i></span>
+    <span class="wf-v" style="color:${col}">${eok(val)}</span></div>`;
+  return `<div class="wf">${html}<div class="wf-sep"></div>
+    ${mk('= NAV',r.nav,'#f2ca4c',.6)}
+    ${mk(`목표시총 (할인 ${pct(r.discount)})`,r.target_mcap,'#f08a4f',.6)}
+    ${mk('현재 시총',r.mcap,'#8896ae',.5)}</div>`;
 }
 
 function bandBlock(b){
