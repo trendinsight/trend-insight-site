@@ -660,7 +660,8 @@ function bind(C){
       if(k==='method'){p.kind=p.method==='mktcap'?'listed_sub':p.kind==='listed_sub'?'unlisted_sub':p.kind;save();render();return;}
       if(k==='code'&&/^\d{6}$/.test(e.target.value)){
         const q=await fetchQuote(e.target.value);
-        p._mktcap=q.mcap||0; if(!p.name||/^자회사|^TODO/.test(p.name))p.name=q.name;
+        p._mktcap=q.mcap||0;
+        if(!p.name||Object.values(KINDS).includes(p.name)||/^TODO/.test(p.name))p.name=q.name||p.name;
         seriesCache[e.target.value]=null; await computeBand(); save(); render(); return;}
       if(k==='stake'||k==='liq_disc'||k==='code'){clearTimeout(window._bT);window._bT=setTimeout(async()=>{await computeBand();save();render();},400);}
       save(); refreshNumbers();
