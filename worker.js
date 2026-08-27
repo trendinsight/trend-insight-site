@@ -699,6 +699,29 @@ async function handleCockpit(req, url, ctx) {
       const code = p.slice(8).replace(/[^0-9A-Za-z]/g, "");
       return await ckCached(req, 180, async () => await ckAnalyzeFull(code));
     }
+    // 장기 OHLCV — 매물대(volume-profile) 등 다년 데이터가 필요한 앱용. 최대 900봉(약 3.5년)
+    if (p.startsWith("ohlcv/")) {
+      const code = p.slice(6).replace(/[^0-9A-Za-z]/g, "");
+      if (!code) return new Response(JSON.stringify({ ok: false, error: "code 필요" }), { status: 400, headers: JSON_HEADERS });
+      const days = Math.min(Math.max(parseInt(url.searchParams.get("days") || "800", 10) || 800, 60), 900);
+      return await ckCached(req, 1800, async () => {
+        const all = await ckOHLCV(code, days);
+        const rows = all.slice(-days);
+        if (!rows.length) return { ok: false, error: "데이터 없음" };
+        return wrap({
+          code,
+          bars: rows.length,
+          from: rows[0].date,
+          to: rows[rows.length - 1].date,
+          date: rows.map(r => r.date),
+          open: rows.map(r => r.open),
+          high: rows.map(r => r.high),
+          low: rows.map(r => r.low),
+          close: rows.map(r => r.close),
+          volume: rows.map(r => r.volume)
+        });
+      });
+    }
     if (p === "ranking") {
       const market = url.searchParams.get("market") || "KOSPI";
       const top = Math.min(parseInt(url.searchParams.get("top") || "10", 10) || 10, 30);
