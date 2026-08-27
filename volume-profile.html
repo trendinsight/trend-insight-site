@@ -67,7 +67,16 @@ th{color:var(--sub);font-weight:600;font-size:11.5px}
 td.r,th.r{text-align:right}
 .note{font-size:12px;color:var(--sub);line-height:1.75}
 .warn{color:var(--warn);font-weight:700}
-svg{display:block;width:100%;height:auto}
+svg{display:block;max-width:100%}
+.chartwrap{position:relative;width:100%;overflow:hidden;cursor:crosshair;touch-action:pan-y}
+.tip{position:absolute;display:none;pointer-events:none;z-index:20;background:rgba(18,22,30,.96);
+  border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:11.5px;line-height:1.6;
+  color:var(--sub);box-shadow:0 8px 24px rgba(0,0,0,.55);white-space:nowrap}
+.tip b{color:var(--txt)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--faint);margin-top:9px}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend i{width:13px;height:3px;border-radius:2px;display:inline-block}
+.legend i.box{height:10px;width:10px;border-radius:2px}
 details.guide{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:14px 0 4px}
 details.guide summary{cursor:pointer;padding:13px 16px;font-size:13.5px;font-weight:700;list-style:none}
 details.guide summary::-webkit-details-marker{display:none}
@@ -440,7 +449,7 @@ document.addEventListener('click',e=>{if(!e.target.closest('.searchwrap'))hideQ(
 document.querySelectorAll('.quick button').forEach(b=>b.onclick=()=>{qIn.value=b.dataset.n;load(b.dataset.c,b.dataset.n);});
 
 /* ═══ 로드·렌더 ═══ */
-let CUR=null, LOOKBACK=0, BOARD=null;
+let CUR=null, LOOKBACK=0, CURRES=null;   // CURRES = 최근 analyze 결과(차트가 참조)
 async function load(code,name){
   $('#detail').innerHTML='<div class="spin"></div>';
   try{
@@ -460,64 +469,194 @@ async function load(code,name){
 function run(){
   if(!CUR)return;
   const r=analyze(CUR,LOOKBACK||CUR.close.length);
-  if(r.error){$('#detail').innerHTML=`<div class="empty"><div class="big">⚠</div><div>${r.error}</div></div>`;return;}
+  if(r.error){CURRES=null;$('#detail').innerHTML=`<div class="empty"><div class="big">⚠</div><div>${r.error}</div></div>`;return;}
+  CURRES=r;
   render(r);
 }
 function gbadge(g){const c=g==='CORE'?'--core':g==='MAJOR'?'--major':'--minor';
   return `<span class="badge" style="background:${cv(c)};font-size:10.5px;padding:2px 8px">${g}</span>`;}
 
-/* 매물대 차트 — 좌측 가격선 + 우측 가로 히스토그램 (공통 y축) */
-function chartSVG(r){
-  const W=1000,H=430,PL=6,PR=8,PT=14,PB=22, HW=270; // HW: 히스토그램 폭
-  const CW=W-PL-PR-HW-14;
-  const prof=r.perProf[r.order[r.order.length-1]];
-  const lo=Math.min(prof.lo,Math.min(...r.series.close)), hi=Math.max(prof.hi,Math.max(...r.series.close));
-  const useLog=prof.log;
-  const f=useLog?Math.log:(x=>x);
-  const y=p=>PT+(f(hi)-f(p))/(f(hi)-f(lo)||1)*(H-PT-PB);
-  const N=r.series.close.length;
-  const x=i=>PL+i/(N-1||1)*CW;
-  const maxA=Math.max(...prof.a), maxB=Math.max(...prof.b);
-  const hx=v=>PL+CW+14+(v/(maxA||1))*HW;
-  let s=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:430px">`;
-  // 매물대 밴드
-  for(const z of r.zones){
-    const y1=y(z.high),y2=y(z.low);
-    const col=z.role==='저항'?cv('--res'):z.role==='지지'?cv('--sup'):cv('--warn');
-    const op=z.grade==='CORE'?0.16:z.grade==='MAJOR'?0.10:0.06;
-    s+=`<rect x="${PL}" y="${y1}" width="${W-PL-PR}" height="${Math.max(1,y2-y1)}" fill="${col}" opacity="${op}"/>`;
-    s+=`<text x="${PL+4}" y="${y1+11}" fill="${col}" font-size="10.5" font-weight="700">${z.grade} ${fmt(z.low)}~${fmt(z.high)}</text>`;
+/* ═══ 매물대 차트 ═══
+   좌: 캔들 + 거래량 스트립 · 우: 가로 매물대 히스토그램(같은 y축=가격축)
+   컨테이너 실측 픽셀로 그린다(viewBox 늘이기 없음 → 글자 왜곡 없음). */
+const CH={H:470, PROF_MAX:250, PROF_MIN:110, AXW:58, VOLH:44, DATEH:20, PT:10, PB:6};
+let CHART=null;   // {r, prof, geom} — 크로스헤어·툴팁이 참조
+
+function niceTicks(lo,hi,useLog,n=6){
+  const out=[];
+  if(useLog){
+    const a=Math.log(lo),b=Math.log(hi);
+    for(let i=0;i<=n;i++)out.push(Math.exp(a+(b-a)*i/n));
+  }else{
+    for(let i=0;i<=n;i++)out.push(lo+(hi-lo)*i/n);
   }
-  // 히스토그램 (A: bin 누적 막대, B: KDE 곡선)
+  return out.map(v=>{
+    const mag=Math.pow(10,Math.floor(Math.log10(Math.abs(v)||1))-1);
+    return Math.round(v/mag)*mag;
+  });
+}
+function buildChart(r,W){
+  const prof=r.perProf[r.order[r.order.length-1]];   // 표시 기준 = 중기(룩백) 프로파일
+  const N=prof.n, s=CUR.close.length-N;
+  const D={date:CUR.date.slice(s),o:CUR.open.slice(s),h:CUR.high.slice(s),
+           l:CUR.low.slice(s),c:CUR.close.slice(s),v:(CUR.volume||[]).slice(s)};
+  const PW=Math.max(CH.PROF_MIN,Math.min(CH.PROF_MAX,Math.round((W-CH.AXW)*0.30)));
+  const CW=W-CH.AXW-PW-10;                            // 캔들 영역 폭
+  const PX0=0, PX1=CW, HX0=CW+10, HX1=CW+10+PW;       // 캔들/히스토그램 x범위
+  const top=CH.PT, bot=CH.H-CH.DATEH-CH.VOLH-CH.PB;   // 가격 영역 y범위
+  const pad=(prof.hi/prof.lo-1)*0.02;
+  const lo=prof.lo*(1-pad), hi=prof.hi*(1+pad);
+  const useLog=prof.log, f=useLog?Math.log:(x=>x);
+  const y=p=>top+(f(hi)-f(p))/(f(hi)-f(lo)||1)*(bot-top);
+  const yInv=py=>{const t=(py-top)/(bot-top);const v=f(hi)-t*(f(hi)-f(lo));return useLog?Math.exp(v):v;};
+  const step=CW/Math.max(1,N), bw=Math.max(1,Math.min(9,step*0.62));
+  const x=i=>PX0+step*(i+0.5);
+  const maxA=Math.max(...prof.a)||1, maxB=Math.max(...prof.b)||1;
+  const maxV=Math.max(...(D.v.length?D.v:[1]))||1;
+  const vy=v=>CH.H-CH.DATEH-CH.PB-(v/maxV)*CH.VOLH;
+  const UP=cv('--up'),DN=cv('--down'),SUB=cv('--sub'),FNT=cv('--faint'),LINE=cv('--line');
+  let g='';
+
+  // ── 밸류에어리어 음영 + 매물대 밴드 ──
+  const va=r.va[r.order[r.order.length-1]];
+  if(va)g+=`<rect x="${PX0}" y="${y(va.vah)}" width="${HX1-PX0}" height="${Math.max(1,y(va.val)-y(va.vah))}"
+    fill="${cv('--major')}" opacity="0.055"/>`;
+  const bands=r.zones.map(z=>({z,y1:y(Math.min(z.high,hi)),y2:y(Math.max(z.low,lo))}))
+                     .sort((a,b)=>a.y1-b.y1);
+  let lastLbl=-99;                                   // 라벨 겹침 방지(최소 15px 간격)
+  for(const {z,y1,y2} of bands){
+    const col=z.role==='저항'?cv('--res'):z.role==='지지'?cv('--sup'):cv('--warn');
+    const op=z.grade==='CORE'?0.15:z.grade==='MAJOR'?0.10:0.055;
+    g+=`<rect x="${PX0}" y="${y1.toFixed(1)}" width="${HX1-PX0}" height="${Math.max(1.5,y2-y1).toFixed(1)}" fill="${col}" opacity="${op}"/>
+        <rect x="${PX0}" y="${y1.toFixed(1)}" width="3" height="${Math.max(1.5,y2-y1).toFixed(1)}" fill="${col}" opacity="0.85"/>`;
+    const ly=Math.max(y1+11,lastLbl+15);
+    if(ly<bot-2){
+      lastLbl=ly;
+      g+=`<text x="${PX0+7}" y="${ly.toFixed(1)}" font-size="10" fill="${col}">
+            <tspan font-weight="800">${z.grade}</tspan>
+            <tspan opacity="0.85"> ${fmt(z.low)}~${fmt(z.high)} · ${z.role}</tspan></text>`;
+    }
+  }
+  // ── 가격 눈금 ──
+  for(const t of niceTicks(lo,hi,useLog)){
+    if(t<lo||t>hi)continue;
+    const yy=y(t);
+    g+=`<line x1="${PX0}" y1="${yy}" x2="${HX1}" y2="${yy}" stroke="${LINE}" stroke-width="0.6" opacity="0.5"/>
+        <text x="${HX1+5}" y="${yy+3.5}" fill="${FNT}" font-size="10.5">${fmt(t)}</text>`;
+  }
+  // ── 캔들 ──
+  for(let i=0;i<N;i++){
+    const up=D.c[i]>=D.o[i], col=up?UP:DN, xc=x(i);
+    const yo=y(D.o[i]),yc=y(D.c[i]);
+    g+=`<line x1="${xc.toFixed(1)}" y1="${y(D.h[i]).toFixed(1)}" x2="${xc.toFixed(1)}" y2="${y(D.l[i]).toFixed(1)}" stroke="${col}" stroke-width="1"/>`;
+    g+=`<rect x="${(xc-bw/2).toFixed(1)}" y="${Math.min(yo,yc).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1,Math.abs(yc-yo)).toFixed(1)}" fill="${col}"/>`;
+    if(D.v[i]!=null)g+=`<rect x="${(xc-bw/2).toFixed(1)}" y="${vy(D.v[i]).toFixed(1)}" width="${bw.toFixed(1)}" height="${(CH.H-CH.DATEH-CH.PB-vy(D.v[i])).toFixed(1)}" fill="${col}" opacity="0.45"/>`;
+  }
+  // ── 날짜 축(월 경계) ──
+  let prevM='';
+  for(let i=0;i<N;i++){
+    const m=D.date[i].slice(0,7);
+    if(m!==prevM){
+      prevM=m;
+      if(x(i)>26&&x(i)<CW-26)
+        g+=`<line x1="${x(i).toFixed(1)}" y1="${top}" x2="${x(i).toFixed(1)}" y2="${CH.H-CH.DATEH-CH.PB}" stroke="${LINE}" stroke-width="0.6" opacity="0.45"/>
+            <text x="${x(i).toFixed(1)}" y="${CH.H-6}" fill="${FNT}" font-size="10" text-anchor="middle">${m.slice(2).replace('-','.')}</text>`;
+    }
+  }
+  // ── 매물대 히스토그램 (A 막대 + B KDE 곡선) ──
+  g+=`<line x1="${HX0-5}" y1="${top}" x2="${HX0-5}" y2="${bot}" stroke="${LINE}" stroke-width="1"/>`;
   for(let i=0;i<prof.a.length;i++){
     const y1=y(prof.edges[i+1]),y2=y(prof.edges[i]);
-    const w=(prof.a[i]/(maxA||1))*HW;
-    const c0=prof.edges[i+1]<=r.price?cv('--sup'):prof.edges[i]>=r.price?cv('--res'):cv('--warn');
-    s+=`<rect x="${PL+CW+14}" y="${y1}" width="${Math.max(0.6,w)}" height="${Math.max(0.8,y2-y1-0.4)}" fill="${c0}" opacity="0.62"/>`;
+    const w=(prof.a[i]/maxA)*PW;
+    const col=prof.edges[i+1]<=r.price?cv('--sup'):prof.edges[i]>=r.price?cv('--res'):cv('--warn');
+    g+=`<rect x="${HX0}" y="${y1.toFixed(1)}" width="${Math.max(0.6,w).toFixed(1)}" height="${Math.max(0.8,y2-y1-0.4).toFixed(1)}" fill="${col}" opacity="0.6"/>`;
   }
   let kd='';
   for(let i=0;i<prof.b.length;i++){
     const yc=(y(prof.edges[i])+y(prof.edges[i+1]))/2;
-    const xv=PL+CW+14+(prof.b[i]/(maxB||1))*HW;
-    kd+=(i?'L':'M')+xv.toFixed(1)+','+yc.toFixed(1);
+    kd+=(i?'L':'M')+(HX0+(prof.b[i]/maxB)*PW).toFixed(1)+','+yc.toFixed(1);
   }
-  s+=`<path d="${kd}" fill="none" stroke="${cv('--txt')}" stroke-width="1.3" opacity="0.55"/>`;
-  // 가격 선
-  let pd='';
-  for(let i=0;i<N;i++)pd+=(i?'L':'M')+x(i).toFixed(1)+','+y(r.series.close[i]).toFixed(1);
-  s+=`<path d="${pd}" fill="none" stroke="${cv('--txt')}" stroke-width="1.6" opacity="0.9"/>`;
-  // POC · 현재가
+  g+=`<path d="${kd}" fill="none" stroke="${cv('--txt')}" stroke-width="1.4" opacity="0.8"/>`;
+  // ── POC · 현재가 ──
   for(const p of r.order){
     const yy=y(r.poc[p]);
-    s+=`<line x1="${PL}" y1="${yy}" x2="${W-PR}" y2="${yy}" stroke="${cv('--major')}" stroke-width="1" stroke-dasharray="6 4" opacity="0.8"/>
-        <text x="${W-PR-4}" y="${yy-4}" text-anchor="end" fill="${cv('--major')}" font-size="10.5">POC(${p}) ${fmt(r.poc[p])}</text>`;
+    if(yy<top||yy>bot)continue;
+    g+=`<line x1="${PX0}" y1="${yy}" x2="${HX1}" y2="${yy}" stroke="${cv('--major')}" stroke-width="1" stroke-dasharray="6 4" opacity="0.85"/>
+        <text x="${HX1-4}" y="${yy-4}" text-anchor="end" fill="${cv('--major')}" font-size="10">POC·${p} ${fmt(r.poc[p])}</text>`;
   }
   const yp=y(r.price);
-  s+=`<line x1="${PL}" y1="${yp}" x2="${W-PR}" y2="${yp}" stroke="${cv('--up')}" stroke-width="1.6"/>
-      <text x="${PL+4}" y="${yp-5}" fill="${cv('--up')}" font-size="11.5" font-weight="800">현재가 ${fmt(r.price)}</text>`;
-  s+=`<text x="${PL+CW+14}" y="${H-6}" fill="${cv('--faint')}" font-size="10.5">← 가격 추이 · 매물대(가격대별 거래량) →</text>`;
-  return s+'</svg>';
+  g+=`<line x1="${PX0}" y1="${yp}" x2="${HX1}" y2="${yp}" stroke="${UP}" stroke-width="1.5"/>
+      <rect x="${HX1+2}" y="${yp-9}" width="${CH.AXW-4}" height="18" rx="3" fill="${UP}"/>
+      <text x="${HX1+CH.AXW/2}" y="${yp+4}" text-anchor="middle" fill="#fff" font-size="10.5" font-weight="800">${fmt(r.price)}</text>`;
+  // ── 크로스헤어(초기 숨김) ──
+  g+=`<g id="chx" style="display:none">
+       <line id="chxv" y1="${top}" y2="${CH.H-CH.DATEH-CH.PB}" stroke="${SUB}" stroke-width="0.8" stroke-dasharray="4 3"/>
+       <line id="chxh" x1="${PX0}" x2="${HX1}" stroke="${SUB}" stroke-width="0.8" stroke-dasharray="4 3"/>
+       <rect id="chxb" x="${HX1+2}" width="${CH.AXW-4}" height="18" rx="3" fill="${cv('--card2')}" stroke="${LINE}"/>
+       <text id="chxt" x="${HX1+CH.AXW/2}" text-anchor="middle" fill="${cv('--txt')}" font-size="10.5"></text>
+     </g>`;
+  g+=`<text x="${HX0}" y="${top+11}" fill="${FNT}" font-size="10">매물대 →</text>`;
+
+  CHART={r,prof,D,N,geom:{W,PX0,PX1,HX0,HX1,top,bot,step,x,y,yInv,PW,maxA}};
+  return `<svg width="${W}" height="${CH.H}" viewBox="0 0 ${W} ${CH.H}">${g}</svg>`;
 }
+function paintChart(){
+  const wrap=$('#cwrap');
+  if(!wrap||!CURRES)return;
+  const w=Math.max(320,Math.floor(wrap.clientWidth));
+  $('#csvg').innerHTML=buildChart(CURRES,w);
+}
+function zoneAt(p){
+  return (CURRES.near||[]).find(z=>p>=z.low&&p<=z.high)||null;
+}
+function bindChart(){
+  const wrap=$('#cwrap'),tip=$('#tip');
+  if(!wrap)return;
+  const move=e=>{
+    if(!CHART)return;
+    const g=CHART.geom, R=wrap.getBoundingClientRect();
+    const mx=(e.touches?e.touches[0].clientX:e.clientX)-R.left;
+    const my=(e.touches?e.touches[0].clientY:e.clientY)-R.top;
+    if(mx<g.PX0||mx>g.HX1||my<g.top||my>g.bot){hideTip();return;}
+    const i=Math.max(0,Math.min(CHART.N-1,Math.floor(mx/g.step)));
+    const D=CHART.D, px=g.x(i), pr=g.yInv(my);
+    const grp=document.getElementById('chx');
+    if(grp){
+      grp.style.display='';
+      document.getElementById('chxv').setAttribute('x1',px);
+      document.getElementById('chxv').setAttribute('x2',px);
+      document.getElementById('chxh').setAttribute('y1',my);
+      document.getElementById('chxh').setAttribute('y2',my);
+      document.getElementById('chxb').setAttribute('y',my-9);
+      const t=document.getElementById('chxt');
+      t.setAttribute('y',my+4); t.textContent=fmt(pr);
+    }
+    const z=zoneAt(pr);
+    const up=D.c[i]>=D.o[i];
+    tip.innerHTML=`<b>${D.date[i]}</b>
+      <div>시 ${fmt(D.o[i])} · 고 ${fmt(D.h[i])} · 저 ${fmt(D.l[i])}</div>
+      <div>종 <b class="${up?'up':'down'}">${fmt(D.c[i])}</b>${D.v[i]!=null?` · 거래량 ${fmt(D.v[i])}`:''}</div>
+      <div style="margin-top:5px;border-top:1px solid var(--line);padding-top:5px">
+        커서 가격 <b>${fmt(pr)}</b><br>
+        ${z?`${z.grade} 매물대 ${fmt(z.low)}~${fmt(z.high)} · ${z.role} · ${z.score}점`
+           :'<span style="color:var(--faint)">이 가격대엔 뚜렷한 매물대 없음</span>'}</div>`;
+    tip.style.display='block';
+    const tw=tip.offsetWidth||190, th=tip.offsetHeight||110;
+    tip.style.left=Math.min(wrap.clientWidth-tw-6,Math.max(4,mx+14))+'px';
+    tip.style.top=Math.min(CH.H-th-6,Math.max(4,my-10))+'px';
+  };
+  const hideTip=()=>{
+    const grp=document.getElementById('chx');
+    if(grp)grp.style.display='none';
+    if(tip)tip.style.display='none';
+  };
+  wrap.onmousemove=move;
+  wrap.onmouseleave=hideTip;
+  wrap.ontouchmove=e=>{move(e);e.preventDefault();};
+  wrap.ontouchend=hideTip;
+}
+addEventListener('resize',()=>{clearTimeout(window._rzT);window._rzT=setTimeout(()=>{paintChart();bindChart();},160);});
+
 function zoneRows(zs,price){
   return zs.map(z=>{
     const h=z.history||{};
@@ -561,9 +700,19 @@ function render(r){
   </div>
   <div class="grid2">
     <div>
-      <div class="box"><h3>매물대 프로파일</h3>${chartSVG(r)}
-        <div class="note" style="margin-top:8px">막대 = 가격구간 누적(A) · 얇은 선 = 거래량가중 KDE(B) ·
-          점선 = POC · 붉은 선 = 현재가. 색 밴드가 중요 매물대(초록 지지 · 빨강 저항 · 노랑 현재 구간).</div>
+      <div class="box"><h3>차트 × 매물대</h3>
+        <div class="chartwrap" id="cwrap"><div id="csvg"></div><div class="tip" id="tip"></div></div>
+        <div class="legend">
+          <span><i class="box" style="background:${cv('--sup')}"></i>지지 매물대</span>
+          <span><i class="box" style="background:${cv('--res')}"></i>저항 매물대</span>
+          <span><i class="box" style="background:${cv('--warn')}"></i>현재 구간</span>
+          <span><i style="background:${cv('--major')}"></i>POC(점선)·밸류에어리어(음영)</span>
+          <span><i style="background:${cv('--up')}"></i>현재가</span>
+          <span><i style="background:${cv('--txt')}"></i>KDE 곡선(B)</span>
+        </div>
+        <div class="note" style="margin-top:7px">캔들과 오른쪽 매물대가 <b>같은 가격축</b>을 쓴다 —
+          가로 막대가 길수록 그 가격대에 물량이 두껍다. 차트 위에 마우스를 올리면 그 날 시세와
+          커서 가격이 속한 매물대를 알려준다.</div>
       </div>
       <div class="box"><h3>중요 매물대 (점수순)</h3>
         <table><thead><tr><th>등급</th><th>가격대</th><th class="r">점수</th><th class="r">비중</th></tr></thead>
@@ -607,6 +756,8 @@ function render(r){
       </div>
     </div>
   </div>`;
+  paintChart();
+  bindChart();
   const lb=$('#lb');
   if(lb)lb.oninput=()=>{LOOKBACK=+lb.value;$('#lbTxt').textContent=LOOKBACK+'일';
     clearTimeout(window._lbT);window._lbT=setTimeout(run,120);};
