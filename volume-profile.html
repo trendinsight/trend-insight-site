@@ -124,9 +124,12 @@ details.guide .gbody b{color:var(--txt)}
     핵심 매물대를 거래량 동반 상향 돌파하면 <b>바닥 탈출</b>, 하향 이탈하면 <b>꼭지 이탈</b>로 보정한다.<br>
     <b>확인 지표</b>(RSI·MA20·OBV)는 판정 점수에 개입하지 않는 확인 레이어다.
     매물대 위치와 추세가 엇갈리면 그 사실을 그대로 표시한다.<br>
-    <b>데이터 범위</b>: 이 웹앱은 Worker API가 즉시 주는 최근 수개월 일봉으로 브라우저에서 계산한다 —
-    빠르게 훑어보기용이다. 최대 3년(단기60·중기250·장기750일) 다중 기간 정밀 분석은 채팅에서
-    "OO 매물대 분석해줘"로 요청하면 되고, 결과는 매물대 보드에도 누적 게시된다.
+    <b>데이터 범위</b>: 최근 <b>약 3.2년(800봉)</b> 일봉을 받아 브라우저에서 계산한다.
+    구간은 <b>단기 60일 · 중기 250일 · 장기(기본 750일)</b> 세 개이며, 상단 슬라이더·버튼으로
+    장기 구간을 6개월~3년 사이에서 바꾸면 즉시 다시 계산한다. 차트가 그리는 기간은 장기 구간과 같다.<br>
+    <b>채팅 분석과의 차이</b>: 계산 규칙과 기간 가중(0.20/0.45/0.35)은 채팅 스킬과 동일하다.
+    다만 채팅은 pykrx 수정주가를, 웹앱은 네이버 일봉을 쓰므로 소수점 단위 차이는 날 수 있다.
+    채팅으로 분석하면 결과가 매물대 보드에 날짜별로 누적 게시된다.
   </div></details>
   <div class="foot">
     데이터: Trend Insight Worker API(/api/cockpit) · 브라우저에서 실시간 계산 ·
@@ -143,6 +146,7 @@ const clamp=(x,lo,hi)=>Math.max(lo,Math.min(hi,x));
 /* ═══ 계산 규격 — scripts/volume_profile.py 와 동일하게 유지할 것 ═══ */
 const ZONE_CUT=0.60, ZONE_MAX_HALF=5, BIN_STEP=0.012, BIN_MIN=40, BIN_MAX=140;
 const VA_PCT=0.70, SCORE_MIN=50, FAR_MULT=2.5;
+const LONG_DAYS=800, DEF_LOOKBACK=750;   // /api/cockpit/ohlcv 요청 봉 수 · 장기 구간 기본값
 const VK={DEEP_BOTTOM:['바닥권','--sup'],BOTTOM:['바닥 회복권','--sup'],
   BOTTOM_BREAKOUT:['바닥 탈출','--core'],MID:['중립','--minor'],
   UPPER:['상단권','--warn'],TOP:['꼭지권','--res'],TOP_DISTRIBUTION:['꼭지 이탈','--res']};
@@ -366,11 +370,15 @@ function analyze(d,lookback){
   const n=d.close.length;
   if(n<40)return{error:`봉 수 부족(${n}) — 매물대 분석에는 최소 40봉이 필요합니다`};
   const price=d.close[n-1];
-  // 웹앱은 API가 주는 범위 안에서 두 구간을 쓴다: 단기(60일) · 중기(사용자 지정 룩백)
-  const defs=[['단기',Math.min(60,n)],['중기',Math.min(lookback,n)]];
+  // 구간 = 단기 60 · 중기 250 · 장기(룩백, 기본 750). 데이터가 짧으면 있는 것만 쓴다.
+  // 길이가 겹치면(짧은 데이터) 중복 계상되어 '기간 중첩' 점수가 부풀려지므로 제거한다.
+  const LB=Math.min(Math.max(60,lookback),n);          // 슬라이더가 정하는 '가장 긴 구간'
+  const lens=[...new Set([Math.min(60,LB),Math.min(250,LB),LB]
+                .filter(v=>v>=40&&v<=n))].sort((a,b)=>a-b);
+  const NAMES=lens.length>=3?['단기','중기','장기']:lens.length===2?['단기','중기']:['중기'];
+  const defs=lens.map((v,i)=>[NAMES[i],v]);
   const order=[],perProf={},perZones={},poc={},va={},lvn=[],perPct={};
   for(const [name,len] of defs){
-    if(len<40||(order.length&&len<=defs[0][1]))continue;
     const s=n-len;
     const H=d.high.slice(s),L=d.low.slice(s),C=d.close.slice(s),V=d.volume?d.volume.slice(s):null;
     const prof=buildProfile(H,L,C,V,autoBins(Math.min(...L),Math.max(...H)));
@@ -397,9 +405,11 @@ function analyze(d,lookback){
       valleysOf(prof.a).forEach(i=>lvn.push({low:prof.edges[i],high:prof.edges[i+1],period:name}));
   }
   if(!order.length)return{error:'프로파일 생성 실패 — 가격 변동이 없는 데이터'};
-  const W={단기:0.35,중기:0.65};
+  // 기간 가중 — 3구간이면 파이썬 스킬과 동일(0.20/0.45/0.35), 2구간이면 0.35/0.65
+  const W=order.length>=3?{단기:0.20,중기:0.45,장기:0.35}
+          :order.length===2?{단기:0.35,중기:0.65}:{중기:1};
   let pb=0,ws=0;
-  order.forEach(p=>{pb+=perPct[p]*W[p];ws+=W[p];});
+  order.forEach(p=>{const w=W[p]||0;pb+=perPct[p]*w;ws+=w;});
   const pctBelow=+(pb/(ws||1)).toFixed(1);
   const all=clusterZones(perZones,price,order);
   const near=all.filter(z=>z.peak>=price/FAR_MULT&&z.peak<=price*FAR_MULT);
@@ -453,14 +463,21 @@ let CUR=null, LOOKBACK=0, CURRES=null;   // CURRES = 최근 analyze 결과(차�
 async function load(code,name){
   $('#detail').innerHTML='<div class="spin"></div>';
   try{
-    const r=await(await fetch(`${API}/analyze/${code}`)).json();
-    if(!r.ok)throw new Error(r.error||'분석 실패');
-    const d=r.data;
-    CUR={code:d.code,name:d.name||name||code,quote:d.quote||{},
-      date:d.chart.date,open:d.chart.open,high:d.chart.high,low:d.chart.low,
-      close:d.chart.close,volume:d.chart.volume};
-    LOOKBACK=CUR.close.length;
-    history.replaceState(null,'',`?code=${d.code}`);
+    // 장기 일봉(/ohlcv, 최대 900봉 ≈ 3.5년)과 시세·이름(/analyze)을 동시에 받는다.
+    // /ohlcv가 없거나 실패하면 /analyze의 120봉 차트로 자동 폴백한다.
+    const [ok,ak]=await Promise.allSettled([
+      fetch(`${API}/ohlcv/${code}?days=${LONG_DAYS}`).then(r=>r.json()),
+      fetch(`${API}/analyze/${code}`).then(r=>r.json())
+    ]);
+    const A=ak.status==='fulfilled'&&ak.value.ok?ak.value.data:null;
+    const O=ok.status==='fulfilled'&&ok.value.ok?ok.value.data:null;
+    if(!A&&!O)throw new Error('데이터를 받지 못했습니다');
+    const src=O||A.chart;
+    CUR={code:(A&&A.code)||code,name:(A&&A.name)||name||code,quote:(A&&A.quote)||{},
+      date:src.date,open:src.open,high:src.high,low:src.low,close:src.close,volume:src.volume,
+      long:!!O};
+    LOOKBACK=Math.min(DEF_LOOKBACK,CUR.close.length);
+    history.replaceState(null,'',`?code=${CUR.code}`);
     run();
   }catch(e){
     $('#detail').innerHTML=`<div class="empty"><div class="big">⚠</div><div>${e.message||'연결 실패 · 잠시 후 다시 시도하세요'}</div></div>`;
@@ -553,15 +570,21 @@ function buildChart(r,W){
     if(D.v[i]!=null)g+=`<rect x="${(xc-bw/2).toFixed(1)}" y="${vy(D.v[i]).toFixed(1)}" width="${bw.toFixed(1)}" height="${(CH.H-CH.DATEH-CH.PB-vy(D.v[i])).toFixed(1)}" fill="${col}" opacity="0.45"/>`;
   }
   // ── 날짜 축(월 경계) ──
-  let prevM='';
+  let prevM='',prevY='',lastLx=-99;
+  const longRange=N>420;                        // 1.7년 넘으면 분기(1·4·7·10월)만 눈금
   for(let i=0;i<N;i++){
-    const m=D.date[i].slice(0,7);
-    if(m!==prevM){
-      prevM=m;
-      if(x(i)>26&&x(i)<CW-26)
-        g+=`<line x1="${x(i).toFixed(1)}" y1="${top}" x2="${x(i).toFixed(1)}" y2="${CH.H-CH.DATEH-CH.PB}" stroke="${LINE}" stroke-width="0.6" opacity="0.45"/>
-            <text x="${x(i).toFixed(1)}" y="${CH.H-6}" fill="${FNT}" font-size="10" text-anchor="middle">${m.slice(2).replace('-','.')}</text>`;
-    }
+    const m=D.date[i].slice(0,7), yy=D.date[i].slice(0,4);
+    if(m===prevM)continue;
+    prevM=m;
+    const mo=+m.slice(5), xi=x(i);
+    if(longRange&&mo%3!==1)continue;
+    if(xi<=26||xi>=CW-26)continue;
+    g+=`<line x1="${xi.toFixed(1)}" y1="${top}" x2="${xi.toFixed(1)}" y2="${CH.H-CH.DATEH-CH.PB}" stroke="${LINE}" stroke-width="0.6" opacity="0.45"/>`;
+    if(xi-lastLx<58)continue;                   // 라벨은 최소 58px 간격으로만
+    lastLx=xi;
+    const lbl=(yy!==prevY)?`${yy.slice(2)}.${m.slice(5)}`:m.slice(5)+'월';
+    prevY=yy;
+    g+=`<text x="${xi.toFixed(1)}" y="${CH.H-6}" fill="${FNT}" font-size="10" text-anchor="middle">${lbl}</text>`;
   }
   // ── 매물대 히스토그램 (A 막대 + B KDE 곡선) ──
   g+=`<line x1="${HX0-5}" y1="${top}" x2="${HX0-5}" y2="${bot}" stroke="${LINE}" stroke-width="1"/>`;
@@ -688,15 +711,21 @@ function render(r){
       <span style="color:var(--faint);font-size:11px"> ${z.dist_pct>0?'+':''}${z.dist_pct}%</span> ${gbadge(z.grade)}</td></tr>`
     :`<tr><td>${lab}</td><td class="r" style="color:var(--faint)">없음</td></tr>`;
   const months=Math.max(1,Math.round(r.bars/21));
+  const yrs=r.bars>=230?`${(r.bars/250).toFixed(1)}년`:`${months}개월`;
   $('#detail').innerHTML=`
   <div class="dhead">
     <span class="nm">${CUR.name}</span><span class="cd">${CUR.code}</span>
     <span class="px">${fmt(price)}<small class="${rate>0?'up':rate<0?'down':''}">${rate>0?'▲':rate<0?'▼':''}${Math.abs(chg||0).toLocaleString('ko-KR')} (${(rate||0).toFixed(2)}%)</small></span>
   </div>
   <div class="ctrlbar">
-    <span>룩백 <b style="color:var(--txt)" id="lbTxt">${LOOKBACK}일</b></span>
-    <input type="range" id="lb" min="60" max="${r.bars}" step="5" value="${LOOKBACK}">
-    <span style="color:var(--faint)">기준일 ${CUR.date[CUR.date.length-1]} · 데이터 ${r.bars}봉(약 ${months}개월)</span>
+    <span>장기 구간 <b style="color:var(--txt)" id="lbTxt">${LOOKBACK}일</b></span>
+    <input type="range" id="lb" min="60" max="${r.bars}" step="10" value="${Math.min(LOOKBACK,r.bars)}">
+    <span class="seg" id="lbq">
+      ${[['6개월',120],['1년',250],['2년',500],['3년',750]].map(([t,v])=>
+        `<button data-v="${v}" ${Math.abs(LOOKBACK-Math.min(v,r.bars))<6?'class="on"':''} ${v>r.bars+40?'disabled style="opacity:.4"':''}>${t}</button>`).join('')}
+    </span>
+    <span style="color:var(--faint)">기준일 ${CUR.date[CUR.date.length-1]} ·
+      ${CUR.date[0]}부터 ${r.bars}봉(약 ${yrs})</span>
   </div>
   <div class="grid2">
     <div>
@@ -749,10 +778,15 @@ function render(r){
           <td class="r">${fmt(r.poc[p])}</td><td class="r">${fmt(r.va[p].val)}~${fmt(r.va[p].vah)}</td></tr>`).join('')}
         </tbody></table>
       </div>
-      <div class="box" style="border-color:${cv('--warn')}">
-        <div class="note" style="color:var(--txt)">⚠ 이 웹앱은 Worker API가 즉시 주는 ${r.bars}봉(약 ${months}개월)으로 계산합니다.
-        3년(단기60·중기250·장기750일) 다중 기간 정밀 분석은 채팅에서
-        <b>"${CUR.name} 매물대 분석해줘"</b>로 요청하세요.</div>
+      ${r.bars<230?`<div class="box" style="border-color:${cv('--warn')}">
+        <div class="note" style="color:var(--txt)">⚠ 이 종목은 받을 수 있는 일봉이 ${r.bars}봉(약 ${months}개월)뿐이라
+        장기 매물대를 만들 수 없습니다(상장 초기이거나 데이터 제한). 판정을 참고용으로만 쓰세요.</div>
+      </div>`:''}
+      <div class="box">
+        <div class="note">데이터 ${CUR.date[0]} ~ ${CUR.date[CUR.date.length-1]} · ${r.bars}봉(약 ${yrs})
+        ${CUR.long?'':' · 장기 일봉 API 응답 없음 → 단축 데이터로 계산'}<br>
+        구간: ${r.order.map(p=>`${p} ${r.perProf[p].n}일`).join(' · ')}.
+        무상증자·액면분할이 있었던 종목은 그 이전 매물대가 의미 없으니 장기 구간을 줄여서 보세요.</div>
       </div>
     </div>
   </div>`;
@@ -760,7 +794,10 @@ function render(r){
   bindChart();
   const lb=$('#lb');
   if(lb)lb.oninput=()=>{LOOKBACK=+lb.value;$('#lbTxt').textContent=LOOKBACK+'일';
-    clearTimeout(window._lbT);window._lbT=setTimeout(run,120);};
+    clearTimeout(window._lbT);window._lbT=setTimeout(run,150);};
+  document.querySelectorAll('#lbq button').forEach(b=>b.onclick=()=>{
+    if(b.disabled)return;
+    LOOKBACK=Math.min(+b.dataset.v,r.bars);run();});
 }
 /* 진입 파라미터 — ?code=005930(직접) · ?q=삼성전자(index.html 통합 검색 칩) */
 (async()=>{
