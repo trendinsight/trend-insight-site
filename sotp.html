@@ -126,6 +126,14 @@ button.mini.on{color:var(--gold2);border-color:var(--gold)}
 .legend span{display:flex;align-items:center;gap:5px}
 .legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
 svg{display:block;width:100%;overflow:visible}
+/* 워터폴 (HTML 막대 — SVG 텍스트 왜곡 방지) */
+.wf-row{display:flex;align-items:center;gap:10px;height:26px}
+.wf-n{width:26%;min-width:96px;font-size:11.5px;color:var(--muted);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.wf-track{flex:1;position:relative;height:16px;background:var(--panel2);border-radius:4px}
+.wf-track i{position:absolute;top:0;bottom:0;border-radius:3px;opacity:.85;min-width:2px}
+.wf-v{width:96px;text-align:right;font-family:'JetBrains Mono';font-size:11.5px;white-space:nowrap}
+.wf-sep{height:1px;background:var(--line);margin:7px 0}
 .bandbar{position:relative;height:13px;border-radius:7px;margin:26px 4px 32px;
   background:linear-gradient(90deg,#3b82f6 0 30%,#e6b422 30% 70%,#2fbf71 70% 100%);opacity:.85}
 .bandbar .mk{position:absolute;top:-7px;width:3px;height:27px;background:#fff;border-radius:2px;
@@ -478,7 +486,23 @@ function render(){
     </div>
 
     <div>
-      <div class="box">
+      ${!C.rows.length?`<div class="box">
+        <h3>시작하기</h3>
+        <div class="note" style="line-height:1.95">
+          아래 순서로 부품표를 채우면 목표주가가 실시간으로 계산됩니다.
+          <div style="margin:10px 0 0;padding-left:4px">
+            <div><b>1.</b> <b style="color:var(--sub)">+ 상장자회사</b> — 자회사 <b>6자리 코드</b>를 넣으면 시총이 자동 조회됩니다. 지분율만 입력.</div>
+            <div><b>2.</b> <b style="color:var(--unl)">+ 비상장자회사</b> / <b style="color:var(--seg)">+ 사업부문</b> — DART 사업보고서의 EBITDA·매출에 피어 멀티플.</div>
+            <div><b>3.</b> <b style="color:var(--ast)">+ 비영업자산</b> — 투자부동산·보유주식 공정가치.</div>
+            <div><b>4.</b> <b>순차입금</b> — 지주 <b>별도</b> 기준(억원). 연결로 넣으면 이중 차감됩니다.</div>
+          </div>
+          <div style="margin-top:12px;color:var(--faint)">
+            상장자회사를 하나 이상 넣으면 그 종목의 <b style="color:var(--gold2)">과거 실제 할인율 밴드</b>가
+            자동으로 만들어지고, 밴드 중앙값이 기본 할인율로 적용됩니다.
+          </div>
+        </div>
+      </div>`:''}
+      <div class="box" ${!C.rows.length?'style="display:none"':''}>
         <h3>목표가</h3>
         <div class="kpi">
           <div class="cap">목표주가 · 할인율 ${pct(C.disc)}</div>
@@ -506,7 +530,7 @@ function render(){
         </table>
       </div>
 
-      <div class="box">
+      <div class="box" ${!C.rows.length?'style="display:none"':''}>
         <h3>시나리오</h3>
         <table class="tbl">
           ${['강세','기본','약세'].map(k=>{const s=C.scen[k];return `<tr>
@@ -521,7 +545,7 @@ function render(){
           <td>${won(s.price)} <span class="${s.delta>=0?'up':'down'}" style="font-size:11.5px">${sgn(s.delta)}${pct(s.delta)}</span></td></tr>`).join('')}
       </table></div>`:''}
 
-      <div class="box">
+      <div class="box" ${!C.rows.length?'style="display:none"':''}>
         <h3>경고</h3>
         ${C.warnings.length?C.warnings.map(w=>`<div class="warn">⚠ ${w}</div>`).join(''):'<div class="note">특이사항 없음</div>'}
         <div class="note" style="margin-top:12px;font-size:11.5px;color:var(--faint);line-height:1.75">
@@ -560,36 +584,34 @@ function rowHTML(r){
   </tr>`;
 }
 
+const KCOL={debt:'#f0454e',listed_sub:'var(--sub)',unlisted_sub:'var(--unl)',
+            segment:'var(--seg)',asset:'var(--ast)',other:'var(--muted)'};
+
 function waterfall(C){
+  if(!C.rows.length)
+    return `<div class="note" style="text-align:center;padding:22px 10px;color:var(--faint)">
+      부품표를 채우면 부문별 가치가 누적 막대로 쌓입니다.</div>`;
   const rows=[...C.rows].sort((a,b)=>b.value-a.value);
-  const W=100,items=[...rows.map(r=>({n:r.name,v:r.value,k:r.kind})),
-    {n:'순차입금',v:-C.netDebt,k:'debt'}];
+  const items=[...rows.map(r=>({n:r.name,v:r.value,k:r.kind}))];
+  if(C.netDebt)items.push({n:'(−) 순차입금',v:-C.netDebt,k:'debt'});
   const total=Math.max(C.gross,1);
-  const H=items.length*27+34;
-  let acc=0,bars='';
-  items.forEach((it,i)=>{
-    const y=i*27+8;
-    const w=Math.abs(it.v)/total*W;
-    const x=it.v>=0?acc/total*W:(acc+it.v)/total*W;
-    const col=it.k==='debt'?'#f0454e':it.k==='listed_sub'?'var(--sub)':it.k==='unlisted_sub'?'var(--unl)'
-      :it.k==='segment'?'var(--seg)':it.k==='asset'?'var(--ast)':'var(--muted)';
-    bars+=`<rect x="${x}%" y="${y}" width="${Math.max(w,0.4)}%" height="17" rx="3" fill="${col}" opacity=".85"></rect>
-      <text x="0.6%" y="${y+12.5}" fill="#8896ae" font-size="11">${it.n.slice(0,14)}</text>
-      <text x="99.4%" y="${y+12.5}" fill="#e9eef7" font-size="11" text-anchor="end"
-        font-family="JetBrains Mono">${eok(it.v)}</text>`;
+  let acc=0,html='';
+  items.forEach(it=>{
+    const w=Math.abs(it.v)/total*100;
+    const x=it.v>=0?acc/total*100:(acc+it.v)/total*100;
+    html+=`<div class="wf-row"><span class="wf-n">${it.n}</span>
+      <span class="wf-track"><i style="left:${clamp(x,0,100)}%;width:${clamp(Math.max(w,.5),0,100)}%;
+        background:${KCOL[it.k]||KCOL.other}"></i></span>
+      <span class="wf-v">${eok(it.v)}</span></div>`;
     acc+=it.v;
   });
-  const ny=items.length*27+16;
-  bars+=`<line x1="0" y1="${ny-3}" x2="100%" y2="${ny-3}" stroke="#26314a"></line>
-    <text x="0.6%" y="${ny+13}" fill="#f2ca4c" font-size="12" font-weight="700">NAV</text>
-    <text x="99.4%" y="${ny+13}" fill="#f2ca4c" font-size="12" font-weight="700" text-anchor="end"
-      font-family="JetBrains Mono">${eok(C.nav)}</text>
-    <rect x="0" y="${ny+18}" width="${Math.max(C.nav/total*W,0)}%" height="10" rx="3" fill="#e6b422" opacity=".55"></rect>
-    <rect x="0" y="${ny+31}" width="${Math.max(C.tgtMcap/total*W,0)}%" height="10" rx="3" fill="#E8621B" opacity=".6"></rect>
-    <text x="0.6%" y="${ny+55}" fill="#f08a4f" font-size="11">목표시총 (할인 ${pct(C.disc)} 적용) ${eok(C.tgtMcap)}</text>
-    <rect x="0" y="${ny+44}" width="${Math.max(ST.mcap/total*W,0)}%" height="10" rx="3" fill="#8896ae" opacity=".45"></rect>
-    <text x="99.4%" y="${ny+55}" fill="#8896ae" font-size="11" text-anchor="end">현재 시총 ${eok(ST.mcap)}</text>`;
-  return `<svg viewBox="0 0 100 ${H+62}" style="height:${H+62}px" preserveAspectRatio="none">${bars}</svg>`;
+  const mk=(lab,val,col,op)=>`<div class="wf-row"><span class="wf-n" style="color:${col}">${lab}</span>
+    <span class="wf-track"><i style="left:0;width:${clamp(val/total*100,0,100)}%;background:${col};opacity:${op}"></i></span>
+    <span class="wf-v" style="color:${col}">${eok(val)}</span></div>`;
+  return `<div class="wf">${html}<div class="wf-sep"></div>
+    ${mk('= NAV',C.nav,'var(--gold2)',.6)}
+    ${mk(`목표시총 (할인 ${pct(C.disc)})`,C.tgtMcap,'var(--buy2)',.6)}
+    ${mk('현재 시총',ST.mcap,'var(--muted)',.5)}</div>`;
 }
 
 function bandBlock(C){
