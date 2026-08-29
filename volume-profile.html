@@ -681,16 +681,25 @@ let BOARD=null;
 async function loadInvestors(code){
   const box=$('#invBox'),body=$('#invBody');
   if(!box)return;
+  box.hidden=false;
+  const hint=msg=>{body.innerHTML=`<div class="note">${msg}</div>`;};
   try{
     if(!BOARD)BOARD=await(await fetch('data/volume-profile-board.json?t='+Date.now())).json();
     const o=(BOARD.stocks||{})[code];
     const hit=o&&[...o.history].reverse().find(h=>h.investors);
-    if(!hit){box.hidden=true;return;}
+    if(!hit){
+      hint(`이 종목은 아직 <b>가격대별 투자자 순매수</b> 자료가 없습니다.
+        투자자별 데이터는 KRX 로그인이 필요해 브라우저에서 직접 받을 수 없고,
+        채팅에서 <b>"${CUR.name} 매물대 분석하고 누가 샀는지도 봐줘"</b>라고 요청하면
+        분석 후 이 자리에 채워집니다${o?' (매물대 판정은 이미 보드에 있습니다)':''}.`);
+      return;
+    }
     const W=Math.min(680,Math.max(320,box.clientWidth-34));
     body.innerHTML=invBlock(hit.investors,W)
       +`<div class="note" style="margin-top:6px;color:var(--faint)">${hit.date} 분석분 · 매물대 보드에 게시된 자료</div>`;
-    box.hidden=false;
-  }catch(e){box.hidden=true;}
+  }catch(e){
+    hint('보드 자료를 불러오지 못했습니다 — 잠시 후 다시 시도하세요.');
+  }
 }
 function paintChart(){
   const wrap=$('#cwrap');
@@ -812,7 +821,7 @@ function render(r){
           가로 막대가 길수록 그 가격대에 물량이 두껍다. 차트 위에 마우스를 올리면 그 날 시세와
           커서 가격이 속한 매물대를 알려준다.</div>
       </div>
-      <div class="box" id="invBox" hidden><h3>가격대별 투자자 순매수</h3><div id="invBody"></div></div>
+      <div class="box" id="invBox"><h3>가격대별 투자자 순매수</h3><div id="invBody"></div></div>
       <div class="box"><h3>중요 매물대 (점수순)</h3>
         <table><thead><tr><th>등급</th><th>가격대</th><th class="r">점수</th><th class="r">비중</th></tr></thead>
         <tbody>${zoneRows(r.zones,price)}</tbody></table>
