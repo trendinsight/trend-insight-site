@@ -29,6 +29,7 @@
   .bar i{display:block;height:100%}
   .blbl{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-top:5px}
   .reason{margin-top:10px;font-size:12.5px;line-height:1.65;color:var(--txt);border-top:1px solid var(--line);padding-top:9px}
+  .note{font-size:12px;color:var(--sub);line-height:1.75}
   .tag{display:inline-block;font-size:10.5px;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--sub);margin-right:4px}
   table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
   th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
@@ -81,6 +82,58 @@ const VK={DEEP_BOTTOM:['바닥권','--sup'],BOTTOM:['바닥 회복권','--sup'],
   UPPER:['상단권','--warn'],TOP:['꼭지권','--res'],TOP_DISTRIBUTION:['꼭지 이탈','--res']};
 const cv=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const fmt=x=>x==null?'—':Number(x).toLocaleString('ko-KR',{maximumFractionDigits:0});
+/* ═══ 가격대별 투자자 순매수 차트 (investor_bands.py 결과 렌더) ═══
+   scripts/investor_bands.py 의 svg_chart()와 같은 형태를 브라우저에서 그린다. */
+const ICOL={'개인':'#3e8ef7','외국인':'#e5484d','금융투자':'#f5a524',
+  '투신':'#9d6bff','연기금 등':'#12b886','기타법인':'#8c9aab'};
+function invChart(bands,groups,title,W){
+  if(!bands||!bands.length)return '';
+  const rowH=groups.length>4?20:24, gh=rowH*groups.length;
+  const PL=Math.min(150,Math.max(96,Math.round(W*0.17))), PR=14;
+  const CW=W-PL-PR, zero=PL+CW/2;
+  let mx=0;
+  bands.forEach(b=>groups.forEach(g=>{mx=Math.max(mx,Math.abs(b.net[g]||0));}));
+  mx=mx||1;
+  const sc=(CW/2)/mx;
+  let g='',y=52;
+  let lx=6;
+  groups.forEach(n=>{
+    g+=`<rect x="${lx}" y="30" width="10" height="10" rx="2" fill="${ICOL[n]||'#8c9aab'}"/>`
+      +`<text x="${lx+14}" y="39" fill="#9aa4b2" font-size="10.5">${n}</text>`;
+    lx+=22+n.length*11;
+  });
+  g=`<text x="6" y="18" fill="#e6e9ef" font-size="13" font-weight="800">${title}</text>`+g;
+  [...bands].reverse().forEach(b=>{
+    g+=`<text x="${PL-8}" y="${y+gh/2+3}" text-anchor="end" fill="#e6e9ef" font-size="11">${b.label}</text>`;
+    if(b.grade)g+=`<text x="${PL-8}" y="${y+gh/2+16}" text-anchor="end" fill="#5d6b7c" font-size="9.5">${b.grade} · ${b.role}</text>`;
+    groups.forEach((n,j)=>{
+      const v=b.net[n]||0, w=Math.abs(v)*sc, x0=v>=0?zero:zero-w, yy=y+j*rowH+4;
+      g+=`<rect x="${x0.toFixed(1)}" y="${yy}" width="${Math.max(0.8,w).toFixed(1)}" height="${rowH-7}" fill="${ICOL[n]||'#8c9aab'}" opacity="0.9"/>`;
+      if(w>52){
+        const tx=v>=0?(x0+w-4):(x0+4), an=v>=0?'end':'start';
+        g+=`<text x="${tx.toFixed(1)}" y="${yy+rowH-10}" text-anchor="${an}" fill="#fff" font-size="9" font-weight="700">${v>0?'+':''}${Number(v).toLocaleString('ko-KR')}</text>`;
+      }
+    });
+    y+=gh;
+    g+=`<line x1="${PL}" y1="${y}" x2="${W-PR}" y2="${y}" stroke="#252a34" stroke-width="0.7"/>`;
+  });
+  g+=`<line x1="${zero}" y1="46" x2="${zero}" y2="${y}" stroke="#9aa4b2" stroke-width="1.1"/>`
+    +`<text x="${zero}" y="${y+20}" text-anchor="middle" fill="#5d6b7c" font-size="10">← 순매도 · 순매수 → (주, 최대 ${Number(mx).toLocaleString('ko-KR')})</text>`;
+  return `<svg width="${W}" height="${y+30}" viewBox="0 0 ${W} ${y+30}">${g}</svg>`;
+}
+function invBlock(inv,W){
+  if(!inv)return '';
+  const note=`<div class="note" style="margin-top:6px">${inv.from} ~ ${inv.to} · ${inv.days}일 · 단위 주 ·
+    그날의 평균단가(거래대금÷거래량)가 속한 가격대에 그날의 투자자별 순매수를 누적했다.
+    위쪽 가격대의 개인 순매수는 <b>물린 저항</b>, 아래쪽의 기관·외국인 순매수는 <b>지지의 주인</b>을 뜻한다.</div>`;
+  let h='';
+  if(inv.zones&&inv.zones.length)
+    h+=`<div style="overflow-x:auto">${invChart(inv.zones,inv.groups,'중요 매물대별 — 이 매물대를 만든 주체',W)}</div>`;
+  if(inv.equal&&inv.equal.length)
+    h+=`<div style="overflow-x:auto">${invChart(inv.equal,inv.groups,'균등 가격대별 순매수',W)}</div>`;
+  return h?h+note:'';
+}
+
 let DB=null;
 function badge(v,big){const [t,c]=VK[v]||[v,'--minor'];
   return `<span class="badge" style="background:${cv(c)}${big?';font-size:13px;padding:4px 13px':''}">${t}</span>`;}
@@ -134,7 +187,9 @@ function render(){
     <div style="overflow-x:auto"><table><thead><tr><th>등급</th><th>가격대</th><th class="r">점수</th><th class="r">비중</th></tr></thead>
       <tbody>${zoneRows(h.zones)}</tbody></table></div>
     ${h.comment?`<div class="reason">${h.comment}</div>`:''}
-  </div>`;
+  </div>
+  ${h.investors?`<div class="card"><div class="nm" style="margin-bottom:8px">가격대별 투자자 순매수</div>
+    ${invBlock(h.investors,Math.min(980,Math.max(360,document.querySelector('.wrap').clientWidth-32)))}</div>`:''}`;
   document.querySelector('#hist tbody').innerHTML=o.history.slice().reverse().map(x=>{
     const l=x.levels||{};
     return `<tr><td>${x.date}</td><td class="r">${fmt(x.price)}</td><td>${badge(x.verdict)}</td>
