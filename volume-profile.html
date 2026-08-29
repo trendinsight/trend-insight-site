@@ -493,6 +493,58 @@ function run(){
 function gbadge(g){const c=g==='CORE'?'--core':g==='MAJOR'?'--major':'--minor';
   return `<span class="badge" style="background:${cv(c)};font-size:10.5px;padding:2px 8px">${g}</span>`;}
 
+/* ═══ 가격대별 투자자 순매수 차트 (investor_bands.py 결과 렌더) ═══
+   scripts/investor_bands.py 의 svg_chart()와 같은 형태를 브라우저에서 그린다. */
+const ICOL={'개인':'#3e8ef7','외국인':'#e5484d','금융투자':'#f5a524',
+  '투신':'#9d6bff','연기금 등':'#12b886','기타법인':'#8c9aab'};
+function invChart(bands,groups,title,W){
+  if(!bands||!bands.length)return '';
+  const rowH=groups.length>4?20:24, gh=rowH*groups.length;
+  const PL=Math.min(150,Math.max(96,Math.round(W*0.17))), PR=14;
+  const CW=W-PL-PR, zero=PL+CW/2;
+  let mx=0;
+  bands.forEach(b=>groups.forEach(g=>{mx=Math.max(mx,Math.abs(b.net[g]||0));}));
+  mx=mx||1;
+  const sc=(CW/2)/mx;
+  let g='',y=52;
+  let lx=6;
+  groups.forEach(n=>{
+    g+=`<rect x="${lx}" y="30" width="10" height="10" rx="2" fill="${ICOL[n]||'#8c9aab'}"/>`
+      +`<text x="${lx+14}" y="39" fill="#9aa4b2" font-size="10.5">${n}</text>`;
+    lx+=22+n.length*11;
+  });
+  g=`<text x="6" y="18" fill="#e6e9ef" font-size="13" font-weight="800">${title}</text>`+g;
+  [...bands].reverse().forEach(b=>{
+    g+=`<text x="${PL-8}" y="${y+gh/2+3}" text-anchor="end" fill="#e6e9ef" font-size="11">${b.label}</text>`;
+    if(b.grade)g+=`<text x="${PL-8}" y="${y+gh/2+16}" text-anchor="end" fill="#5d6b7c" font-size="9.5">${b.grade} · ${b.role}</text>`;
+    groups.forEach((n,j)=>{
+      const v=b.net[n]||0, w=Math.abs(v)*sc, x0=v>=0?zero:zero-w, yy=y+j*rowH+4;
+      g+=`<rect x="${x0.toFixed(1)}" y="${yy}" width="${Math.max(0.8,w).toFixed(1)}" height="${rowH-7}" fill="${ICOL[n]||'#8c9aab'}" opacity="0.9"/>`;
+      if(w>52){
+        const tx=v>=0?(x0+w-4):(x0+4), an=v>=0?'end':'start';
+        g+=`<text x="${tx.toFixed(1)}" y="${yy+rowH-10}" text-anchor="${an}" fill="#fff" font-size="9" font-weight="700">${v>0?'+':''}${Number(v).toLocaleString('ko-KR')}</text>`;
+      }
+    });
+    y+=gh;
+    g+=`<line x1="${PL}" y1="${y}" x2="${W-PR}" y2="${y}" stroke="#252a34" stroke-width="0.7"/>`;
+  });
+  g+=`<line x1="${zero}" y1="46" x2="${zero}" y2="${y}" stroke="#9aa4b2" stroke-width="1.1"/>`
+    +`<text x="${zero}" y="${y+20}" text-anchor="middle" fill="#5d6b7c" font-size="10">← 순매도 · 순매수 → (주, 최대 ${Number(mx).toLocaleString('ko-KR')})</text>`;
+  return `<svg width="${W}" height="${y+30}" viewBox="0 0 ${W} ${y+30}">${g}</svg>`;
+}
+function invBlock(inv,W){
+  if(!inv)return '';
+  const note=`<div class="note" style="margin-top:6px">${inv.from} ~ ${inv.to} · ${inv.days}일 · 단위 주 ·
+    그날의 평균단가(거래대금÷거래량)가 속한 가격대에 그날의 투자자별 순매수를 누적했다.
+    위쪽 가격대의 개인 순매수는 <b>물린 저항</b>, 아래쪽의 기관·외국인 순매수는 <b>지지의 주인</b>을 뜻한다.</div>`;
+  let h='';
+  if(inv.zones&&inv.zones.length)
+    h+=`<div style="overflow-x:auto">${invChart(inv.zones,inv.groups,'중요 매물대별 — 이 매물대를 만든 주체',W)}</div>`;
+  if(inv.equal&&inv.equal.length)
+    h+=`<div style="overflow-x:auto">${invChart(inv.equal,inv.groups,'균등 가격대별 순매수',W)}</div>`;
+  return h?h+note:'';
+}
+
 /* ═══ 매물대 차트 ═══
    좌: 캔들 + 거래량 스트립 · 우: 가로 매물대 히스토그램(같은 y축=가격축)
    컨테이너 실측 픽셀로 그린다(viewBox 늘이기 없음 → 글자 왜곡 없음). */
@@ -623,6 +675,23 @@ function buildChart(r,W){
   CHART={r,prof,D,N,geom:{W,PX0,PX1,HX0,HX1,top,bot,step,x,y,yInv,PW,maxA}};
   return `<svg width="${W}" height="${CH.H}" viewBox="0 0 ${W} ${CH.H}">${g}</svg>`;
 }
+/* 가격대별 투자자 순매수 — 브라우저에서는 투자자 데이터를 받을 수 없으므로
+   채팅 분석으로 매물대 보드에 게시된 것이 있으면 그것을 가져와 보여준다. */
+let BOARD=null;
+async function loadInvestors(code){
+  const box=$('#invBox'),body=$('#invBody');
+  if(!box)return;
+  try{
+    if(!BOARD)BOARD=await(await fetch('data/volume-profile-board.json?t='+Date.now())).json();
+    const o=(BOARD.stocks||{})[code];
+    const hit=o&&[...o.history].reverse().find(h=>h.investors);
+    if(!hit){box.hidden=true;return;}
+    const W=Math.min(680,Math.max(320,box.clientWidth-34));
+    body.innerHTML=invBlock(hit.investors,W)
+      +`<div class="note" style="margin-top:6px;color:var(--faint)">${hit.date} 분석분 · 매물대 보드에 게시된 자료</div>`;
+    box.hidden=false;
+  }catch(e){box.hidden=true;}
+}
 function paintChart(){
   const wrap=$('#cwrap');
   if(!wrap||!CURRES)return;
@@ -743,6 +812,7 @@ function render(r){
           가로 막대가 길수록 그 가격대에 물량이 두껍다. 차트 위에 마우스를 올리면 그 날 시세와
           커서 가격이 속한 매물대를 알려준다.</div>
       </div>
+      <div class="box" id="invBox" hidden><h3>가격대별 투자자 순매수</h3><div id="invBody"></div></div>
       <div class="box"><h3>중요 매물대 (점수순)</h3>
         <table><thead><tr><th>등급</th><th>가격대</th><th class="r">점수</th><th class="r">비중</th></tr></thead>
         <tbody>${zoneRows(r.zones,price)}</tbody></table>
@@ -792,6 +862,7 @@ function render(r){
   </div>`;
   paintChart();
   bindChart();
+  loadInvestors(CUR.code);
   const lb=$('#lb');
   if(lb)lb.oninput=()=>{LOOKBACK=+lb.value;$('#lbTxt').textContent=LOOKBACK+'일';
     clearTimeout(window._lbT);window._lbT=setTimeout(run,150);};
