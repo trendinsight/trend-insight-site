@@ -46,6 +46,10 @@ header{display:flex;align-items:center;gap:14px;padding:14px 18px;flex-wrap:wrap
 .seg button{background:var(--card2);border:0;color:var(--sub);padding:6px 13px;font-size:12.5px;cursor:pointer;font-family:inherit}
 .seg button.on{background:var(--core);color:#0b0d10;font-weight:700}
 .ctrlbar input[type=range]{accent-color:var(--core);width:120px;vertical-align:middle}
+.reqbtn{background:var(--core);color:#0b0d10;border:0;border-radius:8px;padding:8px 15px;
+  font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;white-space:nowrap}
+.reqbtn:hover{filter:brightness(1.1)}
+.reqbtn:disabled{background:var(--card2);color:var(--faint);cursor:default;filter:none}
 .dhead{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:6px 0 12px}
 .dhead .nm{font-size:22px;font-weight:800;letter-spacing:-.3px}
 .dhead .cd{font-size:12.5px;color:var(--faint);margin-bottom:3px}
@@ -675,6 +679,39 @@ function buildChart(r,W){
   CHART={r,prof,D,N,geom:{W,PX0,PX1,HX0,HX1,top,bot,step,x,y,yInv,PW,maxA}};
   return `<svg width="${W}" height="${CH.H}" viewBox="0 0 ${W} ${CH.H}">${g}</svg>`;
 }
+/* 분석 요청 — 종목을 대기열(/api/vpq)에 넣어두면 채팅에서 "매물대 큐 처리해줘"로
+   매물대 + 가격대별 투자자 순매수를 한꺼번에 분석·게시한다. */
+async function bindRequest(){
+  const btn=$('#reqBtn'),msg=$('#reqMsg');
+  if(!btn)return;
+  // 이미 대기 중인 종목이면 버튼을 눌린 상태로
+  try{
+    const q=await(await fetch('/api/vpq/queue')).json();
+    const list=(q.requests||[]);
+    if(list.some(x=>x.code===CUR.code)){
+      btn.disabled=true;btn.textContent='✓ 요청됨';
+      msg.textContent=`대기 ${list.length}건 — 채팅에서 "매물대 큐 처리해줘"`;
+    }else if(list.length){
+      msg.textContent=`대기 ${list.length}건 — 눌러서 이 종목도 대기열에 추가`;
+    }
+  }catch(e){}
+  btn.onclick=async()=>{
+    btn.disabled=true;btn.textContent='요청 중…';
+    try{
+      const r=await(await fetch('/api/vpq/add',{method:'POST',
+        headers:{'content-type':'application/json'},
+        body:JSON.stringify({code:CUR.code,name:CUR.name,lookback:LOOKBACK})})).json();
+      if(!r.ok)throw new Error(r.error||'요청 실패');
+      btn.textContent='✓ 요청됨';
+      msg.textContent=r.dup?`이미 대기 중 (총 ${r.queued}건)`
+        :`대기 ${r.queued}건 — 채팅에서 "매물대 큐 처리해줘"라고 하면 분석·게시됩니다`;
+    }catch(e){
+      btn.disabled=false;btn.textContent='＋ 분석 요청';
+      msg.textContent='요청 실패 — '+(e.message||'잠시 후 다시 시도하세요');
+    }
+  };
+}
+
 /* 가격대별 투자자 순매수 — 브라우저에서는 투자자 데이터를 받을 수 없으므로
    채팅 분석으로 매물대 보드에 게시된 것이 있으면 그것을 가져와 보여준다. */
 let BOARD=null;
@@ -796,6 +833,10 @@ function render(r){
     <span class="px">${fmt(price)}<small class="${rate>0?'up':rate<0?'down':''}">${rate>0?'▲':rate<0?'▼':''}${Math.abs(chg||0).toLocaleString('ko-KR')} (${(rate||0).toFixed(2)}%)</small></span>
   </div>
   <div class="ctrlbar">
+    <button id="reqBtn" class="reqbtn">＋ 분석 요청</button>
+    <span style="color:var(--faint)" id="reqMsg">누르면 대기열에 넣고, 채팅에서 "매물대 큐 처리해줘"로 한꺼번에 분석·게시</span>
+  </div>
+  <div class="ctrlbar">
     <span>장기 구간 <b style="color:var(--txt)" id="lbTxt">${LOOKBACK}일</b></span>
     <input type="range" id="lb" min="60" max="${r.bars}" step="10" value="${Math.min(LOOKBACK,r.bars)}">
     <span class="seg" id="lbq">
@@ -872,6 +913,7 @@ function render(r){
   paintChart();
   bindChart();
   loadInvestors(CUR.code);
+  bindRequest();
   const lb=$('#lb');
   if(lb)lb.oninput=()=>{LOOKBACK=+lb.value;$('#lbTxt').textContent=LOOKBACK+'일';
     clearTimeout(window._lbT);window._lbT=setTimeout(run,150);};

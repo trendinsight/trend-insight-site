@@ -2552,6 +2552,10 @@ export default {
       return handleReceipts(req, url, env, ctx);
     }
 
+    if (url.pathname.startsWith("/api/vpq/")) {
+      return handleVpq(req, url, env, ctx);
+    }
+
     if (url.pathname.startsWith("/api/reports/")) {
       return handleReports(req, url, env, ctx);
     }
@@ -2951,6 +2955,63 @@ async function handleReports(req, url, env, ctx) {
 }
 
 // redeploy trigger: force build of HEAD (tolerant inflater)
+
+/* ═══════════════ 매물대 분석 요청 큐 (/api/vpq/*) ═══════════════
+   volume-profile.html: 모바일에서 종목을 보다 "분석 요청" 버튼 → KV 큐 적재.
+   로컬 Claude(volume-profile 스킬)가 "매물대 큐 처리해줘"로 수거해 매물대 +
+   가격대별 투자자 순매수를 분석·게시하고 clear로 큐를 비운다.
+   인증은 receipts와 동일하게 report_secret 재사용. */
+
+const VPQ_KEY = "vp-queue";
+
+async function vpqList(env) {
+  try { return JSON.parse((await env.GAUGE_KV.get(VPQ_KEY)) || "[]"); } catch (e) { return []; }
+}
+
+async function handleVpq(req, url, env, ctx) {
+  const p = url.pathname.slice("/api/vpq/".length);
+  const bad = (msg, code) => new Response(JSON.stringify({ ok: false, error: msg }), { status: code || 400, headers: JSON_HEADERS });
+  try {
+    if (p === "queue") {
+      return new Response(JSON.stringify({ ok: true, requests: await vpqList(env) }), { headers: JSON_HEADERS });
+    }
+    if (p === "add" && req.method === "POST") {
+      const b = await req.json();
+      const code = String(b.code || "").replace(/[^0-9A-Za-z]/g, "").slice(0, 12);
+      if (!code) return bad("code 필요");
+      const list = await vpqList(env);
+      if (list.some(x => x.code === code)) {
+        return new Response(JSON.stringify({ ok: true, dup: true, queued: list.length }), { headers: JSON_HEADERS });
+      }
+      if (list.length >= 40) return bad("대기 큐가 가득 찼습니다(40건). 먼저 처리해 주세요.", 429);
+      list.push({
+        code,
+        name: String(b.name || code).slice(0, 30),
+        lookback: Math.min(Math.max(parseInt(b.lookback, 10) || 750, 60), 900),
+        note: String(b.note || "").slice(0, 80),
+        added_at: kstNow()
+      });
+      await env.GAUGE_KV.put(VPQ_KEY, JSON.stringify(list));
+      if (b.notify !== false) {
+        ctx.waitUntil(slTelegram(env,
+          `📊 <b>매물대 분석 요청</b>\n${list[list.length - 1].name} (${code})\n대기 ${list.length}건 — Cowork에서 "매물대 큐 처리해줘"`));
+      }
+      return new Response(JSON.stringify({ ok: true, queued: list.length }), { headers: JSON_HEADERS });
+    }
+    if (p === "clear" && req.method === "POST") {
+      const b = await req.json();
+      if (!(await rcptAuth(env, b.secret))) return bad("인증 실패", 403);
+      if (b.all) { await env.GAUGE_KV.put(VPQ_KEY, "[]"); return new Response(JSON.stringify({ ok: true, cleared: "all" }), { headers: JSON_HEADERS }); }
+      const done = new Set((Array.isArray(b.codes) ? b.codes : []).map(String));
+      const list = (await vpqList(env)).filter(x => !done.has(x.code));
+      await env.GAUGE_KV.put(VPQ_KEY, JSON.stringify(list));
+      return new Response(JSON.stringify({ ok: true, remaining: list.length }), { headers: JSON_HEADERS });
+    }
+    return bad("unknown endpoint", 404);
+  } catch (e) {
+    return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
+  }
+}
 
 /* ═══════════════ 영수증 가계부 (/api/receipts/*) ═══════════════
    receipt-upload.html: 핸드폰에서 영수증 사진 업로드 → KV 큐 적재.
