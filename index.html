@@ -992,7 +992,8 @@
     var sig=(h.signals&&h.signals.length)?h.signals[0].title:'신호 없음 · 대기';
     setGauges('dash-bb',[
       {label:'에너지 온도',score:(h.temp==null?0:R1(h.temp)),segs:GOOD,
-       zone:zone+'<br>'+(PN[h.phase]||'-')+' '+(h.phase_run||1)+'일째',zc:goodZC(h.temp||0)},
+       zone:zone+'<br>'+(PN[h.phase]||'-')+' '+(h.phase_run||1)+'일째'
+            +(h.vol&&h.vol.name?'<br>밴드폭 '+h.vol.name.replace(/\s*\(.*\)/,''):''),zc:goodZC(h.temp||0)},
       {label:'상단 5일평균',score:R1(h.up5),segs:GOOD,unit:'개',
        zone:'하단 5일평균 '+R1(h.dn5)+'개<br>'+sig,zc:goodZC(Math.min(100,h.up5*3))}
     ],h.date,d.updated&&d.updated.slice(0,10).replace(/-/g,''));

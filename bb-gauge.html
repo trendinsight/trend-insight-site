@@ -120,6 +120,13 @@
     <div class="q" id="quad"></div>
   </div>
 
+  <div class="card" style="margin-top:14px" id="volcard">
+    <h2>시장 변동성 사이클 — 밴드폭(BandWidth)</h2>
+    <div class="meta">350종목 밴드폭의 중앙값. 존 볼린저의 정의대로 <b>최근 125거래일 최저 = 스퀴즈</b>(추세가 태어나는 곳),
+      <b>최고 = 벌지</b>(추세가 죽으러 가는 곳). 확산 폭(위 온도계)이 "얼마나 넓게 움직이나"라면 여기는 "얼마나 크게 움직이나"다.</div>
+    <div id="volbox"></div>
+  </div>
+
   <div class="card" style="margin-top:14px">
     <h2>오늘의 신호</h2>
     <div class="meta">이 지표는 온도가 극단일 때만 말을 한다. 신호가 없는 날은 아무것도 하지 않는 것이 통계적 정답.</div>
@@ -282,6 +289,26 @@ function render(date){
       <div class="qn" style="color:${on?TONE[p.tone]:"var(--txt)"}">${p.no}. ${p.name}${on?" ← 현재":""}</div>
       <div class="qs">${p.desc}<br><b style="color:${TONE[p.tone]}">${p.stat}</b></div></div>`;}).join("");
 
+  // 시장 변동성 사이클 (밴드폭)
+  const vb=document.getElementById("volbox");
+  if(L.bw==null){ vb.innerHTML='<div class="verdict">밴드폭 데이터가 아직 없습니다 — 스크립트를 최신 버전으로 다시 실행하면 채워집니다.</div>'; }
+  else{
+    const V=L.vol||{}, vt=TONE[V.tone]||"var(--neu)";
+    const bwWin=win.filter(r=>r.bw!=null), bmax=Math.max(...bwWin.map(r=>r.bw)), bmin=Math.min(...bwWin.map(r=>r.bw));
+    const bbars=bwWin.map(r=>{const h=Math.max(2,Math.round((r.bw-bmin)/((bmax-bmin)||1)*58)+4);
+      const c=r.vol&&r.vol.code==="SQUEEZE"?"var(--warn)":r.vol&&r.vol.code==="BULGE"?"var(--up)":"#4a5260";
+      return `<div title="${r.date} 밴드폭 ${r.bw}%" style="height:${h}px;background:${c}"></div>`;}).join("");
+    vb.innerHTML=`<div class="kv">
+        <div><div class="k">시장 밴드폭 (중앙값)</div><div class="v">${fmt(L.bw)}%</div></div>
+        <div><div class="k">3년 분포 백분위</div><div class="v">${L.bw_pct==null?"–":L.bw_pct+"%"}</div></div>
+        <div><div class="k">변동성 사이클</div><div class="v" style="color:${vt};font-size:15px">${V.name||"–"}</div></div>
+        <div><div class="k">마지막 스퀴즈 이후</div><div class="v">${L.since_sq==null?"–":L.since_sq+"거래일"}</div></div>
+      </div>
+      <div style="margin-top:12px;color:var(--sub);font-size:12px">최근 ${bwWin.length}거래일 밴드폭 — 노랑=스퀴즈, 빨강=벌지</div>
+      <div class="bars">${bbars}</div>
+      <div class="verdict" style="border-left-color:${vt}">${(V.desc||"").replace(/\*\*(.+?)\*\*/g,'<b>$1</b>')}</div>`;
+  }
+
   const sg=L.signals||[];
   document.getElementById("signals").innerHTML=sg.length?sg.map(s=>
     `<div class="sig" style="border-left-color:${TONE[s.tone]||"var(--neu)"}">
@@ -345,6 +372,132 @@ function bbSeries(close){
       over:close[i]>up, under:close[i]<dn});
   }
   return out;
+}
+
+/* ===== 존 볼린저 본인의 규칙 (토스증권 INVESTORS 25 강연) =====
+   ① 스퀴즈 = 최근 125기간 밴드폭 최저 (추세가 태어나는 곳) / 벌지 = 125기간 최고 (추세가 죽는 곳)
+   ② W바닥 = 모멘텀 저점(밴드 밖) → 반등 → 가격 저점(신저가지만 밴드 안) · %b 다이버전스
+   ③ 2바 반전 = 두 봉 모두 평균 레인지 초과 · 1봉 밴드 밖 종가 → 2봉 밴드 안 종가
+   ④ 헤드페이크 = 스퀴즈 직후 첫 움직임이 반대 방향 → 되돌린 2바 반전 (최고 승률 셋업)
+   ⑤ 확인 없이는 진입하지 않는다 (매수는 양봉, 매도는 음봉 확인 후) */
+const SQ_WIN_S=125;
+
+function volState(B,i){
+  const s=Math.max(0,i-SQ_WIN_S+1), w=[];
+  for(let k=s;k<=i;k++) if(B[k]) w.push(B[k].bw);
+  if(w.length<40||!B[i]) return null;
+  const lo=Math.min(...w), hi=Math.max(...w), bw=B[i].bw;
+  const prev=B[i-1]?B[i-1].bw:null;
+  const rank=Math.round(w.filter(x=>x<bw).length/w.length*100);
+  let sqAgo=null;
+  for(let k=i;k>=s;k--){ if(!B[k])continue;
+    const ww=[];for(let j=Math.max(0,k-SQ_WIN_S+1);j<=k;j++) if(B[j])ww.push(B[j].bw);
+    if(ww.length>=40 && B[k].bw<=Math.min(...ww)+1e-9){sqAgo=i-k;break;} }
+  return {bw:bw,rank:rank,
+    squeeze:bw<=lo+1e-9, bulge:bw>=hi-1e-9,
+    turningUp:prev!=null&&bw>prev, turningDown:prev!=null&&bw<prev,
+    sqAgo:sqAgo};
+}
+
+function avgRange(h,l,i,n){let s=0,c=0;for(let k=Math.max(0,i-n+1);k<=i;k++){s+=(h[k]-l[k]);c++;}return c?s/c:0;}
+
+/* 2바 반전 — 최근 3봉 안에서 탐지 */
+function twoBar(d,B,i){
+  for(let t=i;t>=i-2&&t>=1;t--){
+    const b1=B[t-1],b2=B[t]; if(!b1||!b2)continue;
+    const ar=avgRange(d.high,d.low,t-2>=0?t-2:0,20);
+    const r1=d.high[t-1]-d.low[t-1], r2=d.high[t]-d.low[t];
+    if(!(r1>ar&&r2>ar))continue;
+    const c1=d.close[t-1],c2=d.close[t];
+    if(c1>b1.up && c2<=b2.up && c2<c1)
+      return {dir:"down",idx:t,ago:i-t,stop:d.high[t-1],
+        txt:"1봉이 상단 밖에서 마감 → 2봉이 밴드 안으로 되돌림"};
+    if(c1<b1.dn && c2>=b2.dn && c2>c1)
+      return {dir:"up",idx:t,ago:i-t,stop:d.low[t-1],
+        txt:"1봉이 하단 밖에서 마감 → 2봉이 밴드 안으로 되돌림"};
+  }
+  return null;
+}
+
+/* W바닥 / M천장 — 최근 60봉.
+   볼린저의 이상형 조건을 엄격히 적용:
+   ① 왼쪽(모멘텀) 극점은 밴드 밖   ② 오른쪽(가격) 극점은 가격은 비슷/갱신하되 밴드 안
+   ③ 두 극점 사이에 3% 이상의 되돌림(중간 봉)   ④ %b 다이버전스 10%p 이상
+   ⑤ 오른쪽 극점이 최근 7봉 이내(아직 유효한 셋업) */
+const WM_GAP=3, WM_DIV=10, WM_FRESH=7;
+
+function wm(d,B,i){
+  const C=d.close, s=Math.max(20,i-60);
+  // ── W바닥
+  let mom=null;
+  for(let k=i-4;k>=s;k--){ if(B[k]&&B[k].under){mom=k;break;} }
+  if(mom!=null){
+    let lo2=null;
+    for(let k=mom+3;k<=i;k++){ if(!B[k]||B[k].under)continue;
+      if(C[k]<=C[mom]*1.02 && (lo2==null||C[k]<C[lo2])) lo2=k; }
+    if(lo2!=null&&lo2>=mom+3&&i-lo2<=WM_FRESH){
+      let peak=null;for(let k=mom+1;k<lo2;k++) if(peak==null||C[k]>C[peak])peak=k;
+      const reb=peak!=null?(C[peak]/Math.max(C[mom],C[lo2])-1)*100:0;
+      const div=B[lo2].pb-B[mom].pb;
+      if(reb>=WM_GAP && div>=WM_DIV)
+        return {type:"W",idx:lo2,ago:i-lo2,mom:mom,reb:reb,
+          pbL:B[mom].pb,pbR:B[lo2].pb,bwLeft:B[mom].bw>=B[lo2].bw,
+          t1:B[i].m,t2:B[i].up};
+    }
+  }
+  // ── M천장
+  let momH=null;
+  for(let k=i-4;k>=s;k--){ if(B[k]&&B[k].over){momH=k;break;} }
+  if(momH!=null){
+    let hi2=null;
+    for(let k=momH+3;k<=i;k++){ if(!B[k]||B[k].over)continue;
+      if(C[k]>=C[momH]*0.98 && (hi2==null||C[k]>C[hi2])) hi2=k; }
+    if(hi2!=null&&hi2>=momH+3&&i-hi2<=WM_FRESH){
+      let trough=null;for(let k=momH+1;k<hi2;k++) if(trough==null||C[k]<C[trough])trough=k;
+      const pull=trough!=null?(1-C[trough]/Math.min(C[momH],C[hi2]))*100:0;
+      const div=B[momH].pb-B[hi2].pb;
+      if(pull>=WM_GAP && div>=WM_DIV)
+        return {type:"M",idx:hi2,ago:i-hi2,mom:momH,reb:pull,
+          pbL:B[momH].pb,pbR:B[hi2].pb,bwLeft:B[momH].bw>=B[hi2].bw,
+          t1:B[i].m,t2:B[i].dn};
+    }
+  }
+  return null;
+}
+
+/* 샹들리에 스탑 — 볼린저가 강연에서 권한 진행형 트레일링 스탑 */
+function chandelier(d,i,n,k){
+  let hh=-Infinity,ll=Infinity,tr=0,c=0;
+  for(let t=Math.max(1,i-n+1);t<=i;t++){
+    hh=Math.max(hh,d.high[t]); ll=Math.min(ll,d.low[t]);
+    tr+=Math.max(d.high[t]-d.low[t],Math.abs(d.high[t]-d.close[t-1]),Math.abs(d.low[t]-d.close[t-1])); c++;
+  }
+  const atr=c?tr/c:0;
+  return {long:hh-k*atr, short:ll+k*atr, atr:atr, hh:hh, ll:ll};
+}
+
+/* 확인지표 — 볼린저는 RSI·MACD를 즐겨 쓰고, 거래량 계열(MFI)로 확증한다 */
+function rsi14(C,i){
+  if(i<14)return null;let g=0,l=0;
+  for(let k=i-13;k<=i;k++){const ch=C[k]-C[k-1];if(ch>0)g+=ch;else l-=ch;}
+  if(l===0)return 100;const rs=(g/14)/(l/14);return 100-100/(1+rs);
+}
+function ema(a,n,i,cache){let e=a[0];for(let k=1;k<=i;k++)e=a[k]*(2/(n+1))+e*(1-2/(n+1));return e;}
+function macdHist(C,i){
+  if(i<35)return null;
+  const line=[];
+  for(let t=26;t<=i;t++) line.push(ema(C,12,t)-ema(C,26,t));
+  let sig=line[0];for(let k=1;k<line.length;k++)sig=line[k]*(2/10)+sig*(1-2/10);
+  return line[line.length-1]-sig;
+}
+function mfi14(d,i){
+  if(i<14)return null;let pos=0,neg=0;
+  for(let k=i-13;k<=i;k++){
+    const tp=(d.high[k]+d.low[k]+d.close[k])/3, tpp=(d.high[k-1]+d.low[k-1]+d.close[k-1])/3;
+    const mf=tp*(d.volume[k]||0);
+    if(tp>tpp)pos+=mf;else if(tp<tpp)neg+=mf;
+  }
+  if(neg===0)return 100;return 100-100/(1+pos/neg);
 }
 
 function stateOf(b){
@@ -420,15 +573,96 @@ function renderStock(name,code,d){
 
     <div class="verdict" style="border-left-color:${st.c}">
       <b style="color:${st.c}">${st.t}</b> — ${st.d}<br>
-      ${squeeze?'<b style="color:var(--warn)">밴드 수축(스퀴즈)</b> — 밴드폭이 1년 중 하위 '+bwp+'%다. 변동성이 말라붙은 상태로, 곧 어느 쪽으로든 크게 움직일 준비 구간이다. <b>방향은 알려주지 않는다.</b><br>':""}
-      ${expand?'<b style="color:var(--warn)">밴드 확장</b> — 밴드폭이 1년 중 상위 '+(100-bwp).toFixed(0)+'%다. 이미 크게 움직인 뒤라 신규 진입의 손절폭이 넓어진다.<br>':""}
       ${walk?'<b style="color:var(--up)">밴드 타기(walking the band)</b> — 최근 5일 중 3일 이상 상단을 뚫었다. 강한 추세일 때 나타나는 모습으로, 상단 돌파를 곧바로 과열·매도 신호로 읽으면 안 된다.<br>':""}
       ${walkDn?'<b style="color:var(--dn)">하단 타기</b> — 최근 5일 중 3일 이상 하단을 이탈했다. 하락 추세가 살아 있다는 뜻으로, 하단 이탈을 저가 매수 신호로 읽으면 안 된다.<br>':""}
       ${cross?'<span style="color:var(--sub)">'+cross+'</span>':""}
     </div>
+
+    ${bollingerBlock(name,d,B,i)}
+
     <div style="margin-top:8px;color:var(--sub);font-size:11.5px">
       ※ 이 페이지 위쪽의 승률·수익률 통계는 <b>시장 350종목의 확산 폭</b>으로 검증한 값이다.
-      개별 종목에는 그 수치를 그대로 적용하지 않는다 — 여기서는 종목의 <b>현재 밴드 위치와 변동성 상태</b>만 읽는다.</div>`;
+      개별 종목에는 그 수치를 그대로 적용하지 않는다 — 아래 셋업 판정은 <b>존 볼린저 본인이 정의한 패턴 규칙</b>이며
+      승률 수치가 붙지 않는다.</div>`;
+}
+
+/* ---------- 볼린저 셋업 판정 블록 ---------- */
+function bollingerBlock(name,d,B,i){
+  const C=d.close, b=B[i];
+  const V=volState(B,i), TB=twoBar(d,B,i), P=wm(d,B,i);
+  const ch=chandelier(d,i,22,3);
+  const R=rsi14(C,i), M=macdHist(C,i), F=mfi14(d,i);
+  const upBar=C[i]>C[i-1], dnBar=C[i]<C[i-1];
+  const setups=[];
+
+  // ① 스퀴즈 / 벌지
+  if(V){
+    if(V.squeeze) setups.push({tone:"warn",t:"스퀴즈 — 추세가 태어나는 자리",
+      b:`밴드폭 ${V.bw.toFixed(1)}%로 최근 ${SQ_WIN_S}거래일 중 <b>최저</b>다. 볼린저의 정의 그대로 스퀴즈이며 <b>변동성 확대 예보</b>다.
+         다만 <b>방향은 알려주지 않는다.</b> 밴드폭이 위로 돌아서고, 평균 레인지를 넘는 <b>확인 봉(confirmation day)</b>이
+         밴드를 뚫고 나올 때가 실제 진입 신호다.`,
+      a:"대기 — 확인 봉 출현 시 그 방향으로 진입"});
+    else if(V.bulge) setups.push({tone:"bad",t:"벌지 — 추세가 죽으러 가는 자리",
+      b:`밴드폭이 최근 ${SQ_WIN_S}거래일 중 <b>최고</b>다. 이 추세 국면의 종료 신호다.
+         <b>단 벌지는 자동으로 반대 방향 전환을 뜻하지 않는다</b> — 조정·횡보를 거쳐 원래 추세가 재개되는 경우가 더 많다.`,
+      a:"신규 진입 보류 · 보유분은 트레일링 스탑으로 관리"});
+    else if(V.sqAgo!=null&&V.sqAgo<=15&&V.turningUp) setups.push({tone:"good",t:`스퀴즈 확인 — ${V.sqAgo}일 전 스퀴즈 이후 밴드폭 반등`,
+      b:"스퀴즈 뒤 밴드폭이 위로 돌아섰다. 볼린저가 말한 확인 조건이 충족된 상태로, 추세의 출발 구간일 가능성이 높다.",
+      a:"확인 봉 방향으로 진입 검토 · 반대 방향이면 헤드페이크 경계"});
+  }
+
+  // ② W바닥 / M천장
+  if(P&&P.type==="W") setups.push({tone:"good",t:`W 바닥 완성 (${P.ago}일 전)`,
+    b:`왼쪽 <b>모멘텀 저점</b>은 하단 밴드 밖(%b ${P.pbL.toFixed(0)}%), 오른쪽 <b>가격 저점</b>은 밴드 안(%b ${P.pbR.toFixed(0)}%)에서 만들어졌다.
+       가격은 더 내렸지만 <b>밴드 기준으로는 더 내리지 않은</b> %b 다이버전스 — 볼린저가 가장 먼저 매매했다는 대표 패턴이다.
+       ${P.bwLeft?"밴드폭 정점도 왼쪽에 있어 이상적 형태에 부합한다.":"다만 밴드폭 정점이 왼쪽에 있지 않아 이상형에서 약간 벗어난다."}`,
+    a:`1차 목표 중심선 ${num(P.t1)}원 · 2차 목표 상단 ${num(P.t2)}원 — ${upBar?"오늘 양봉으로 확인됨":"양봉 확인 후 진입"}`});
+  if(P&&P.type==="M") setups.push({tone:"bad",t:`M 천장 완성 (${P.ago}일 전)`,
+    b:`왼쪽 고점은 상단 밖(%b ${P.pbL.toFixed(0)}%), 오른쪽 고점은 밴드 안(%b ${P.pbR.toFixed(0)}%). 가격은 더 올랐지만 밴드 기준으로는 못 올랐다 — W바닥의 거울상.`,
+    a:`1차 목표 중심선 ${num(P.t1)}원 · 2차 목표 하단 ${num(P.t2)}원 — ${dnBar?"오늘 음봉으로 확인됨":"음봉 확인 후 대응"}`});
+
+  // ③ 2바 반전 / 헤드페이크
+  if(TB){
+    const head=V&&V.sqAgo!=null&&V.sqAgo<=15;
+    setups.push({tone:TB.dir==="up"?"good":"bad",
+      t:(head?"헤드페이크 — ":"")+`2바 반전 (${TB.dir==="up"?"하단":"상단"} · ${TB.ago===0?"오늘":TB.ago+"일 전"})`,
+      b:`두 봉 모두 평균 레인지를 넘겼고, ${TB.txt}. 볼린저가 "가장 좋아하는 트레이드"로 꼽은 셋업으로,
+         <b>위험은 작고 잠재 이익은 크다</b>. ${head?`<b>${V.sqAgo}일 전 스퀴즈 직후</b> 반대 방향으로 속인 뒤 되돌린 형태 — 볼린저가 성공률이 가장 높다고 말한 <b>헤드페이크</b>다.`:""}`,
+      a:`손절은 직전 봉 ${TB.dir==="up"?"저가":"고가"} ${num(TB.stop)}원 ${TB.dir==="up"?"아래":"위"} · `+
+        (TB.dir==="up"?"보유 중이면 진입, ":"보유 중이면 절반 축소 또는 청산, ")+"신규는 확인 봉 후"});
+  }
+
+  const conf=[];
+  if(R!=null)conf.push(`RSI ${R.toFixed(0)}`);
+  if(M!=null)conf.push(`MACD 히스토그램 ${M>0?"+":""}${(M/C[i]*100).toFixed(2)}%`);
+  if(F!=null)conf.push(`MFI ${F.toFixed(0)}`);
+  const bull=(R!=null&&R>50)+(M!=null&&M>0)+(F!=null&&F>50);
+  const confTxt=bull>=2?"확인지표 다수 강세":bull<=1?"확인지표 다수 약세":"확인지표 혼조";
+
+  return `
+  <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
+    <div style="font-size:14px;font-weight:800">🎯 볼린저 셋업 판정
+      <span style="font-size:11.5px;font-weight:500;color:var(--sub)">— 존 볼린저 강연 규칙 (스퀴즈·W바닥/M천장·2바 반전)</span></div>
+    <div class="kv" style="margin-top:10px">
+      <div><div class="k">%b (밴드 내 위치)</div><div class="v">${(b.pb/100).toFixed(2)}</div></div>
+      <div><div class="k">BandWidth</div><div class="v">${b.bw.toFixed(1)}%<span style="font-size:11px;color:var(--sub)"> · ${SQ_WIN_S}일 순위 ${V?V.rank:"–"}%</span></div></div>
+      <div><div class="k">변동성 사이클</div><div class="v" style="font-size:14px">${V?(V.squeeze?"스퀴즈":V.bulge?"벌지":(V.sqAgo!=null&&V.sqAgo<=15?"스퀴즈 "+V.sqAgo+"일 경과":"중간")):"–"}</div></div>
+      <div><div class="k">샹들리에 스탑 (롱)</div><div class="v">${num(ch.long)}<span style="font-size:11px;color:var(--sub)">원</span></div></div>
+    </div>
+    <div style="margin-top:8px;color:var(--sub);font-size:12px">확인지표 — ${conf.join(" · ")||"산출 불가"} → <b style="color:${bull>=2?"var(--good)":bull<=1?"var(--bad)":"var(--warn)"}">${confTxt}</b>
+      <br>볼린저 제1원칙: <b>밴드는 상대적 고저를 정의할 뿐 그 자체로는 매매 신호가 아니다</b> — 반드시 독립적인 지표로 확인한다.</div>
+
+    ${setups.length?setups.map(s=>`
+      <div class="sig" style="border-left-color:${TONE[s.tone]}">
+        <div class="st" style="color:${TONE[s.tone]}">${s.t}</div>
+        <div class="sb">${s.b}</div>
+        <div class="sa">→ ${s.a}</div></div>`).join("")
+    :`<div class="sig"><div class="st">셋업 없음</div>
+       <div class="sb">볼린저의 세 패턴(스퀴즈·W바닥/M천장·2바 반전) 중 어느 것도 성립하지 않았다.
+         <b>"볼린저 밴드는 연속적인 조언을 주지 않는다"</b> — 여러 봉 동안 셋업이 없는 것이 정상이고,
+         셋업이 없는 날 무엇을 할지 묻는 질문에 볼린저의 답은 "모른다, 셋업이 나올 때까지 기다려라"였다.</div>
+       <div class="sa">→ 대기 · 다른 종목의 셋업을 찾는 편이 낫다</div></div>`}
+  </div>`;
 }
 
 function setBusy(b){const el=document.getElementById("sgo");el.disabled=b;el.textContent=b?"분석 중…":"분석";}
@@ -573,7 +807,82 @@ document.getElementById("doc").innerHTML=`
 그래서 개별 수치보다 여러 구간에서 방향이 일관되는지를 봐야 한다.</li>
 </ul>
 
-<h3>9. 종목 분석 패널 읽는 법 (맨 위 검색창)</h3>
+<h2>🎓 존 볼린저 본인의 규칙</h2>
+<p style="color:var(--sub);font-size:12.5px">아래는 볼린저밴드를 만든 <b>존 볼린저(John Bollinger)</b>가 2025년 6월 토스증권 INVESTORS 25 강연에서
+직접 설명한 내용이다. 이 페이지의 종목 셋업 판정은 전부 이 규칙을 그대로 구현한 것이다.</p>
+
+<h3>A. 밴드가 하는 일은 딱 하나 — "상대적 고저의 정의"</h3>
+<p>볼린저의 표현 그대로: <b>"정의상 상단 밴드의 가격은 높은 것이고, 하단 밴드의 가격은 낮은 것이다."</b>
+단순해 보이지만 이 상대적 정의 덕분에 <b>감정을 배제한 규칙</b>을 만들 수 있다는 것이 밴드의 존재 이유다.
+중심선은 20일 단순이동평균, 상단은 +2σ, 하단은 −2σ.</p>
+<div class="box warn"><b>"볼린저 밴드는 연속적인 조언을 주지 않는다."</b>
+볼린저는 강연에서 이렇게 말했다 — 질의응답 때 누군가 차트를 들고 와 "지금 여기서 뭘 해야 하냐"고 물으면
+자기 대답은 <b>"모릅니다"</b>라고. 밴드는 <b>드문드문 나타나는 개별 셋업</b>을 찾는 도구이고,
+셋업이 없는 구간이 몇 십 봉씩 이어지는 것이 정상이다. 셋업이 나오면 그때는 무엇을 할지 명확히 안다.</div>
+
+<h3>B. 두 개의 파생 지표 — %b와 BandWidth</h3>
+<table>
+<tr><th style="width:130px">%b</th><td>지금 가격이 밴드의 어디인가. <b>1 = 상단, 0 = 하단, 0.5 = 중심선</b>, 1 초과면 상단 밖, 0 미만이면 하단 밖.
+볼린저는 "단순한 정의지만 여기에 큰 힘이 있다 — 감정을 개입시키지 않고 엄밀한 매매 접근법을 만들 수 있다"고 했다.</td></tr>
+<tr><th>BandWidth</th><td>밴드가 얼마나 넓은가. 좁으면 <b>스퀴즈</b>, 넓으면 <b>벌지</b>.</td></tr>
+<tr><th>보조로 쓰는 것</th><td>볼린저는 전통 지표 중 <b>RSI(과매수·과매도)</b>와 <b>MACD(추세)</b>를 "매우 유용하다"고 꼽았다.
+이 페이지는 여기에 거래량 기반 <b>MFI</b>를 더해 세 지표로 확인한다.</td></tr>
+</table>
+
+<h3>C. 패턴 ① 스퀴즈와 벌지 — "추세가 태어나는 곳, 죽으러 가는 곳"</h3>
+<ul>
+<li><b>스퀴즈 = 최근 125기간 중 밴드폭 최저.</b> 변동성 확대 예보이자 <b>추세가 태어나는 자리</b>다. 볼린저의 원문: "a squeeze is where trends are born".</li>
+<li><b>벌지 = 최근 125기간 중 밴드폭 최고.</b> 변동성 축소 예보이자 <b>추세가 죽으러 가는 자리</b>.</li>
+<li><b>확인이 필요하다.</b> 스퀴즈는 밴드폭이 실제로 <b>위로 돌아설 때</b>, 벌지는 <b>아래로 돌아설 때</b> 확인된다.</li>
+<li><b>확인 봉(confirmation day)</b> — 스퀴즈에서 튀어나오는 <b>큰 봉</b>이 실제 진입 신호다.</li>
+<li><b>흔한 오해:</b> 벌지가 곧 반대 방향 전환은 아니다. 볼린저는 "그 추세 국면이 끝났다는 뜻일 뿐,
+조정·횡보를 거쳐 원래 추세가 다시 이어지는 경우가 많다"고 분명히 못 박았다.</li>
+</ul>
+<p>이 페이지 위쪽 <b>「시장 변동성 사이클」</b> 카드는 이 규칙을 350종목 밴드폭 중앙값에 그대로 적용한 것이다 —
+<b>시장 전체의 스퀴즈</b>는 큰 움직임이 임박했다는 뜻이고, 방향은 알려주지 않는다.</p>
+
+<h3>D. 패턴 ② W 바닥 / M 천장 — %b 다이버전스</h3>
+<p>하락 → 소폭 반등 → 두 번째 하락 → 상승 반전으로 이어지는 W 모양.</p>
+<ul>
+<li>왼쪽 저점 = <b>모멘텀 저점</b>. 빠르고 날카롭게 빠져 <b>하단 밴드 밖</b>으로 나간다.</li>
+<li>오른쪽 저점 = <b>가격 저점</b>. 가격은 신저가지만 <b>밴드 기준으로는 신저가가 아니다</b>(밴드 안).</li>
+<li>이상적 형태: <b>%b가 오른쪽에서 더 높고</b>, <b>밴드폭 정점은 왼쪽</b>에 있다. 이것이 <b>%b 다이버전스</b>다.</li>
+<li><b>목표가:</b> 1차는 <b>중심선</b>, 2차이자 진짜 목표는 <b>상단 밴드</b>. (그 지점에서 움직임이 끝난다는 뜻은 아니다.)</li>
+<li>M 천장은 정확히 거울상이다.</li>
+</ul>
+
+<h3>E. 패턴 ③ 2바 반전 — 볼린저가 "가장 좋아하는 트레이드"</h3>
+<p>그의 말: <b>"이게 될 때는 도둑이 된 기분이다. 너무 쉽고 너무 명확하다."</b></p>
+<ul>
+<li>두 봉 <b>모두 평균 레인지보다 크다</b> — 앞선 봉들과 확연히 구분될 만큼.</li>
+<li><b>첫 봉은 밴드 밖에서 마감</b>, <b>둘째 봉은 밴드 안에서 마감</b> — 즉각적인 반전.</li>
+<li><b>손절은 직전 봉의 고가(또는 저가) 바로 바깥.</b> 볼린저가 이 패턴을 좋아하는 이유가 이것이다 —
+<b>언제 내가 틀렸는지가 즉시 분명</b>하고, 감수하는 위험이 잠재 이익보다 훨씬 작다.</li>
+<li><b>진입에도 청산에도 쓴다.</b> 롱 보유 중 상단에서 2바 반전이 나오면 <b>절반 축소하거나 전량 청산</b>한다.</li>
+</ul>
+<div class="box"><b>헤드페이크(head fake) — 최고 승률 셋업.</b>
+스퀴즈 뒤 첫 움직임이 <b>엉뚱한 방향</b>으로 나갔다가 밴드 안으로 강하게 되돌아오는 형태.
+볼린저는 이것을 <b>"볼린저밴드 트레이드 중 성공률이 가장 높은 축"</b>이라고 말했다.
+이 페이지는 스퀴즈 15거래일 이내에 2바 반전이 나오면 자동으로 헤드페이크로 표시한다.</div>
+
+<h3>F. 진입·청산 규칙 — 확인, 그리고 손절</h3>
+<ul>
+<li><b>확인 없이 들어가지 않는다.</b> 매수 셋업이면 <b>양봉</b>을, 매도 셋업이면 <b>음봉</b>을 기다린다.
+바닥 한 틱·꼭지 한 틱을 잡으려 하지 말라는 것 — 그가 든 시카고 농담: "그 신은 규칙이 딱 두 개다.
+평생에 한 번 바닥 틱에 살 수 있고, 평생에 한 번 꼭지 틱에 팔 수 있다. 물론 그 반대는 얼마든지 해도 된다."</li>
+<li><b>안 되면 나온다.</b> 셋업에 들어갔는데 <b>옆으로만 가면 나와서 다음 셋업을 찾는다.</b>
+실패한 셋업에 오래 남아 있으면 결국 반대로 돌아선다. 매매할 종목은 얼마든지 있으니 억지로 만들지 않는다.</li>
+<li><b>손절선은 들어가기 전에 정한다.</b> "어디서 내가 틀렸는지를 미리 정해두지 않으면
+스스로를 의심하며 감정의 지옥으로 들어간다."</li>
+<li><b>샹들리에 스탑</b>을 권했다 — 롱은 <b>최고가에서 매달리고</b>, 숏은 <b>최저가 위에 걸리는</b> 진행형 트레일링 스탑.
+이 페이지는 22일 최고가 − 3×ATR로 계산해 표시한다.</li>
+</ul>
+<div class="box"><b>성과를 올리는 길은 두 가지뿐이다.</b>
+① 이기는 매매의 비율을 높인다(60% → 65%만 올려도 놀랄 만큼 달라진다).
+② 이긴 매매의 크기를 진 매매의 크기보다 키운다.
+<b>확인을 기다리는 것</b>과 <b>손절을 쓰는 것</b>이 각각 그 둘을 담당한다.</div>
+
+<h3>G. 종목 분석 패널 읽는 법 (맨 위 검색창)</h3>
 <p>위 온도계는 <b>시장 350종목이 얼마나 넓게 움직이는가</b>를 재고, 검색창은 <b>종목 하나가 지금 밴드의 어디에 있는가</b>를 본다. 둘은 다른 질문이다.</p>
 <table>
 <tr><th style="width:150px">밴드 내 위치 %B</th><td>지금 주가가 밴드의 몇 % 지점인지. <b>0% = 하단, 50% = 20일선(중심), 100% = 상단.</b>
@@ -592,7 +901,7 @@ document.getElementById("doc").innerHTML=`
 전부 <b>시장 350종목의 확산 폭</b>으로 검증한 값이다. 종목 하나에 그대로 옮기면 검증되지 않은 숫자가 된다.
 종목 패널은 "지금 어디에 있고 변동성이 어떤 상태인가"까지만 답한다 — 매수·매도 판단은 추세·수급·펀더멘털과 함께 내릴 것.</div>
 
-<h3>10. 매일 장 마감 후 이것만 확인하면 된다</h3>
+<h3>H. 매일 장 마감 후 이것만 확인하면 된다</h3>
 <table>
 <tr><th style="width:40px">1</th><td><b>상단돌파가 30개를 넘었나?</b> → 넘었다면 이후 약 1개월 비중을 늘려도 좋은 구간</td></tr>
 <tr><th>2</th><td><b>하단이탈이 50개를 넘었나?</b> → 넘었고 지수가 고점 대비 −15% 이하라면 5거래일 분할 매수를 시작할 구간</td></tr>
