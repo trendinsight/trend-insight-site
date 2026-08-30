@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>볼린저밴드 온도계 — Trend Insight</title>
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--line:#252a34;--txt:#e6e9ef;--sub:#9aa4b2;
+        --up:#e5484d;--dn:#3e8ef7;--good:#12b886;--warn:#f5a524;--neu:#7c8598;--bad:#e5484d;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+  header{padding:22px 18px 8px;max-width:1060px;margin:0 auto}
+  h1{font-size:21px;margin:0 0 4px}
+  .sub{color:var(--sub);font-size:13px;line-height:1.6}
+  .wrap{max-width:1060px;margin:0 auto;padding:12px 18px 70px}
+  .row{display:flex;gap:14px;flex-wrap:wrap}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .card h2{font-size:15px;margin:0 0 2px}
+  .meta{color:var(--sub);font-size:12px;margin-bottom:10px}
+  .ctrl{margin:8px 0 2px;font-size:13px;color:var(--sub)}
+  select{background:var(--card);color:var(--txt);border:1px solid var(--line);
+         border-radius:8px;padding:6px 10px;font-size:13px}
+  .hero{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+  .hero .g{flex:none;text-align:center}
+  .hero .t{flex:1;min-width:260px}
+  .bigtemp{font-size:38px;font-weight:800;line-height:1}
+  .zone{display:inline-block;padding:4px 13px;border-radius:999px;font-size:12.5px;
+        font-weight:800;color:#0b0d10;margin-top:8px}
+  .kpi{flex:1;min-width:236px}
+  .kpi .lab{color:var(--sub);font-size:12.5px}
+  .kpi .num{font-size:34px;font-weight:800;margin:4px 0 2px}
+  .kpi .cmp{font-size:12.5px;color:var(--sub)}
+  .arrow{font-weight:800}
+  .q{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+  .qc{border:1px solid var(--line);border-radius:11px;padding:11px 12px;background:#12151b}
+  .qc .qt{font-size:12px;color:var(--sub)}
+  .qc .qn{font-size:14.5px;font-weight:800;margin:3px 0 4px}
+  .qc .qs{font-size:11.5px;color:var(--sub);line-height:1.5}
+  .qc.on{border-color:currentColor;box-shadow:0 0 0 1px currentColor inset;background:#181c24}
+  .sig{border-left:4px solid var(--neu);background:#12151b;border-radius:0 10px 10px 0;
+       padding:11px 13px;margin:9px 0}
+  .sig .st{font-weight:800;font-size:14px;margin-bottom:4px}
+  .sig .sb{font-size:12.8px;color:var(--sub);line-height:1.65}
+  .sig .sa{font-size:12.8px;margin-top:6px;font-weight:700}
+  .bars{display:flex;align-items:flex-end;gap:2px;height:66px;margin-top:6px}
+  .bars div{flex:1;border-radius:2px 2px 0 0;min-height:1px}
+  table{width:100%;border-collapse:collapse;font-size:12.3px;margin-top:6px}
+  th,td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+  th{color:var(--sub);font-weight:600;text-align:right;position:sticky;top:0;background:var(--card)}
+  th:first-child,td:first-child{text-align:left}
+  .scroll{max-height:420px;overflow:auto}
+  .tag{display:inline-block;padding:1px 7px;border-radius:6px;font-size:11px;font-weight:700}
+  .doc{margin-top:26px;font-size:13px;line-height:1.85;color:#cfd6e0}
+  .doc h2{font-size:17px;margin:26px 0 8px;padding-top:16px;border-top:1px solid var(--line)}
+  .doc h3{font-size:14.5px;margin:18px 0 6px;color:#fff}
+  .doc p{margin:6px 0}
+  .doc ul{margin:6px 0 6px 18px;padding:0}
+  .doc li{margin:4px 0}
+  .doc table{font-size:12.5px}
+  .doc td,.doc th{text-align:left;vertical-align:top}
+  .box{background:#12151b;border:1px solid var(--line);border-radius:11px;padding:13px 15px;margin:10px 0}
+  .warn{border-color:#4a3a12;background:#191509}
+  b.u{color:var(--up)} b.d{color:var(--dn)}
+  code{background:#0c0e12;padding:1px 5px;border-radius:4px;font-size:12px}
+  .foot{margin-top:26px;color:var(--sub);font-size:11.5px;line-height:1.7;
+        border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🌡️ 볼린저밴드 온도계</h1>
+  <div class="sub">코스피200 + 코스닥150 = <b>350종목</b>을 매일 검사해, 볼린저밴드(20일·2σ)
+    <b class="u">상단을 돌파한 종목수</b>와 <b class="d">하단을 이탈한 종목수</b>로 시장의 체온을 잰다.
+    <b>내일을 맞히는 도구가 아니라, "지금 들어가도 되는 날"을 골라내는 도구다.</b></div>
+  <div class="ctrl">기준일 <select id="datesel"></select> <span id="freshness"></span></div>
+</header>
+
+<div class="wrap">
+  <div class="card" id="hero"></div>
+  <div class="row" style="margin-top:14px" id="kpis"></div>
+
+  <div class="card" style="margin-top:14px">
+    <h2>4분면 국면</h2>
+    <div class="meta">상단돌파 5일평균과 하단이탈 5일평균이 각각 자기 20일평균보다 위인지 아래인지로 나눈 네 칸.
+      괄호 안은 그 국면 이후 20거래일 평균 수익률·승률(2018~2026 코스피200 기준).</div>
+    <div class="q" id="quad"></div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h2>오늘의 신호</h2>
+    <div class="meta">이 지표는 온도가 극단일 때만 말을 한다. 신호가 없는 날은 아무것도 하지 않는 것이 통계적 정답.</div>
+    <div id="signals"></div>
+  </div>
+
+  <div class="row" style="margin-top:14px">
+    <div class="card" style="flex:1;min-width:300px">
+      <h2 style="color:var(--up)">상단돌파 종목수 · 최근 추이</h2>
+      <div class="meta" id="upmeta"></div>
+      <div class="bars" id="upbars"></div>
+    </div>
+    <div class="card" style="flex:1;min-width:300px">
+      <h2 style="color:var(--dn)">하단이탈 종목수 · 최근 추이</h2>
+      <div class="meta" id="dnmeta"></div>
+      <div class="bars" id="dnbars"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h2>최근 거래일 표</h2>
+    <div class="meta">상단·하단의 당일 값과 5일·20일평균, 지수, 국면, 발생 신호</div>
+    <div class="scroll"><table id="tbl"></table></div>
+  </div>
+
+  <div class="doc" id="doc"></div>
+  <div class="foot" id="foot"></div>
+</div>
+
+<script>
+const PH={
+ P1:{no:1,name:"확산 우위",short:"상단↑ · 하단↓",stat:"이후 20일 +1.05% · 승률 55%",
+     desc:"오르는 종목은 늘고 빠지는 종목은 줄고 있다. 네 국면 중 가장 좋은 자리.",tone:"good"},
+ P2:{no:2,name:"변동 큰 상승",short:"상단↑ · 하단↑",stat:"이후 20일 +0.30% · 승률 51%",
+     desc:"오르는 종목도 빠지는 종목도 많은 널뛰기. 방향은 위지만 흔들림이 크다.",tone:"warn"},
+ P3:{no:3,name:"조정 진행중",short:"상단↓ · 하단↑",stat:"이후 20일 +0.72% · 승률 58%",
+     desc:"눈에 보이는 조정. 체감은 나쁘지만 통계는 의외로 양호했다.",tone:"ok"},
+ P4:{no:4,name:"조용한 소멸",short:"상단↓ · 하단↓",stat:"이후 20일 −0.36% · 승률 46%",
+     desc:"상단도 하단도 함께 식는다. 조용해서 안전해 보일 때가 통계적으로 가장 나빴다.",tone:"bad"}};
+const TONE={good:"var(--good)",ok:"var(--dn)",warn:"var(--warn)",bad:"var(--bad)",neu:"var(--neu)"};
+const ZC=[[85,"확산 과열","var(--up)"],[65,"온기 확산","var(--warn)"],[35,"중립","var(--neu)"],
+          [15,"냉각","var(--dn)"],[-1,"한파·공포","var(--good)"]];
+function zoneOf(t){if(t==null)return["산출 불가","var(--neu)"];
+  for(const[l,n,c]of ZC)if(t>=l)return[n,c];return["산출 불가","var(--neu)"];}
+let DATA=null;
+
+/* ---------- 샘플(로컬 미리보기용) — 2026-08-21 실제 사례 재현 ---------- */
+const SAMPLE={sample:true,updated:"예시 데이터 (2026-08-21 사례)",
+ universe:{k200:200,kq150:150,total:350,counted:350},
+ history:(function(){
+  // D0 = 2026-08-21(금) 기준 최근순 → 아래에서 시간순으로 뒤집는다
+  const UP=[3,2,4,3,16,10,8,20,21,18,14,19,16,13,17,12,15,14,16,15,23,2,0,
+            5,9,12,7,4,11,14,8,6,10,13,9,7,12,15,11,8];
+  const DN=[1,4,7,6,1,1,0,0,10,12,15,11,18,14,16,13,12,14,15,14,1,2,1,
+            3,5,8,6,9,4,2,7,11,6,4,8,5,3,6,9,7];
+  const up=UP.slice().reverse(), dn=DN.slice().reverse();
+  // 2026-08-21(금)에서 거꾸로 영업일 40개
+  const ds=[];let d=new Date(Date.UTC(2026,7,21));
+  while(ds.length<up.length){const w=d.getUTCDay();
+    if(w!==0&&w!==6)ds.unshift(d.toISOString().slice(0,10).replace(/-/g,""));
+    d=new Date(d.getTime()-864e5);}
+  const rows=up.map((u,i)=>({date:ds[i],up:u,dn:dn[i],n:350}));
+  // 지수는 순돌파 누적으로 근사, 마지막 값을 109,980에 맞춘다
+  let px=1;const path=rows.map(r=>{px*=1+(r.up-r.dn)/650;return px;});
+  const k=109980/path[path.length-1];
+  rows.forEach((r,i)=>{r.k200=Math.round(path[i]*k*100)/100;
+    r.k200_chg=i?Math.round((path[i]/path[i-1]-1)*10000)/100:0;
+    const hi=Math.max(...path.slice(0,i+1));
+    r.dd=Math.round((path[i]/hi-1)*1000)/10;
+    r.high60=Math.abs(r.dd)<1e-9;});
+  const avg=(a,i,k2)=>{const s=a.slice(Math.max(0,i-k2+1),i+1);return s.length<k2?null:
+    Math.round(s.reduce((x,y)=>x+y,0)/k2*10)/10;};
+  const ups=rows.map(r=>r.up),dns=rows.map(r=>r.dn);
+  rows.forEach((r,i)=>{r.up5=avg(ups,i,5);r.up20=avg(ups,i,20);r.dn5=avg(dns,i,5);r.dn20=avg(dns,i,20);
+   if(r.up5!=null&&r.up20!=null){const h=r.up5>=r.up20,c=r.dn5>=r.dn20;
+    r.phase=h?(c?"P2":"P1"):(c?"P3":"P4");}
+   r.temp=r.up20==null?null:Math.max(2,Math.min(98,Math.round(((r.up5-r.dn5)+16)*3.1)));
+   r.phase_run=1;r.signals=[];});
+  for(let i=1;i<rows.length;i++)
+    rows[i].phase_run=rows[i].phase===rows[i-1].phase?rows[i-1].phase_run+1:1;
+  rows.forEach(r=>{
+   if(r.up>=30)r.signals.push({code:"EXPAND",grade:"A",tone:"good",
+     title:"상단돌파 "+r.up+"개 — 비중 확대 구간",
+     body:"상단돌파가 30개를 넘었다. 8년간 27번 발생, 5거래일 뒤 승률 70%. 이날부터 약 20거래일(1개월) 비중을 늘려도 좋았던 자리다.",
+     action:"신규 진입·비중 확대 · 보유 기간 20거래일"});
+   if(r.phase==="P4")r.signals.push({code:"QUIET_FADE",grade:"B",tone:"bad",
+     title:"조용한 소멸 국면 "+r.phase_run+"일째",
+     body:"상단·하단이 함께 식고 있다. 네 국면 중 이후 20일 승률이 가장 낮고(46%) 변동성은 가장 높았다. 조용해서 안전해 보일 때가 통계적으로 가장 나빴다.",
+     action:"신규 진입 보류 · 포지션 축소"});});
+  return rows.filter(r=>r.up20!=null);})()};
+
+/* ---------- 렌더 ---------- */
+function gauge(v,col){
+  const R=100,cx=120,cy=118,L=Math.PI*R;
+  if(v==null)v=0;
+  const a=Math.PI*(1-v/100),x=cx+R*Math.cos(a),y=cy-R*Math.sin(a);
+  return `<svg width="252" height="136" viewBox="0 0 240 132">
+  <path d="M20 118 A100 100 0 0 1 220 118" fill="none" stroke="#0c0e12" stroke-width="16" stroke-linecap="round"/>
+  <path d="M20 118 A100 100 0 0 1 220 118" fill="none" stroke="${col}" stroke-width="16" stroke-linecap="round"
+    stroke-dasharray="${L}" stroke-dashoffset="${L*(1-v/100)}"/>
+  <circle cx="${x}" cy="${y}" r="7.5" fill="${col}" stroke="#0f1115" stroke-width="2"/>
+  <text x="18" y="130" fill="#5b6470" font-size="10">0 한파</text>
+  <text x="192" y="130" fill="#5b6470" font-size="10">100 과열</text></svg>`;
+}
+function bars(rows,key,col){
+  const mx=Math.max(4,...rows.map(r=>r[key]||0));
+  return rows.map(r=>{const h=Math.round((r[key]||0)/mx*62);
+    return `<div title="${r.date} ${r[key]}개" style="height:${Math.max(1,h)}px;background:${col};opacity:${0.45+0.55*(r[key]||0)/mx}"></div>`;}).join("");
+}
+function fmt(v,d){return v==null?"–":Number(v).toFixed(d==null?1:d);}
+
+function render(date){
+  const H=DATA.history||[];
+  const i=Math.max(0,H.findIndex(r=>r.date===date));
+  const L=H[i]||H[H.length-1];if(!L)return;
+  const win=H.slice(Math.max(0,i-39),i+1);
+  const [zn,zc]=zoneOf(L.temp), ph=PH[L.phase]||{};
+
+  document.getElementById("hero").innerHTML=`<div class="hero">
+    <div class="g">${gauge(L.temp,zc)}
+      <div class="bigtemp" style="color:${zc}">${L.temp==null?"–":L.temp}<span style="font-size:16px;color:var(--sub)"> / 100</span></div>
+      <div class="zone" style="background:${zc}">${zn}</div></div>
+    <div class="t"><h2>시장 에너지 온도</h2>
+      <div class="meta">순돌파(상단−하단)의 20일평균이 <b>최근 3년 분포에서 몇 번째로 높은가</b>를 백분위로 환산한 값.
+        고정된 개수 기준은 시대에 따라 뒤집히므로 상대 위치로 읽는다.</div>
+      <p style="font-size:13.4px;line-height:1.75;margin:8px 0 0">
+        기준일 <b>${L.date.replace(/(\d{4})(\d{2})(\d{2})/,"$1-$2-$3")}</b> ·
+        집계 <b>${L.n||350}종목</b> · 오늘 <b class="u">상단 ${L.up}개</b> / <b class="d">하단 ${L.dn}개</b><br>
+        ${L.k200?`코스피200 <b>${Number(L.k200).toLocaleString()}</b>
+        (${L.k200_chg>=0?"+":""}${fmt(L.k200_chg,2)}%) · 고점대비 <b>${fmt(L.dd,1)}%</b>
+        ${L.high60?'· <b style="color:var(--warn)">3개월 신고가</b>':""}`:""}
+      </p>
+      <div class="box" style="margin-top:10px;font-size:12.7px;line-height:1.7;color:var(--sub)">
+        <b style="color:${TONE[ph.tone]||"var(--neu)"}">지금은 ${ph.no}번 [${ph.name}] 국면 ${L.phase_run||1}일째</b> —
+        ${ph.desc||""} <span style="opacity:.8">(${ph.stat||""})</span>
+      </div></div></div>`;
+
+  const upArr=L.up5>=L.up20, dnArr=L.dn5>=L.dn20;
+  document.getElementById("kpis").innerHTML=`
+   <div class="card kpi"><div class="lab">상단돌파 5일평균</div>
+     <div class="num" style="color:var(--up)">${fmt(L.up5)}</div>
+     <div class="cmp">20일평균 ${fmt(L.up20)}보다
+       <span class="arrow" style="color:${upArr?"var(--good)":"var(--bad)"}">${upArr?"높음 ▲":"낮음 ▼"}</span></div>
+     <div class="cmp" style="margin-top:6px">평소보다 크게 <b>오른</b> 종목이 최근 5일 평균 ${fmt(L.up5)}개.
+       숫자가 크면 상승 에너지가 넓게 퍼진 상태.</div></div>
+   <div class="card kpi"><div class="lab">하단이탈 5일평균</div>
+     <div class="num" style="color:var(--dn)">${fmt(L.dn5)}</div>
+     <div class="cmp">20일평균 ${fmt(L.dn20)}보다
+       <span class="arrow" style="color:${dnArr?"var(--bad)":"var(--good)"}">${dnArr?"높음 ▲":"낮음 ▼"}</span></div>
+     <div class="cmp" style="margin-top:6px">평소보다 세게 <b>빠진</b> 종목이 최근 5일 평균 ${fmt(L.dn5)}개.
+       숫자가 크면 공포가 시장 전체로 번진 상태.</div></div>
+   <div class="card kpi"><div class="lab">현재 국면</div>
+     <div class="num" style="color:${TONE[ph.tone]}">${ph.no}. ${ph.name}</div>
+     <div class="cmp">${ph.short} · ${L.phase_run||1}일째</div>
+     <div class="cmp" style="margin-top:6px">${ph.stat||""}</div></div>`;
+
+  document.getElementById("quad").innerHTML=["P1","P2","P3","P4"].map(k=>{const p=PH[k],on=k===L.phase;
+    return `<div class="qc ${on?"on":""}" style="color:${TONE[p.tone]}">
+      <div class="qt">${p.short}</div>
+      <div class="qn" style="color:${on?TONE[p.tone]:"var(--txt)"}">${p.no}. ${p.name}${on?" ← 현재":""}</div>
+      <div class="qs">${p.desc}<br><b style="color:${TONE[p.tone]}">${p.stat}</b></div></div>`;}).join("");
+
+  const sg=L.signals||[];
+  document.getElementById("signals").innerHTML=sg.length?sg.map(s=>
+    `<div class="sig" style="border-left-color:${TONE[s.tone]||"var(--neu)"}">
+       <div class="st" style="color:${TONE[s.tone]||"var(--txt)"}">[${s.grade}] ${s.title}</div>
+       <div class="sb">${s.body}</div>
+       <div class="sa">→ ${s.action}</div></div>`).join("")
+   : `<div class="sig"><div class="st">신호 없음 — 대기</div>
+      <div class="sb">임계값(상단 30개↑ / 하단 50개↑ / 신고가 조합) 중 어느 것도 발생하지 않았다.
+      중간 구간은 전체 거래일의 절반을 차지하며 이 지표의 예측력이 사실상 0인 영역이다.</div>
+      <div class="sa">→ 이 지표로는 판단하지 말고 다른 근거(추세·수급·펀더멘털)로 결정할 것</div></div>`;
+
+  document.getElementById("upmeta").innerHTML=`최근 ${win.length}거래일 · 최대 ${Math.max(...win.map(r=>r.up))}개 · 임계 30개`;
+  document.getElementById("dnmeta").innerHTML=`최근 ${win.length}거래일 · 최대 ${Math.max(...win.map(r=>r.dn))}개 · 임계 50개`;
+  document.getElementById("upbars").innerHTML=bars(win,"up","var(--up)");
+  document.getElementById("dnbars").innerHTML=bars(win,"dn","var(--dn)");
+
+  document.getElementById("tbl").innerHTML=
+   `<tr><th>날짜</th><th>상단</th><th>상단5</th><th>상단20</th><th>하단</th><th>하단5</th><th>하단20</th>
+    <th>온도</th><th>코스피200</th><th>고점대비</th><th>국면</th><th>신호</th></tr>`+
+   win.slice().reverse().map(r=>{const p=PH[r.phase]||{};
+    const sig=(r.signals||[]).map(s=>`<span class="tag" style="background:${TONE[s.tone]};color:#0b0d10">${s.code}</span>`).join(" ");
+    return `<tr><td>${r.date.replace(/(\d{4})(\d{2})(\d{2})/,"$2-$3")}</td>
+     <td style="color:var(--up);font-weight:700">${r.up}</td><td>${fmt(r.up5)}</td><td>${fmt(r.up20)}</td>
+     <td style="color:var(--dn);font-weight:700">${r.dn}</td><td>${fmt(r.dn5)}</td><td>${fmt(r.dn20)}</td>
+     <td>${r.temp==null?"–":r.temp}</td><td>${r.k200?Number(r.k200).toLocaleString():"–"}</td>
+     <td>${r.dd==null?"–":fmt(r.dd,1)+"%"}</td>
+     <td style="color:${TONE[p.tone]}">${p.no?p.no+". "+p.name:"–"}</td><td>${sig}</td></tr>`;}).join("");
+}
+
+function boot(data){
+  DATA=data;
+  const H=DATA.history||[];
+  const sel=document.getElementById("datesel");
+  sel.innerHTML=H.slice().reverse().map(r=>
+    `<option value="${r.date}">${r.date.replace(/(\d{4})(\d{2})(\d{2})/,"$1-$2-$3")}</option>`).join("");
+  sel.onchange=()=>render(sel.value);
+  document.getElementById("freshness").textContent=
+    (DATA.sample?" · ⚠ 예시 데이터 (실데이터 미연결)":" · 갱신 "+(DATA.updated||""));
+  render(H.length?H[H.length-1].date:null);
+  doc();
+}
+fetch("data/bb-gauge.json?cb="+Date.now()).then(r=>r.ok?r.json():Promise.reject())
+  .then(boot).catch(()=>boot(SAMPLE));
+
+/* ---------- 읽는 법 ---------- */
+function doc(){
+document.getElementById("doc").innerHTML=`
+<h2>📖 읽는 법 — 처음 보는 사람도 이해하도록</h2>
+
+<h3>1. 이 지표가 재는 것</h3>
+<p>볼린저밴드는 <b>주가가 평소 움직이던 정상 범위</b>다. 20일 이동평균선을 가운데 두고 위아래로
+표준편차의 2배만큼 띠를 그린다. 주가가 그 띠의 <b class="u">위로 튀어나가면 "상단돌파"</b>(평소보다 강하게 올랐다),
+<b class="d">아래로 빠지면 "하단이탈"</b>(평소보다 세게 빠졌다)이다.</p>
+<p>이 페이지는 종목 하나를 보는 게 아니라 <b>코스피200 200종목 + 코스닥150 150종목 = 350종목</b>을 매일 전수 검사해서,
+그날 상단을 뚫은 종목이 몇 개인지 / 하단을 깬 종목이 몇 개인지를 센다.
+즉 <b>시장 전체가 얼마나 뜨거운지를 재는 체온계</b>다.</p>
+<table><tr><th style="width:150px">상단 돌파가 많은 날</th><td>→ 시장이 뜨겁다 (상승 에너지가 넓게 퍼졌다)</td></tr>
+<tr><th>하단 이탈이 많은 날</th><td>→ 시장이 차갑다 (공포가 전체로 번졌다)</td></tr>
+<tr><th>둘 다 적은 날</th><td>→ 시장이 조용하다 (에너지가 사라지는 중)</td></tr></table>
+
+<h3>2. 가장 중요한 전제 — 이건 예언이 아니다</h3>
+<div class="box warn"><p style="margin:0">체온계는 열이 난 <b>다음</b>에 눈금이 올라간다. 열이 날 것을 미리 알려주지 않는다.
+이 지표도 똑같다. 오늘 지수와의 상관은 0.59로 딱 붙어 있지만, <b>내일 지수와의 상관은 −0.03으로 사실상 0</b>이다.</p>
+<p style="margin:6px 0 0">그래서 이 지표는 <b>"내일 오를까?"에 답하는 도구가 아니라, "오늘이 들어가도 되는 날인가?"에 답하는 도구</b>다.
+1년에 몇 번 안 되는 그 날만 지키는 것 — 8년치 데이터가 알려준 것은 그게 전부다.</p></div>
+
+<h3>3. 에너지 온도(0~100) 읽는 법 — 다른 온도계와 반대다</h3>
+<p>맨 위 게이지는 <b>순돌파(상단돌파 − 하단이탈)의 20일평균이 최근 3년 분포에서 몇 번째로 높은가</b>를 백분위로 바꾼 값이다.
+고정된 개수(예: "25개 이상이면 과열")는 시대에 따라 의미가 뒤집힌다 — 2018~2026년에는 위험 신호였던 값이
+2006~2017년 구간에서는 오히려 평균보다 좋았다. 그래서 <b>절대 개수가 아니라 최근 3년 안에서의 상대 위치</b>로 본다.</p>
+<table>
+<tr><th style="width:120px">85 이상 · 확산 과열</th><td>상승 에너지가 3년 내 최상위권. <b>한국 시장에서는 위험이 아니라 기회 쪽</b>이었다(아래 4번 참조).</td></tr>
+<tr><th>65~85 · 온기 확산</th><td>넓게 오르는 중. 추세 추종에 우호적.</td></tr>
+<tr><th>35~65 · 중립</th><td>이 지표의 예측력이 거의 없는 구간. 다른 근거로 판단할 것.</td></tr>
+<tr><th>15~35 · 냉각</th><td>빠지는 종목이 늘어난다. 신규 진입 신중.</td></tr>
+<tr><th>15 미만 · 한파·공포</th><td>투매 구간. 단, 아래 6번의 "낙폭 조건"이 붙어야 진짜 매수 자리다.</td></tr>
+</table>
+<div class="box"><b>⚠ 시장 온도계와 헷갈리지 말 것.</b> 시장 온도계(RSI·MACD 기반)는 <b>높을수록 과열=위험</b>이다.
+이 볼린저밴드 온도계는 <b>높다고 위험이 아니다</b>. 한국은 모멘텀 시장이라 뜨거울 때 따라 들어가는 편이 통했다.
+정말 위험한 건 온도가 아니라 아래 4번의 <b>④번 "조용한 소멸"</b> 국면이다.</div>
+
+<h3>4. 한국은 모멘텀 시장, 미국은 평균회귀 시장</h3>
+<p>같은 지표인데 두 나라 결과가 정반대였다. 한국 2,116거래일(2018.1~2026.8), 미국 5,190거래일(2006.1~2026.8) 검증.</p>
+<table>
+<tr><th style="width:120px">한국 (모멘텀)</th><td>상단 돌파가 많을수록 <b>이후에 더 오른다</b>. 25개 이상 터진 날 → 60일 뒤 +7.45%, 승률 66%.
+가장 조용한 날이 오히려 별로다. <b>"쏠림 = 연료"</b> — 개인 자금 중심이라 테마가 돌면 뒤늦은 돈이 계속 붙는다.</td></tr>
+<tr><th>미국 (평균회귀)</th><td>상단 돌파가 많을수록 <b>이후에 덜 오른다</b>. 20일평균이 가장 낮을 때(조용할 때)가 가장 좋았다.
+<b>"쏠림 = 소진"</b> — 기관·패시브 중심이라 500종목에 넓게 퍼지면 더 살 사람이 남지 않는다.</td></tr>
+</table>
+<p><b>그래서 한국 방식을 미국에 그대로 쓰면 안 된다.</b> 이 페이지의 임계값(30개·50개)은 <b>한국 전용</b>이다.</p>
+
+<h3>5. "상단돌파 5일평균 · 하단이탈 5일평균"과 4분면 국면</h3>
+<p>맨 위 큰 숫자 두 개가 그것이다. <b>5일평균</b>은 최근 일주일 동안 하루 평균 몇 종목이 상단(하단)을 뚫었는지,
+<b>20일평균</b>은 최근 한 달 평균이다. 5일평균을 20일평균과 비교하면 <b>"최근 일주일이 지난 한 달보다 뜨거워졌나, 식었나"</b>를 알 수 있다.</p>
+<p>상단과 하단 각각에 대해 이 비교를 하면 2×2 = <b>네 개의 국면</b>이 나온다.</p>
+<table>
+<tr><th style="width:150px">① 상단↑ 하단↓ · 확산 우위</th><td>오르는 종목 늘고 빠지는 종목 줄고. <b>이후 20일 +1.05%, 승률 55% — 네 국면 중 최고.</b> 신규 진입·비중 확대에 유리.</td></tr>
+<tr><th>② 상단↑ 하단↑ · 변동 큰 상승</th><td>양쪽 다 많은 널뛰기. +0.30%, 승률 51%. 방향은 위지만 사이징을 줄이고 손절폭을 넓게.</td></tr>
+<tr><th>③ 상단↓ 하단↑ · 조정 진행중</th><td>눈에 보이는 조정. <b>+0.72%, 승률 58% — 체감은 나쁘지만 통계는 의외로 양호.</b> 공포 매도 금지.</td></tr>
+<tr><th>④ 상단↓ 하단↓ · 조용한 소멸</th><td><b>−0.36%, 승률 46% — 네 국면 중 최악이고 이후 변동성은 최대.</b> 조용해서 안전해 보일 때가 통계적으로 가장 나빴다. 신규 진입 보류·포지션 축소.</td></tr>
+</table>
+<div class="box warn"><b>단, "5일평균이 꺾였다"를 매도 신호로 쓰지 말 것.</b>
+"5일평균이 20일평균을 하향 돌파하면 판다"는 방식은 한국·미국 두 시장에서 <b>모두 실패</b>했다(모든 조합이 단순 보유보다 나빴다).
+5일평균은 창이 짧아 하루 튄 값 하나에 평균이 통째로 흔들린다 — 그 변화는 시장이 아니라 계산의 흔들림이다.
+<b>5일평균의 "방향"이 아니라 20일평균 대비 "위치"</b>로만 국면을 읽는다.</div>
+
+<h3>6. 실제로 써먹는 신호는 딱 3개 (+1)</h3>
+<table>
+<tr><th style="width:170px">① 상단돌파 30개 초과</th><td>그날부터 <b>20거래일(약 1개월) 비중 확대</b>.
+8년간 27번 발생 · 5일 후 승률 70%.</td></tr>
+<tr><th>② 하단이탈 50개 초과</th><td>그날부터 <b>5거래일(약 1주) 분할 매수</b>. 8년간 39번 발생 · 5일 후 승률 69%.
+<b>단 조건이 반드시 붙는다</b> — 아래 참조.</td></tr>
+<tr><th>③ 신고가인데 상단돌파가 적음</th><td><b>방향을 맞히려 하지 말고 포지션을 줄일 것.</b>
+3개월 신고가 + 상단 5일평균 &lt; 20일평균 → 10일 후 상승 확률 <b>39%</b>(전체 평균 55%).
+소수 대형주만 지수를 밀어올리는 상태다.</td></tr>
+<tr><th>③′ 안전한 신고가</th><td>같은 신고가라도 <b>상단돌파 20개 이상</b>이면 정반대 — 5일 후 상승 확률 <b>79%</b>로
+이번 분석에서 통계적으로 가장 확실한 신호였다. <b>혼자 오르는 신고가와 다 같이 오르는 신고가는 완전히 다른 사건이다.</b></td></tr>
+</table>
+<div class="box"><b>② 공포 매수의 필수 조건 — "얼마나 빠진 뒤인가"가 신호의 전부다.</b>
+같은 하단이탈 급증이라도 지수 위치에 따라 결과가 4배 차이났다.
+<ul><li><b>고점 근처(−5% 이내)</b>: 20일 뒤 +1.13% — 기저와 거의 같음, 사실상 신호 아님. <b>고점 근처의 하단 급증은 매수 신호가 아니라 경고다.</b></li>
+<li><b>조정 구간(−5~−15%)</b>: +1.31% — 약간 낫지만 확신하긴 이름</li>
+<li><b>본격 하락 후(−15% 이하)</b>: <b>+5.52% · 60일 뒤 +11.05% · 승률 74%</b></li></ul>
+그래서 이 페이지는 하단 신호에 <b>등급 A/B/C</b>를 붙인다. A(낙폭 −15% 이하)만 본격 분할 매수 자리다.</div>
+<p><b>나머지 날은?</b> 이 지표로는 아무것도 하지 않는 것이 정답이다. 실제로 두 신호만 매매하면
+시장에 들어가 있는 기간은 전체의 38%뿐이고, 나머지 62%는 쉰다. 그럼에도 2018~2026 백테스트(수수료 0.1% 반영)에서
+단순 보유 연 8.7%·최대낙폭 −48.5% 대비 <b>연 17.3%·최대낙폭 −31.7%</b>였다. 수익은 2배, 손실은 3분의 2.</p>
+
+<h3>7. 현금 비중을 정하는 데는 쓰지 마라</h3>
+<p>"돌파 종목이 많으면 위험하니 현금을 늘린다" — 직관은 맞지만 결과는 틀렸다.
+돌파 종목이 많으면 변동성은 확실히 커지지만(16%→29%) <b>수익률도 같이 높아진다</b>(+1.14%→+1.87%).
+위험만 보고 피하면 수익까지 같이 버리게 된다.</p>
+<p>한국에서 총돌파 수로 비중을 조절하면 샤프지수가 0.30 → <b>0.16으로 오히려 나빠졌다</b>.
+총돌파가 담은 위험 정보의 97%는 이미 지난 한 달 변동성에 들어 있다.
+<b>현금 비중은 변동성으로 정하고, 이 지표는 "언제 담을까"에만 쓴다.</b></p>
+<p>그리고 <b>이건 폭락 방어 도구가 아니다.</b> 20일평균은 한 달치 과거를 보는 지표라 2008년·2020년 같은 급락은 못 피한다.
+두 시장 모두 최대낙폭(MDD)이 전혀 줄지 않았다.</p>
+
+<h3>8. 한계 — 이 숫자를 믿기 전에 알아야 할 것</h3>
+<ul>
+<li><b>표본이 적다.</b> 상단 30개 돌파는 8년간 27번, 하단 50개 이탈은 39번뿐이다. 신호 하나하나의 무게가 크다.</li>
+<li><b>최근 성과에 쏠려 있다.</b> 수익의 상당 부분이 2024~2026년에서 나왔다. 2026년은 코스피200이 8개월 만에 두 배 오르내린 예외적인 해였다.</li>
+<li><b>숫자는 시대에 따라 뒤집힌다.</b> 최근 8년만 보면 "상단 20일평균 25 이상 = 과열"이 선명한 위험 신호였지만,
+2006~2017년 구간에서는 같은 신호가 오히려 평균보다 나았다. 그래서 고정 개수 대신 <b>3년 백분위</b>를 쓴다.</li>
+<li><b>2008년의 역설.</b> 볼린저밴드는 변동성이 커지면 띠 자체가 넓어진다. 그래서 <b>폭락이 깊어질수록 하단 돌파가 오히려 줄어든다.</b>
+2008년 10월 하단 20일평균 38.7(20년 최고) → 11월 12.4로 급감했지만 지수는 그 뒤로도 더 빠졌다.
+지표는 "공포 끝"이라 했지만 실제로는 중간이었다. 2008~2009년 공포 매수 신호의 20일 뒤 성적은 −2.55%, 승률 49%였다.</li>
+<li><b>구성종목 정기변경 미반영.</b> 현재의 코스피200·코스닥150 구성으로 과거를 계산하므로 약간의 생존편향이 있다.</li>
+<li><b>여러 조건을 동시에 시험했다.</b> 20개 넘는 조건을 시험하면 우연히도 1개는 "유의하게" 나온다.
+그래서 개별 수치보다 여러 구간에서 방향이 일관되는지를 봐야 한다.</li>
+</ul>
+
+<h3>9. 매일 장 마감 후 이것만 확인하면 된다</h3>
+<table>
+<tr><th style="width:40px">1</th><td><b>상단돌파가 30개를 넘었나?</b> → 넘었다면 이후 약 1개월 비중을 늘려도 좋은 구간</td></tr>
+<tr><th>2</th><td><b>하단이탈이 50개를 넘었나?</b> → 넘었고 지수가 고점 대비 −15% 이하라면 5거래일 분할 매수를 시작할 구간</td></tr>
+<tr><th>3</th><td><b>신고가인데 상단돌파가 적은가?</b> → 그렇다면 방향을 맞히려 하지 말고 포지션을 줄일 것</td></tr>
+<tr><th>4</th><td><b>상단·하단 5일평균이 둘 다 20일평균 이하인가?</b> → ④번 조용한 소멸 국면. 조심해야 한다</td></tr>
+</table>
+<p style="margin-top:10px"><b>온도계는 날씨를 바꾸지 않는다. 다만 옷을 어떻게 입을지 알려줄 뿐이다.</b></p>`;
+
+document.getElementById("foot").innerHTML=
+ `집계 대상: 코스피200 + 코스닥150 350종목 · 볼린저밴드(20일, ±2σ) 종가 기준 ·
+  검증 구간 한국 2,116거래일(2018.1~2026.8) / 미국 5,190거래일(2006.1~2026.8, S&P500·나스닥100).<br>
+  본 자료는 과거 데이터에 기반한 통계적 관찰이며 미래 수익을 보장하지 않습니다.
+  투자 판단과 그 결과에 대한 책임은 투자자 본인에게 있습니다.`;
+}
+</script>
+</body>
+</html>

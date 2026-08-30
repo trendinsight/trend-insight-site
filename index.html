@@ -375,6 +375,7 @@
           <a href="cash-gauge.html" style="color:#f5a524;">예수금 온도계</a>
           <a href="stock-gauge.html" style="color:#c62828;">종목 온도계</a>
           <a href="crypto-gauge.html" style="color:#e8830c;">코인 온도계</a>
+          <a href="bb-gauge.html" style="color:#12b886;">볼린저밴드 온도계</a>
         </div>
       </div>
       <div class="nav-group">
@@ -568,6 +569,12 @@
       <a class="dash-card" id="dash-crypto" href="crypto-gauge.html">
         <div class="t">코인 온도계 <span class="go">상세 →</span></div>
         <div class="sub">가격 과열도 · 높을수록 과열</div>
+        <div class="dash-rows"><div class="dash-err">불러오는 중…</div></div>
+        <div class="dash-foot"></div>
+      </a>
+      <a class="dash-card" id="dash-bb" href="bb-gauge.html">
+        <div class="t">볼린저밴드 온도계 <span class="go">상세 →</span></div>
+        <div class="sub">350종목 상단돌파·하단이탈 확산 폭 · 높을수록 에너지 확산</div>
         <div class="dash-rows"><div class="dash-err">불러오는 중…</div></div>
         <div class="dash-foot"></div>
       </a>
@@ -975,6 +982,20 @@
     });
     setGauges('dash-crypto',items,lastOf(d.coins.BTC.history).date);
   }).catch(function(){fail('dash-crypto');});
+
+  // ── 볼린저밴드 온도계 (350종목 돌파 확산 폭 — 높을수록 에너지 확산)
+  load('bb-gauge.json').then(function(d){
+    var PN={P1:'①확산 우위',P2:'②변동 큰 상승',P3:'③조정 진행중',P4:'④조용한 소멸'};
+    var h=lastOf(d.history);
+    var zone=(h.temp==null?'산출 불가':(h.temp>=85?'확산 과열':h.temp>=65?'온기 확산':h.temp>=35?'중립':h.temp>=15?'냉각':'한파·공포'));
+    var sig=(h.signals&&h.signals.length)?h.signals[0].title:'신호 없음 · 대기';
+    setGauges('dash-bb',[
+      {label:'에너지 온도',score:(h.temp==null?0:R1(h.temp)),segs:GOOD,
+       zone:zone+' · '+(PN[h.phase]||'-')+' '+(h.phase_run||1)+'일째',zc:goodZC(h.temp||0)},
+      {label:'상단 5일평균',score:R1(h.up5),segs:GOOD,unit:'개',
+       zone:'하단 5일평균 '+R1(h.dn5)+'개 · '+sig,zc:goodZC(Math.min(100,h.up5*3))}
+    ],h.date,d.updated&&d.updated.slice(0,10).replace(/-/g,''));
+  }).catch(function(){fail('dash-bb');});
 
   // ══ 전략 신호 카드 ══
   function setSig(id,valHTML,dateStr){
