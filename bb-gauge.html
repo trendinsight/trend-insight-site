@@ -51,6 +51,26 @@
   th:first-child,td:first-child{text-align:left}
   .scroll{max-height:420px;overflow:auto}
   .tag{display:inline-block;padding:1px 7px;border-radius:6px;font-size:11px;font-weight:700}
+  .sbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px}
+  .sbar input{flex:1;min-width:190px;background:#0c0e12;color:var(--txt);border:1px solid var(--line);
+              border-radius:9px;padding:9px 12px;font-size:14px}
+  .sbar button{background:#1f6feb;color:#fff;border:0;border-radius:9px;padding:9px 18px;
+               font-size:14px;font-weight:700;cursor:pointer}
+  .sbar button:disabled{opacity:.5;cursor:default}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chip{background:#12151b;border:1px solid var(--line);border-radius:999px;padding:4px 11px;
+        font-size:12px;color:var(--sub);cursor:pointer}
+  .chip:hover{border-color:#1f6feb;color:var(--txt)}
+  .kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:9px;margin-top:12px}
+  .kv div{background:#12151b;border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+  .kv .k{font-size:11.5px;color:var(--sub)}
+  .kv .v{font-size:16px;font-weight:800;margin-top:3px}
+  .bbline{position:relative;height:34px;margin:14px 0 4px;background:#0c0e12;border-radius:8px;overflow:hidden}
+  .bbline .fillz{position:absolute;top:0;bottom:0;background:linear-gradient(90deg,#3e8ef7 0%,#7c8598 50%,#e5484d 100%);opacity:.28}
+  .bbline .mk{position:absolute;top:2px;bottom:2px;width:3px;background:#fff;border-radius:2px}
+  .bbline .lb{position:absolute;top:9px;font-size:11px;color:var(--sub)}
+  .verdict{margin-top:12px;padding:11px 13px;border-radius:10px;background:#12151b;
+           border-left:4px solid var(--neu);font-size:13px;line-height:1.7}
   .doc{margin-top:26px;font-size:13px;line-height:1.85;color:#cfd6e0}
   .doc h2{font-size:17px;margin:26px 0 8px;padding-top:16px;border-top:1px solid var(--line)}
   .doc h3{font-size:14.5px;margin:18px 0 6px;color:#fff}
@@ -78,6 +98,19 @@
 
 <div class="wrap">
   <div class="card" id="hero"></div>
+
+  <div class="card" style="margin-top:14px">
+    <h2>🔎 종목 볼린저밴드 분석</h2>
+    <div class="meta">종목명이나 6자리 코드를 넣으면 <b>그 종목 한 개</b>의 볼린저밴드(20일·2σ) 위치를 분석한다.
+      위 온도계는 시장 350종목의 확산 폭, 여기는 개별 종목의 현재 자리 — 두 개를 나란히 읽는다.</div>
+    <div class="sbar">
+      <input id="sq" type="text" placeholder="예: 삼성전자 · 005930 · 에코프로" autocomplete="off">
+      <button id="sgo">분석</button>
+    </div>
+    <div class="chips" id="schips"></div>
+    <div id="sres"></div>
+  </div>
+
   <div class="row" style="margin-top:14px" id="kpis"></div>
 
   <div class="card" style="margin-top:14px">
@@ -293,6 +326,145 @@ function boot(data){
 fetch("data/bb-gauge.json?cb="+Date.now()).then(r=>r.ok?r.json():Promise.reject())
   .then(boot).catch(()=>boot(SAMPLE));
 
+/* ---------- 종목 볼린저밴드 분석 ---------- */
+const API="/api/cockpit";
+function num(v,d){return v==null||isNaN(v)?"–":Number(v).toLocaleString(undefined,{minimumFractionDigits:d||0,maximumFractionDigits:d||0});}
+function sma(a,i,n){if(i<n-1)return null;let s=0;for(let k=i-n+1;k<=i;k++)s+=a[k];return s/n;}
+function sd(a,i,n,m){if(i<n-1)return null;let s=0;for(let k=i-n+1;k<=i;k++)s+=(a[k]-m)*(a[k]-m);return Math.sqrt(s/n);}
+function pctRank(arr,v){const s=arr.filter(x=>x!=null);if(s.length<40)return null;
+  return Math.round(s.filter(x=>x<v).length/s.length*1000)/10;}
+
+function bbSeries(close){
+  const out=[];
+  for(let i=0;i<close.length;i++){
+    const m=sma(close,i,20);
+    if(m==null){out.push(null);continue;}
+    const s=sd(close,i,20,m), up=m+2*s, dn=m-2*s;
+    out.push({m:m,up:up,dn:dn,bw:(up-dn)/m*100,
+      pb:(up-dn)===0?50:(close[i]-dn)/(up-dn)*100,
+      over:close[i]>up, under:close[i]<dn});
+  }
+  return out;
+}
+
+function stateOf(b){
+  if(b.over) return {t:"상단돌파",c:"var(--up)",d:"평소 움직이던 범위를 위로 벗어났다 — 평소보다 강하게 올랐다는 뜻."};
+  if(b.pb>=80) return {t:"상단권",c:"var(--warn)",d:"밴드 위쪽에 붙어 있다. 강세지만 아직 돌파는 아니다."};
+  if(b.under) return {t:"하단이탈",c:"var(--dn)",d:"평소 범위를 아래로 벗어났다 — 평소보다 세게 빠졌다는 뜻."};
+  if(b.pb<=20) return {t:"하단권",c:"var(--dn)",d:"밴드 아래쪽에 붙어 있다. 약세지만 아직 이탈은 아니다."};
+  return {t:"중립",c:"var(--neu)",d:"밴드 가운데. 이 지표로는 말할 게 없는 자리다."};
+}
+
+function renderStock(name,code,d){
+  const C=d.close, D=d.date, B=bbSeries(C);
+  const i=C.length-1, b=B[i];
+  if(!b){document.getElementById("sres").innerHTML='<div class="verdict">데이터가 20거래일보다 짧아 볼린저밴드를 계산할 수 없습니다.</div>';return;}
+  const st=stateOf(b);
+  const chg=C.length>1?(C[i]/C[i-1]-1)*100:0;
+  const bws=B.map(x=>x?x.bw:null), bwp=pctRank(bws.slice(-250),b.bw);
+  const w60=B.slice(-60).filter(Boolean);
+  const nOver=w60.filter(x=>x.over).length, nUnder=w60.filter(x=>x.under).length;
+  const w5=B.slice(-5).filter(Boolean);
+  const walk=w5.filter(x=>x.over).length>=3, walkDn=w5.filter(x=>x.under).length>=3;
+  const squeeze=bwp!=null&&bwp<=20, expand=bwp!=null&&bwp>=80;
+  const hi250=Math.max(...C.slice(-250)), dd=(C[i]/hi250-1)*100;
+
+  // 시장 국면과의 교차
+  const H=(DATA&&DATA.history)||[], M=H.length?H[H.length-1]:null;
+  const mph=M?(PH[M.phase]||{}):{};
+  let cross="";
+  if(M){
+    if(b.over&&M.phase==="P1") cross="시장도 ①확산 우위, 이 종목도 상단 돌파 — 시장과 종목의 방향이 같다. 추세 추종에 가장 우호적인 조합.";
+    else if(b.over&&M.phase==="P4") cross="시장은 ④조용한 소멸인데 이 종목만 상단을 뚫었다. 소수 종목만 오르는 국면이라 되돌림이 잦았다 — 사이징을 줄여 대응.";
+    else if(b.under&&M.dn>=50) cross="시장 전체 하단이탈이 "+M.dn+"개로 공포가 번진 날이다. 개별 종목 이탈이 아니라 시장 이벤트일 가능성이 크다.";
+    else if(b.under) cross="시장 하단이탈은 "+M.dn+"개뿐인데 이 종목만 빠졌다. 시장이 아니라 종목 고유의 악재일 가능성을 먼저 확인할 것.";
+    else cross="현재 시장 국면은 "+(mph.no||"?")+"번 ["+(mph.name||"-")+"] · 시장 상단돌파 "+M.up+"개 / 하단이탈 "+M.dn+"개.";
+  }
+
+  const mx=Math.max(...B.slice(-60).map(x=>x?Math.abs(x.pb-50):0),1);
+  const spark=B.slice(-60).map(x=>{
+    if(!x)return '<div style="height:1px;background:#2a2f39"></div>';
+    const h=Math.max(2,Math.round(Math.min(100,Math.max(0,x.pb))/100*62));
+    const c=x.over?"var(--up)":x.under?"var(--dn)":x.pb>=50?"#7c8598":"#4a5260";
+    return `<div title="${x.pb.toFixed(0)}%" style="height:${h}px;background:${c}"></div>`;}).join("");
+
+  document.getElementById("sres").innerHTML=`
+    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:baseline">
+      <div style="font-size:19px;font-weight:800">${name} <span style="color:var(--sub);font-size:13px">${code}</span></div>
+      <div style="font-size:16px;font-weight:700">${num(C[i])}원
+        <span style="color:${chg>=0?"var(--up)":"var(--dn)"};font-size:13px">${chg>=0?"+":""}${chg.toFixed(2)}%</span></div>
+      <div style="color:var(--sub);font-size:12px">기준일 ${D[i]}</div>
+      <div class="zone" style="background:${st.c};margin:0">${st.t}</div>
+    </div>
+
+    <div class="bbline">
+      <div class="fillz" style="left:0;right:0"></div>
+      <div class="mk" style="left:calc(${Math.min(99.5,Math.max(0.5,b.pb))}% - 1.5px)"></div>
+      <div class="lb" style="left:8px">하단 ${num(b.dn)}</div>
+      <div class="lb" style="left:50%;transform:translateX(-50%)">중심 ${num(b.m)}</div>
+      <div class="lb" style="right:8px">상단 ${num(b.up)}</div>
+    </div>
+    <div style="color:var(--sub);font-size:12px">▲ 흰 눈금이 지금 주가의 밴드 내 위치(%B ${b.pb.toFixed(0)}%) — 0%면 하단, 100%면 상단</div>
+
+    <div class="kv">
+      <div><div class="k">밴드 내 위치 %B</div><div class="v" style="color:${st.c}">${b.pb.toFixed(0)}%</div></div>
+      <div><div class="k">밴드폭 (변동성)</div><div class="v">${b.bw.toFixed(1)}%<span style="font-size:11px;color:var(--sub)"> · 1년 백분위 ${bwp==null?"–":bwp+"%"}</span></div></div>
+      <div><div class="k">20일선(중심선) 대비</div><div class="v" style="color:${C[i]>=b.m?"var(--up)":"var(--dn)"}">${((C[i]/b.m-1)*100).toFixed(1)}%</div></div>
+      <div><div class="k">최근 60일 상단돌파</div><div class="v" style="color:var(--up)">${nOver}일</div></div>
+      <div><div class="k">최근 60일 하단이탈</div><div class="v" style="color:var(--dn)">${nUnder}일</div></div>
+      <div><div class="k">1년 고점 대비</div><div class="v">${dd.toFixed(1)}%</div></div>
+    </div>
+
+    <div style="margin-top:14px;color:var(--sub);font-size:12px">최근 60거래일 밴드 내 위치(%B) 추이 — 빨강=상단돌파, 파랑=하단이탈</div>
+    <div class="bars">${spark}</div>
+
+    <div class="verdict" style="border-left-color:${st.c}">
+      <b style="color:${st.c}">${st.t}</b> — ${st.d}<br>
+      ${squeeze?'<b style="color:var(--warn)">밴드 수축(스퀴즈)</b> — 밴드폭이 1년 중 하위 '+bwp+'%다. 변동성이 말라붙은 상태로, 곧 어느 쪽으로든 크게 움직일 준비 구간이다. <b>방향은 알려주지 않는다.</b><br>':""}
+      ${expand?'<b style="color:var(--warn)">밴드 확장</b> — 밴드폭이 1년 중 상위 '+(100-bwp).toFixed(0)+'%다. 이미 크게 움직인 뒤라 신규 진입의 손절폭이 넓어진다.<br>':""}
+      ${walk?'<b style="color:var(--up)">밴드 타기(walking the band)</b> — 최근 5일 중 3일 이상 상단을 뚫었다. 강한 추세일 때 나타나는 모습으로, 상단 돌파를 곧바로 과열·매도 신호로 읽으면 안 된다.<br>':""}
+      ${walkDn?'<b style="color:var(--dn)">하단 타기</b> — 최근 5일 중 3일 이상 하단을 이탈했다. 하락 추세가 살아 있다는 뜻으로, 하단 이탈을 저가 매수 신호로 읽으면 안 된다.<br>':""}
+      ${cross?'<span style="color:var(--sub)">'+cross+'</span>':""}
+    </div>
+    <div style="margin-top:8px;color:var(--sub);font-size:11.5px">
+      ※ 이 페이지 위쪽의 승률·수익률 통계는 <b>시장 350종목의 확산 폭</b>으로 검증한 값이다.
+      개별 종목에는 그 수치를 그대로 적용하지 않는다 — 여기서는 종목의 <b>현재 밴드 위치와 변동성 상태</b>만 읽는다.</div>`;
+}
+
+function setBusy(b){const el=document.getElementById("sgo");el.disabled=b;el.textContent=b?"분석 중…":"분석";}
+function sErr(m){document.getElementById("sres").innerHTML='<div class="verdict" style="border-left-color:var(--bad)">'+m+'</div>';}
+
+async function analyze(q){
+  q=(q||"").trim(); if(!q)return;
+  setBusy(true); document.getElementById("schips").innerHTML="";
+  document.getElementById("sres").innerHTML='<div class="verdict">불러오는 중…</div>';
+  try{
+    let code=null,name=q;
+    if(/^\d{6}$/.test(q)){code=q;}
+    else{
+      const r=await fetch(API+"/search?q="+encodeURIComponent(q));
+      const j=await r.json();
+      const list=(j.data||[]).filter(x=>/^\d{6}$/.test(x.code));
+      if(!list.length){sErr("‘"+q+"’ 에 해당하는 종목을 찾지 못했습니다. 정확한 종목명이나 6자리 코드로 다시 시도해 주세요.");setBusy(false);return;}
+      code=list[0].code; name=list[0].name;
+      if(list.length>1){
+        document.getElementById("schips").innerHTML='<span style="font-size:12px;color:var(--sub);align-self:center">다른 후보:</span>'+
+          list.slice(1,7).map(x=>`<span class="chip" data-c="${x.code}" data-n="${x.name}">${x.name}</span>`).join("");
+        document.querySelectorAll("#schips .chip").forEach(function(el){
+          el.onclick=function(){document.getElementById("sq").value=el.dataset.n;analyze(el.dataset.n);};});
+      }
+    }
+    const r2=await fetch(API+"/ohlcv/"+code+"?days=400");
+    const j2=await r2.json();
+    if(!j2.ok||!j2.data||!j2.data.close||j2.data.close.length<25){sErr("시세 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");setBusy(false);return;}
+    if(/^\d{6}$/.test(q)&&name===q)name=code;
+    renderStock(name,code,j2.data);
+  }catch(e){ sErr("조회 중 오류가 발생했습니다: "+e); }
+  setBusy(false);
+}
+document.getElementById("sgo").onclick=function(){analyze(document.getElementById("sq").value);};
+document.getElementById("sq").addEventListener("keydown",function(e){if(e.key==="Enter")analyze(this.value);});
+
 /* ---------- 읽는 법 ---------- */
 function doc(){
 document.getElementById("doc").innerHTML=`
@@ -401,7 +573,26 @@ document.getElementById("doc").innerHTML=`
 그래서 개별 수치보다 여러 구간에서 방향이 일관되는지를 봐야 한다.</li>
 </ul>
 
-<h3>9. 매일 장 마감 후 이것만 확인하면 된다</h3>
+<h3>9. 종목 분석 패널 읽는 법 (맨 위 검색창)</h3>
+<p>위 온도계는 <b>시장 350종목이 얼마나 넓게 움직이는가</b>를 재고, 검색창은 <b>종목 하나가 지금 밴드의 어디에 있는가</b>를 본다. 둘은 다른 질문이다.</p>
+<table>
+<tr><th style="width:150px">밴드 내 위치 %B</th><td>지금 주가가 밴드의 몇 % 지점인지. <b>0% = 하단, 50% = 20일선(중심), 100% = 상단.</b>
+100%를 넘으면 상단돌파, 0% 아래면 하단이탈이다. 80% 이상은 "상단권", 20% 이하는 "하단권"으로 표시한다.</td></tr>
+<tr><th>밴드폭 (변동성)</th><td>(상단−하단) ÷ 중심선. 그 종목이 요즘 얼마나 크게 흔들리는지다.
+괄호의 <b>1년 백분위</b>가 핵심 — 20% 이하면 <b>스퀴즈(변동성 고갈)</b>로 곧 크게 움직일 준비 구간이고,
+80% 이상이면 <b>확장</b>으로 이미 크게 움직인 뒤다. <b>스퀴즈는 방향을 알려주지 않는다</b> — 터지는 쪽이 어디인지는 다른 근거로 판단할 것.</td></tr>
+<tr><th>밴드 타기<br>(walking the band)</th><td>최근 5일 중 3일 이상 상단을 뚫고 있는 상태. 강한 추세에서 흔히 나타난다.
+<b>이때 상단 돌파를 과열·매도 신호로 읽으면 추세를 통째로 놓친다.</b> 반대로 하단을 계속 이탈 중이면(하단 타기) 그 이탈은 저가 매수 신호가 아니라 하락 추세의 증거다.</td></tr>
+<tr><th>최근 60일 돌파 횟수</th><td>상단·하단을 각각 며칠이나 벗어났는지. 밴드 밖은 통계적으로 전체의 약 5%(2σ)에서만 나와야 정상이므로,
+60일 중 10일 이상이면 그 종목은 평소부터 밴드를 자주 벗어나는 성격이라는 뜻이다.</td></tr>
+<tr><th>시장 국면과의 교차</th><td>맨 아래 회색 문장. 시장 국면과 종목 상태가 같은 방향이면 순풍, 엇갈리면 되돌림이 잦다.
+예컨대 <b>시장은 ④조용한 소멸인데 이 종목만 상단 돌파</b>라면 소수만 오르는 국면이므로 사이징을 줄여 대응한다.</td></tr>
+</table>
+<div class="box warn"><b>종목 패널에는 승률 숫자를 붙이지 않는다.</b> 이 페이지의 70%·79%·46% 같은 수치는
+전부 <b>시장 350종목의 확산 폭</b>으로 검증한 값이다. 종목 하나에 그대로 옮기면 검증되지 않은 숫자가 된다.
+종목 패널은 "지금 어디에 있고 변동성이 어떤 상태인가"까지만 답한다 — 매수·매도 판단은 추세·수급·펀더멘털과 함께 내릴 것.</div>
+
+<h3>10. 매일 장 마감 후 이것만 확인하면 된다</h3>
 <table>
 <tr><th style="width:40px">1</th><td><b>상단돌파가 30개를 넘었나?</b> → 넘었다면 이후 약 1개월 비중을 늘려도 좋은 구간</td></tr>
 <tr><th>2</th><td><b>하단이탈이 50개를 넘었나?</b> → 넘었고 지수가 고점 대비 −15% 이하라면 5거래일 분할 매수를 시작할 구간</td></tr>

@@ -278,6 +278,7 @@
   .mini-g .gscore{font-size:1.28rem;font-weight:800;color:var(--navy);line-height:1.1;margin-top:2px;}
   .mini-g .gscore small{font-size:.72rem;font-weight:700;color:#8a94a6;}
   .mini-g .gzone{display:inline-block;margin-top:4px;padding:2px 10px;border-radius:999px;font-size:.7rem;font-weight:700;white-space:nowrap;}
+  #dash-bb .gzone{display:block;white-space:normal;max-width:152px;margin:5px auto 0;padding:4px 9px;border-radius:10px;line-height:1.45;}
   .z-ob{background:#fdecea;color:#c62828}.z-nob{background:#fff3e0;color:#e8830c}.z-n{background:#eef2f8;color:#39506e}.z-nos{background:#e3f2fd;color:#1565c0}.z-os{background:#e8f5e9;color:#2e7d32}
   .z-good{background:#e8f5e9;color:#1a7f37}.z-bad{background:#fdecea;color:#c62828}
   .sig-title{margin:34px 0 14px;font-size:1.05rem;font-weight:800;color:var(--navy);}
@@ -991,9 +992,9 @@
     var sig=(h.signals&&h.signals.length)?h.signals[0].title:'신호 없음 · 대기';
     setGauges('dash-bb',[
       {label:'에너지 온도',score:(h.temp==null?0:R1(h.temp)),segs:GOOD,
-       zone:zone+' · '+(PN[h.phase]||'-')+' '+(h.phase_run||1)+'일째',zc:goodZC(h.temp||0)},
+       zone:zone+'<br>'+(PN[h.phase]||'-')+' '+(h.phase_run||1)+'일째',zc:goodZC(h.temp||0)},
       {label:'상단 5일평균',score:R1(h.up5),segs:GOOD,unit:'개',
-       zone:'하단 5일평균 '+R1(h.dn5)+'개 · '+sig,zc:goodZC(Math.min(100,h.up5*3))}
+       zone:'하단 5일평균 '+R1(h.dn5)+'개<br>'+sig,zc:goodZC(Math.min(100,h.up5*3))}
     ],h.date,d.updated&&d.updated.slice(0,10).replace(/-/g,''));
   }).catch(function(){fail('dash-bb');});
 
