@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>타이밍 렌즈 — Trend Insight</title>
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--line:#252a34;--txt:#e6e9ef;--sub:#9aa4b2;
+        --good:#12b886;--ok:#3e8ef7;--warn:#f5a524;--bad:#e5484d;--neu:#7c8598;--pur:#b083f0;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+  header{padding:22px 18px 6px;max-width:1080px;margin:0 auto}
+  h1{font-size:21px;margin:0 0 4px}
+  .sub{color:var(--sub);font-size:13px;line-height:1.6}
+  .wrap{max-width:1080px;margin:0 auto;padding:12px 18px 70px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+  .card h2{font-size:15px;margin:0 0 2px}
+  .meta{color:var(--sub);font-size:12px;margin-bottom:10px}
+  .sbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px}
+  .sbar input{flex:1;min-width:200px;background:#0c0e12;color:var(--txt);border:1px solid var(--line);
+              border-radius:9px;padding:10px 13px;font-size:15px}
+  .sbar button{background:#1f6feb;color:#fff;border:0;border-radius:9px;padding:10px 20px;
+               font-size:15px;font-weight:700;cursor:pointer}
+  .sbar button:disabled{opacity:.5;cursor:default}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chip{background:#12151b;border:1px solid var(--line);border-radius:999px;padding:4px 11px;
+        font-size:12px;color:var(--sub);cursor:pointer}
+  .chip:hover{border-color:#1f6feb;color:var(--txt)}
+  .hdr{display:flex;gap:12px;flex-wrap:wrap;align-items:baseline;margin-top:16px}
+  .hdr .nm{font-size:22px;font-weight:800}
+  .hdr .px{font-size:17px;font-weight:700}
+  .lay{border-left:5px solid var(--neu);background:#12151b;border-radius:0 12px 12px 0;
+       padding:14px 16px;margin-top:12px}
+  .lay .top{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .lay .hz{font-size:12px;color:var(--sub);font-weight:700;letter-spacing:.3px}
+  .lay .pos{font-size:19px;font-weight:800}
+  .lay .pill{font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:999px;color:#0b0d10}
+  .lay .why{font-size:13.2px;line-height:1.75;margin-top:8px;color:#cfd6e0}
+  .lay .inv{font-size:12.5px;line-height:1.6;margin-top:7px;color:var(--sub)}
+  .align{margin-top:14px;padding:14px 16px;border-radius:12px;background:#12151b;border:1px solid var(--line)}
+  .align .t{font-size:15px;font-weight:800;margin-bottom:6px}
+  .align .b{font-size:13.2px;line-height:1.75;color:#cfd6e0}
+  .kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:10px}
+  .ind{background:#12151b;border:1px solid var(--line);border-radius:11px;padding:12px 13px}
+  .ind .n{font-size:13px;font-weight:800}
+  .ind .v{font-size:19px;font-weight:800;margin:5px 0 3px}
+  .ind .d{font-size:11.8px;color:var(--sub);line-height:1.6}
+  .ind .s{font-size:12.3px;line-height:1.65;margin-top:7px;padding-top:7px;border-top:1px dashed var(--line)}
+  .secttl{font-size:15px;font-weight:800;margin:22px 0 2px;display:flex;gap:8px;align-items:center}
+  .secttl small{font-size:11.5px;font-weight:600;color:var(--sub)}
+  .bars{display:flex;align-items:flex-end;gap:2px;height:56px;margin-top:8px}
+  .bars div{flex:1;border-radius:2px 2px 0 0;min-height:1px}
+  .doc{margin-top:28px;font-size:13px;line-height:1.85;color:#cfd6e0}
+  .doc h2{font-size:17px;margin:24px 0 8px;padding-top:16px;border-top:1px solid var(--line)}
+  .doc h3{font-size:14.5px;margin:16px 0 6px;color:#fff}
+  .doc table{width:100%;border-collapse:collapse;font-size:12.6px;margin:8px 0}
+  .doc th,.doc td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  .doc th{color:var(--sub);font-weight:600;white-space:nowrap}
+  .box{background:#12151b;border:1px solid var(--line);border-radius:11px;padding:13px 15px;margin:10px 0}
+  .foot{margin-top:26px;color:var(--sub);font-size:11.5px;line-height:1.7;
+        border-top:1px solid var(--line);padding-top:14px}
+  a{color:var(--ok)}
+</style>
+</head>
+<body>
+<header>
+  <h1>🔭 타이밍 렌즈 — 단기·중기·장기</h1>
+  <div class="sub">종목명을 넣으면 <b>세 개의 시간 축</b>으로 같은 종목을 각각 본다.
+    <b>장기</b>는 "사도 되는 국면인가"(허가), <b>중기</b>는 "지금 상승 국면인가"(선택), <b>단기</b>는 "오늘 들어가도 되나"(시점).
+    층마다 포지션을 따로 내고, 그 아래에 각 층에서 본 지표의 <b>정의와 지금 모양</b>을 전부 펼친다.</div>
+  <div class="sbar">
+    <input id="q" type="text" placeholder="예: 삼성전자 · 005930 · 에코프로" autocomplete="off">
+    <button id="go">분석</button>
+  </div>
+  <div class="chips" id="chips"></div>
+</header>
+<div class="wrap">
+  <div id="res"></div>
+  <div class="doc" id="doc"></div>
+  <div class="foot" id="foot"></div>
+</div>
+
+<script>
+const API="/api/cockpit";
+const BM="069500", BMNM="KODEX 200";
+const TONE={good:"var(--good)",ok:"var(--ok)",warn:"var(--warn)",bad:"var(--bad)",neu:"var(--neu)"};
+const fmt=(v,d)=>v==null||isNaN(v)?"–":Number(v).toFixed(d==null?1:d);
+const won=v=>v==null||isNaN(v)?"–":Math.round(v).toLocaleString();
+const pct=v=>v==null||isNaN(v)?"–":(v>=0?"+":"")+v.toFixed(1)+"%";
+
+/* ---------- 계산 헬퍼 ---------- */
+function sma(a,i,n){if(i<n-1)return null;let s=0;for(let k=i-n+1;k<=i;k++)s+=a[k];return s/n;}
+function sdev(a,i,n,m){if(i<n-1)return null;let s=0;for(let k=i-n+1;k<=i;k++)s+=(a[k]-m)*(a[k]-m);return Math.sqrt(s/n);}
+function slopePct(a,i,n,back){const now=sma(a,i,n),then=sma(a,i-back,n);
+  return (now==null||then==null)?null:(now/then-1)*100;}
+function ret(a,i,n){return (i-n<0)?null:(a[i]/a[i-n]-1)*100;}
+function emaAt(a,n,i){let e=a[0];for(let k=1;k<=i;k++)e=a[k]*(2/(n+1))+e*(1-2/(n+1));return e;}
+function pctRank(arr,v){const s=arr.filter(x=>x!=null&&!isNaN(x));if(s.length<30)return null;
+  return s.filter(x=>x<v).length/s.length*100;}
+
+/* 일봉 → 주봉 (월요일 시작 주 단위) */
+function toWeekly(d){
+  const W={date:[],open:[],high:[],low:[],close:[],volume:[]};
+  let cur=null;
+  for(let i=0;i<d.date.length;i++){
+    const dt=new Date(d.date[i]);
+    const dow=(dt.getDay()+6)%7;                 // 월=0
+    const key=new Date(dt.getTime()-dow*864e5).toISOString().slice(0,10);
+    if(!cur||cur.k!==key){
+      if(cur)push(cur);
+      cur={k:key,o:d.open[i],h:d.high[i],l:d.low[i],c:d.close[i],v:d.volume[i]||0};
+    }else{
+      cur.h=Math.max(cur.h,d.high[i]); cur.l=Math.min(cur.l,d.low[i]);
+      cur.c=d.close[i]; cur.v+=(d.volume[i]||0);
+    }
+  }
+  if(cur)push(cur);
+  function push(c){W.date.push(c.k);W.open.push(c.o);W.high.push(c.h);W.low.push(c.l);W.close.push(c.c);W.volume.push(c.v);}
+  return W;
+}
+
+/* ---------- 단기 층 ---------- */
+function shortTerm(d){
+  const C=d.close,i=C.length-1;
+  const m=sma(C,i,20), s=sdev(C,i,20,m), up=m+2*s, dn=m-2*s;
+  const pb=(up-dn)===0?0.5:(C[i]-dn)/(up-dn);
+  const bw=(up-dn)/m*100;
+  const bws=[];for(let k=Math.max(20,i-124);k<=i;k++){const mm=sma(C,k,20);if(mm)bws.push(2*2*sdev(C,k,20,mm)/mm*100);}
+  const bwRank=pctRank(bws,bw);
+  const sq=bwRank!=null&&bwRank<=8, expd=bwRank!=null&&bwRank>=92;
+  const r5=ret(C,i,5), r20=ret(C,i,20);
+  const dev20=(C[i]/m-1)*100;
+  const v5=sma(d.volume,i,5), v20=sma(d.volume,i,20), vr=v20?v5/v20:null;
+  // 최근 5일 상단/하단 접촉
+  let touchUp=0,touchDn=0;
+  for(let k=i-4;k<=i;k++){const mm=sma(C,k,20);if(!mm)continue;const ss=sdev(C,k,20,mm);
+    if(C[k]>mm+2*ss)touchUp++; if(C[k]<mm-2*ss)touchDn++;}
+  // 하단 반등 회복 (2일 전 %b<0.15 → 오늘 0.35 이상)
+  let bounce=false;
+  {const k=i-2,mm=sma(C,k,20);if(mm){const ss=sdev(C,k,20,mm),u2=mm+2*ss,d2=mm-2*ss;
+    const pb2=(u2-d2)?(C[k]-d2)/(u2-d2):0.5; if(pb2<0.15&&pb>=0.35)bounce=true;}}
+
+  let pos,tone,why,inv;
+  if(pb>1&&touchUp>=3){pos="추세 편승 · 이익 관리";tone="warn";
+    why=`5일 중 ${touchUp}일 상단 밖에서 마감했다(밴드 타기). 강한 추세의 모습이라 이것만으로 팔 이유는 아니지만, `+
+        `새로 사기에는 이미 뻗어 있는 자리다. 신규 진입보다 <b>보유분의 트레일링 스탑을 끌어올리는 구간</b>.`;
+    inv=`무효화: 상단 밖 마감이 끊기고 %b가 0.5(중심선) 아래로 내려오면 밴드 타기는 종료된 것으로 본다.`;}
+  else if(bounce){pos="반등 진입 검토";tone="good";
+    why=`이틀 전 밴드 하단 밖(%b 0.15 미만)까지 밀렸다가 오늘 %b ${pb.toFixed(2)}로 밴드 안으로 되돌아왔다. `+
+        `볼린저가 말한 <b>즉각적 반전</b>의 모습이다. 손절선은 직전 저가 아래로 명확히 잡을 수 있다.`;
+    inv=`무효화: 직전 저가를 하향 이탈하면 반전 실패다. 볼린저의 원칙대로 <b>바로 나오고 다음 셋업을 찾는다</b>.`;}
+  else if(sq){pos="대기 · 방향 확인";tone="warn";
+    why=`밴드폭이 최근 125일 중 하위 ${fmt(bwRank,0)}%로 <b>스퀴즈</b>다. 곧 크게 움직이지만 <b>방향은 알려주지 않는다</b>. `+
+        `평균 레인지를 넘는 확인 봉이 밴드를 뚫는 쪽으로 따라가는 것이 규칙이다.`;
+    inv=`행동 조건: 평균 레인지를 넘는 확인 봉이 상단(${won(up)}원)을 뚫으면 매수, 하단(${won(dn)}원)을 깨면 회피. `+
+        `<b>스퀴즈 직후 첫 움직임은 속임수(헤드페이크)일 수 있어</b> 되돌림까지 확인하면 더 안전하다.`;}
+  else if(pb<0.15&&dev20<0){pos="진입 보류";tone="bad";
+    why=`%b ${pb.toFixed(2)}로 밴드 하단권이고 20일선도 ${fmt(dev20)}% 아래다. 하단 이탈은 저가 신호가 아니라 `+
+        `<b>하락이 진행 중이라는 증거</b>일 때가 더 많다. 반등 확인 봉을 기다린다.`;
+    inv=`전환 조건: %b가 0.35 이상으로 되돌아오는 반전 봉이 나오면 그때 진입을 검토한다.`;}
+  else if(pb>=0.5&&dev20>0){pos="보유 · 눌림 대기";tone="ok";
+    why=`%b ${pb.toFixed(2)}, 20일선 ${fmt(dev20)}% 위로 단기 흐름은 위쪽이다. 다만 지금은 밴드 중단~상단 사이라 `+
+        `<b>새로 담기엔 애매한 자리</b> — 중심선(20일선) 근처 눌림이 더 나은 진입점이다.`;
+    inv=`진입 지점: 중심선 ${won(m)}원 부근 되돌림. 무효화: %b 0.2 이탈 + 20일선 하회 시 단기 판정을 내린다.`;}
+  else{pos="관망";tone="neu";
+    why=`%b ${pb.toFixed(2)}로 밴드 가운데다. 볼린저의 말대로 <b>밴드는 연속적인 조언을 주지 않는다</b> — `+
+        `이런 자리에서 이 지표가 할 말은 없다.`;
+    inv=`행동 조건: %b가 0.8 위(상단권 진입) 또는 0.2 아래(하단권 이탈)로 벗어날 때 다시 본다.`;}
+
+  return {pos:pos,tone:tone,why:why,inv:inv,
+    ind:[
+      {n:"볼린저 %b",v:pb.toFixed(2),
+       d:"20일 이동평균 ±2σ 밴드 안에서 지금 주가의 위치. 1=상단, 0=하단, 0.5=중심선. 볼린저의 핵심 파생 지표.",
+       s:`상단 ${won(up)}원 · 중심 ${won(m)}원 · 하단 ${won(dn)}원. `+
+         (pb>1?"상단 밖 — 평소보다 강하게 올랐다.":pb<0?"하단 밖 — 평소보다 세게 빠졌다.":
+          pb>=0.8?"상단권에 붙어 있다.":pb<=0.2?"하단권에 붙어 있다.":"중간 구간이다.")},
+      {n:"밴드폭 (BandWidth)",v:fmt(bw)+"%",
+       d:"(상단−하단)÷중심선. 그 종목이 요즘 얼마나 크게 흔들리는지. 125일 중 최저면 스퀴즈, 최고면 벌지.",
+       s:`125일 순위 ${fmt(bwRank,0)}%. `+(sq?"<b>스퀴즈</b> — 변동성이 말라붙었다. 큰 움직임이 임박했다는 뜻이지 방향은 아니다.":
+          expd?"<b>확장</b> — 이미 크게 움직인 뒤라 신규 진입의 손절폭이 넓어진다.":"중간 수준의 변동성이다.")},
+      {n:"20일선 이격",v:pct(dev20),
+       d:"중심선(20일 이동평균) 대비 현재가 위치. 단기 추세의 방향과 과열도를 동시에 본다.",
+       s:dev20>10?"10% 이상 위 — 단기 과열. 눌림을 기다릴 자리.":dev20>0?"20일선 위 — 단기 흐름은 위쪽.":
+          dev20>-10?"20일선 아래 — 단기 흐름이 꺾였다.":"10% 이상 아래 — 단기 급락 구간."},
+      {n:"거래량 5일/20일",v:vr==null?"–":vr.toFixed(2)+"배",
+       d:"최근 5일 평균 거래량 ÷ 20일 평균. 1.5배 이상이면 관심이 몰리는 중, 0.7배 이하면 거래가 마른 상태.",
+       s:vr==null?"산출 불가":vr>=1.5?"거래가 확실히 늘었다 — 돌파라면 신뢰도가 올라간다.":
+          vr<=0.7?"거래가 말랐다 — 스퀴즈와 함께 나오면 에너지 응축 신호.":"평소 수준의 거래량."},
+      {n:"5일 / 20일 수익률",v:pct(r5),
+       d:"단기 모멘텀. 5일은 한 주, 20일은 한 달치 움직임이다.",
+       s:`20일 ${pct(r20)}. `+(r5>0&&r20>0?"단기·초단기 모두 상승 방향.":r5<0&&r20<0?"양쪽 다 하락 방향.":"방향이 엇갈린다 — 전환 구간일 수 있다.")}
+    ]};
+}
+
+/* ---------- 중기 층 ---------- */
+function midTerm(d,bm){
+  const C=d.close,i=C.length-1;
+  const ma150=sma(C,i,150), sl150=slopePct(C,i,150,20);
+  const stage=(()=>{
+    if(ma150==null||sl150==null)return null;
+    const above=C[i]>ma150;
+    if(above&&sl150>0.5)return {no:2,name:"2단계 상승",tone:"good"};
+    if(above)return {no:1,name:"1단계 바닥 다지기",tone:"ok"};
+    if(!above&&sl150<-0.5)return {no:4,name:"4단계 하락",tone:"bad"};
+    return {no:3,name:"3단계 천장권",tone:"warn"};
+  })();
+  // 상대강도 — 단순 수익률 차가 아니라 (1+종목)/(1+지수)−1 비율로 계산한다.
+  // 장기간 수익률이 클 때 차이(差)는 과장되므로 비율이 옳다.
+  let rs=null;
+  if(bm&&bm.close&&bm.close.length>30){
+    const B=bm.close, bi=B.length-1;
+    const rel=n=>{const a=ret(C,i,n), b=ret(B,bi,n);
+      return (a==null||b==null)?null:((1+a/100)/(1+b/100)-1)*100;};
+    const n=Math.min(C.length,B.length);
+    const line=[];for(let k=0;k<n;k++)line.push(C[C.length-n+k]/B[B.length-n+k]);
+    const j=line.length-1;
+    const hi60=Math.max(...line.slice(Math.max(0,j-59)));
+    rs={r3:rel(60), r6:rel(120), r12:rel(240),
+        newHigh:line[j]>=hi60-1e-12, pos:(line[j]/hi60-1)*100};
+  }
+  // 주봉 MACD
+  const W=toWeekly(d), WC=W.close, wi=WC.length-1;
+  let wm=null;
+  if(wi>=40){
+    const hist=[];
+    for(let t=35;t<=wi;t++){
+      const line=[];for(let u=26;u<=t;u++)line.push(emaAt(WC,12,u)-emaAt(WC,26,u));
+      let sig=line[0];for(let k=1;k<line.length;k++)sig=line[k]*(2/10)+sig*(1-2/10);
+      hist.push(line[line.length-1]-sig);
+    }
+    const h=hist[hist.length-1], hp=hist[hist.length-2];
+    let since=0;for(let k=hist.length-1;k>0;k--){if((hist[k]>0)!==(hist[k-1]>0))break;since++;}
+    // 부호와 무관하게 '세기(절대값)'가 커지는지로 확대/축소를 판정한다
+    const grow=hp!=null&&Math.abs(h)>Math.abs(hp);
+    wm={h:h,grow:grow,since:since,pctOfPx:h/WC[wi]*100};
+  }
+  // 60일 박스
+  const box={hi:Math.max(...C.slice(-61,-1)),lo:Math.min(...C.slice(-61,-1))};
+  box.posInBox=(C[i]-box.lo)/((box.hi-box.lo)||1)*100;
+  box.broke=C[i]>box.hi;
+  box.width=(box.hi/box.lo-1)*100;      // 폭이 40%를 넘으면 '박스'가 아니라 큰 변동 구간
+  const v20=sma(d.volume,i,20), vBreak=v20?d.volume[i]/v20:null;
+
+  let pos,tone,why;
+  const rsOK=rs&&(rs.r3>0||rs.r6>0);
+  if(stage&&stage.no===2&&rsOK&&wm&&wm.h>0){pos="비중 확대 가능";tone="good";
+    why=`30주선 위에서 선 자체가 <b>위로 기울고</b>(20일간 ${pct(sl150)}) 있어 와인스타인 <b>2단계 상승</b>이다. `+
+        `지수 대비 3개월 ${pct(rs.r3)}로 상대강도도 살아 있고, 주봉 MACD 히스토그램도 양(+)이다. `+
+        `3~6개월 보유의 승산이 가장 높은 조합이다.`;}
+  else if(stage&&stage.no===2){pos="보유 · 확인 대기";tone="ok";
+    why=`30주선 위 <b>2단계</b>이긴 하나 ${!rsOK?"지수 대비 상대강도가 아직 약하고":"주봉 MACD가 아직 음(−)이라"} `+
+        `중기 엔진이 완전히 켜지지 않았다. 보유는 유지하되 신규 비중은 확인 후에 싣는다.`;}
+  else if(stage&&stage.no===1){pos="관심 · 바닥 확인";tone="ok";
+    why=`30주선 위지만 선의 기울기가 아직 평평하다(${pct(sl150)}) — <b>1단계 바닥 다지기</b>다. `+
+        `여기서 서두르면 몇 달을 횡보로 보낸다. 30주선이 실제로 위로 돌아설 때까지 관심 목록에 둔다.`;}
+  else if(stage&&stage.no===3){pos="축소 검토";tone="warn";
+    why=`30주선 아래로 내려왔지만 선은 아직 크게 꺾이지 않았다 — <b>3단계 천장권</b>. `+
+        `중기 상승 국면이 끝나가는 자리로, 신규 진입보다 보유분 정리를 먼저 생각할 구간이다.`;}
+  else if(stage&&stage.no===4){pos="회피";tone="bad";
+    why=`30주선 아래이고 선 자체도 <b>아래로 기울고</b> 있다(${pct(sl150)}) — <b>4단계 하락</b>이다. `+
+        `3~6개월 보유 관점에서는 가장 피해야 할 국면이고, 단기 반등이 나와도 트레이딩 이상으로 키우지 않는다.`;}
+  else{pos="산출 불가";tone="neu";why="30주선 계산에 필요한 데이터(150거래일)가 부족하다.";}
+
+  return {pos:pos,tone:tone,why:why,stage:stage,
+    inv:stage&&stage.no<=2?`무효화: 주봉 종가가 30주선(${won(ma150)}원) 아래로 2주 연속 마감하면 중기 판정을 내린다.`
+        :`전환 조건: 주가가 30주선(${won(ma150)}원)을 회복하고 선의 기울기가 위로 돌아서면 재평가한다.`,
+    ind:[
+      {n:"30주선(150일선) 위치·기울기",v:stage?`${stage.no}단계`:"–",
+       d:"와인스타인 국면 분석의 뼈대. 가격이 30주선 위인지와 그 선이 어느 쪽으로 기우는지로 1~4단계를 나눈다. 3~6개월 성과는 대부분 이 단계에서 갈린다.",
+       s:ma150==null?"데이터 부족":`30주선 ${won(ma150)}원 · 현재가 대비 ${pct((C[i]/ma150-1)*100)} · 기울기(20일) ${pct(sl150)}. `+
+         (stage?`<b>${stage.name}</b>`:"")},
+      {n:"상대강도 (RS) 3·6·12개월",v:rs?pct(rs.r3):"–",
+       d:`${BMNM}(코스피200) 대비 초과수익. 주가가 오르는 것보다 <b>지수보다 더 오르는가</b>가 중기 주도주를 가른다. RS 라인이 주가보다 먼저 신고가를 내는 경우가 많다.`,
+       s:rs?`6개월 ${pct(rs.r6)} · 12개월 ${pct(rs.r12)} · RS라인 60일 고점 대비 ${pct(rs.pos)}. `+
+          (rs.newHigh?"<b>RS 라인 60일 신고가</b> — 지수를 앞서 나가는 중.":
+           rs.r3>0?"지수를 앞서고 있다.":"지수에 뒤처지고 있다 — 중기 주도주는 아니다.") : "벤치마크 데이터 없음"},
+      {n:"주봉 MACD 히스토그램",v:wm?(wm.h>0?"+":"")+fmt(wm.pctOfPx,2)+"%":"–",
+       d:"주봉 MACD(12,26,9)의 히스토그램. 일봉 MACD는 노이즈가 심하지만 주봉은 사이클 길이가 3~6개월과 맞아 중기 전환을 읽는 데 쓴다. 값은 주가 대비 %로 환산했다.",
+       s:wm?`${wm.h>0?"양(+)":"음(−)"} 부호 유지 ${wm.since}주째 · 세기 ${wm.grow?"확대":"축소"} 중. `+
+          (wm.h>0?(wm.grow?"양(+)이 커지는 중 — 중기 상승 모멘텀이 붙고 있다.":"양(+)이지만 줄고 있다 — 상승 탄력이 식는 중."):
+                  (wm.grow?"음(−)이 커지는 중 — 중기 하락 압력이 강해지고 있다.":"음(−)이지만 줄고 있다 — 바닥을 다지는 모습.")):"데이터 부족"},
+      {n:"60일 박스 위치",v:fmt(box.posInBox,0)+"%",
+       d:"최근 60거래일(약 3개월) 고가·저가 사이에서 현재가의 위치. 박스 상단을 거래량 동반해 뚫는 자리가 중기 상승의 출발점이다.",
+       s:`박스 ${won(box.lo)} ~ ${won(box.hi)}원 (폭 ${fmt(box.width,0)}%). `+
+         (box.width>40?"<b>폭이 40%를 넘어 박스라기보다 큰 변동 구간</b>이다 — 돌파 신호로서의 의미가 약하다. ":"")+
+         (box.broke?`<b>상단 돌파</b> · 당일 거래량 20일 평균의 ${vBreak?vBreak.toFixed(1):"?"}배`+
+            (vBreak&&vBreak>=2?" — 거래량 확인까지 붙은 유효 돌파.":" — 거래량이 부족해 되돌림 위험이 있다."):
+          box.posInBox>=80?"상단 근처 — 돌파를 시도하는 자리.":
+          box.posInBox<=20?"하단 근처 — 박스 이탈 여부를 확인해야 한다.":"박스 중단에 있다.")}
+    ]};
+}
+
+/* ---------- 장기 층 ---------- */
+function longTerm(d){
+  const C=d.close,i=C.length-1;
+  const ma200=sma(C,i,200), sl200=slopePct(C,i,200,60);
+  const mom12=ret(C,i,240);
+  const look=Math.min(C.length,750);
+  const hi3=Math.max(...C.slice(-look)), lo3=Math.min(...C.slice(-look));
+  const ddHi=(C[i]/hi3-1)*100, upLo=(C[i]/lo3-1)*100;
+  const nearHigh=ddHi>=-3;
+  // 주봉 스퀴즈
+  const W=toWeekly(d), WC=W.close, wi=WC.length-1;
+  let wsq=null;
+  if(wi>=40){
+    const bws=[];
+    for(let t=19;t<=wi;t++){const m=sma(WC,t,20);if(m)bws.push(2*2*sdev(WC,t,20,m)/m*100);}
+    const cur=bws[bws.length-1], win=bws.slice(-100);
+    wsq={bw:cur,rank:pctRank(win,cur),weeks:win.length,
+         squeeze:cur<=Math.min(...win)+1e-9};
+  }
+  const above=ma200!=null&&C[i]>ma200;
+  const rising=sl200!=null&&sl200>0;
+
+  let pos,tone,why;
+  if(above&&rising&&mom12>0){pos="장기 보유 가능";tone="good";
+    why=`200일선 위이고 그 선이 <b>60일간 ${pct(sl200)}로 위로 기울고</b> 있으며, 12개월 절대 모멘텀도 ${pct(mom12)}로 양(+)이다. `+
+        `장기 관점의 세 가지 필터가 모두 통과 — <b>다른 층의 신호를 그대로 믿어도 되는 국면</b>이다.`;}
+  else if(above&&mom12>0){pos="보유 · 추세 확인";tone="ok";
+    why=`200일선 위이고 12개월 모멘텀도 양(+)이지만 200일선 기울기가 ${pct(sl200)}로 아직 확실히 위를 향하지 않는다. `+
+        `장기 추세가 <b>복구 중</b>인 단계로, 보유는 되나 장기 비중을 크게 늘리기엔 이르다.`;}
+  else if(above){pos="관망 · 반등 국면";tone="warn";
+    why=`200일선은 회복했지만 12개월 수익률이 ${pct(mom12)}로 음(−)이다. 큰 하락 뒤의 <b>반등 초기</b>일 수 있고 `+
+        `되돌림도 잦은 구간이다. 장기 자금은 200일선 기울기가 위로 돌아설 때까지 기다리는 편이 낫다.`;}
+  else{pos="장기 진입 회피";tone="bad";
+    why=`200일선 아래${rising?"":"이고 선 자체도 아래로 기울고 있어"} 장기 추세가 살아 있지 않다. `+
+        `볼린저의 표현을 빌리면 이런 국면에서는 <b>어떤 신호든 절반만 믿어야</b> 한다 — 단기 신호가 떠도 사이즈를 줄인다.`;}
+
+  return {pos:pos,tone:tone,why:why,
+    inv:above?`무효화: 종가가 200일선(${won(ma200)}원) 아래로 내려가고 12개월 수익률이 음(−)으로 돌아서면 장기 허가를 거둔다.`
+             :`전환 조건: 200일선(${won(ma200)}원) 회복 + 12개월 수익률 양(+) 전환이 동시에 나오면 장기 진입을 재검토한다.`,
+    ind:[
+      {n:"200일선 위치·기울기",v:ma200==null?"–":(above?"위":"아래"),
+       d:"단 하나만 고른다면 이것. 가장 단순하면서 가장 오래 살아남은 장기 추세 필터다. 위치보다 <b>기울기</b>가 더 중요하다.",
+       s:ma200==null?"데이터 부족":`200일선 ${won(ma200)}원 · 현재가 대비 ${pct((C[i]/ma200-1)*100)} · 기울기(60일) ${pct(sl200)}. `+
+         (above&&rising?"위 + 상향 — 장기 추세가 살아 있다.":above?"위지만 선은 아직 평평·하향이다.":
+          rising?"아래지만 선은 위를 향한다 — 전환 시도 중.":"아래 + 하향 — 장기 하락 추세.")},
+      {n:"12개월 절대 모멘텀",v:pct(mom12),
+       d:"12개월(240거래일) 수익률이 0보다 큰가. 시계열 모멘텀 중 가장 견고하게 검증된 규칙으로, 월말에 한 번만 확인하면 되고 큰 하락장을 피하는 효과가 크다.",
+       s:mom12==null?"데이터 부족":mom12>0?"양(+) — 장기 보유 조건을 만족한다.":"음(−) — 장기 자금이 머물 자리가 아니다."},
+      {n:`${look}일 고점 대비 / 저점 대비`,v:pct(ddHi),
+       d:"약 3년 범위에서 지금 위치. 다년 박스의 상단을 뚫으면 위쪽에 매물이 없어지고, 박스 하단권이면 회복에 오랜 시간이 걸린다.",
+       s:`저점 대비 ${pct(upLo)} · 3년 고점 ${won(hi3)}원. `+
+         (nearHigh?"<b>다년 신고가권</b> — 머리 위에 매물이 거의 없다.":
+          ddHi>-20?"고점에서 크게 멀지 않다.":"고점 대비 20% 이상 낮다 — 위쪽 매물이 두껍다.")},
+      {n:"주봉 볼린저 스퀴즈",v:wsq?fmt(wsq.bw)+"%":"–",
+       d:"볼린저의 스퀴즈 규칙을 주봉에 얹은 것. 일봉 스퀴즈가 며칠짜리 움직임을 예고한다면, 주봉 스퀴즈는 <b>분기 단위의 큰 움직임</b>을 예고한다.",
+       s:wsq?`최근 ${wsq.weeks}주 중 순위 ${fmt(wsq.rank,0)}%. `+
+          (wsq.squeeze?"<b>주봉 스퀴즈</b> — 몇 년에 한 번 나오는 장기 에너지 응축 구간이다. 방향은 알려주지 않는다.":
+           wsq.rank<=20?"주봉 밴드폭이 좁아지는 중 — 장기 스퀴즈로 향하고 있다.":
+           wsq.rank>=80?"주봉 밴드폭이 크게 벌어져 있다 — 이미 큰 움직임이 진행된 뒤.":"중간 수준."):"데이터 부족"}
+    ]};
+}
+
+/* ---------- 3층 정합성 ---------- */
+function alignment(S,M,L){
+  const score=t=>t==="good"?2:t==="ok"?1:t==="warn"?-1:t==="bad"?-2:0;
+  const l=score(L.tone), m=score(M.tone), s=score(S.tone);
+  if(l>=1&&m>=1&&s>=0)
+    return {t:"세 층 정합 — 비중을 실을 자리",tone:"good",
+      b:"장기가 허가하고, 중기가 상승 국면이며, 단기도 막지 않는다. 세 시간 축이 같은 방향을 가리킬 때가 "+
+        "포지션을 <b>정상 크기로 가져갈</b> 유일한 구간이다. 단기가 과열이면 눌림을 기다려 들어가되 판단 자체는 유지한다."};
+  if(l>=1&&m>=1&&s<0)
+    return {t:"장기·중기 우호 · 단기만 불리 — 눌림 대기",tone:"ok",
+      b:"위 두 층은 통과했는데 단기 자리만 나쁘다. <b>방향을 바꿀 이유가 아니라 진입을 미룰 이유</b>다. "+
+        "중심선(20일선) 근처 눌림이나 반등 확인 봉을 기다렸다가 계획대로 들어간다."};
+  if(l>=1&&m<0)
+    return {t:"장기는 살아 있으나 중기가 꺾임 — 신규 보류",tone:"warn",
+      b:"장기 추세는 유지되지만 3~6개월 엔진이 꺼졌다. 보유분은 트레일링 스탑으로 관리하고, "+
+        "<b>신규 진입은 중기(30주선·상대강도)가 회복될 때까지 멈춘다.</b> 이 상태에서 단기 반등에 올라타면 대개 되돌림을 맞는다."};
+  if(l<0&&(m>=1||s>=1))
+    return {t:"장기가 막고 있음 — 트레이딩 한정",tone:"warn",
+      b:"중기·단기에 좋은 신호가 떠도 <b>장기 추세가 아래</b>다. 이런 국면의 상승은 대개 되돌림으로 끝났다. "+
+        "들어가더라도 <b>평소의 절반 이하 사이즈</b>로, 목표가에 닿으면 기계적으로 정리하는 트레이딩으로만 다룬다."};
+  if(l<0&&m<0)
+    return {t:"세 층 모두 비우호 — 관망",tone:"bad",
+      b:"장기도 중기도 아래를 가리킨다. 여기서 할 일은 <b>사지 않는 것</b>이고, 보유 중이라면 "+
+        "왜 아직 들고 있는지를 논거로 설명할 수 있어야 한다. 바닥을 맞히려 하지 않는다."};
+  return {t:"층별 신호 엇갈림 — 사이즈 축소",tone:"neu",
+    b:"세 층의 방향이 일치하지 않는다. 이럴 때 정답은 방향을 맞히는 것이 아니라 <b>크기를 줄이는 것</b>이다. "+
+      "한 층이라도 명확히 돌아설 때까지 관망하거나 최소 단위로만 접근한다."};
+}
+
+/* ---------- 렌더 ---------- */
+function layerCard(hz,sub,o){
+  return `<div class="lay" style="border-left-color:${TONE[o.tone]}">
+    <div class="top">
+      <span class="hz">${hz}</span>
+      <span class="pos" style="color:${TONE[o.tone]}">${o.pos}</span>
+      <span class="pill" style="background:${TONE[o.tone]}">${sub}</span>
+    </div>
+    <div class="why">${o.why}</div>
+    <div class="inv">${o.inv}</div></div>`;
+}
+function indBlock(title,note,arr){
+  return `<div class="secttl">${title} <small>${note}</small></div>
+    <div class="kv">${arr.map(x=>`<div class="ind">
+      <div class="n">${x.n}</div><div class="v">${x.v}</div>
+      <div class="d">${x.d}</div><div class="s">${x.s}</div></div>`).join("")}</div>`;
+}
+
+function render(name,code,d,bm){
+  const C=d.close,i=C.length-1;
+  const chg=C.length>1?(C[i]/C[i-1]-1)*100:0;
+  const S=shortTerm(d), M=midTerm(d,bm), L=longTerm(d), A=alignment(S,M,L);
+  const spark=C.slice(-120).map((v,k,a)=>{
+    const mn=Math.min(...a),mx=Math.max(...a);
+    const h=Math.max(2,Math.round((v-mn)/((mx-mn)||1)*50)+3);
+    return `<div style="height:${h}px;background:${k===a.length-1?"var(--warn)":"#3a4250"}"></div>`;}).join("");
+
+  document.getElementById("res").innerHTML=`
+    <div class="hdr">
+      <div class="nm">${name} <span style="color:var(--sub);font-size:14px">${code}</span></div>
+      <div class="px">${won(C[i])}원 <span style="color:${chg>=0?"var(--bad)":"var(--ok)"};font-size:13px">${pct(chg)}</span></div>
+      <div style="color:var(--sub);font-size:12px">기준일 ${d.date[i]} · ${d.close.length}봉</div>
+    </div>
+    <div class="bars">${spark}</div>
+    <div style="color:var(--sub);font-size:11.5px">최근 120거래일 종가</div>
+
+    <div class="card">
+      <h2>시점별 포지션</h2>
+      <div class="meta">같은 종목을 세 시간 축으로 따로 판정한다. 위층이 아니라고 하면 아래층 신호는 크기를 줄여 다룬다.</div>
+      ${layerCard("장기 · 6개월 이상","허가",L)}
+      ${layerCard("중기 · 3~6개월","선택",M)}
+      ${layerCard("단기 · 수일~1개월","시점",S)}
+      <div class="align" style="border-color:${TONE[A.tone]}">
+        <div class="t" style="color:${TONE[A.tone]}">종합 — ${A.t}</div>
+        <div class="b">${A.b}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>지표 상세 — 정의와 지금 모양</h2>
+      <div class="meta">각 층에서 무엇을 보았는지, 그 지표가 무엇을 재는 도구인지, 그리고 이 종목에서 지금 어떤 모양인지.</div>
+      ${indBlock("🕐 장기 지표","6개월 이상 · 사도 되는 국면인가",L.ind)}
+      ${indBlock("📆 중기 지표","3~6개월 · 지금 상승 국면인가",M.ind)}
+      ${indBlock("⏱ 단기 지표","수일~1개월 · 오늘 들어가도 되나",S.ind)}
+    </div>`;
+}
+
+/* ---------- 조회 ---------- */
+function busy(b){const el=document.getElementById("go");el.disabled=b;el.textContent=b?"분석 중…":"분석";}
+function err(m){document.getElementById("res").innerHTML=`<div class="card" style="border-color:var(--bad)">${m}</div>`;}
+
+async function run(q){
+  q=(q||"").trim(); if(!q)return;
+  busy(true); document.getElementById("chips").innerHTML="";
+  document.getElementById("res").innerHTML='<div class="card">불러오는 중…</div>';
+  try{
+    let code=null,name=q;
+    if(/^\d{6}$/.test(q)){code=q;name=q;}
+    else{
+      const j=await (await fetch(API+"/search?q="+encodeURIComponent(q))).json();
+      const list=(j.data||[]).filter(x=>/^\d{6}$/.test(x.code));
+      if(!list.length){err(`‘${q}’ 에 해당하는 종목을 찾지 못했습니다. 정확한 종목명이나 6자리 코드로 다시 시도해 주세요.`);busy(false);return;}
+      code=list[0].code; name=list[0].name;
+      if(list.length>1){
+        document.getElementById("chips").innerHTML=
+          '<span style="font-size:12px;color:var(--sub);align-self:center">다른 후보:</span>'+
+          list.slice(1,7).map(x=>`<span class="chip" data-n="${x.name}">${x.name}</span>`).join("");
+        document.querySelectorAll("#chips .chip").forEach(el=>{
+          el.onclick=()=>{document.getElementById("q").value=el.dataset.n;run(el.dataset.n);};});
+      }
+    }
+    const [a,b]=await Promise.all([
+      fetch(API+"/ohlcv/"+code+"?days=900").then(r=>r.json()),
+      fetch(API+"/ohlcv/"+BM+"?days=900").then(r=>r.json()).catch(()=>null)
+    ]);
+    if(!a.ok||!a.data||a.data.close.length<210){
+      err("시세 데이터가 부족합니다(200일선 계산에 최소 210봉 필요). 상장한 지 얼마 되지 않은 종목일 수 있습니다.");busy(false);return;}
+    render(name,code,a.data,(b&&b.ok)?b.data:null);
+  }catch(e){ err("조회 중 오류가 발생했습니다: "+e); }
+  busy(false);
+}
+document.getElementById("go").onclick=()=>run(document.getElementById("q").value);
+document.getElementById("q").addEventListener("keydown",e=>{if(e.key==="Enter")run(e.target.value);});
+
+/* ---------- 읽는 법 ---------- */
+document.getElementById("doc").innerHTML=`
+<h2>📖 읽는 법</h2>
+
+<h3>왜 세 층으로 나누는가</h3>
+<p>같은 차트라도 <b>무엇을 물어보느냐에 따라 봐야 할 지표가 다르다.</b> 하나의 지표로 세 질문에 다 답하려 하면
+어느 쪽에도 맞지 않는 답이 나온다. 그래서 질문을 먼저 나눈다.</p>
+<table>
+<tr><th style="width:110px">층</th><th style="width:150px">묻는 것</th><th>주로 쓰는 지표</th></tr>
+<tr><td><b>장기</b> 6개월+</td><td><b>허가</b> — 사도 되는 국면인가</td><td>200일선 위치·기울기 · 12개월 절대 모멘텀 · 3년 박스 위치 · 주봉 스퀴즈</td></tr>
+<tr><td><b>중기</b> 3~6개월</td><td><b>선택</b> — 어떤 종목인가</td><td>30주선(150일) 단계 · 상대강도(RS) · 주봉 MACD · 60일 박스</td></tr>
+<tr><td><b>단기</b> 수일~1개월</td><td><b>시점</b> — 오늘 들어가도 되나</td><td>볼린저 %b · 밴드폭(스퀴즈) · 20일선 이격 · 거래량 · 5/20일 모멘텀</td></tr>
+</table>
+
+<div class="box"><b>가장 중요한 규칙: 위층이 아니라고 하면 아래층 신호는 크기를 줄여 다룬다.</b>
+장기가 하락 추세인데 단기 매수 신호가 뜨는 일은 자주 있다. 그 신호가 틀렸다는 뜻이 아니라,
+<b>그 상승이 짧게 끝날 확률이 높다</b>는 뜻이다. 그럴 땐 방향을 부정하지 말고 사이즈를 줄이고 목표를 짧게 잡는다.</div>
+
+<h3>포지션 라벨의 뜻</h3>
+<table>
+<tr><th style="width:130px">비중 확대 가능</th><td>그 층의 조건이 모두 충족됐다. 계획한 정상 크기로 접근해도 되는 상태.</td></tr>
+<tr><th>보유 · 확인 대기</th><td>방향은 맞지만 확인이 덜 됐다. 들고 있는 건 유지, 새로 싣는 건 보류.</td></tr>
+<tr><td colspan="2" style="border:0;padding:0"></td></tr>
+<tr><th>눌림 대기</th><td>방향은 좋은데 지금 자리가 비싸다. 중심선 근처 되돌림을 기다린다.</td></tr>
+<tr><th>축소 검토 / 회피</th><td>그 층의 조건이 깨졌다. 신규는 하지 않고, 보유분은 정리 계획을 세운다.</td></tr>
+<tr><th>관망</th><td>지표가 할 말이 없는 구간. 억지로 해석하지 않는 것이 정답이다.</td></tr>
+</table>
+
+<h3>무효화 조건을 먼저 읽어라</h3>
+<p>각 층 카드의 마지막 줄이 <b>무효화(또는 전환) 조건</b>이다. 볼린저의 말대로
+<b>"어디서 내가 틀렸는지를 미리 정해두지 않으면 스스로를 의심하며 감정의 지옥으로 들어간다."</b>
+포지션을 잡기 전에 이 줄부터 읽고, 그 조건이 오면 판정을 바꾼다.</p>
+
+<h3>이 페이지가 하지 않는 것</h3>
+<ul>
+<li><b>목표주가를 제시하지 않는다.</b> 가격의 수준은 펀더멘털이 정한다 — 적정주가·SOTP 쪽 도구를 쓴다.</li>
+<li><b>승률을 붙이지 않는다.</b> 여기 쓰인 지표들은 널리 알려진 고전 도구지만, 이 조합의 성과를 이 페이지에서 검증한 것은 아니다.</li>
+<li><b>재료·수급을 보지 않는다.</b> 차트만 본다. 실적·공시·수급은 별도로 확인해야 한다.</li>
+</ul>`;
+
+document.getElementById("foot").innerHTML=
+ `데이터: 네이버 금융 일봉(수정주가) 최대 900봉 · 벤치마크 ${BMNM}(${BM}) · 주봉은 일봉을 주 단위로 집계해 생성.<br>
+  본 페이지는 과거 가격 데이터에 기반한 기술적 분석 도구이며 특정 종목의 매매를 권유하지 않습니다.
+  투자 판단과 그 결과에 대한 책임은 투자자 본인에게 있습니다.`;
+</script>
+</body>
+</html>
