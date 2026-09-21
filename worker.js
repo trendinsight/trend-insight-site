@@ -2594,7 +2594,7 @@ export default {
           // PDF는 페이지 안에서 직접 렌더링 (iOS Safari가 PDF 주소로 통째 이동하는 것을 방지)
           if (isPost || isPdfView) el.append(`<script defer src="/pdf-viewer.js?v=2026080802"></script>`, { html: true });
           // 홈을 제외한 모든 페이지에 공용 플로팅 내비 주입
-          if (!isHome) el.append(`<script defer src="/site-nav.js?v=2026080802"></script>`, { html: true });
+          if (!isHome) el.append(`<script defer src="/site-nav.js?v=2026092101"></script>`, { html: true });
         }
       }).transform(assetRes);
     }
@@ -3443,7 +3443,7 @@ main{max-width:1000px;margin:0 auto;padding:20px 14px 40px}
 </main>
 <script defer src="/post-nav.js?v=2026080802"></script>
 <script defer src="/pdf-viewer.js?v=2026080802"></script>
-<script defer src="/site-nav.js?v=2026080802"></script>
+<script defer src="/site-nav.js?v=2026092101"></script>
 </body></html>`;
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
 }

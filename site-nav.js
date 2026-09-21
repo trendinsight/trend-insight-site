@@ -3,14 +3,69 @@
    우하단 ☰ 버튼 → 그룹 아코디언 패널. 각 페이지 레이아웃은 건드리지 않는다. */
 (function(){
   var path=location.pathname;
-  if(path==='/'||path==='/index.html')return;
+
+  /* ── 웹 도구 ↔ 스킬 이름 매핑 (단일 원본) ──────────────────
+     페이지 파일명(확장자 제외) → 그 페이지를 만들고 갱신하는 스킬 이름.
+     '웹 전용' = 스킬 없이 사이트 자체 기능으로 동작하는 도구.
+     새 도구를 추가하면 여기 한 줄만 넣으면 홈 메뉴·칩·카드·플로팅 메뉴에 자동 표시된다. */
+  var SKILL_MAP={'gauge':'market-thermometer','macro-gauge':'macro-thermometer','money-flow':'money-flow','crowd-gauge':'crowd-thermometer','basis-gauge':'futures-basis','cash-gauge':'cash-ratio-advisor','stock-gauge':'stock-thermometer','crypto-gauge':'crypto-thermometer','bb-gauge':'bollinger-thermometer','horizon-picks':'horizon-stock-picker','volume-radar':'volume-insight','sejong-data':'sejong-data','export-pulse':'export-pulse','dividend-growth':'dividend-compounder','ltcm-board':'ltcm-convergence','ltcm-guide':'ltcm-convergence','sa-conviction':'sa-conviction','style-rotation':'style-rotation','switch-gauge':'leverage-switcher','bear-gauge':'bear-market-trader','short-radar':'short-candidate-screener','track-record':'웹 전용','korekawa-board':'korekawa-method','fisher-board':'fisher-method','philip-fisher-board':'philip-fisher-method','philip-fisher':'philip-fisher-method','trend-rider-board':'trend-rider','volume-profile-board':'volume-profile','masters':'masters-council','thesis-board':'investment-thesis','sotp-board':'sotp-valuation','decision-board':'team-leader','kongming-board':'kongming','trading-desk':'trading-desk','stock-hub':'웹 전용','timing-lens':'horizon-timing','fair-value':'fair-value-band','adjusted-value':'adjusted-fair-value','sotp':'sotp-valuation','korekawa':'korekawa-method','fisher':'fisher-method','pyramid-calc':'pyramid-calculator','pyramid-calculator':'pyramid-calculator','stock-graph':'웹 전용','volume-profile':'volume-profile','supply':'supply-demand-analyzer','sector-flow':'sector-flow','weekly-flow':'weekly-flow-radar','new-high':'new-high-radar','research-digest':'research-digest','report-summary':'broker-report-digest','crypto-report':'crypto-analysis','proverb':'daily-proverb','skill-map':'skill-navigator','signal':'signal-analyzer','ichimoku':'ichimoku-analyzer','my-stocks':'웹 전용','industry-board':'industry-indicator','macro-analysis':'macro-analysis','canslim':'canslim-screener','screener':'korean-stock-screener','rsi-adr':'rsi-adr','forensic':'forensic-checklist','correlation':'correlation-risk','entry':'entry-timer','risk':'risk-manager','stoploss':'stop-loss-screener','journal':'trade-journal','cockpit':'stock-analysis','trend-masters':'trend-masters','vault-audit':'vault-auditor','receipt-upload':'receipt-ledger','ai':'웹 전용'};
+  window.TI_SKILL_MAP=SKILL_MAP;
+  function skillOf(href){
+    if(!href)return null;
+    var m=String(href).split('#')[0].split('?')[0].replace(/^https?:\/\/[^\/]+/,'').replace(/^\/+/,'');
+    if(!m||m.indexOf('/')>=0)return null;
+    m=m.replace(/\.html$/,'');
+    return SKILL_MAP.hasOwnProperty(m)?SKILL_MAP[m]:null;
+  }
+  window.TI_skillOf=skillOf;
+  function skTag(name){
+    var s=document.createElement('span');
+    s.className='ti-skill';
+    s.textContent='('+name+')';
+    s.title=name==='웹 전용'?'스킬 없이 사이트 자체로 동작':'이 페이지를 만드는 스킬: '+name;
+    return s;
+  }
+  (function(){
+    var st=document.createElement('style');
+    st.textContent='.ti-skill{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.72em;font-weight:500;color:#8a96a8;margin-left:5px;letter-spacing:0;white-space:nowrap;}'+
+      '#sn-body .sn-links a .ti-skill{display:inline-block;}';
+    (document.head||document.documentElement).appendChild(st);
+  })();
+
+  /* 홈(index)에서는 플로팅 메뉴 대신 기존 메뉴·칩·카드에 스킬 이름만 붙인다 */
+  if(path==='/'||path==='/index.html'){
+    var tagHome=function(){
+      if(document.documentElement.getAttribute('data-ti-skill-tagged'))return;
+      document.documentElement.setAttribute('data-ti-skill-tagged','1');
+      // 1) 상단 드롭다운 메뉴
+      document.querySelectorAll('#nav-menu .nav-dropdown a[href]').forEach(function(a){
+        var k=skillOf(a.getAttribute('href'));if(k&&!a.querySelector('.ti-skill'))a.appendChild(skTag(k));
+      });
+      // 2) 종목 검색 칩 버튼
+      document.querySelectorAll('button[data-href]').forEach(function(b){
+        var k=skillOf(b.getAttribute('data-href'));if(k&&!b.querySelector('.ti-skill'))b.appendChild(skTag(k));
+      });
+      // 3) 온도계 대시 카드 제목
+      document.querySelectorAll('a.dash-card[href]').forEach(function(c){
+        var k=skillOf(c.getAttribute('href')),sub=c.querySelector('.sub')||c.querySelector('.t');
+        if(k&&sub&&!c.querySelector('.ti-skill')){var sp=skTag(k);sp.style.display='block';sp.style.marginLeft='0';sp.style.marginBottom='2px';sub.insertBefore(sp,sub.firstChild);}
+      });
+      // 4) 전략 신호 카드
+      document.querySelectorAll('a.sig-card[href]').forEach(function(c){
+        var k=skillOf(c.getAttribute('href')),n=c.querySelector('.n');
+        if(k&&n&&!n.querySelector('.ti-skill'))n.appendChild(skTag(k));
+      });
+    };
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',tagHome);else tagHome();
+    return;
+  }
   if(document.getElementById('sn-fab'))return;
 
   var GROUPS=[
     ['온도계',[
-      ['시장 온도계','/gauge.html'],['거시 온도계','/macro-gauge.html'],
-      ['군중심리 온도계','/crowd-gauge.html'],['예수금 온도계','/cash-gauge.html'],
-      ['종목 온도계','/stock-gauge.html'],['코인 온도계','/crypto-gauge.html']]],
+      ['시장 온도계','/gauge.html'],['거시 온도계','/macro-gauge.html'],['돈의 흐름','/money-flow.html'],
+      ['군중심리 온도계','/crowd-gauge.html'],['선물 온도계','/basis-gauge.html'],['예수금 온도계','/cash-gauge.html'],
+      ['종목 온도계','/stock-gauge.html'],['코인 온도계','/crypto-gauge.html'],['볼린저밴드 온도계','/bb-gauge.html']]],
     ['스크리닝·레이더',[
       ['기간별 종목선정','/horizon-picks.html'],['거래량 레이더','/volume-radar.html'],
       ['세종기업데이터','/sejong-data.html'],['수출 펄스','/export-pulse.html'],
@@ -21,15 +76,16 @@
     ['전략 보드',[
       ['트랙레코드','/track-record.html'],['고레가와 보드','/korekawa-board.html'],['피셔 보드','/fisher-board.html'],
       ['위대한 기업','/philip-fisher-board.html'],['추세 라이더','/trend-rider-board.html'],
-      ['거장 자문단','/masters.html'],['논거 보드','/thesis-board.html'],
-      ['결재 보드','/decision-board.html'],['공명 책략','/kongming-board.html'],
+      ['매물대 보드','/volume-profile-board.html'],['거장 자문단','/masters.html'],['논거 보드','/thesis-board.html'],
+      ['SOTP 보드','/sotp-board.html'],['결재 보드','/decision-board.html'],['공명 책략','/kongming-board.html'],
       ['트레이딩 데스크','/trading-desk.html']]],
     ['웹앱 도구',[
-      ['내 종목','/my-stocks.html'],['적정주가','/fair-value.html'],['시그널','/signal.html'],
+      ['내 종목','/my-stocks.html'],['종목 360°','/stock-hub.html'],['타이밍 렌즈','/timing-lens.html'],
+      ['적정주가','/fair-value.html'],['SOTP','/sotp.html'],['시그널','/signal.html'],
       ['일목균형표','/ichimoku.html'],['고레가와','/korekawa.html'],
       ['피셔','/fisher.html'],['피라미드 계산기','/pyramid-calc.html'],
-      ['종목 그래프','/stock-graph.html'],['수급 콕핏','/supply.html'],
-      ['업종 수급','/sector-flow.html']]],
+      ['종목 그래프','/stock-graph.html'],['매물대','/volume-profile.html'],['수급 콕핏','/supply.html'],
+      ['업종 수급','/sector-flow.html'],['주간 수급 레이더','/weekly-flow.html'],['52주 신고가 레이더','/new-high.html']]],
     ['리포트',[
       ['최신 글 (검색)','/#insights'],['리포트 요약 (데일리)','/research-digest.html'],
       ['리포트 요약 요청','/report-summary.html'],['크립토 리포트','/crypto-report.html'],
@@ -96,7 +152,7 @@
     var d=document.createElement('details');
     d.appendChild(el('summary',{},g[0]));
     var box=el('div',{class:'sn-links'});
-    g[1].forEach(function(l){box.appendChild(el('a',{href:l[1]},l[0]));});
+    g[1].forEach(function(l){var a=el('a',{href:l[1]},l[0]);var k=skillOf(l[1]);if(k)a.appendChild(skTag(k));box.appendChild(a);});
     d.appendChild(box);
     body.appendChild(d);
   });
