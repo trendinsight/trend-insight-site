@@ -3125,7 +3125,11 @@ async function handleReceipts(req, url, env, ctx) {
 const AUTH_COOKIE = "ti_sess";
 const AUTH_SESSION_DAYS = 90;
 const AUTH_PW_ITER = 50000;
-const AUTH_OPEN_PAGES = new Set(["/login.html", "/signup.html", "/login", "/signup", "/terms.html", "/terms"]);
+const AUTH_OPEN_PAGES = new Set(["/login.html", "/signup.html", "/login", "/signup",
+  "/terms.html", "/terms",
+  // 검색 노출용 공개 페이지 (소개·설명서) — 판정 데이터·리포트는 계속 회원 전용
+  "/about.html", "/about", "/manual.html", "/manual",
+  "/robots.txt", "/sitemap.xml"]);
 
 async function authEnsureTables(env) {
   await env.RISK_DB.batch([

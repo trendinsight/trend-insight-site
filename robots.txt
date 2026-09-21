@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /login.html
+Disallow: /signup.html
+Disallow: /api/
+Disallow: /data/
+
+Sitemap: https://trend-insight-site.sungsangkyung77.workers.dev/sitemap.xml
