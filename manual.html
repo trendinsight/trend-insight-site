@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>시스템 설명서 | Trend Insight</title><meta name="description" content="Trend Insight 완전 해설 — 온도계·스크리닝 레이더·전략 보드·웹앱 도구·리포트까지, 모든 분석 도구의 원리와 판정 기준을 담은 시스템 설명서 (개정 2판 · 공개판)."><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"><style>
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>시스템 설명서 | Trend Insight</title><meta name="description" content="Trend Insight 완전 해설 — 온도계·스크리닝 레이더·전략 보드·웹앱 도구·리포트까지, 모든 분석 도구의 원리와 판정 기준을 담은 시스템 설명서 (개정 2.1판 · 공개판)."><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"><style>
 :root{--navy:#0b1f3f;--line:#e4e9f1;--muted:#5b6779;--soft:#f5f7fb;}
 *{box-sizing:border-box}
 body{font-family:'Pretendard',sans-serif;margin:0;color:#1c2533;line-height:1.7;background:var(--soft)}
@@ -37,7 +37,7 @@ footer{padding:36px 24px;text-align:center;color:#9aa6b6;font-size:.8rem;border-
   <div class="label">SYSTEM MANUAL</div>
   <h1>Trend Insight 완전 해설</h1>
   <p class="sub">온도계 · 스크리닝 레이더 · 전략 보드 · 웹앱 도구 · 리포트 — 모든 분석 도구의 원리와 판정 기준</p>
-  <div class="meta">개정 2판 · 2026.09 · 공개판 · 93페이지 PDF</div>
+  <div class="meta">개정 2.1판 · 2026.09.21 · 공개판 · 103페이지 PDF</div>
 
   <div class="summary">
     Trend Insight는 겉으로는 리서치 사이트지만, 실체는 <b>표현(사이트) · 분석(스킬) · 기억(정본 DB) · 기록(원장)</b> 네 층으로 이루어진 운용 시스템입니다. 이 설명서는 화면에 보이는 온도계 하나, 레이더 하나의 뒤에서 <b>어떤 데이터로 무엇을 계산하고 어떤 기준으로 판정하는지</b>를 도구별로 같은 틀(무엇을 하는가 · 산식 · 판정 체계 · 게시 위치 · 활용 시점 · 답하지 <i>않는</i> 질문)로 해설합니다.
@@ -46,19 +46,19 @@ footer{padding:36px 24px;text-align:center;color:#9aa6b6;font-size:.8rem;border-
 
   <div class="toc">
     <div><b>1부 · 전체 프레임워크</b>4층 구조 · 5축 의사결정 · 데이터 소스 · 도구 선택의 원칙</div>
-    <div><b>2부 · 온도계</b>시장 · 거시 · 군중심리 · 예수금 · 볼린저밴드 · 베이시스 · 종목 · 코인</div>
-    <div><b>3부 · 스크리닝·레이더</b>기간별 선정 · 거래량 · 실적 · 수출 · 배당 · 수렴 · 하락장 · 숏</div>
+    <div><b>2부 · 온도계</b>시장 · 거시 · 군중심리 · 예수금 · 볼린저밴드 · 베이시스 · 종목 · 코인 · <b>돈의 흐름</b></div>
+    <div><b>3부 · 스크리닝·레이더</b>기간별 선정 · 거래량 · 실적 · 수출 · 배당 · 수렴 · 하락장 · 숏 · <b>주간 수급 · 신고가</b></div>
     <div><b>4부 · 전략 보드</b>고레가와 · 켄 피셔 · 필립 피셔 · 추세 라이더 · 거장 자문단 · 2인 결재</div>
     <div><b>5부 · 웹앱 도구</b>적정주가 · SOTP · 타이밍 렌즈 · 매물대 · 시그널 · 일목 · 수급</div>
     <div><b>6부 · 리포트·자동화</b>리포트 체계 · 게시 엔진 · 캘린더 · 분석 요청 큐</div>
     <div><b>7부 · 백오피스 엔진</b>통합 두뇌 · 포트폴리오 · 리스크 · 진입 · 손절 · 포렌식 · 복기</div>
-    <div><b>8부 · 핵심 지표 사전</b>추세 · 모멘텀 · 변동성 · 거래량 · 밸류 · 수급 · 시장 폭 · 오독 12선</div>
+    <div><b>8부 · 핵심 지표 사전</b>추세 · 모멘텀 · 변동성 · 거래량 · 밸류 · 수급 · 시장 폭 · 오독 14선</div>
     <div><b>9부 · 실전 시나리오</b>발굴에서 결재까지 · 보유 관리 · 매도와 복기 · 하락장 운용</div>
     <div><b>부록</b>스킬↔페이지 매핑 · 판정 등급 용어집 · 질문→도구 라우팅표</div>
   </div>
 
   <div class="actions">
-    <a class="dl" href="manual/trend-insight-manual-2ed.pdf?dl=1">PDF 다운로드 (93p)</a>
+    <a class="dl" href="manual/trend-insight-manual-2ed.pdf?dl=1">PDF 다운로드 (103p)</a>
     <a class="dl ghost" href="about.html">회사소개로</a>
   </div>
 
@@ -67,7 +67,8 @@ footer{padding:36px 24px;text-align:center;color:#9aa6b6;font-size:.8rem;border-
 
   <div class="note">
     <b>공개판에 대하여</b> — 이 문서는 시스템 설명서 개정 2판의 공개판입니다. 방법론·산식·판정 기준은 내부판과 동일하나, 운영 자격증명·내부 실행 명령·개인 자산 규모 등 공개에 적합하지 않은 운영 세부는 서술형으로 대체했습니다.<br><br>
-    <b>개정 2판에서 새로 들어온 것</b> — 볼린저밴드 온도계(시장 확산 폭) · 매물대(가격대별 물량) · 타이밍 렌즈(한 종목 × 세 시간 축) · SOTP 목표가(부문 합산 가치) · 통합 두뇌(모든 판정의 정본 기록), 그리고 실전 시나리오 장과 지표 오독 12선.
+    <b>2.1판에서 새로 들어온 것 (2026.09.21)</b> — <b>돈의 흐름 지도</b>(자산군 21종이 평상시 대비 어디에 있는지 + 금리 시뮬레이션) · <b>주간 수급 레이더</b>(이번 주 자금이 몰린 종목 랭킹) · <b>52주 신고가 레이더</b>(신고가 폭과 업종 참여율). 뒤의 둘은 매주 금요일 자동으로 갱신된다.<br><br>
+    <b>개정 2판에서 들어온 것</b> — 볼린저밴드 온도계(시장 확산 폭) · 매물대(가격대별 물량) · 타이밍 렌즈(한 종목 × 세 시간 축) · SOTP 목표가(부문 합산 가치) · 통합 두뇌(모든 판정의 정본 기록), 그리고 실전 시나리오 장과 지표 오독 목록.
   </div>
 
   <p class="disclaimer">본 문서가 제공하는 모든 정보는 투자 참고 자료이며 특정 종목의 매수·매도를 권유하지 않습니다. 투자에 대한 최종 판단과 책임은 투자자 본인에게 있습니다. Trend Insight는 자본시장법상 투자자문업자·투자일임업자가 아닙니다.</p>
