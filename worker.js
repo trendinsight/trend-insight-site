@@ -747,31 +747,32 @@ async function handleCockpit(req, url, ctx) {
 
 
 /* ═══════════════ 관심종목 신호 배지 (/api/wl-signal/{code}) ═══════════════
-   3일 주기 판정: 2026-09-28(KST)을 기준일로 3일 단위 주기를 나누고, 주기당 1번만 판정해
-   KV("wlsig:{code}")에 고정한다 — 같은 주기 안에서는 장중 등락과 무관하게 배지가 바뀌지 않는다.
-   판정은 확정 일봉(15:40 KST 이전이면 당일 봉 제외) 기준.
+   월·수·금 판정: 판정일 16:00 KST 이후 첫 조회 때 1번만 판정해 KV("wlsig:{code}")에 고정한다
+   — 다음 판정일 16:00 전까지는 장중 등락과 무관하게 배지가 바뀌지 않는다.
    규칙: 기술≥3 & 온도<75 → 매수 | 기술≥3 & 온도≥75 → 홀드(과열) | 기술=2 → 홀드
          기술≤1 & 온도≤25 → 관망(과매도) | 기술≤1 → 매도
          논거 보드 BROKEN → 매도, WEAKENED → 매수를 홀드로 */
-const WLS_ANCHOR = Date.UTC(2026, 8, 28);   // 2026-09-28 (KST 날짜 기준)
-const WLS_DAYS = 3;
+// 판정 요일: 월·수·금 16:00 KST(장 마감 후). 그 시점부터 다음 판정 요일 16:00까지 같은 판정을 유지.
+// 판정에는 판정일 당일까지의 확정 일봉만 쓴다(휴장일이면 직전 거래일 종가).
+const WLS_DOW = [1, 3, 5];          // 월·수·금
+const WLS_HOUR = 16;                // 16:00 KST
 function wlsCycle() {
   const k = new Date(Date.now() + 9 * 3600e3);
-  const day = Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate());
-  const idx = Math.floor((day - WLS_ANCHOR) / (WLS_DAYS * 86400e3));
+  const today = Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate());
+  const afterCut = k.getUTCHours() >= WLS_HOUR;
   const ymd = t => new Date(t).toISOString().slice(0, 10);
-  return {
-    idx,
-    start: ymd(WLS_ANCHOR + idx * WLS_DAYS * 86400e3),
-    next: ymd(WLS_ANCHOR + (idx + 1) * WLS_DAYS * 86400e3),
-    today: ymd(day),
-    beforeClose: k.getUTCHours() * 60 + k.getUTCMinutes() < 15 * 60 + 40,
-  };
+  let start = null;
+  for (let i = 0; i < 8 && start === null; i++) {
+    const d = today - i * 86400e3;
+    if (WLS_DOW.includes(new Date(d).getUTCDay()) && (i > 0 || afterCut)) start = d;
+  }
+  let next = start + 86400e3;
+  while (!WLS_DOW.includes(new Date(next).getUTCDay())) next += 86400e3;
+  return { idx: ymd(start), start: ymd(start), next: ymd(next) };
 }
 function wlsClosed(rows, cyc) {
-  if (!cyc.beforeClose || !rows.length) return rows;
-  const last = String(rows[rows.length - 1].date).replace(/-/g, "");
-  return last === cyc.today.replace(/-/g, "") ? rows.slice(0, -1) : rows;
+  const cut = cyc.start.replace(/-/g, "");
+  return rows.filter(r => String(r.date).replace(/-/g, "") <= cut);
 }
 async function wlsJudge(env, code, cyc) {
   const [ohlcv, idxRows, thesis] = await Promise.all([

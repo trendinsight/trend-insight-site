@@ -1,5 +1,5 @@
 /* wl-signal.js — 관심종목 옆 매수/홀드/관망/매도 배지 (index.html · my-stocks.html 공용)
-   판정은 서버(/api/wl-signal/{code})가 3일에 한 번(2026-09-28 기준 3일 주기) 확정 일봉으로 내리고
+   판정은 서버(/api/wl-signal/{code})가 월·수·금 장 마감 후(16:00) 확정 일봉으로 내리고
    KV에 고정한다 — 주기 중간에는 장중 등락이 있어도 배지가 바뀌지 않는다.
    근거: ① 기술 점수 0~4(정배열·MACD>시그널·일목 구름 위·전환선>기준선)
          ② 종목 온도 0~100(75↑ 과열, 25↓ 침체)  ③ 논거 보드(BROKEN→매도, WEAKENED→매수를 홀드로)
@@ -35,7 +35,7 @@
     }).then(function(j){return j&&j.ok?j:null;});
     return memo[code];
   }
-  function md(s){s=String(s||'');return s.length>=10?(+s.slice(5,7))+'/'+(+s.slice(8,10)):s;}
+  function md(s){s=String(s||'');if(s.length<10)return s;var w='일월화수목금토'[new Date(s+'T00:00:00Z').getUTCDay()];return (+s.slice(5,7))+'/'+(+s.slice(8,10))+'('+w+')';}
 
   var LABEL={buy:'매수',hold:'홀드',wait:'관망',sell:'매도'};
   function badge(el,code){
@@ -46,7 +46,7 @@
       el.className='tis tis-'+r.v;
       el.innerHTML=LABEL[r.v]+(r.sub?'<span class="tis-sub">'+r.sub+'</span>':'');
       el.title=LABEL[r.v]+' — '+r.why+'\n'+r.detail
-        +'\n판정 '+md(r.cycle_start)+' (종가 '+md(r.bar_date)+' 기준) · 다음 판정 '+md(r.next)+(r.stale?' · 갱신 실패로 직전 판정 표시':'')
+        +'\n판정 '+md(r.cycle_start)+' · '+md(r.bar_date)+' 종가 기준 · 다음 판정 '+md(r.next)+(r.stale?' · 갱신 실패로 직전 판정 표시':'')
         +'\n※ 자동 산출 참고 신호이며 투자 권유가 아닙니다';
     });
   }
