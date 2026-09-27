@@ -746,6 +746,92 @@ async function handleCockpit(req, url, ctx) {
 }
 
 
+/* ═══════════════ 관심종목 신호 배지 (/api/wl-signal/{code}) ═══════════════
+   3일 주기 판정: 2026-09-28(KST)을 기준일로 3일 단위 주기를 나누고, 주기당 1번만 판정해
+   KV("wlsig:{code}")에 고정한다 — 같은 주기 안에서는 장중 등락과 무관하게 배지가 바뀌지 않는다.
+   판정은 확정 일봉(15:40 KST 이전이면 당일 봉 제외) 기준.
+   규칙: 기술≥3 & 온도<75 → 매수 | 기술≥3 & 온도≥75 → 홀드(과열) | 기술=2 → 홀드
+         기술≤1 & 온도≤25 → 관망(과매도) | 기술≤1 → 매도
+         논거 보드 BROKEN → 매도, WEAKENED → 매수를 홀드로 */
+const WLS_ANCHOR = Date.UTC(2026, 8, 28);   // 2026-09-28 (KST 날짜 기준)
+const WLS_DAYS = 3;
+function wlsCycle() {
+  const k = new Date(Date.now() + 9 * 3600e3);
+  const day = Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate());
+  const idx = Math.floor((day - WLS_ANCHOR) / (WLS_DAYS * 86400e3));
+  const ymd = t => new Date(t).toISOString().slice(0, 10);
+  return {
+    idx,
+    start: ymd(WLS_ANCHOR + idx * WLS_DAYS * 86400e3),
+    next: ymd(WLS_ANCHOR + (idx + 1) * WLS_DAYS * 86400e3),
+    today: ymd(day),
+    beforeClose: k.getUTCHours() * 60 + k.getUTCMinutes() < 15 * 60 + 40,
+  };
+}
+function wlsClosed(rows, cyc) {
+  if (!cyc.beforeClose || !rows.length) return rows;
+  const last = String(rows[rows.length - 1].date).replace(/-/g, "");
+  return last === cyc.today.replace(/-/g, "") ? rows.slice(0, -1) : rows;
+}
+async function wlsJudge(env, code, cyc) {
+  const [ohlcv, idxRows, thesis] = await Promise.all([
+    ckOHLCV(code, 200),
+    fetchIndex(code, 420).catch(() => null),
+    env.ASSETS.fetch("https://seed/data/thesis-board.json").then(r => r.json()).catch(() => null),
+  ]);
+  const rows = wlsClosed(ohlcv, cyc);
+  if (rows.length < 120) return { ok: false, error: "120봉 미만(상장초기 종목)" };
+  const s = ckAnalyze(rows);
+  let temp = null, zoneTxt = null;
+  if (idxRows) {
+    try { const g = analyze(wlsClosed(idxRows, cyc)); if (g.score != null) { temp = Math.round(g.score); zoneTxt = g.zone; } } catch (e) { /* 온도 없이 판정 */ }
+  }
+  const st = thesis && (thesis.stocks || []).find(x => x.code === code);
+  const ts = st ? st.status : null;
+  const tech = s.score;
+  let v, sub = "", why;
+  if (tech >= 3) {
+    if (temp != null && temp >= 75) { v = "hold"; sub = "과열"; why = "추세는 강세지만 온도 과열 — 신규 추격 자제, 보유분 유지"; }
+    else { v = "buy"; why = "추세 강세 + 과열 아님 — 매수 우위"; }
+  } else if (tech === 2) { v = "hold"; why = "추세 신호 엇갈림(중립) — 보유 유지, 신규 진입 보류"; }
+  else if (temp != null && temp <= 25) { v = "wait"; sub = "과매도"; why = "추세 약세지만 과매도 — 투매보다 반등 확인 대기"; }
+  else { v = "sell"; why = "추세 약세 — 비중 축소·손절선 점검"; }
+  if (ts === "BROKEN") { v = "sell"; sub = "논거"; why = "논거 보드 BROKEN(논거 훼손) — 매도 원칙"; }
+  else if (ts === "WEAKENED" && v === "buy") { v = "hold"; sub = "논거↓"; why = "기술적으로는 매수 신호지만 논거 약화(WEAKENED) — 추가 매수 보류"; }
+  const bits = [`기술 ${tech}/4(${s.verdict})`];
+  if (temp != null) bits.push(`온도 ${temp}°${zoneTxt ? " " + zoneTxt : ""}`);
+  bits.push(`정배열 ${s.jby_steps}`);
+  bits.push(`MACD ${s.macd.above_signal ? "시그널 위" : "시그널 아래"}`);
+  bits.push(s.ichimoku.above_cloud ? "구름 위" : "구름 아래");
+  if (ts) bits.push(`논거 ${ts}`);
+  return {
+    ok: true, code, v, sub, why, detail: bits.join(" · "),
+    tech, temp, thesis: ts,
+    bar_date: rows[rows.length - 1].date,   // 판정에 쓴 마지막 확정 일봉
+    judged_at: kstNow(), cycle: cyc.idx, cycle_start: cyc.start, next: cyc.next,
+  };
+}
+async function handleWlSignal(req, url, env, ctx) {
+  const code = url.pathname.slice("/api/wl-signal/".length).replace(/[^0-9A-Za-z]/g, "");
+  if (!/^[0-9A-Z]{6}$/.test(code)) return new Response(JSON.stringify({ ok: false, error: "code 필요" }), { status: 400, headers: JSON_HEADERS });
+  const cyc = wlsCycle();
+  const key = "wlsig:" + code;
+  let hit = null;
+  try { hit = JSON.parse((await env.GAUGE_KV.get(key)) || "null"); } catch (e) { hit = null; }
+  if (hit && hit.ok && hit.cycle === cyc.idx) return new Response(JSON.stringify(hit), { headers: JSON_HEADERS });
+  try {
+    const out = await wlsJudge(env, code, cyc);
+    if (out.ok) ctx.waitUntil(env.GAUGE_KV.put(key, JSON.stringify(out), { expirationTtl: 86400 * 30 }));
+    else if (hit && hit.ok) return new Response(JSON.stringify({ ...hit, stale: true }), { headers: JSON_HEADERS });
+    return new Response(JSON.stringify(out), { headers: JSON_HEADERS });
+  } catch (e) {
+    // 판정 실패 시 직전 주기 판정을 그대로 보여준다 (stale 표시)
+    if (hit && hit.ok) return new Response(JSON.stringify({ ...hit, stale: true }), { headers: JSON_HEADERS });
+    return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 502, headers: JSON_HEADERS });
+  }
+}
+
+
 /* ═══════════════ Entry Timer (/api/entry/*) ═══════════════
    진입 타이밍 판정: 트렌드 템플릿(미너비니) → VCP → 다바스 박스 → 등급.
    사이징(터틀 ATR)은 자본이 필요하므로 클라이언트(entry.html)에서 계산 —
@@ -2454,6 +2540,9 @@ export default {
     }
     if (url.pathname.startsWith("/api/cockpit/")) {
       return handleCockpit(req, url, ctx);
+    }
+    if (url.pathname.startsWith("/api/wl-signal/")) {
+      return handleWlSignal(req, url, env, ctx);
     }
 
     if (url.pathname.startsWith("/api/entry/")) {
