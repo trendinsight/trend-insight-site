@@ -1,0 +1,17 @@
+{
+  "updated": "2026-10-01 20:10",
+  "run_date": "2026-10-01",
+  "summary_url": "/posts/2026-10-01-all-skills-summary.html",
+  "total": {"ok": 53, "partial": 5, "skip": 4, "fail": 0},
+  "parts": {
+    "1": {"date": "2026-10-01", "ok": 15, "partial": 1, "skip": 0, "fail": 0,
+          "headline": "게이트 코스피 YELLOW / 코스닥 RED · 권장 예수금 52.3% · 하락장 국면 CORRECTION",
+          "items": ["스탠스 중립", "금리 인상기", "가치:성장 62.6:37.4", "레버리지 CASH"]},
+    "2": {"date": "2026-10-01", "ok": 16, "partial": 2, "skip": 2, "fail": 0,
+          "headline": "주도 업종 반도체 장비·후공정·기판 · 발굴 Top3 전부 EXTENDED(진입 보류)",
+          "items": ["대덕전자·이수페타시스·디아이", "외국인 코스피 대형주 20일 순매도", "숏 WATCH 15종"]},
+    "3": {"date": "2026-10-01", "ok": 22, "partial": 2, "skip": 2, "fail": 0,
+          "headline": "손절 검토 135종 · 한온시스템 축소 · 신규 매수 0 · 현금 3.6% 규정 위반",
+          "items": ["손절레이더 RISK_OFF", "유효 종목수 31.5/340", "팀장 손절 · 공명 조건부동의"]}
+  }
+}

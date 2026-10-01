@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>전체 스킬 실행 | Trend Insight</title>
+<meta name="description" content="투자 스킬 전체를 1부(환경)·2부(수급·발굴)·3부(보유종목·결재)로 나눠 회차별로 실행 요청하고 마지막 결과를 확인합니다">
+<script>(function(){try{var t=localStorage.getItem('ti-theme');if(t==='dark'||(!t&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--navy:#0b1f3f;--accent:#2e6ff2;--accent-2:#1e5ae0;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg-soft:#f5f7fb;--card:#ffffff;--page:#f5f7fb}
+html[data-theme=dark]{--navy:#e8effc;--text:#d4deee;--muted:#8fa0b9;--line:#26334d;--bg-soft:#111a2e;--card:#16223a;--page:#0d1424}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--page);color:var(--text);line-height:1.6}
+a{text-decoration:none;color:inherit}
+header{background:#0b1f3f;padding:16px 24px}
+header a{color:#fff;font-weight:800}
+.wrap{max-width:980px;margin:0 auto;padding:30px 16px 60px}
+h1{color:var(--navy);font-size:1.55rem;letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:.92rem;margin:6px 0 16px}
+.opt{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted);margin:0 0 14px}
+.opt input{width:16px;height:16px;accent-color:var(--accent)}
+.flow{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-top:22px;font-size:.86rem;color:var(--muted)}
+.flow ol{padding-left:20px}
+.flow li{margin:4px 0}
+.flow b{color:var(--navy)}
+</style>
+</head>
+<body>
+<header><a href="/">← Trend Insight</a></header>
+<div class="wrap">
+  <h1>🧩 전체 스킬 3부 실행</h1>
+  <p class="sub">투자 스킬 전체를 세 번에 나눠 돌립니다. 회차마다 따로 요청할 수 있고, 아래에 회차별 마지막 실행 결과가 표시됩니다.</p>
+  <label class="opt"><input type="checkbox" id="sr-light"> 가볍게 실행 — 개별 스킬의 홈페이지 게시를 생략하고 볼트·진행표만 기록</label>
+  <div id="skillrun-box" data-mode="full"></div>
+  <div class="flow">
+    <b>작동 방식</b>
+    <ol>
+      <li><b>📨 실행 요청</b> — 요청이 서버 대기열에 쌓이고 @Tistock_bot으로 알림이 갑니다. 같은 회차는 한 번만 대기합니다.</li>
+      <li>Claude 데스크톱에서 <b>“스킬런 요청 처리해줘”</b>라고 말하면 대기 중인 회차를 순서대로(1→2→3) 실행하고, 끝난 회차는 대기열에서 지웁니다.</li>
+      <li><b>📋 문구 복사</b> — 대기열 없이 바로 돌리고 싶을 때. 복사된 문구(예: “전체 스킬 2부”)를 Claude 데스크톱 새 대화에 붙여넣으세요.</li>
+      <li>회차가 끝나면 이 페이지의 결과 칸과 텔레그램 요약이 갱신됩니다. 3부가 끝나면 종합 보고서가 게시됩니다.</li>
+    </ol>
+  </div>
+</div>
+<script src="/skillrun.js"></script>
+</body>
+</html>

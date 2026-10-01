@@ -2650,6 +2650,10 @@ export default {
       return handleReports(req, url, env, ctx);
     }
 
+    if (url.pathname.startsWith("/api/skillrun/")) {
+      return handleSkillrun(req, url, env, ctx);
+    }
+
     const assetRes = await env.ASSETS.fetch(req);
 
     // PDF를 주소창/링크로 직접 열면(모바일에서 흔함) 브라우저 기본 PDF 화면으로 넘어가
@@ -4201,4 +4205,70 @@ async function aiHandle(req, url, env, ctx) {
     trace: trace,
     usage: usage,
   }, 504);
+}
+
+/* ═══════════════ 전체 스킬 3부 실행 요청 큐 (/api/skillrun/*) ═══════════════
+   홈·skill-run.html: 1부/2부/3부 버튼 → 회차별 실행 요청을 KV 큐에 적재 + 텔레그램 알림.
+   로컬 Claude(all-skills-runner)가 "스킬런 요청 처리해줘"로 수거해 해당 회차를 실행하고
+   complete로 큐에서 제거한다. 결과 요약은 data/skillrun-status.json(커밋)으로 표시된다. */
+
+const SR_KEY = "skillrun-requests";
+const SR_LABEL = { 1: "1부 — 환경(시장·거시·심리·자금)", 2: "2부 — 수급·산업·발굴", 3: "3부 — 보유종목·리스크·결재·종합" };
+
+async function srLoad(env) {
+  try { return JSON.parse((await env.GAUGE_KV.get(SR_KEY)) || "[]"); } catch (e) { return []; }
+}
+
+async function handleSkillrun(req, url, env, ctx) {
+  const p = url.pathname.slice("/api/skillrun/".length);
+  try {
+    if (p === "requests") {
+      return new Response(JSON.stringify({ ok: true, requests: await srLoad(env) }), { headers: JSON_HEADERS });
+    }
+    if (p === "request" && req.method === "POST") {
+      const b = await req.json().catch(() => ({}));
+      const part = parseInt(b.part, 10);
+      if (![1, 2, 3].includes(part)) {
+        return new Response(JSON.stringify({ ok: false, error: "part는 1·2·3 중 하나여야 합니다" }), { status: 400, headers: JSON_HEADERS });
+      }
+      const light = !!b.light;
+      const list = await srLoad(env);
+      if (list.find(x => x.part === part)) {
+        return new Response(JSON.stringify({ ok: true, dup: true, message: `${part}부 요청이 이미 대기 중입니다.` }), { headers: JSON_HEADERS });
+      }
+      list.push({ part, light, label: SR_LABEL[part], requested_at: kstNow(), status: "pending" });
+      list.sort((a, c) => a.part - c.part);
+      await env.GAUGE_KV.put(SR_KEY, JSON.stringify(list));
+      // 텔레그램은 회차별 10분에 1회로 제한 (공개 홈 버튼 반복 클릭·취소 후 재요청 스팸 방지)
+      const tgKey = `skillrun-tg-${part}`;
+      const tgRecent = await env.GAUGE_KV.get(tgKey);
+      if (!tgRecent) await env.GAUGE_KV.put(tgKey, "1", { expirationTtl: 600 });
+      if (!tgRecent) ctx.waitUntil(slTelegram(env,
+        `🧩 <b>전체 스킬 ${part}부 실행 요청</b>${light ? " (가볍게)" : ""}\n${SR_LABEL[part]}\nCowork에서 "스킬런 요청 처리해줘" 또는 "전체 스킬 ${part}부"라고 말하면 실행됩니다.`));
+      return new Response(JSON.stringify({ ok: true, queued: list.length }), { headers: JSON_HEADERS });
+    }
+    if (p === "cancel" && req.method === "POST") {
+      const b = await req.json().catch(() => ({}));
+      const part = parseInt(b.part, 10);
+      const list = await srLoad(env);
+      const next = list.filter(x => x.part !== part);
+      await env.GAUGE_KV.put(SR_KEY, JSON.stringify(next));
+      return new Response(JSON.stringify({ ok: true, removed: list.length - next.length }), { headers: JSON_HEADERS });
+    }
+    if (p === "complete" && req.method === "POST") {
+      const b = await req.json().catch(() => ({}));
+      const sec = await env.RISK_DB.prepare("SELECT v FROM app_config WHERE k='report_secret'").first();
+      if (!sec || !b.secret || b.secret !== sec.v) {
+        return new Response(JSON.stringify({ ok: false, error: "인증 실패" }), { status: 403, headers: JSON_HEADERS });
+      }
+      const part = parseInt(b.part, 10);
+      const list = await srLoad(env);
+      const next = list.filter(x => x.part !== part);
+      await env.GAUGE_KV.put(SR_KEY, JSON.stringify(next));
+      return new Response(JSON.stringify({ ok: true, removed: list.length - next.length }), { headers: JSON_HEADERS });
+    }
+    return new Response(JSON.stringify({ ok: false, error: "unknown endpoint" }), { status: 404, headers: JSON_HEADERS });
+  } catch (e) {
+    return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
+  }
 }
