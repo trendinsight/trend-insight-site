@@ -2445,7 +2445,13 @@ async function tdHandle(req, url, env, ctx) {
 export default {
   async scheduled(event, env, ctx) {
     // 서버 자동 수집(18:00~18:56 KST, 8분 간격 단계 실행) — 기존 마감 작업과 분리
-    if (event.cron === COL_CRON) { ctx.waitUntil(collectStep(env).catch(e => console.log("collect", e && e.message))); return; }
+    // 실행 기록(최근 40건) — 크론이 실제로 도는지 /api/collect/cronlog 로 확인
+    ctx.waitUntil((async () => { try { const k = "cron:log"; const a = JSON.parse((await env.GAUGE_KV.get(k)) || "[]");
+      a.unshift({ cron: event.cron, at: new Date(event.scheduledTime || Date.now()).toISOString() });
+      await env.GAUGE_KV.put(k, JSON.stringify(a.slice(0, 40))); } catch (e) {} })());
+    // 크론 문자열 표기가 대시보드에서 바뀌어도 동작하도록 시각(UTC 9시대)으로도 판별
+    if (event.cron === COL_CRON || new Date(event.scheduledTime || Date.now()).getUTCHours() === 9) {
+      ctx.waitUntil(collectStep(env).catch(e => console.log("collect", e && e.message))); return; }
     // UTC 4시 = 13:00 KST(장중 참고, 평일만) / UTC 7시 = 16:00 KST(종가 확정, 매일)
     const now = new Date();
     const utcH = now.getUTCHours();
@@ -4720,7 +4726,7 @@ async function collectStep(env, { reset = false } = {}) {
 
   if (st.cursor < st.universe.length) {
     const chunk = st.universe.slice(st.cursor, st.cursor + COL_CHUNK);
-    const cs = { kiwoomOff: st.kiwoomOff || null };
+    const cs = { kiwoomOff: st.kiwoomOff || "서버 IP 미등록(키움 REST는 등록 IP에서만 허용)" };
     for (const s of chunk) {
       st.stocks[s.code] = await colStock(env, s, cs);
       try {   // 매물대 서버 계산(최근 750봉) 판정 요약
@@ -4843,6 +4849,10 @@ async function handleCollect(req, url, env, ctx) {
   const p = url.pathname.slice("/api/collect/".length).replace(/\/+$/, "");
   const J = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: JSON_HEADERS });
   try {
+    if (p === "cronlog") {   // 크론 실행 기록 (Bearer git_token)
+      if (!(await boardAuth(req, env))) return J({ ok: false, error: "인증 실패" }, 401);
+      return J({ ok: true, log: JSON.parse((await env.GAUGE_KV.get("cron:log")) || "[]") });
+    }
     if (p === "run" && req.method === "POST") {
       if (!(await boardAuth(req, env))) return J({ ok: false, error: "인증 실패" }, 401);
       if (url.searchParams.has("clear")) {   // 오늘 진행 상태 삭제 → 다음 크론이 처음부터
