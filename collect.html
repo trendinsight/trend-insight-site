@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>서버 자동 수집 | Trend Insight</title>
+<meta name="description" content="장 마감 후 서버가 자동으로 모은 종가·수급·밸류·공시·실적 — 네이버·키움·야후·DART 교차 수집">
+<script>(function(){try{var t=localStorage.getItem('ti-theme');if(t==='dark'||(!t&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--navy:#0b1f3f;--accent:#2e6ff2;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg-soft:#f5f7fb;--card:#fff;--page:#f5f7fb;--up:#d6336c;--down:#1c7ed6;--warn:#e8621b;--ok:#2f9e44}
+html[data-theme=dark]{--navy:#e8effc;--text:#d4deee;--muted:#8fa0b9;--line:#26334d;--bg-soft:#111a2e;--card:#16223a;--page:#0d1424;--up:#ff6b8b;--down:#5aa9ff}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--page);color:var(--text);line-height:1.55}
+a{color:inherit}
+header{background:#0b1f3f;padding:16px 24px}header a{color:#fff;font-weight:800;text-decoration:none}
+.wrap{max-width:1080px;margin:0 auto;padding:26px 16px 60px}
+h1{color:var(--navy);font-size:1.5rem;letter-spacing:-.02em}
+h2{color:var(--navy);font-size:1.05rem;margin:26px 0 10px}
+.sub{color:var(--muted);font-size:.88rem;margin:6px 0 14px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
+select,input{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:.78rem;padding:3px 10px;border-radius:99px;border:1px solid var(--line);background:var(--card);cursor:pointer;color:var(--muted)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.alert{border-left:4px solid var(--warn)}
+.list li{list-style:none;padding:7px 0;border-bottom:1px dashed var(--line);font-size:.9rem}
+.list li:last-child{border-bottom:0}
+.tag{display:inline-block;font-size:.72rem;padding:1px 7px;border-radius:6px;background:var(--bg-soft);color:var(--muted);margin-left:4px}
+.tag.r{background:#ffe3e3;color:#c92a2a}html[data-theme=dark] .tag.r{background:#4a1d1d;color:#ff8787}
+table{width:100%;border-collapse:collapse;font-size:.86rem}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600;font-size:.78rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.card h3{font-size:1rem;color:var(--navy);display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.card h3 small{color:var(--muted);font-weight:500;font-size:.75rem}
+.px{font-size:1.25rem;font-weight:800;margin:4px 0}
+.up{color:var(--up)}.down{color:var(--down)}.mut{color:var(--muted)}
+.kv{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 10px;font-size:.8rem;margin-top:8px}
+.kv div span{display:block;color:var(--muted);font-size:.72rem}
+.flows{margin-top:10px;font-size:.78rem}
+.flows table th,.flows table td{padding:3px 4px}
+.disc{margin-top:8px;font-size:.8rem}
+.disc a{text-decoration:underline}
+.th{margin-top:8px;font-size:.8rem;padding:6px 8px;border-radius:8px;background:var(--bg-soft)}
+.err{color:var(--muted);font-size:.75rem;margin-top:6px}
+.empty{color:var(--muted);font-size:.9rem;padding:30px 0;text-align:center}
+.note{font-size:.8rem;color:var(--muted);margin-top:24px}
+@media(max-width:560px){.kv{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><a href="/">← Trend Insight</a></header>
+<div class="wrap">
+  <h1>📡 서버 자동 수집</h1>
+  <p class="sub" id="sub">평일 장 마감 후(18시대) 서버가 데스크톱 없이 스스로 모은 데이터입니다.</p>
+  <div class="bar"><select id="day"></select><input id="q" placeholder="종목 검색" size="12"><div class="chips" id="chips"></div></div>
+  <div id="app"><div class="empty">불러오는 중…</div></div>
+  <p class="note">출처: 네이버 증권(일봉·밸류·컨센서스·수급) · 키움 REST(투자자별 수급) · 야후 파이낸스(종가 교차검증) · DART(공시·정기보고서 실적). 투자 권유가 아니며 수치는 수집 시점 기준입니다.</p>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const fmt=(n,d=0)=>n==null||isNaN(n)?'—':Number(n).toLocaleString('ko-KR',{maximumFractionDigits:d});
+const pct=(n)=>n==null?'—':`<span class="${n>0?'up':n<0?'down':'mut'}">${n>0?'+':''}${fmt(n,1)}%</span>`;
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const SRC={thesis:'논거',hold:'보유',watch:'관심',site:'회원관심',vp:'매물대'};
+let DATA=null,FILTER='all';
+function spark(a){if(!a||a.length<2)return'';const w=120,h=30,mn=Math.min(...a),mx=Math.max(...a),r=mx-mn||1;
+  const p=a.map((v,i)=>`${(i/(a.length-1)*w).toFixed(1)},${(h-(v-mn)/r*h).toFixed(1)}`).join(' ');
+  const c=a[a.length-1]>=a[0]?'var(--up)':'var(--down)';
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-label="60일 추이"><polyline fill="none" stroke="${c}" stroke-width="1.5" points="${p}"/></svg>`;}
+function flowTable(f){if(!f||!f.days||!f.days.length)return'';
+  const cols=['외국인','기관계','개인','연기금','투신','사모펀드'].filter(k=>f.days.some(d=>d[k]!=null));
+  const s=f.sum5||{};
+  return `<div class="flows"><table><tr><th>수급(${esc(f.source)}·주)</th>${cols.map(c=>`<th>${c}</th>`).join('')}</tr>
+  ${f.days.slice(-3).map(d=>`<tr><td>${String(d.date).slice(4,6)}/${String(d.date).slice(6)}</td>${cols.map(c=>`<td>${pct2(d[c])}</td>`).join('')}</tr>`).join('')}
+  <tr><td><b>5일 합</b></td>${cols.map(c=>`<td><b>${pct2(s[c])}</b></td>`).join('')}</tr></table></div>`;}
+function pct2(n){return n==null?'—':`<span class="${n>0?'up':n<0?'down':''}">${n>0?'+':''}${fmt(n)}</span>`}
+function card(o){
+  const v=o.val||{},c=o.consensus||{},t=o.thesis;
+  return `<div class="card"><h3><span>${esc(o.name)} <small>${o.code}${o.market?' · '+o.market:''}</small></span><small>${o.src.map(s=>SRC[s]||s).join(' · ')}</small></h3>
+  <div style="display:flex;justify-content:space-between;align-items:center"><div class="px">${fmt(o.close)}원 ${pct(o.chg_pct)}</div>${spark(o.spark)}</div>
+  <div class="kv">
+   <div><span>추세</span>${esc(o.trend||'—')}</div><div><span>52주 고점 대비</span>${pct(o.from_hi52_pct)}</div><div><span>거래량/20일</span>${o.vol_ratio20!=null?fmt(o.vol_ratio20,2)+'배':'—'}</div>
+   <div><span>MA20 · MA60</span>${fmt(o.ma20)} · ${fmt(o.ma60)}</div><div><span>PER · 추정</span>${fmt(v.per,1)} · ${fmt(v.cns_per,1)}</div><div><span>PBR · 배당</span>${fmt(v.pbr,2)} · ${v.div_yield!=null?fmt(v.div_yield,2)+'%':'—'}</div>
+   <div><span>컨센 목표가</span>${fmt(c.target)}</div><div><span>목표 괴리</span>${pct(c.upside_pct)}</div><div><span>외인 소진율</span>${v.foreign_rate!=null?fmt(v.foreign_rate,1)+'%':'—'}</div>
+  </div>
+  ${t?`<div class="th">논거 <b>${esc(t.status||'')}</b> · 목표 ${fmt(t.target)} (${pct(t.to_target_pct)}) · 손절 ${fmt(t.stop)} (여유 ${pct(t.to_stop_pct)})</div>`:''}
+  ${flowTable(o.flows)}
+  ${(o.disclosures||[]).length?`<div class="disc">${o.disclosures.map(d=>`📄 <a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.title)}</a>${d.flags.map(f=>`<span class="tag ${d.risky?'r':''}">${esc(f)}</span>`).join('')}`).join('<br>')}</div>`:''}
+  ${o.price_check==='불일치'?`<div class="err">⚠️ 야후 종가 ${fmt(o.yahoo_close)}와 불일치 — 확인 필요</div>`:''}
+  ${(o.research||[]).length?`<div class="err">리서치: ${o.research.map(r=>esc(r.broker+' '+r.title)).join(' / ')}</div>`:''}
+  </div>`;}
+function render(){
+  const d=DATA; if(!d){return}
+  const q=$('#q').value.trim();
+  let st=d.stocks.filter(o=>FILTER==='all'||o.src.includes(FILTER)).filter(o=>!q||o.name.includes(q)||o.code.includes(q));
+  const flagged=d.disclosures.filter(x=>x.flags.length);
+  let h='';
+  if(d.alerts.length)h+=`<div class="box alert"><b>논거 보드 가격 경보</b><ul class="list">${d.alerts.map(a=>`<li>${esc(a)}</li>`).join('')}</ul></div>`;
+  h+=`<h2>주요 공시 <small class="mut">(${flagged.length}건 / 대상 종목 전체 ${d.disclosures.length}건 · DART 당일 ${fmt(d.dart_total)}건 중)</small></h2>`;
+  h+=flagged.length?`<div class="box"><ul class="list">${flagged.map(x=>`<li>${x.risky?'🔴':'•'} <b>${esc(x.name)}</b> <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>${x.flags.map(f=>`<span class="tag ${x.risky?'r':''}">${esc(f)}</span>`).join('')}</li>`).join('')}</ul></div>`:`<div class="box mut">분류 대상 공시 없음</div>`;
+  if(d.earnings.length){h+=`<h2>정기보고서 실적</h2><div class="box" style="overflow-x:auto"><table><tr><th>종목</th><th>기간</th><th>매출</th><th>YoY</th><th>영업이익</th><th>YoY</th><th>순이익</th><th>YoY</th></tr>`+
+    d.earnings.map(e=>`<tr><td><a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.name)}</a></td><td>${esc(e.period)} ${esc(e.basis||'')}</td>${['revenue','op','net'].map(k=>{const x=e[k]||{};return `<td>${x.cur!=null?fmt(x.cur/1e8)+'억':'—'}</td><td>${pct(x.yoy)}</td>`}).join('')}</tr>`).join('')+`</table></div>`;}
+  h+=`<h2>종목 ${st.length}개</h2>`+(st.length?`<div class="grid">${st.map(card).join('')}</div>`:'<div class="empty">해당 종목 없음</div>');
+  $('#app').innerHTML=h;
+}
+function chips(){const have=new Set(DATA.stocks.flatMap(o=>o.src));const list=['all',...Object.keys(SRC).filter(k=>have.has(k))];
+  $('#chips').innerHTML=list.map(k=>`<span class="chip ${k===FILTER?'on':''}" data-k="${k}">${k==='all'?'전체':SRC[k]}</span>`).join('');
+  $('#chips').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{FILTER=el.dataset.k;chips();render();});}
+function show(d){DATA=d;const u=new Date(d.updated);
+  $('#sub').textContent=`${d.ymd.slice(0,4)}.${d.ymd.slice(4,6)}.${d.ymd.slice(6)} 수집 · ${u.toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})} 완료 · ${d.stocks.length}종목 — 평일 장 마감 후(18시대) 서버가 데스크톱 없이 자동 수집`;
+  chips();render();}
+async function load(path){const r=await fetch(path,{cache:'no-store',credentials:'same-origin'});const j=await r.json();if(!j.ok)throw new Error(j.error);return j;}
+(async()=>{try{const j=await load('/api/collect/latest');
+  $('#day').innerHTML=(j.index||[j.data.ymd]).map(d=>`<option value="${d}">${d.slice(0,4)}.${d.slice(4,6)}.${d.slice(6)}</option>`).join('');
+  $('#day').onchange=async e=>{try{show((await load('/api/collect/day/'+e.target.value)).data)}catch(err){$('#app').innerHTML=`<div class="empty">${esc(err.message)}</div>`}};
+  show(j.data);}catch(e){$('#app').innerHTML=`<div class="empty">${esc(e.message)}</div>`}})();
+$('#q').oninput=()=>render();
+</script>
+</body>
+</html>

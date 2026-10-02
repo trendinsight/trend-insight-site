@@ -2444,6 +2444,8 @@ async function tdHandle(req, url, env, ctx) {
 
 export default {
   async scheduled(event, env, ctx) {
+    // 서버 자동 수집(18:00~18:56 KST, 8분 간격 단계 실행) — 기존 마감 작업과 분리
+    if (event.cron === COL_CRON) { ctx.waitUntil(collectStep(env).catch(e => console.log("collect", e && e.message))); return; }
     // UTC 4시 = 13:00 KST(장중 참고, 평일만) / UTC 7시 = 16:00 KST(종가 확정, 매일)
     const now = new Date();
     const utcH = now.getUTCHours();
@@ -2636,6 +2638,10 @@ export default {
       } catch (e) {
         return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
       }
+    }
+
+    if (url.pathname.startsWith("/api/collect/")) {
+      return handleCollect(req, url, env, ctx);
     }
 
     // 보드 데이터 동적 레이어 — API 게시본(KV)이 있으면 재배포 없이 즉시 서빙
@@ -4449,4 +4455,416 @@ async function handleBoard(req, url, env, ctx) {
   } catch (e) {
     return boardJson(500, { ok: false, error: String(e && e.message || e) });
   }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// 서버 자동 수집 (2026-10-02) — 장 마감 후 평일 18:00~18:56 KST, 8분 간격 크론이 단계별로 이어서 실행
+//  단계 0: 대상 종목(논거·관심·회원관심·보유 상위·매물대 보드) 확정 + DART 당일 공시 전체 수집·매칭
+//  단계 1~: 종목 10개씩 — 네이버 일봉(260일)·통합(밸류·컨센서스·수급 5일·리서치) + 키움 투자자별 수급
+//           + 야후 종가 교차검증 (+ KIS 키가 있으면 KIS 투자자 수급)
+//  마지막: DART 정기보고서 실적(매출·영업이익·순이익 YoY) → 결과 KV 저장 → ti-brain 적재 → 텔레그램 요약
+//  호출 수를 단계별로 나눠 무료 플랜 서브리퀘스트 한도(50) 안에서 돈다.
+//  조회: GET /api/collect/latest | /api/collect/day/YYYYMMDD | /api/collect/status (회원 로그인 필요)
+//  수동 실행: POST /api/collect/run (Bearer git_token) — ?reset=1 오늘 처음부터
+// ════════════════════════════════════════════════════════════════════
+const COL_CRON = "*/8 9 * * 1-5";
+const COL_MAX = 50, COL_CHUNK = 10;
+const COL_UA = { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36" };
+const COL_ETF_RE = /^(KODEX|TIGER|ACE|RISE|SOL|KBSTAR|HANARO|PLUS|ARIRANG|KOSEF|TIMEFOLIO|KIWOOM|WON|1Q|BNK|FOCUS|TREX|마이티|파워|히어로즈|에셋플러스|KoAct|UNICORN|VITA|DAISHIN343|ITF)\b/i;
+const COL_FLAG = [
+  [/전환사채|신주인수권부사채|교환사채/, "메자닌 발행"],
+  [/유상증자/, "유상증자"], [/무상증자/, "무상증자"], [/감자/, "감자"],
+  [/최대주주\s*변경|최대주주등소유주식변동/, "최대주주 변동"],
+  [/주식등의대량보유|임원ㆍ주요주주특정증권/, "지분 변동"],
+  [/담보|질권/, "주식 담보"],
+  [/감사보고서|감사의견|계속기업/, "감사 관련"],
+  [/횡령|배임|소송|가압류/, "소송·횡령"],
+  [/거래정지|매매거래정지|관리종목|상장폐지|불성실공시/, "거래·상장 위험"],
+  [/영업\(잠정\)실적|매출액또는손익구조/, "실적(잠정)"],
+  [/단일판매|공급계약/, "공급계약"],
+  [/자기주식|자사주/, "자사주"],
+  [/합병|분할|영업양수|영업양도|타법인주식및출자증권취득/, "M&A·분할"],
+  [/현금ㆍ현물배당|배당/, "배당"],
+];
+const COL_RISKY = new Set(["메자닌 발행", "유상증자", "감자", "주식 담보", "감사 관련", "소송·횡령", "거래·상장 위험", "최대주주 변동"]);
+
+function colYmd(ms = Date.now()) { return new Date(ms + 9 * 3600e3).toISOString().slice(0, 10).replace(/-/g, ""); }
+function colN(v) {
+  if (v == null) return null;
+  const s = String(v).replace(/[,%배원\s+]/g, "");
+  const x = parseFloat(s);
+  return isNaN(x) ? null : x;
+}
+function colPct(a, b) { return a != null && b ? Math.round((a / b - 1) * 1000) / 10 : null; }
+async function colGet(url, asJson = true, headers = COL_UA) {
+  const r = await fetch(url, { headers });
+  if (!r.ok) throw new Error(`HTTP ${r.status} ${url.slice(0, 60)}`);
+  return asJson ? r.json() : new TextDecoder("utf-8", { fatal: false }).decode(await r.arrayBuffer());
+}
+
+// ── 대상 종목 ──
+async function colUniverse(env) {
+  const map = new Map();
+  const add = (code, name, src) => {
+    code = String(code || "").replace(/[^0-9A-Z]/gi, "");
+    if (!/^[0-9A-Z]{6}$/.test(code)) return;
+    if (name && COL_ETF_RE.test(name)) return;
+    const o = map.get(code) || { code, name: name || "", src: [] };
+    if (!o.name && name) o.name = name;
+    if (!o.src.includes(src)) o.src.push(src);
+    map.set(code, o);
+  };
+  const board = async (n) => {
+    try {
+      const kv = await env.GAUGE_KV.get("board:" + n);
+      if (kv) return JSON.parse(kv);
+      const a = await env.ASSETS.fetch(new Request("https://seed/data/" + n + ".json"));
+      return a.ok ? await a.json() : null;
+    } catch (e) { return null; }
+  };
+  const tb = await board("thesis-board");
+  for (const s of (tb && tb.stocks) || []) add(s.code, s.name, "thesis");
+  try {
+    const r = await env.BRAIN_DB.prepare("SELECT ticker,name FROM entities WHERE kind='stock' AND status='watch'").all();
+    for (const x of r.results) add(x.ticker, x.name, "watch");
+  } catch (e) {}
+  try {
+    const r = await env.RISK_DB.prepare("SELECT code,MAX(name) name,COUNT(*) c FROM site_watchlist GROUP BY code ORDER BY c DESC LIMIT 20").all();
+    for (const x of r.results) add(x.code, x.name, "site");
+  } catch (e) {}
+  try {
+    const r = await env.RISK_DB.prepare("SELECT code,name FROM holdings ORDER BY COALESCE(weight,0) DESC LIMIT 40").all();
+    for (const x of r.results) if (map.size < COL_MAX || map.has(String(x.code))) add(x.code, x.name, "hold");
+  } catch (e) {}
+  const vp = await board("volume-profile-board");
+  for (const [c, v] of Object.entries((vp && vp.stocks) || {})) if (map.size < COL_MAX || map.has(c)) add(c, v && v.name, "vp");
+  const order = { thesis: 0, hold: 1, watch: 2, site: 3, vp: 4 };
+  return [...map.values()]
+    .sort((a, b) => Math.min(...a.src.map(s => order[s])) - Math.min(...b.src.map(s => order[s])))
+    .slice(0, COL_MAX);
+}
+
+// ── DART 당일 공시 전체 → 대상 종목 매칭 ──
+async function colDart(env, ymd, codes) {
+  const key = await getDartKey(env);
+  if (!key) return { error: "DART 키 없음", items: [], total: 0 };
+  const want = new Set(codes);
+  const items = [];
+  let page = 1, totalPage = 1, total = 0;
+  while (page <= totalPage && page <= 25) {
+    const qs = new URLSearchParams({ crtfc_key: key, bgn_de: ymd, end_de: ymd, page_no: String(page), page_count: "100" });
+    const j = await colGet(`${DART_BASE}/list.json?${qs}`, true, DART_HEADERS);
+    if (j.status === "013") break;
+    if (j.status !== "000") return { error: `DART ${j.status} ${j.message || ""}`, items, total };
+    totalPage = +j.total_page || 1; total = +j.total_count || 0;
+    for (const d of j.list || []) {
+      if (!want.has(d.stock_code)) continue;
+      const flags = COL_FLAG.filter(([re]) => re.test(d.report_nm)).map(([, t]) => t);
+      items.push({ code: d.stock_code, name: d.corp_name, corp_code: d.corp_code, title: d.report_nm.trim(),
+        rcept_no: d.rcept_no, filer: d.flr_nm, rm: d.rm || "", flags,
+        risky: flags.some(f => COL_RISKY.has(f)),
+        url: `https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${d.rcept_no}` });
+    }
+    page++;
+  }
+  return { items, total, pages: page - 1 };
+}
+
+// ── DART 정기보고서 → 실적 ──
+function colReprt(title) {
+  const m = title.match(/(분기보고서|반기보고서|사업보고서)\s*\((\d{4})\.(\d{2})\)/);
+  if (!m) return null;
+  if (m[1] === "사업보고서") return { year: m[2], code: "11011", label: `${m[2]} 연간` };
+  if (m[1] === "반기보고서") return { year: m[2], code: "11012", label: `${m[2]} 반기` };
+  return m[3] === "03" ? { year: m[2], code: "11013", label: `${m[2]} 1Q` } : { year: m[2], code: "11014", label: `${m[2]} 3Q` };
+}
+async function colEarnings(env, item) {
+  const rp = colReprt(item.title);
+  if (!rp) return null;
+  const j = await dartGet(env, "fnlttSinglAcnt.json", { corp_code: item.corp_code, bsns_year: rp.year, reprt_code: rp.code });
+  if (j.status !== "000") return { code: item.code, name: item.name, period: rp.label, error: j.message || j.status, url: item.url };
+  const list = j.list || [];
+  const fs = list.some(a => a.fs_div === "CFS") ? "CFS" : "OFS";
+  const pick = (names) => {
+    const a = list.find(x => x.fs_div === fs && names.includes(String(x.account_nm).replace(/\s/g, "")));
+    if (!a) return null;
+    const cur = colN(a.thstrm_amount), prev = colN(a.frmtrm_q_amount) ?? colN(a.frmtrm_amount);
+    return { cur, prev, yoy: cur != null && prev ? Math.round((cur / Math.abs(prev) - (prev < 0 ? -1 : 1)) * 1000) / 10 : null };
+  };
+  return { code: item.code, name: item.name, period: rp.label, basis: fs === "CFS" ? "연결" : "별도", url: item.url,
+    revenue: pick(["매출액", "수익(매출액)", "영업수익"]), op: pick(["영업이익", "영업이익(손실)"]),
+    net: pick(["당기순이익", "당기순이익(손실)", "분기순이익", "반기순이익"]) };
+}
+
+// ── 종목 1개 — 네이버 일봉·통합 + 키움 수급 ──
+async function colStock(env, s, ctxState) {
+  const out = { code: s.code, name: s.name, src: s.src, errors: [] };
+  try {
+    const txt = await colGet(`https://fchart.stock.naver.com/sise.nhn?symbol=${s.code}&timeframe=day&count=260&requestType=0`, false);
+    const rows = [];
+    const re = /data="([0-9|.\-]+)"/g; let m;
+    while ((m = re.exec(txt))) { const f = m[1].split("|"); if (f.length >= 6) rows.push({ d: f[0], h: +f[2], l: +f[3], c: +f[4], v: +f[5] }); }
+    if (rows.length) {
+      const last = rows[rows.length - 1], prev = rows[rows.length - 2];
+      const ma = (n) => rows.length >= n ? Math.round(rows.slice(-n).reduce((a, r) => a + r.c, 0) / n) : null;
+      const v20 = rows.length > 21 ? rows.slice(-21, -1).reduce((a, r) => a + r.v, 0) / 20 : null;
+      const hi = Math.max(...rows.map(r => r.h)), lo = Math.min(...rows.map(r => r.l));
+      Object.assign(out, { date: last.d, close: last.c, chg_pct: prev ? colPct(last.c, prev.c) : null, volume: last.v,
+        vol_ratio20: v20 ? Math.round(last.v / v20 * 100) / 100 : null,
+        ma20: ma(20), ma60: ma(60), ma120: ma(120), hi52: hi, lo52: lo,
+        from_hi52_pct: colPct(last.c, hi), from_lo52_pct: colPct(last.c, lo),
+        spark: rows.slice(-60).map(r => r.c) });
+      out.trend = out.ma20 && out.ma60 ? (last.c > out.ma20 && out.ma20 > out.ma60 ? "정배열" : last.c < out.ma20 && out.ma20 < out.ma60 ? "역배열" : "혼조") : null;
+    }
+  } catch (e) { out.errors.push("naver-chart: " + e.message); }
+  try {
+    const j = await colGet(`https://m.stock.naver.com/api/stock/${s.code}/integration`);
+    if (!out.name && j.stockName) out.name = j.stockName;
+    const ti = {}; for (const x of j.totalInfos || []) ti[x.code] = x.value;
+    out.val = { per: colN(ti.per), pbr: colN(ti.pbr), eps: colN(ti.eps), cns_per: colN(ti.cnsPer), cns_eps: colN(ti.cnsEps),
+      div_yield: colN(ti.dividendYieldRatio), mcap: ti.marketValue || null, foreign_rate: colN(ti.foreignRate) };
+    const ci = j.consensusInfo;
+    if (ci) out.consensus = { target: colN(ci.priceTargetMean), recomm: colN(ci.recommMean), date: ci.createDate };
+    if (out.consensus && out.consensus.target && out.close) out.consensus.upside_pct = colPct(out.consensus.target, out.close);
+    out.flows_naver = (j.dealTrendInfos || []).slice(0, 5).map(t => ({ date: t.bizdate,
+      외국인: colN(t.foreignerPureBuyQuant), 기관계: colN(t.organPureBuyQuant), 개인: colN(t.individualPureBuyQuant) }));
+    out.research = (j.researches || []).slice(0, 3).map(r => ({ broker: r.bnm, title: r.tit, date: r.wdt }));
+  } catch (e) { out.errors.push("naver-integration: " + e.message); }
+  if (!ctxState.kiwoomOff) {
+    try {
+      const from = colYmd(Date.now() - 14 * 86400e3);
+      const rows = await supFetchFlows(s.code, from, env);
+      const last5 = rows.slice(-5);
+      out.flows = { source: "키움", days: last5.map(r => ({ date: r.date, 외국인: r.외국인, 기관계: r.기관계, 개인: r.개인,
+        연기금: r.연기금, 투신: r.투신, 사모펀드: r.사모펀드, 금융투자: r.금융투자, 기타법인: r.기타법인 })) };
+    } catch (e) { out.errors.push("kiwoom: " + e.message); ctxState.kiwoomOff = e.message; }
+  }
+  if (!out.flows && out.flows_naver && out.flows_naver.length) out.flows = { source: "네이버", days: [...out.flows_naver].reverse() };
+  if (out.flows) {
+    const sum = {}; for (const d of out.flows.days) for (const [k, v] of Object.entries(d)) if (k !== "date" && v != null) sum[k] = (sum[k] || 0) + v;
+    out.flows.sum5 = sum;
+  }
+  return out;
+}
+
+// ── KIS(선택): app_config에 kis_app_key·kis_app_secret이 있을 때만 ──
+async function colKisToken(env) {
+  const c = await env.GAUGE_KV.get("kis-token");
+  if (c) return c;
+  const rs = await env.RISK_DB.prepare("SELECT k,v FROM app_config WHERE k IN ('kis_app_key','kis_app_secret')").all();
+  const kv = {}; for (const r of rs.results) kv[r.k] = r.v;
+  if (!kv.kis_app_key || !kv.kis_app_secret) return null;
+  const r = await fetch("https://openapi.koreainvestment.com:9443/oauth2/tokenP", { method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ grant_type: "client_credentials", appkey: kv.kis_app_key, appsecret: kv.kis_app_secret }) });
+  const j = await r.json();
+  if (!j.access_token) throw new Error("KIS 토큰 실패: " + (j.error_description || r.status));
+  await env.GAUGE_KV.put("kis-token", j.access_token, { expirationTtl: 3600 * 20 });
+  await env.GAUGE_KV.put("kis-keys", JSON.stringify(kv), { expirationTtl: 3600 * 20 });
+  return j.access_token;
+}
+async function colKisFlows(env, code, token) {
+  const kv = JSON.parse((await env.GAUGE_KV.get("kis-keys")) || "{}");
+  const qs = new URLSearchParams({ FID_COND_MRKT_DIV_CODE: "J", FID_INPUT_ISCD: code });
+  const j = await colGet(`https://openapi.koreainvestment.com:9443/uapi/domestic-stock/v1/quotations/inquire-investor?${qs}`, true, {
+    "content-type": "application/json", authorization: "Bearer " + token, appkey: kv.kis_app_key, appsecret: kv.kis_app_secret, tr_id: "FHKST01010900" });
+  return (j.output || []).slice(0, 5).map(r => ({ date: r.stck_bsop_date, 외국인: colN(r.frgn_ntby_qty), 기관계: colN(r.orgn_ntby_qty), 개인: colN(r.prsn_ntby_qty) }));
+}
+
+// ── 야후 교차검증 (배치) — 시장(.KS/.KQ)을 모르므로 네이버 종가와 ±20% 안에 드는 쪽을 채택 ──
+async function colYahoo(stocks, naverClose) {
+  const res = {};
+  const try1 = async (list, sfx) => {
+    if (!list.length) return;
+    const syms = list.map(s => s.code + sfx).join(",");
+    const j = await colGet(`https://query1.finance.yahoo.com/v7/finance/spark?symbols=${syms}&range=5d&interval=1d`);
+    for (const r of (j.spark && j.spark.result) || []) {
+      const meta = r.response && r.response[0] && r.response[0].meta;
+      const code = r.symbol.slice(0, 6), nc = naverClose[code];
+      if (!meta || !meta.regularMarketPrice) continue;
+      if (nc && Math.abs(meta.regularMarketPrice / nc - 1) > 0.2) continue;
+      res[code] = { close: meta.regularMarketPrice, market: sfx === ".KS" ? "KOSPI" : "KOSDAQ" };
+    }
+  };
+  try { await try1(stocks, ".KS"); } catch (e) {}
+  try { await try1(stocks.filter(s => !res[s.code]), ".KQ"); } catch (e) {}
+  return res;
+}
+
+// ── 단계 실행기 ──
+async function collectStep(env, { reset = false } = {}) {
+  const ymd = colYmd();
+  const key = "collect:run:" + ymd;
+  let st = reset ? null : JSON.parse((await env.GAUGE_KV.get(key)) || "null");
+  const save = () => env.GAUGE_KV.put(key, JSON.stringify(st), { expirationTtl: 3 * 86400 });
+  if (st && st.done) return { ymd, phase: "done", note: "오늘 수집 완료" };
+
+  if (!st) {
+    const universe = await colUniverse(env);
+    st = { ymd, started: new Date().toISOString(), universe, cursor: 0, stocks: {}, errors: [], phase: "stocks" };
+    try {
+      const d = await colDart(env, ymd, universe.map(s => s.code));
+      st.dart = d; if (d.error) st.errors.push(d.error);
+    } catch (e) { st.dart = { items: [], total: 0 }; st.errors.push("dart: " + e.message); }
+    st.earnQueue = (st.dart.items || []).filter(i => colReprt(i.title)).map(i => i.rcept_no);
+    await save();
+    return { ymd, phase: "init", universe: universe.length, disclosures: (st.dart.items || []).length };
+  }
+
+  if (st.cursor < st.universe.length) {
+    const chunk = st.universe.slice(st.cursor, st.cursor + COL_CHUNK);
+    const cs = { kiwoomOff: st.kiwoomOff || null };
+    for (const s of chunk) st.stocks[s.code] = await colStock(env, s, cs);
+    if (cs.kiwoomOff && !st.kiwoomOff) { st.kiwoomOff = cs.kiwoomOff; st.errors.push("키움 수급 중단: " + cs.kiwoomOff); }
+    try {
+      const kt = await colKisToken(env);
+      if (kt) for (const s of chunk) {
+        try { const f = await colKisFlows(env, s.code, kt); if (f.length) st.stocks[s.code].flows_kis = f; } catch (e) { st.stocks[s.code].errors.push("kis: " + e.message); }
+      }
+    } catch (e) { if (!st.kisErr) { st.kisErr = e.message; st.errors.push(e.message); } }
+    const y = await colYahoo(chunk, Object.fromEntries(chunk.map(s => [s.code, st.stocks[s.code].close])));
+    for (const s of chunk) {
+      const o = st.stocks[s.code], yy = y[s.code];
+      if (yy) { o.market = yy.market; o.yahoo_close = yy.close;
+        o.price_check = o.close ? (Math.abs(yy.close / o.close - 1) < 0.005 ? "일치" : "불일치") : "네이버 없음"; }
+    }
+    st.cursor += chunk.length;
+    await save();
+    return { ymd, phase: "stocks", done: st.cursor, total: st.universe.length };
+  }
+
+  if (st.earnQueue && st.earnQueue.length) {
+    st.earnings = st.earnings || [];
+    const batch = st.earnQueue.splice(0, 15);
+    for (const rno of batch) {
+      const it = st.dart.items.find(i => i.rcept_no === rno);
+      try { const e = await colEarnings(env, it); if (e) st.earnings.push(e); } catch (e) { st.errors.push("earnings: " + e.message); }
+    }
+    await save();
+    return { ymd, phase: "earnings", left: st.earnQueue.length };
+  }
+
+  const result = await colFinalize(env, st);
+  st.done = true; st.finished = new Date().toISOString();
+  await save();
+  return { ymd, phase: "final", ...result };
+}
+
+async function colFinalize(env, st) {
+  // 논거 보드 목표가·손절가 거리
+  let tb = null;
+  try { tb = JSON.parse((await env.GAUGE_KV.get("board:thesis-board")) || "null"); } catch (e) {}
+  if (!tb) { try { const a = await env.ASSETS.fetch(new Request("https://seed/data/thesis-board.json")); tb = a.ok ? await a.json() : null; } catch (e) {} }
+  const alerts = [];
+  for (const t of (tb && tb.stocks) || []) {
+    const o = st.stocks[t.code]; if (!o || !o.close) continue;
+    o.thesis = { status: t.status, target: t.target, stop: t.stop,
+      to_target_pct: t.target ? colPct(t.target, o.close) : null, to_stop_pct: t.stop ? colPct(o.close, t.stop) : null };
+    if (t.stop && o.close <= t.stop) alerts.push(`🛑 ${o.name} 종가 ${o.close.toLocaleString()} ≤ 손절가 ${t.stop.toLocaleString()}`);
+    else if (t.stop && o.thesis.to_stop_pct < 3) alerts.push(`⚠️ ${o.name} 손절가까지 ${o.thesis.to_stop_pct}%`);
+    if (t.target && o.close >= t.target) alerts.push(`🎯 ${o.name} 목표가 ${t.target.toLocaleString()} 도달`);
+  }
+  for (const d of (st.dart && st.dart.items) || []) { const o = st.stocks[d.code]; if (o) (o.disclosures = o.disclosures || []).push(d); }
+
+  const data = { ymd: st.ymd, updated: new Date().toISOString(), started: st.started,
+    sources: ["네이버 증권(일봉·통합·수급)", "키움 REST(투자자별 수급)", "야후 파이낸스(종가 교차검증)", "DART(공시·정기보고서 실적)"]
+      .concat(st.kisErr === undefined && Object.values(st.stocks).some(o => o.flows_kis) ? ["KIS(투자자 수급)"] : []),
+    universe: st.universe.length, dart_total: (st.dart && st.dart.total) || 0,
+    disclosures: (st.dart && st.dart.items) || [], earnings: st.earnings || [], alerts,
+    stocks: st.universe.map(s => st.stocks[s.code]).filter(Boolean), errors: st.errors };
+  const text = JSON.stringify(data);
+  await env.GAUGE_KV.put("collect:latest", text);
+  await env.GAUGE_KV.put("collect:day:" + st.ymd, text, { expirationTtl: 120 * 86400 });
+  const idx = JSON.parse((await env.GAUGE_KV.get("collect:index")) || "[]").filter(d => d !== st.ymd);
+  idx.unshift(st.ymd);
+  await env.GAUGE_KV.put("collect:index", JSON.stringify(idx.slice(0, 90)));
+
+  // ti-brain 적재 (종가·5일 수급 스냅샷 + 위험 공시 출처)
+  let brain = 0;
+  try {
+    const ents = await env.BRAIN_DB.prepare("SELECT id,ticker FROM entities WHERE kind='stock'").all();
+    const idOf = {}; for (const e of ents.results) idOf[e.ticker] = e.id;
+    const asof = `${st.ymd.slice(0, 4)}-${st.ymd.slice(4, 6)}-${st.ymd.slice(6)}`;
+    const stmts = [];
+    const snap = (eid, code, metric, value, label) => stmts.push(env.BRAIN_DB.prepare(
+      "INSERT OR REPLACE INTO snapshots(entity_id,scope,subject,metric,value,label,asof_date,skill) VALUES(?,?,?,?,?,?,?,?)")
+      .bind(eid, "stock", code, metric, value, label, asof, "server-collect"));
+    for (const o of data.stocks) {
+      const eid = idOf[o.code]; if (!eid || o.close == null) continue;
+      snap(eid, o.code, "close", o.close, o.name);
+      if (o.flows && o.flows.sum5) {
+        if (o.flows.sum5.외국인 != null) snap(eid, o.code, "flow5_foreign", o.flows.sum5.외국인, o.flows.source);
+        if (o.flows.sum5.기관계 != null) snap(eid, o.code, "flow5_inst", o.flows.sum5.기관계, o.flows.source);
+      }
+    }
+    for (const d of data.disclosures.filter(x => x.flags.length)) {
+      const eid = idOf[d.code] || null;
+      stmts.push(env.BRAIN_DB.prepare(
+        "INSERT INTO sources(ref_type,entity_id,kind,title,url,quote,published_at) SELECT 'disclosure',?,'dart',?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM sources WHERE url=?)")
+        .bind(eid, `${d.name} — ${d.title}`, d.url, d.flags.join(", "), asof, d.url));
+    }
+    for (let i = 0; i < stmts.length; i += 50) await env.BRAIN_DB.batch(stmts.slice(i, i + 50));
+    brain = stmts.length;
+  } catch (e) { data.errors.push("ti-brain: " + e.message); }
+
+  // 텔레그램 요약
+  const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const lines = [`📡 <b>서버 자동 수집</b> ${st.ymd.slice(4, 6)}/${st.ymd.slice(6)} — ${data.stocks.length}종목`];
+  if (alerts.length) lines.push("", "<b>논거 보드 가격</b>", ...alerts.map(esc));
+  const flagged = data.disclosures.filter(d => d.flags.length);
+  if (flagged.length) lines.push("", "<b>주요 공시</b>", ...flagged.slice(0, 12).map(d => `${d.risky ? "🔴" : "•"} ${esc(d.name)} — ${esc(d.title)} [${esc(d.flags.join("·"))}]`));
+  for (const e of data.earnings) {
+    const f = (x) => x && x.cur != null ? `${Math.round(x.cur / 1e8).toLocaleString()}억${x.yoy != null ? ` (YoY ${x.yoy > 0 ? "+" : ""}${x.yoy}%)` : ""}` : "—";
+    lines.push(`📊 ${esc(e.name)} ${esc(e.period)}: 매출 ${f(e.revenue)} · 영업이익 ${f(e.op)}`);
+  }
+  if (!alerts.length && !flagged.length && !data.earnings.length) lines.push("특이 공시·가격 경보 없음");
+  lines.push("", "https://trend-insight-site.sungsangkyung77.workers.dev/collect.html");
+  let tg = false;
+  try { tg = await slTelegram(env, lines.join("\n")); } catch (e) {}
+  return { stocks: data.stocks.length, disclosures: data.disclosures.length, earnings: data.earnings.length, alerts: alerts.length, brain, telegram: tg };
+}
+
+// ── API ──
+async function handleCollect(req, url, env, ctx) {
+  const p = url.pathname.slice("/api/collect/".length).replace(/\/+$/, "");
+  const J = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: JSON_HEADERS });
+  try {
+    if (p === "run" && req.method === "POST") {
+      if (!(await boardAuth(req, env))) return J({ ok: false, error: "인증 실패" }, 401);
+      if (url.searchParams.has("clear")) {   // 오늘 진행 상태 삭제 → 다음 크론이 처음부터
+        await env.GAUGE_KV.delete("collect:run:" + colYmd());
+        return J({ ok: true, cleared: colYmd() });
+      }
+      const r = await collectStep(env, { reset: url.searchParams.has("reset") });
+      return J({ ok: true, ...r });
+    }
+    const m = await authMember(req, env);
+    if (!m) return J({ ok: false, error: "로그인이 필요합니다" }, 401);
+    let owner = false;
+    try { const o = await env.RISK_DB.prepare("SELECT value FROM secrets WHERE key='owner_email'").first();
+      owner = !!(o && o.value && m.email && o.value.toLowerCase() === String(m.email).toLowerCase()); } catch (e) {}
+    const filt = (d) => {   // 보유 종목은 운영자에게만 노출
+      if (owner || !d) return d;
+      const stocks = d.stocks.filter(s => s.src.some(x => x !== "hold")).map(s => ({ ...s, src: s.src.filter(x => x !== "hold") }));
+      const keep = new Set(stocks.map(s => s.code));
+      return { ...d, stocks, disclosures: d.disclosures.filter(x => keep.has(x.code)), earnings: d.earnings.filter(x => keep.has(x.code)), errors: [] };
+    };
+    if (p === "latest") {
+      const t = await env.GAUGE_KV.get("collect:latest");
+      if (!t) return J({ ok: false, error: "아직 수집 결과가 없습니다" }, 404);
+      return J({ ok: true, owner, index: JSON.parse((await env.GAUGE_KV.get("collect:index")) || "[]"), data: filt(JSON.parse(t)) });
+    }
+    if (p.startsWith("day/")) {
+      const d = p.slice(4).replace(/\D/g, "");
+      const t = await env.GAUGE_KV.get("collect:day:" + d);
+      if (!t) return J({ ok: false, error: "해당 날짜 기록 없음" }, 404);
+      return J({ ok: true, owner, data: filt(JSON.parse(t)) });
+    }
+    if (p === "status") {
+      const st = JSON.parse((await env.GAUGE_KV.get("collect:run:" + colYmd())) || "null");
+      return J({ ok: true, today: st ? { started: st.started, cursor: st.cursor, total: st.universe.length,
+        done: !!st.done, finished: st.finished || null, errors: owner ? st.errors : st.errors.length } : null });
+    }
+    return J({ ok: false, error: "unknown endpoint" }, 404);
+  } catch (e) { return J({ ok: false, error: String(e && e.message || e) }, 500); }
 }
