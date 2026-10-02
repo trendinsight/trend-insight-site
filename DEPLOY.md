@@ -45,3 +45,17 @@
 `character-insight/`, `family-album/`, `cat-meow/` 는 각자 별도 Worker이며
 자체 `wrangler.jsonc` 를 갖고 있다. 루트 `.assetsignore` 에 등록되어 있으니 건드리지 말 것.
 이들도 배포는 마찬가지로 main 커밋으로만 한다.
+
+
+## 보드 데이터 동적 레이어 (2026-10-02~)
+
+보드형 페이지의 데이터(`data/{board}.json`)는 **재배포 없이** API로 갱신할 수 있다.
+
+- 게시: `python tools/ti_board.py push thesis-board board.json --skill investment-thesis`
+  (인증 = config.json의 `git_token`. 클라우드 세션처럼 GitHub가 막힌 곳에서도 동작)
+- 조회: `GET /data/{board}.json` → KV 게시본이 있으면 그것(`x-board-source: kv`), 없으면 저장소 정적 파일
+- 되돌리기: `ti_board.py rollback {board}` (직전 본) / `ti_board.py reset {board}` (저장소 정적 파일로)
+- 목록·이력: `GET /api/board/` , D1 `ti-brain.board_log`
+- **섞어 써도 안전**: KV 게시 뒤에 git 커밋으로 정적 파일이 바뀌면 정적 쪽이 더 최신으로 판정되어
+  자동으로 정적을 서빙한다(KV 본은 `:prev`로 보관). 항상 "마지막에 올린 것"이 보인다.
+- 페이지 HTML 자체를 바꿀 때는 여전히 git 커밋(위 원칙) 경로를 쓴다.
