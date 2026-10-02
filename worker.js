@@ -2638,6 +2638,18 @@ export default {
       }
     }
 
+    // 보드 데이터 동적 레이어 — API 게시본(KV)이 있으면 재배포 없이 즉시 서빙
+    if (url.pathname.startsWith("/api/board/") || url.pathname === "/api/board") {
+      return handleBoard(req, url, env, ctx);
+    }
+    {
+      const bm = url.pathname.match(/^\/data\/([a-z0-9][a-z0-9-]{0,59})\.json$/);
+      if (bm && (req.method === "GET" || req.method === "HEAD")) {
+        const r = await boardServe(req, url, env, ctx, bm[1]).catch(() => null);
+        if (r) return r;
+      }
+    }
+
     if (url.pathname.startsWith("/api/receipts/")) {
       return handleReceipts(req, url, env, ctx);
     }
@@ -4270,5 +4282,171 @@ async function handleSkillrun(req, url, env, ctx) {
     return new Response(JSON.stringify({ ok: false, error: "unknown endpoint" }), { status: 404, headers: JSON_HEADERS });
   } catch (e) {
     return new Response(JSON.stringify({ ok: false, error: String(e) }), { status: 500, headers: JSON_HEADERS });
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// 보드 데이터 동적 레이어 (2026-10-02)
+//  - 스킬이 POST /api/board/{name} 으로 JSON을 올리면 KV(board:{name})에 저장되고,
+//    /data/{name}.json 요청은 재배포 없이 즉시 그 최신본을 받는다.
+//  - 저장소 정적 파일(data/{name}.json)은 폴백이다. push 시점의 정적 파일 해시를 기록해 두고,
+//    그 뒤 git 커밋으로 정적 파일이 바뀌면(해시 불일치) 정적 쪽이 더 최신이므로 정적을 준다.
+//    → 기존 git 게시 방식과 API 게시 방식이 섞여도 항상 "마지막에 올린 것"이 보인다.
+//  - 인증: Authorization: Bearer <git_token> (저장소 push 권한을 GitHub에 1회 확인 후 1시간 캐시)
+// ════════════════════════════════════════════════════════════════════
+const BOARD_NAME_RE = /^[a-z0-9][a-z0-9-]{0,59}$/;
+const BOARD_MAX_BYTES = 20 * 1024 * 1024;
+const BOARD_REPO = "trendinsight/trend-insight-site";
+const _boardShaCache = new Map(); // etag → sha (isolate 단위 캐시)
+
+async function boardShaBuf(buf) {
+  const d = await crypto.subtle.digest("SHA-256", buf);
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function boardStaticSha(env, origin, name) {
+  try {
+    const r = await env.ASSETS.fetch(new Request(origin + "/data/" + name + ".json"));
+    if (r.status !== 200) return null;
+    const et = r.headers.get("etag");
+    if (et && _boardShaCache.has(et)) { r.body && r.body.cancel(); return _boardShaCache.get(et); }
+    const sha = await boardShaBuf(await r.arrayBuffer());
+    if (et) _boardShaCache.set(et, sha);
+    return sha;
+  } catch (e) { return null; }
+}
+
+async function boardLog(env, name, action, extra) {
+  try {
+    await env.BRAIN_DB.prepare(
+      "INSERT INTO board_log(board,action,bytes,sha,source,note,at) VALUES(?,?,?,?,?,?,?)"
+    ).bind(name, action, extra.bytes ?? null, extra.sha ?? null, extra.source ?? null,
+      extra.note ?? null, new Date().toISOString()).run();
+  } catch (e) { /* 로그 실패는 게시 실패가 아니다 */ }
+}
+
+// KV 최신본을 내려놓고 정적 파일로 되돌린다 (KV 본문은 :prev 로 보관 → rollback 가능)
+async function boardRetire(env, name, reason) {
+  const cur = await env.GAUGE_KV.get("board:" + name);
+  if (cur != null) await env.GAUGE_KV.put("board:" + name + ":prev", cur);
+  await env.GAUGE_KV.delete("board:" + name);
+  await env.GAUGE_KV.delete("boardmeta:" + name);
+  await boardLog(env, name, "retire", { note: reason });
+}
+
+// /data/{name}.json — KV 최신본이 유효하면 Response, 아니면 null(정적 파일로 진행)
+async function boardServe(req, url, env, ctx, name) {
+  const meta = await env.GAUGE_KV.get("boardmeta:" + name, "json");
+  if (!meta) return null;
+  const cur = await boardStaticSha(env, url.origin, name);
+  if ((cur || null) !== (meta.static_sha || null)) {
+    ctx.waitUntil(boardRetire(env, name, "static-newer").catch(() => {}));
+    return null;
+  }
+  const body = await env.GAUGE_KV.get("board:" + name);
+  if (body == null) return null;
+  return new Response(body, {
+    headers: { ...JSON_HEADERS, "x-board-source": "kv", "x-board-updated": meta.updated_at || "" },
+  });
+}
+
+async function boardAuth(req, env) {
+  const tok = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (tok.length < 20) return false;
+  const th = await rkSha256(tok);
+  if (await env.GAUGE_KV.get("boardauth:" + th)) return true;
+  try {
+    const r = await fetch("https://api.github.com/repos/" + BOARD_REPO, {
+      headers: { authorization: "Bearer " + tok, accept: "application/vnd.github+json",
+        "user-agent": "trend-insight-worker", "x-github-api-version": "2022-11-28" },
+    });
+    if (!r.ok) return false;
+    const j = await r.json();
+    if (j && j.permissions && j.permissions.push) {
+      await env.GAUGE_KV.put("boardauth:" + th, "1", { expirationTtl: 3600 });
+      return true;
+    }
+  } catch (e) { /* GitHub 확인 실패 = 거부 */ }
+  return false;
+}
+
+function boardJson(status, obj) {
+  return new Response(JSON.stringify(obj), { status, headers: JSON_HEADERS });
+}
+
+// /api/board/                      GET  : KV에 올라간 보드 목록(메타)
+// /api/board/{name}                GET  : 현재 서빙 중인 본문 (x-board-source: kv|static)
+// /api/board/{name}/meta           GET  : 메타 (갱신 시각·크기·출처)
+// /api/board/{name}                POST/PUT (인증) : JSON 본문 전체 교체
+// /api/board/{name}/rollback       POST (인증) : 직전 본으로 되돌림
+// /api/board/{name}                DELETE (인증) : KV 본 내리고 저장소 정적 파일로 복귀
+async function handleBoard(req, url, env, ctx) {
+  const parts = url.pathname.slice("/api/board/".length).split("/").filter(Boolean);
+  const name = parts[0] || "", op = parts[1] || "";
+  try {
+    if (!name) {
+      const lst = await env.GAUGE_KV.list({ prefix: "boardmeta:" });
+      const boards = [];
+      for (const k of lst.keys) {
+        const m = await env.GAUGE_KV.get(k.name, "json");
+        if (m) boards.push(m);
+      }
+      return boardJson(200, { ok: true, boards });
+    }
+    if (!BOARD_NAME_RE.test(name)) return boardJson(400, { ok: false, error: "보드 이름 형식 오류 (영문 소문자·숫자·하이픈)" });
+
+    if (req.method === "GET" || req.method === "HEAD") {
+      if (op === "meta") {
+        const m = await env.GAUGE_KV.get("boardmeta:" + name, "json");
+        return boardJson(200, { ok: true, source: m ? "kv" : "static", meta: m });
+      }
+      const kv = await boardServe(req, url, env, ctx, name);
+      if (kv) return kv;
+      const a = await env.ASSETS.fetch(new Request(url.origin + "/data/" + name + ".json"));
+      if (a.status !== 200) return boardJson(404, { ok: false, error: "보드 데이터 없음: " + name });
+      return new Response(a.body, { headers: { ...JSON_HEADERS, "x-board-source": "static" } });
+    }
+
+    if (!(await boardAuth(req, env))) return boardJson(401, { ok: false, error: "인증 실패 — Authorization: Bearer <git_token> 필요" });
+    const source = (req.headers.get("x-board-source-skill") || "").slice(0, 60) || null;
+
+    if (req.method === "DELETE" || op === "reset") {
+      await boardRetire(env, name, "reset" + (source ? ":" + source : ""));
+      return boardJson(200, { ok: true, name, source: "static" });
+    }
+
+    if (op === "rollback") {
+      const prev = await env.GAUGE_KV.get("board:" + name + ":prev");
+      if (prev == null) return boardJson(404, { ok: false, error: "되돌릴 직전 본이 없습니다" });
+      const cur = await env.GAUGE_KV.get("board:" + name);
+      const buf = new TextEncoder().encode(prev);
+      const meta = { name, bytes: buf.byteLength, sha: await boardShaBuf(buf), updated_at: new Date().toISOString(),
+        source: "rollback", static_sha: await boardStaticSha(env, url.origin, name) };
+      await env.GAUGE_KV.put("board:" + name, prev);
+      if (cur != null) await env.GAUGE_KV.put("board:" + name + ":prev", cur);
+      await env.GAUGE_KV.put("boardmeta:" + name, JSON.stringify(meta));
+      await boardLog(env, name, "rollback", meta);
+      return boardJson(200, { ok: true, ...meta });
+    }
+
+    if ((req.method === "POST" || req.method === "PUT") && !op) {
+      const buf = await req.arrayBuffer();
+      if (buf.byteLength > BOARD_MAX_BYTES) return boardJson(413, { ok: false, error: "20MB 초과" });
+      const text = new TextDecoder("utf-8").decode(buf);
+      let parsed;
+      try { parsed = JSON.parse(text); } catch (e) { return boardJson(400, { ok: false, error: "JSON 파싱 실패: " + e.message }); }
+      if (parsed === null || typeof parsed !== "object") return boardJson(400, { ok: false, error: "JSON 객체/배열만 허용" });
+      const cur = await env.GAUGE_KV.get("board:" + name);
+      if (cur != null) await env.GAUGE_KV.put("board:" + name + ":prev", cur);
+      const meta = { name, bytes: buf.byteLength, sha: await boardShaBuf(buf), updated_at: new Date().toISOString(),
+        source, static_sha: await boardStaticSha(env, url.origin, name) };
+      await env.GAUGE_KV.put("board:" + name, text);
+      await env.GAUGE_KV.put("boardmeta:" + name, JSON.stringify(meta));
+      await boardLog(env, name, "push", meta);
+      return boardJson(200, { ok: true, ...meta, url: url.origin + "/data/" + name + ".json" });
+    }
+    return boardJson(405, { ok: false, error: "method not allowed" });
+  } catch (e) {
+    return boardJson(500, { ok: false, error: String(e && e.message || e) });
   }
 }
