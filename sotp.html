@@ -184,6 +184,7 @@ dialog textarea{width:100%;height:44vh;background:var(--bg);color:var(--ink);bor
   </div>
 </dialog>
 
+<script src="/ti-widgets.js?v=2026100201"></script>
 <script>
 const API='https://trend-insight-site.sungsangkyung77.workers.dev';
 const EOK=1e8, JO=1e12;
@@ -732,6 +733,8 @@ function save(){
   try{localStorage.setItem(LSKEY(ST.code),JSON.stringify(
     {type:ST.type,netDebt:ST.netDebt,netDebtBasis:ST.netDebtBasis,treasury:ST.treasury,
      parts:ST.parts,discMode:ST.discMode,discManual:ST.discManual}));}catch(e){}
+  // 계정 서버 저장(로그인 시) — ti-widgets.js의 TISotpSync가 1.5초 디바운스로 업로드
+  if(window.TISotpSync&&ST.code)TISotpSync.push(ST.code,ST.name);
 }
 function restore(code){
   try{const raw=localStorage.getItem(LSKEY(code));if(!raw)return false;
@@ -767,6 +770,8 @@ async function load(code,name,market){
   render();
   const q=await fetchQuote(code);
   ST.name=q.name||ST.name;ST.price=q.price||0;ST.mcap=q.mcap||0;ST.shares=q.shares||0;
+  // 서버(계정) 저장본이 이 기기보다 최신이면 먼저 내려받아 localStorage에 반영한 뒤 복원
+  if(window.TISotpSync)await TISotpSync.pull(code);
   if(!restore(code))await tryBoard(code);
   for(const p of ST.parts){if(p.method==='mktcap'&&p.code){const s=await fetchQuote(p.code);p._mktcap=s.mcap||0;}}
   reindex();

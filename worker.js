@@ -2640,6 +2640,11 @@ export default {
       }
     }
 
+    // 3단계: 매물대 서버 계산 · 종목 즉석 조회 · SOTP 부품표 저장 · 메모/댓글
+    if (url.pathname.startsWith("/api/vp/") || url.pathname.startsWith("/api/stock/") || url.pathname === "/api/user/sotp" ||
+        url.pathname.startsWith("/api/user/sotp/") || url.pathname === "/api/comments" || url.pathname.startsWith("/api/comments/")) {
+      return handleStage3(req, url, env, ctx);
+    }
     if (url.pathname.startsWith("/api/collect/")) {
       return handleCollect(req, url, env, ctx);
     }
@@ -2707,6 +2712,8 @@ export default {
           if (isPost || isPdfView) el.append(`<script defer src="/pdf-viewer.js?v=2026080802"></script>`, { html: true });
           // 홈을 제외한 모든 페이지에 공용 플로팅 내비 주입
           if (!isHome) el.append(`<script defer src="/site-nav.js?v=2026092101"></script>`, { html: true });
+          // 3단계 공용 위젯(종목 즉석 조회 패널·메모/댓글·SOTP 동기화) — 홈·로그인 화면 제외
+          if (!isHome && !/^\/(login|signup|terms)(\.html)?$/.test(url.pathname)) el.append(`<script defer src="/ti-widgets.js?v=2026100201"></script>`, { html: true });
         }
       }).transform(assetRes);
     }
@@ -4714,7 +4721,14 @@ async function collectStep(env, { reset = false } = {}) {
   if (st.cursor < st.universe.length) {
     const chunk = st.universe.slice(st.cursor, st.cursor + COL_CHUNK);
     const cs = { kiwoomOff: st.kiwoomOff || null };
-    for (const s of chunk) st.stocks[s.code] = await colStock(env, s, cs);
+    for (const s of chunk) {
+      st.stocks[s.code] = await colStock(env, s, cs);
+      try {   // 매물대 서버 계산(최근 750봉) 판정 요약
+        const v = await vpServer(env, s.code, 750);
+        if (!v.error) st.stocks[s.code].vp = { verdict: v.verdict, label: v.verdict_label, pct_below: v.pct_below,
+          r1: v.levels.r1, s1: v.levels.s1, reliability: v.reliability };
+      } catch (e) { st.stocks[s.code].errors.push("vp: " + e.message); }
+    }
     if (cs.kiwoomOff && !st.kiwoomOff) { st.kiwoomOff = cs.kiwoomOff; st.errors.push("키움 수급 중단: " + cs.kiwoomOff); }
     try {
       const kt = await colKisToken(env);
@@ -4867,4 +4881,516 @@ async function handleCollect(req, url, env, ctx) {
     }
     return J({ ok: false, error: "unknown endpoint" }, 404);
   } catch (e) { return J({ ok: false, error: String(e && e.message || e) }, 500); }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// 3단계 (2026-10-02) — 서버 계산·조회 API + 회원 기능
+//  · /api/vp/{code}        매물대 서버 계산(볼륨 프로파일) — volume-profile.html 계산 규격을 그대로 이식, KV 캐시
+//  · /api/stock/{code}     종목 즉석 조회 — 시세·밸류·컨센서스·수급·매물대·최근 공시·논거·서버수집 기록, KV 캐시
+//  · /api/user/sotp        SOTP 부품표 계정별 서버 저장(기기 간 동기화)
+//  · /api/comments         종목·보드·페이지 메모/댓글 (회원), 운영자 텔레그램 알림
+// ════════════════════════════════════════════════════════════════════
+
+// 매물대 계산 엔진 — volume-profile.html의 '계산 규격' 블록을 수정 없이 옮겨 왔다.
+// 규격을 바꿀 땐 volume-profile.html · scripts/volume_profile.py · 이 블록을 함께 고친다.
+const VPCALC = (() => {
+const fmt = n => n == null || isNaN(n) ? "—" : Number(n).toLocaleString("ko-KR", { maximumFractionDigits: 0 });
+const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+/* ═══ 계산 규격 — scripts/volume_profile.py 와 동일하게 유지할 것 ═══ */
+const ZONE_CUT=0.60, ZONE_MAX_HALF=5, BIN_STEP=0.012, BIN_MIN=40, BIN_MAX=140;
+const VA_PCT=0.70, SCORE_MIN=50, FAR_MULT=2.5;
+const LONG_DAYS=800, DEF_LOOKBACK=750;   // /api/cockpit/ohlcv 요청 봉 수 · 장기 구간 기본값
+const VK={DEEP_BOTTOM:['바닥권','--sup'],BOTTOM:['바닥 회복권','--sup'],
+  BOTTOM_BREAKOUT:['바닥 탈출','--core'],MID:['중립','--minor'],
+  UPPER:['상단권','--warn'],TOP:['꼭지권','--res'],TOP_DISTRIBUTION:['꼭지 이탈','--res']};
+
+function autoBins(lo,hi){
+  if(!(lo>0)||!(hi>lo))return BIN_MIN;
+  return clamp(Math.round(Math.log(hi/lo)/Math.log(1+BIN_STEP)),BIN_MIN,BIN_MAX);
+}
+function buildProfile(h,l,c,v,bins){
+  const lo=Math.min(...l),hi=Math.max(...h);
+  if(!(hi>lo)||!(lo>0))return null;
+  const useLog=(hi/lo)>=1.8;
+  const f=useLog?Math.log:(x=>x), g=useLog?Math.exp:(x=>x);
+  const flo=f(lo),fhi=f(hi),w=(fhi-flo)/bins;
+  const fe=[],edges=[],fc=[],centers=[];
+  for(let i=0;i<=bins;i++){fe.push(flo+w*i);edges.push(g(flo+w*i));}
+  for(let i=0;i<bins;i++){fc.push((fe[i]+fe[i+1])/2);centers.push(g((fe[i]+fe[i+1])/2));}
+  const a=new Array(bins).fill(0), days=new Array(bins).fill(0), b=new Array(bins).fill(0);
+  for(let j=0;j<c.length;j++){
+    let vol=(v&&v[j])||0; if(!(vol>0))vol=1;
+    const bl=f(l[j]),bh=f(h[j]);
+    if(!(bh>bl)){const i=clamp(Math.floor((bl-flo)/w),0,bins-1);a[i]+=vol;days[i]++;continue;}
+    const i0=clamp(Math.floor((bl-flo)/w),0,bins-1),i1=clamp(Math.floor((bh-flo)/w),0,bins-1);
+    const span=bh-bl;
+    for(let i=i0;i<=i1;i++){
+      const ov=Math.min(bh,fe[i+1])-Math.max(bl,fe[i]);
+      if(ov>0){a[i]+=vol*(ov/span);days[i]++;}
+    }
+  }
+  const bw=Math.max(w*1.2,(fhi-flo)*0.018), inv=1/(2*bw*bw);
+  for(let j=0;j<c.length;j++){
+    const vol=((v&&v[j])||0)||1;
+    const tp=f((h[j]+l[j]+c[j])/3);
+    const i0=clamp(Math.floor((tp-3*bw-flo)/w),0,bins-1),i1=clamp(Math.floor((tp+3*bw-flo)/w),0,bins-1);
+    for(let i=i0;i<=i1;i++){const d=fc[i]-tp;b[i]+=vol*Math.exp(-d*d*inv);}
+  }
+  const sa=a.reduce((x,y)=>x+y,0)||1, sb=b.reduce((x,y)=>x+y,0)||1;
+  return {edges,centers,a:a.map(x=>x/sa),b:b.map(x=>x/sb),days,lo,hi,n:c.length,log:useLog,bins};
+}
+const smooth3=x=>x.map((_,i)=>(x[Math.max(0,i-1)]+x[i]+x[Math.min(x.length-1,i+1)])/3);
+function peaksOf(arr,minRatio=1.10){
+  const s=smooth3(arr), m=(s.reduce((x,y)=>x+y,0)/s.length)||1e-12, out=[];
+  for(let i=0;i<s.length;i++){
+    const L=i>0?s[i-1]:-1, R=i<s.length-1?s[i+1]:-1;
+    if(s[i]>=L&&s[i]>=R&&s[i]>=m*minRatio)out.push(i);
+  }
+  const mg=[];
+  for(const i of out){
+    if(mg.length&&i-mg[mg.length-1]<=2){if(arr[i]>arr[mg[mg.length-1]])mg[mg.length-1]=i;}
+    else mg.push(i);
+  }
+  return mg;
+}
+function valleysOf(arr,maxRatio=0.55){
+  const s=smooth3(arr), m=(s.reduce((x,y)=>x+y,0)/s.length)||1e-12, out=[];
+  for(let i=1;i<s.length-1;i++)if(s[i]<=s[i-1]&&s[i]<=s[i+1]&&s[i]<=m*maxRatio)out.push(i);
+  return out;
+}
+function valueArea(a,poc,pct=VA_PCT){
+  const total=a.reduce((x,y)=>x+y,0)||1;
+  let lo=poc,hi=poc,acc=a[poc];
+  while(acc<total*pct&&(lo>0||hi<a.length-1)){
+    const up=hi<a.length-1?a[hi+1]:-1, dn=lo>0?a[lo-1]:-1;
+    if(up>=dn){hi++;acc+=a[hi];}else{lo--;acc+=a[lo];}
+  }
+  return [lo,hi];
+}
+function zoneFromPeak(prof,arr,pi){
+  const cut=arr[pi]*ZONE_CUT; let lo=pi,hi=pi;
+  while(lo>0&&arr[lo-1]>=cut&&pi-lo<ZONE_MAX_HALF)lo--;
+  while(hi<arr.length-1&&arr[hi+1]>=cut&&hi-pi<ZONE_MAX_HALF)hi++;
+  let vol=0,ds=0;
+  for(let i=lo;i<=hi;i++){vol+=arr[i];ds+=prof.days[i];}
+  return {low:prof.edges[lo],high:prof.edges[hi+1],peak:prof.centers[pi],
+    vol_share:vol,days_ratio:Math.min(1,ds/Math.max(1,prof.n))};
+}
+function zoneHistory(z,c,v){
+  const n=c.length,lo=z.low,hi=z.high;
+  let touches=0,inPrev=false,lastBelow=null,lastAbove=null;
+  for(let j=0;j<n;j++){
+    const ins=c[j]>=lo&&c[j]<=hi;
+    if(ins&&!inPrev)touches++;
+    inPrev=ins;
+    if(c[j]<lo)lastBelow=j;
+    if(c[j]>hi)lastAbove=j;
+  }
+  let vma=null;
+  if(v){const w=v.slice(Math.max(0,n-21),n-1).filter(x=>x);if(w.length)vma=w.reduce((x,y)=>x+y,0)/w.length;}
+  let up=false,dn=false,vc=false,bi=null;
+  if(c[n-1]>hi&&lastBelow!=null&&lastBelow<n-1){up=true;for(let j=lastBelow+1;j<n;j++)if(c[j]>hi){bi=j;break;}}
+  else if(c[n-1]<lo&&lastAbove!=null&&lastAbove<n-1){dn=true;for(let j=lastAbove+1;j<n;j++)if(c[j]<lo){bi=j;break;}}
+  if(bi!=null&&v&&vma)vc=(v[bi]||0)>=vma*1.5;
+  let rev=false;
+  if(up&&bi!=null){
+    for(let j=bi+1;j<n;j++){
+      if(c[j]<=hi){for(let k=j;k<Math.min(n,j+11);k++)if(c[k]>hi){rev=true;break;}break;}
+    }
+  }
+  let fresh=null;
+  if(v){
+    let tot=0,rec=0;
+    for(let j=0;j<n;j++)if(c[j]>=lo&&c[j]<=hi){tot+=v[j]||0;if(j>=n-60)rec+=v[j]||0;}
+    fresh=tot>0?rec/tot:0;
+  }
+  return {touches,broke_up:up,broke_down:dn,vol_confirmed:vc,
+    break_ago:bi!=null?(n-1-bi):null,retest_held:rev,fresh_ratio:fresh};
+}
+function clusterZones(perZones,price,order){
+  const flat=[];
+  for(const p of order)for(const z of (perZones[p]||[]))flat.push(Object.assign({},z,{period:p}));
+  flat.sort((x,y)=>y.vol_share-x.vol_share);
+  const cls=[];
+  for(const z of flat){
+    let placed=false;
+    for(const cl of cls){
+      const ov=Math.min(cl.high,z.high)-Math.max(cl.low,z.low);
+      const span=Math.min(cl.high-cl.low,z.high-z.low);
+      const nlo=Math.min(cl.low,z.low),nhi=Math.max(cl.high,z.high);
+      if(ov>0&&span>0&&ov/span>=0.50&&(nhi-nlo)<=span*1.8){
+        cl.low=nlo;cl.high=nhi;cl.members.push(z);placed=true;break;
+      }
+    }
+    if(!placed)cls.push({low:z.low,high:z.high,members:[z]});
+  }
+  let out=cls.map(cl=>{
+    const ms=cl.members;
+    const periods=order.filter(p=>ms.some(m=>m.period===p));
+    const wsum=ms.reduce((s,m)=>s+m.vol_share,0)||1e-9;
+    const peak=ms.reduce((s,m)=>s+m.peak*m.vol_share,0)/wsum;
+    const vol=Math.max(...ms.map(m=>m.vol_share));
+    const dr=Math.max(...ms.map(m=>m.days_ratio));
+    const conf=ms.some(m=>m.confirmed);
+    const sD=Math.min(1,vol/0.20)*40, sT=Math.min(1,dr/0.35)*20;
+    const sC=conf?20:8, sO={1:5,2:13,3:20}[Math.min(3,periods.length)];
+    const score=Math.round(sD+sT+sC+sO);
+    return {low:cl.low,high:cl.high,peak,score,confirmed:conf,periods,
+      grade:score>=75?'CORE':score>=60?'MAJOR':'MINOR',
+      score_parts:{밀도:+sD.toFixed(1),지속:+sT.toFixed(1),교차검증:sC,기간중첩:sO},
+      vol_share:vol,days_ratio:dr,dist_pct:+((peak/price-1)*100).toFixed(1),
+      role:cl.low>price?'저항':(cl.high<price?'지지':'현재')};
+  });
+  out.sort((x,y)=>y.score-x.score||x.low-y.low);
+  const kept=[];
+  for(const z of out){
+    let dup=false;
+    for(const k of kept){
+      const ov=Math.min(k.high,z.high)-Math.max(k.low,z.low);
+      const span=Math.min(k.high-k.low,z.high-z.low);
+      if(ov>0&&span>0&&ov/span>=0.50){z.periods.forEach(p=>{if(!k.periods.includes(p))k.periods.push(p);});dup=true;break;}
+    }
+    if(!dup)kept.push(z);
+  }
+  return kept;
+}
+function auxInd(c,v){
+  const n=c.length,out={};
+  if(n>15){
+    let g=0,l=0;
+    for(let i=1;i<15;i++){const d=c[i]-c[i-1];g+=Math.max(d,0);l+=Math.max(-d,0);}
+    let ag=g/14,al=l/14;
+    for(let i=15;i<n;i++){const d=c[i]-c[i-1];ag=(ag*13+Math.max(d,0))/14;al=(al*13+Math.max(-d,0))/14;}
+    out.rsi=+(100-100/(1+(al?ag/al:1e9))).toFixed(1);
+  }else out.rsi=null;
+  const ma=k=>n>=k?c.slice(-k).reduce((x,y)=>x+y,0)/k:null;
+  const m20=ma(20);
+  out.ma={ma5:ma(5),ma20:m20,ma60:ma(60),ma120:ma(120),above_ma20:m20?c[n-1]>m20:null};
+  out.obv=null;
+  if(v&&v.length===n&&n>21&&v.some(x=>x)){
+    let o=0,prev=null;const arr=[0];
+    for(let j=1;j<n;j++){o+=c[j]>c[j-1]?(v[j]||0):c[j]<c[j-1]?-(v[j]||0):0;arr.push(o);}
+    out.obv={rising:arr[n-1]>arr[n-21]};
+  }
+  return out;
+}
+function verdictOf(pctBelow,zones){
+  let base,label;
+  if(pctBelow<=15){base='DEEP_BOTTOM';label='바닥권(매물 대부분이 머리 위)';}
+  else if(pctBelow<=35){base='BOTTOM';label='바닥 회복권';}
+  else if(pctBelow<65){base='MID';label='중립(매물대 한가운데)';}
+  else if(pctBelow<85){base='UPPER';label='상단권';}
+  else{base='TOP';label='꼭지권(위쪽 매물 공백)';}
+  const big=zones.filter(z=>z.grade==='CORE'||z.grade==='MAJOR');
+  const up=big.filter(z=>z.history&&z.history.broke_up&&z.history.break_ago!=null&&z.history.break_ago<=20);
+  const dn=big.filter(z=>z.history&&z.history.broke_down&&z.history.break_ago!=null&&z.history.break_ago<=20);
+  if((base==='DEEP_BOTTOM'||base==='BOTTOM')&&up.length){
+    const z=up[0];
+    return ['BOTTOM_BREAKOUT','바닥 탈출 시도',
+      `${fmt(z.low)}~${fmt(z.high)} ${z.grade} 매물대를 ${z.history.vol_confirmed?'거래량 동반 ':''}상향 돌파`
+      +`${z.history.retest_held?' 후 재테스트 지지':''} (${z.history.break_ago}일 전)`];
+  }
+  if((base==='TOP'||base==='UPPER')&&dn.length){
+    const z=dn[0];
+    return ['TOP_DISTRIBUTION','꼭지 이탈(분산) 경계',
+      `${fmt(z.low)}~${fmt(z.high)} ${z.grade} 매물대를 하향 이탈 (${z.history.break_ago}일 전)`];
+  }
+  return [base,label,null];
+}
+function reliabilityOf(verdict,aux){
+  const r=aux.rsi,ma=aux.ma||{},obv=aux.obv;
+  if(verdict==='MID'){
+    const b=[];
+    if(r!=null)b.push('RSI '+r);
+    if(ma.above_ma20!=null)b.push('MA20 '+(ma.above_ma20?'상회':'하회'));
+    if(obv)b.push('OBV '+(obv.rising?'상승':'하락'));
+    return ['해당 없음','0/0','중립 구간은 방향 함의가 없어 일치 여부를 따지지 않는다 ('+b.join(' · ')+')'];
+  }
+  const bull=['DEEP_BOTTOM','BOTTOM','BOTTOM_BREAKOUT'].includes(verdict);
+  let hits=0,checks=0;const det=[];
+  if(r!=null){checks++;const ok=(r>=50)===bull;hits+=ok?1:0;det.push(`RSI ${r}${ok?'✓':'✗'}`);}
+  if(ma.above_ma20!=null){checks++;const ok=ma.above_ma20===bull;hits+=ok?1:0;
+    det.push(`MA20 ${ma.above_ma20?'상회':'하회'}${ok?'✓':'✗'}`);}
+  if(obv){checks++;const ok=obv.rising===bull;hits+=ok?1:0;det.push(`OBV ${obv.rising?'상승':'하락'}${ok?'✓':'✗'}`);}
+  if(!checks)return['판정 불가','0/0',''];
+  const lv=hits===checks?'높음':hits>=checks-1?'보통':'낮음';
+  const note=hits<=checks-2
+    ?('매물대 위치와 추세 지표가 엇갈린다 — '+(bull?'바닥권인데 추세는 아직 하락':'상단·꼭지권인데 추세는 아직 상승(매물 소화 중일 수 있음)'))
+    :'추세 지표가 매물대 판정과 같은 방향';
+  return [lv,`${hits}/${checks}`,`${note} (${det.join(' · ')})`];
+}
+function analyze(d,lookback){
+  const n=d.close.length;
+  if(n<40)return{error:`봉 수 부족(${n}) — 매물대 분석에는 최소 40봉이 필요합니다`};
+  const price=d.close[n-1];
+  // 구간 = 단기 60 · 중기 250 · 장기(룩백, 기본 750). 데이터가 짧으면 있는 것만 쓴다.
+  // 길이가 겹치면(짧은 데이터) 중복 계상되어 '기간 중첩' 점수가 부풀려지므로 제거한다.
+  const LB=Math.min(Math.max(60,lookback),n);          // 슬라이더가 정하는 '가장 긴 구간'
+  const lens=[...new Set([Math.min(60,LB),Math.min(250,LB),LB]
+                .filter(v=>v>=40&&v<=n))].sort((a,b)=>a-b);
+  const NAMES=lens.length>=3?['단기','중기','장기']:lens.length===2?['단기','중기']:['중기'];
+  const defs=lens.map((v,i)=>[NAMES[i],v]);
+  const order=[],perProf={},perZones={},poc={},va={},lvn=[],perPct={};
+  for(const [name,len] of defs){
+    const s=n-len;
+    const H=d.high.slice(s),L=d.low.slice(s),C=d.close.slice(s),V=d.volume?d.volume.slice(s):null;
+    const prof=buildProfile(H,L,C,V,autoBins(Math.min(...L),Math.max(...H)));
+    if(!prof)continue;
+    order.push(name);perProf[name]=prof;
+    const pa=peaksOf(prof.a),pb=peaksOf(prof.b);
+    perZones[name]=pa.map(pi=>{
+      const z=zoneFromPeak(prof,prof.a,pi);
+      z.confirmed=pb.some(qi=>Math.abs(pi-qi)<=2);
+      return z;
+    });
+    let pi=0;for(let i=1;i<prof.a.length;i++)if(prof.a[i]>prof.a[pi])pi=i;
+    poc[name]=prof.centers[pi];
+    const [vlo,vhi]=valueArea(prof.a,pi);
+    va[name]={val:prof.edges[vlo],vah:prof.edges[vhi+1]};
+    let below=0;
+    for(let i=0;i<prof.a.length;i++){
+      const e0=prof.edges[i],e1=prof.edges[i+1];
+      if(e1<=price)below+=prof.a[i];
+      else if(e0<price&&price<e1)below+=prof.a[i]*(price-e0)/(e1-e0);
+    }
+    perPct[name]=+(below*100).toFixed(1);
+    if(name==='중기'||order.length===1)
+      valleysOf(prof.a).forEach(i=>lvn.push({low:prof.edges[i],high:prof.edges[i+1],period:name}));
+  }
+  if(!order.length)return{error:'프로파일 생성 실패 — 가격 변동이 없는 데이터'};
+  // 기간 가중 — 3구간이면 파이썬 스킬과 동일(0.20/0.45/0.35), 2구간이면 0.35/0.65
+  const W=order.length>=3?{단기:0.20,중기:0.45,장기:0.35}
+          :order.length===2?{단기:0.35,중기:0.65}:{중기:1};
+  let pb=0,ws=0;
+  order.forEach(p=>{const w=W[p]||0;pb+=perPct[p]*w;ws+=w;});
+  const pctBelow=+(pb/(ws||1)).toFixed(1);
+  const all=clusterZones(perZones,price,order);
+  const near=all.filter(z=>z.peak>=price/FAR_MULT&&z.peak<=price*FAR_MULT);
+  near.forEach(z=>z.history=zoneHistory(z,d.close,d.volume));
+  const zones=(near.filter(z=>z.score>=SCORE_MIN).slice(0,6)).length
+    ?near.filter(z=>z.score>=SCORE_MIN).slice(0,6):near.slice(0,3);
+  const [verdict,vlabel,vreason]=verdictOf(pctBelow,zones);
+  const aux=auxInd(d.close,d.volume);
+  const [rel,hits,relnote]=reliabilityOf(verdict,aux);
+  const res=near.filter(z=>z.role==='저항').sort((a,b)=>a.low-b.low);
+  const sup=near.filter(z=>z.role==='지지').sort((a,b)=>b.high-a.high);
+  const gapUp=lvn.filter(g=>g.low>price).sort((a,b)=>a.low-b.low);
+  return {price,bars:n,order,perProf,poc,va,perPct,pctBelow,zones,near,
+    verdict,vlabel,vreason,aux,rel,hits,relnote,
+    levels:{r1:res[0]||null,r2:res[1]||null,s1:sup[0]||null,s2:sup[1]||null,gap:gapUp[0]||null},
+    series:{date:d.date,close:d.close}};
+}
+return { analyze, LONG_DAYS, DEF_LOOKBACK, VK };
+})();
+
+// ── 공통 ──
+const S3_SITE = "https://trend-insight-site.sungsangkyung77.workers.dev";
+function s3Json(o, s = 200) { return new Response(JSON.stringify(o), { status: s, headers: JSON_HEADERS }); }
+// 장중(평일 09:00~15:40 KST)은 짧게, 그 외는 길게 캐시
+function s3Ttl(shortSec = 600, longSec = 21600) {
+  const k = new Date(Date.now() + 9 * 3600e3), dow = k.getUTCDay(), hm = k.getUTCHours() * 100 + k.getUTCMinutes();
+  return dow >= 1 && dow <= 5 && hm >= 850 && hm <= 1540 ? shortSec : longSec;
+}
+async function s3Owner(env, m) {
+  if (!m) return false;
+  try {
+    const o = await env.RISK_DB.prepare("SELECT value FROM secrets WHERE key='owner_email'").first();
+    return !!(o && o.value && m.email && o.value.toLowerCase() === String(m.email).toLowerCase());
+  } catch (e) { return false; }
+}
+// 회원별 호출 제한 (KV 10분 버킷) — 외부 시세 원천 보호
+async function s3Limit(env, key, max) {
+  const b = Math.floor(Date.now() / 600e3), k = `rl:${key}:${b}`;
+  const n = parseInt((await env.GAUGE_KV.get(k)) || "0", 10);
+  if (n >= max) return false;
+  await env.GAUGE_KV.put(k, String(n + 1), { expirationTtl: 900 });
+  return true;
+}
+function s3Code(s) { const c = String(s || "").toUpperCase().replace(/[^0-9A-Z]/g, ""); return /^[0-9A-Z]{6}$/.test(c) ? c : null; }
+
+// ── 매물대 서버 계산 ──
+function vpCompact(r, lookback) {
+  const z = x => x ? { low: Math.round(x.low), high: Math.round(x.high), grade: x.grade || null, score: x.score ?? null } : null;
+  return {
+    price: r.price, bars: r.bars, lookback, verdict: r.verdict, verdict_label: r.vlabel, verdict_reason: r.vreason,
+    pct_below: r.pctBelow, period_pct: r.perPct,
+    poc: Object.fromEntries(Object.entries(r.poc).map(([k, v]) => [k, Math.round(v)])),
+    value_area: Object.fromEntries(Object.entries(r.va).map(([k, v]) => [k, { val: Math.round(v.val), vah: Math.round(v.vah) }])),
+    zones: r.zones.map(x => ({ low: Math.round(x.low), high: Math.round(x.high), peak: Math.round(x.peak), grade: x.grade, score: x.score,
+      role: x.role, dist_pct: x.dist_pct, periods: x.periods, confirmed: x.confirmed,
+      vol_share: Math.round(x.vol_share * 1000) / 10, history: x.history || null })),
+    levels: { r1: z(r.levels.r1), r2: z(r.levels.r2), s1: z(r.levels.s1), s2: z(r.levels.s2), gap: z(r.levels.gap) },
+    aux: r.aux, reliability: r.rel, reliability_hits: r.hits, reliability_note: r.relnote,
+  };
+}
+async function vpServer(env, code, lookback = 750, { useCache = true } = {}) {
+  lookback = Math.min(Math.max(parseInt(lookback, 10) || 750, 60), 880);
+  const key = `vp:${code}:${lookback}`;
+  if (useCache) { const c = await env.GAUGE_KV.get(key); if (c) return { ...JSON.parse(c), cached: true }; }
+  const rows = (await ckOHLCV(code, 800)).slice(-800);
+  if (rows.length < 40) return { error: `봉 수 부족(${rows.length})` };
+  const d = { date: rows.map(r => r.date), open: rows.map(r => r.open), high: rows.map(r => r.high),
+    low: rows.map(r => r.low), close: rows.map(r => r.close), volume: rows.map(r => r.volume) };
+  const r = VPCALC.analyze(d, lookback);
+  if (r.error) return { error: r.error };
+  const out = { code, date: rows[rows.length - 1].date, computed_at: new Date().toISOString(), ...vpCompact(r, lookback) };
+  await env.GAUGE_KV.put(key, JSON.stringify(out), { expirationTtl: s3Ttl(900, 43200) });
+  return out;
+}
+
+// ── 종목 즉석 조회 ──
+async function stockLookup(env, code, { fresh = false } = {}) {
+  const key = "stock:" + code;
+  if (!fresh) { const c = await env.GAUGE_KV.get(key); if (c) return { ...JSON.parse(c), cached: true }; }
+  const o = await colStock(env, { code, name: "", src: ["lookup"] }, { kiwoomOff: "서버 IP 미등록(키움)" });
+  delete o.src;
+  const tasks = await Promise.allSettled([
+    colYahoo([{ code }], { [code]: o.close }),
+    vpServer(env, code, 750),
+    (async () => {     // 최근 30일 DART 공시
+      const map = await dartCorpMap(env);
+      const corp = map && map[code];
+      if (!corp) return { items: [], note: "DART 상장사 매핑 없음" };
+      const j = await dartGet(env, "list.json", { corp_code: corp.corp_code, bgn_de: colYmd(Date.now() - 30 * 86400e3), end_de: colYmd(), page_count: "30" });
+      if (j.status === "013") return { items: [] };
+      if (j.status !== "000") return { items: [], note: j.message || j.status };
+      return { items: (j.list || []).map(d => {
+        const flags = COL_FLAG.filter(([re]) => re.test(d.report_nm)).map(([, t]) => t);
+        return { date: d.rcept_dt, title: d.report_nm.trim(), filer: d.flr_nm, flags, risky: flags.some(f => COL_RISKY.has(f)),
+          url: `https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${d.rcept_no}` };
+      }) };
+    })(),
+  ]);
+  const [y, vp, dart] = tasks.map(t => t.status === "fulfilled" ? t.value : { error: String(t.reason && t.reason.message || t.reason) });
+  if (y && y[code]) { o.market = y[code].market; o.yahoo_close = y[code].close;
+    o.price_check = o.close ? (Math.abs(y[code].close / o.close - 1) < 0.005 ? "일치" : "불일치") : "네이버 없음"; }
+  o.vp = vp && !vp.error ? { verdict: vp.verdict, label: vp.verdict_label, reason: vp.verdict_reason, pct_below: vp.pct_below,
+    period_pct: vp.period_pct, levels: vp.levels, reliability: vp.reliability, zones: (vp.zones || []).slice(0, 4) } : { error: vp && vp.error };
+  o.dart = dart;
+  // 논거 보드
+  try {
+    let tb = JSON.parse((await env.GAUGE_KV.get("board:thesis-board")) || "null");
+    if (!tb) { const a = await env.ASSETS.fetch(new Request("https://seed/data/thesis-board.json")); tb = a.ok ? await a.json() : null; }
+    const t = ((tb && tb.stocks) || []).find(s => s.code === code);
+    if (t) o.thesis = { status: t.status, target: t.target, stop: t.stop, idea: t.idea,
+      to_target_pct: t.target && o.close ? colPct(t.target, o.close) : null, to_stop_pct: t.stop && o.close ? colPct(o.close, t.stop) : null };
+  } catch (e) {}
+  o.updated = new Date().toISOString();
+  await env.GAUGE_KV.put(key, JSON.stringify(o), { expirationTtl: s3Ttl(600, 21600) });
+  return o;
+}
+
+// ── SOTP 부품표 서버 저장 ──
+async function handleUserSotp(req, url, env, m) {
+  const code = s3Code(url.pathname.slice("/api/user/sotp/".length));
+  if (!code) {
+    if (req.method !== "GET") return s3Json({ ok: false, error: "종목코드 필요" }, 400);
+    const r = await env.RISK_DB.prepare("SELECT code,name,saved_at,length(data) bytes FROM site_sotp WHERE member_id=? ORDER BY saved_at DESC").bind(m.id).all();
+    return s3Json({ ok: true, items: r.results });
+  }
+  if (req.method === "GET") {
+    const r = await env.RISK_DB.prepare("SELECT code,name,data,saved_at FROM site_sotp WHERE member_id=? AND code=?").bind(m.id, code).first();
+    return s3Json({ ok: true, item: r ? { code: r.code, name: r.name, saved_at: r.saved_at, data: JSON.parse(r.data) } : null });
+  }
+  if (req.method === "PUT" || req.method === "POST") {
+    const b = await req.json().catch(() => null);
+    if (!b || typeof b.data !== "object") return s3Json({ ok: false, error: "data(객체) 필요" }, 400);
+    const text = JSON.stringify(b.data);
+    if (text.length > 200000) return s3Json({ ok: false, error: "부품표가 너무 큽니다(200KB 초과)" }, 413);
+    const cnt = await env.RISK_DB.prepare("SELECT COUNT(*) c FROM site_sotp WHERE member_id=? AND code<>?").bind(m.id, code).first();
+    if (cnt && cnt.c >= 100) return s3Json({ ok: false, error: "저장은 계정당 100종목까지" }, 400);
+    const savedAt = typeof b.saved_at === "string" && b.saved_at.length < 40 ? b.saved_at : new Date().toISOString();
+    await env.RISK_DB.prepare("INSERT OR REPLACE INTO site_sotp(member_id,code,name,data,saved_at) VALUES(?,?,?,?,?)")
+      .bind(m.id, code, String(b.name || "").slice(0, 40), text, savedAt).run();
+    return s3Json({ ok: true, code, saved_at: savedAt });
+  }
+  if (req.method === "DELETE") {
+    await env.RISK_DB.prepare("DELETE FROM site_sotp WHERE member_id=? AND code=?").bind(m.id, code).run();
+    return s3Json({ ok: true, code });
+  }
+  return s3Json({ ok: false, error: "method not allowed" }, 405);
+}
+
+// ── 메모/댓글 ──
+const CMT_TARGET_RE = /^(stock:[0-9A-Z]{6}|page:[a-z0-9-]{1,60}|board:[a-z0-9-]{1,60})$/;
+async function handleComments(req, url, env, ctx, m, owner) {
+  const idm = url.pathname.match(/^\/api\/comments\/(\d+)$/);
+  if (req.method === "GET") {
+    const target = url.searchParams.get("target") || "";
+    if (target === "recent") {
+      const r = await env.RISK_DB.prepare("SELECT id,target,name,body,created_at FROM site_comments WHERE deleted=0 ORDER BY id DESC LIMIT 30").all();
+      return s3Json({ ok: true, items: r.results });
+    }
+    if (!CMT_TARGET_RE.test(target)) return s3Json({ ok: false, error: "target 형식 오류" }, 400);
+    const r = await env.RISK_DB.prepare(
+      "SELECT id,member_id,name,body,created_at FROM site_comments WHERE target=? AND deleted=0 ORDER BY id DESC LIMIT 200").bind(target).all();
+    return s3Json({ ok: true, target, me: m.id, owner, items: r.results.map(x => ({ ...x, mine: x.member_id === m.id, member_id: undefined })) });
+  }
+  if (req.method === "POST" && !idm) {
+    const b = await req.json().catch(() => ({}));
+    const target = String(b.target || ""), body = String(b.body || "").trim();
+    if (!CMT_TARGET_RE.test(target)) return s3Json({ ok: false, error: "target 형식 오류" }, 400);
+    if (!body) return s3Json({ ok: false, error: "내용을 입력하세요" }, 400);
+    if (body.length > 1000) return s3Json({ ok: false, error: "1000자 이내로 입력하세요" }, 400);
+    if (!(await s3Limit(env, "cmt:" + m.id, 15))) return s3Json({ ok: false, error: "잠시 후 다시 작성하세요(10분 15개 제한)" }, 429);
+    const now = new Date().toISOString();
+    const res = await env.RISK_DB.prepare("INSERT INTO site_comments(target,member_id,name,body,created_at) VALUES(?,?,?,?,?)")
+      .bind(target, m.id, m.name, body, now).run();
+    if (!owner) {
+      const link = target.startsWith("stock:") ? `${S3_SITE}/collect.html?code=${target.slice(6)}` : `${S3_SITE}/${target.split(":")[1]}.html`;
+      ctx.waitUntil(slTelegram(env, `💬 <b>새 메모</b> — ${authEsc(m.name)} · ${authEsc(target)}\n${authEsc(body.slice(0, 300))}\n${link}`).catch(() => {}));
+    }
+    return s3Json({ ok: true, id: res.meta.last_row_id, created_at: now });
+  }
+  if (req.method === "DELETE" && idm) {
+    const row = await env.RISK_DB.prepare("SELECT member_id FROM site_comments WHERE id=?").bind(+idm[1]).first();
+    if (!row) return s3Json({ ok: false, error: "없음" }, 404);
+    if (row.member_id !== m.id && !owner) return s3Json({ ok: false, error: "본인 글만 삭제할 수 있습니다" }, 403);
+    await env.RISK_DB.prepare("UPDATE site_comments SET deleted=1 WHERE id=?").bind(+idm[1]).run();
+    return s3Json({ ok: true });
+  }
+  return s3Json({ ok: false, error: "method not allowed" }, 405);
+}
+
+// ── 3단계 라우터 ──
+async function handleStage3(req, url, env, ctx) {
+  const p = url.pathname;
+  try {
+    // 매물대 서버 계산: 공개 데이터라 로그인 없이 허용(캐시로 원천 보호)
+    if (p.startsWith("/api/vp/")) {
+      const code = s3Code(p.slice(8));
+      if (!code) return s3Json({ ok: false, error: "종목코드 필요" }, 400);
+      const ip = req.headers.get("cf-connecting-ip") || "x";
+      const cached = await env.GAUGE_KV.get(`vp:${code}:${Math.min(Math.max(parseInt(url.searchParams.get("lookback") || "750", 10) || 750, 60), 880)}`);
+      if (!cached && !(await s3Limit(env, "vp:" + ip, 40))) return s3Json({ ok: false, error: "요청이 많습니다. 잠시 후 다시 시도하세요" }, 429);
+      const r = await vpServer(env, code, url.searchParams.get("lookback") || 750);
+      return s3Json(r.error ? { ok: false, error: r.error } : { ok: true, data: r }, r.error ? 422 : 200);
+    }
+    const m = await authMember(req, env);
+    if (!m) return s3Json({ ok: false, error: "로그인이 필요합니다" }, 401);
+    const owner = await s3Owner(env, m);
+    if (p.startsWith("/api/stock/")) {
+      const code = s3Code(p.slice(11));
+      if (!code) return s3Json({ ok: false, error: "6자리 종목코드가 필요합니다" }, 400);
+      const fresh = url.searchParams.has("fresh");
+      const has = await env.GAUGE_KV.get("stock:" + code);
+      if ((fresh || !has) && !owner && !(await s3Limit(env, "stock:" + m.id, 40)))
+        return s3Json({ ok: false, error: "조회가 많습니다(10분 40건). 잠시 후 다시 시도하세요" }, 429);
+      const o = await stockLookup(env, code, { fresh });
+      // 서버 수집 최신 기록에 있으면 날짜 표시
+      try {
+        const lat = JSON.parse((await env.GAUGE_KV.get("collect:latest")) || "null");
+        const rec = lat && lat.stocks.find(s => s.code === code);
+        if (rec && (owner || rec.src.some(x => x !== "hold"))) o.collected = { ymd: lat.ymd, src: owner ? rec.src : rec.src.filter(x => x !== "hold") };
+      } catch (e) {}
+      const c = await env.RISK_DB.prepare("SELECT COUNT(*) c FROM site_comments WHERE target=? AND deleted=0").bind("stock:" + code).first().catch(() => null);
+      o.comments = c ? c.c : 0;
+      return s3Json({ ok: true, data: o });
+    }
+    if (p === "/api/user/sotp" || p.startsWith("/api/user/sotp/")) return await handleUserSotp(req, url, env, m);
+    if (p === "/api/comments" || p.startsWith("/api/comments/")) return await handleComments(req, url, env, ctx, m, owner);
+    return s3Json({ ok: false, error: "unknown endpoint" }, 404);
+  } catch (e) {
+    return s3Json({ ok: false, error: String(e && e.message || e) }, 500);
+  }
 }
