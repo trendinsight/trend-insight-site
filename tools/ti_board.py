@@ -129,18 +129,76 @@ def list_boards(cfg=None):
     return json.loads(txt)
 
 
+# ── 스킬별 누적 게시 어댑터 (병합 규칙은 각 스킬의 기존 게시 스크립트와 동일) ──────────
+
+def sotp_record(rec_path, cfg=None, max_records=300, max_series=140):
+    """SOTP 보드(data/sotp.json): 같은 종목+날짜 덮어쓰기, 최신순, 최대 300건."""
+    with open(rec_path, encoding="utf-8") as f:
+        rec = json.load(f)
+    if not rec.get("code"):
+        raise BoardError("레코드에 code 없음 — sotp.py --json 결과인지 확인")
+    b = rec.get("band")
+    if b and isinstance(b.get("series"), list) and len(b["series"]) > max_series:
+        b["series"] = b["series"][::max(1, len(b["series"]) // max_series)]
+    data = pull("sotp", default=[], cfg=cfg)
+    data = data if isinstance(data, list) else []
+    data = [d for d in data if not (d.get("code") == rec["code"] and d.get("date") == rec.get("date"))]
+    data.insert(0, rec)
+    data.sort(key=lambda d: d.get("date", ""), reverse=True)
+    return push("sotp", data[:max_records], "sotp-valuation", cfg)
+
+
+def sotp_delete(code, date=None, cfg=None):
+    data = pull("sotp", default=[], cfg=cfg)
+    data = data if isinstance(data, list) else []
+    keep = [d for d in data if not (d.get("code") == code and (not date or d.get("date") == date))]
+    if len(keep) == len(data):
+        return {"ok": True, "note": "삭제 대상 없음"}
+    return push("sotp", keep, "sotp-valuation", cfg)
+
+
+def vp_record(result_path, scripts_dir, investors=None, comment=None, cfg=None):
+    """매물대 보드(data/volume-profile-board.json): vp_publish.merge 규칙 그대로 누적."""
+    sys.path.insert(0, scripts_dir)
+    from vp_publish import merge  # 스킬의 병합·슬림 규칙 재사용
+    store = pull("volume-profile-board", default={"stocks": {}}, cfg=cfg)
+    if not isinstance(store, dict):
+        store = {"stocks": {}}
+    with open(result_path, encoding="utf-8") as f:
+        res = json.load(f)
+    inv = None
+    if investors:
+        with open(investors, encoding="utf-8") as f:
+            inv = json.load(f)
+    merge(store, res, comment, inv)
+    return push("volume-profile-board", store, "volume-profile", cfg)
+
+
 def main():
     ap = argparse.ArgumentParser(description="Trend Insight 보드 데이터 게시 (재배포 없음)")
-    ap.add_argument("cmd", choices=["pull", "push", "meta", "list", "rollback", "reset"])
-    ap.add_argument("name", nargs="?")
+    ap.add_argument("cmd", choices=["pull", "push", "meta", "list", "rollback", "reset",
+                                    "sotp-record", "sotp-delete", "vp-record"])
+    ap.add_argument("name", nargs="?", help="보드 이름 (sotp-record/vp-record는 결과 JSON, sotp-delete는 종목코드)")
     ap.add_argument("file", nargs="?")
     ap.add_argument("-o", "--out")
     ap.add_argument("--skill")
     ap.add_argument("--config")
+    ap.add_argument("--date", help="sotp-delete: 해당 날짜만")
+    ap.add_argument("--scripts", help="vp-record: volume-profile 스킬의 scripts 폴더")
+    ap.add_argument("--investors", help="vp-record: investor_bands.py 결과 JSON")
+    ap.add_argument("--comment", help="vp-record: 한 줄 코멘트")
     a = ap.parse_args()
     cfg = load_config(a.config)
     try:
-        if a.cmd == "list":
+        if a.cmd == "sotp-record":
+            out = sotp_record(a.name, cfg)
+        elif a.cmd == "sotp-delete":
+            out = sotp_delete(a.name, a.date, cfg)
+        elif a.cmd == "vp-record":
+            if not a.scripts:
+                sys.exit("--scripts <volume-profile 스킬 scripts 폴더> 가 필요합니다")
+            out = vp_record(a.name, a.scripts, a.investors, a.comment, cfg)
+        elif a.cmd == "list":
             out = list_boards(cfg)
         elif not a.name:
             sys.exit("보드 이름이 필요합니다 (예: thesis-board)")
