@@ -69,3 +69,19 @@
   서버에서 불가(로컬 스킬 전용). KIS는 D1 `app_config`에 `kis_app_key`·`kis_app_secret`을 넣으면 자동 사용.
 - 결과: `collect.html`(로그인 필요), `/api/collect/latest|day/YYYYMMDD|status`.
 - 수동: `POST /api/collect/run` (Bearer git_token) 한 단계 실행, `?reset=1` 처음부터, `?clear=1` 오늘 상태 삭제.
+
+## 3단계 — 서버 계산·조회 API와 회원 기능 (2026-10-02~)
+
+| API | 로그인 | 내용 | 캐시 |
+|---|---|---|---|
+| `GET /api/vp/{code}?lookback=750` | 불필요 | 매물대 서버 계산(볼륨 프로파일). volume-profile.html 계산 규격 블록을 그대로 이식(`VPCALC`) | KV 장중 15분 / 그 외 12시간 |
+| `GET /api/stock/{code}[?fresh=1]` | 필요 | 종목 즉석 조회: 시세·이평·52주·밸류·컨센서스·수급 5일·매물대 판정·최근 30일 DART 공시·논거 보드·서버수집 여부·메모 수 | KV 장중 10분 / 그 외 6시간 |
+| `GET/PUT/DELETE /api/user/sotp[/{code}]` | 필요 | SOTP 부품표 계정 저장(계정당 100종목, 200KB) — D1 `risk-manager.site_sotp` | — |
+| `GET/POST /api/comments`, `DELETE /api/comments/{id}` | 필요 | 메모/댓글. target = `stock:005930` · `page:thesis-board` · `board:xxx`. 본인·운영자 삭제, 10분 15개 제한, 비운영자 글은 운영자 텔레그램 알림 — D1 `site_comments` | — |
+
+- 공용 위젯 `ti-widgets.js`: 워커가 홈·로그인 화면을 뺀 모든 페이지 `<head>`에 자동 주입한다.
+  페이지 하단 '이 페이지 메모', 매물대·SOTP 페이지에서는 종목이 바뀔 때마다 '종목 패널(즉석 조회 + 종목 메모)'.
+  sotp.html·collect.html은 초기 실행에 필요해서 `<script src="/ti-widgets.js">`로 직접 넣었다(중복 로드 방지됨).
+- 매물대 계산 규격을 바꿀 때는 volume-profile.html · scripts/volume_profile.py · worker.js의 `VPCALC` 세 곳을 함께 고친다.
+- 호출 제한: 종목 즉석 조회 회원당 10분 40건(캐시 적중은 제외·운영자 무제한), 매물대 API IP당 10분 40건(캐시 적중 제외).
+- 서버 자동 수집(2단계) 카드에도 매물대 판정이 함께 실린다.
