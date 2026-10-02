@@ -4713,6 +4713,19 @@ async function collectStep(env, { reset = false } = {}) {
   if (st && st.done) return { ymd, phase: "done", note: "오늘 수집 완료" };
 
   if (!st) {
+    // 휴장일(공휴일·대체휴일·임시휴장) 판별 — 대표 종목의 마지막 일봉 날짜가 오늘이 아니면 건너뛴다
+    if (!reset) {
+      try {
+        const txt = await colGet("https://fchart.stock.naver.com/sise.nhn?symbol=005930&timeframe=day&count=2&requestType=0", false);
+        const ds = [...txt.matchAll(/data="(\d{8})\|/g)].map(m => m[1]);
+        const last = ds[ds.length - 1];
+        if (last && last !== ymd) {
+          st = { ymd, done: true, holiday: true, last_trading: last, finished: new Date().toISOString(), universe: [], errors: [] };
+          await save();
+          return { ymd, phase: "holiday", note: `휴장일 — 마지막 거래일 ${last}, 수집·알림 생략` };
+        }
+      } catch (e) { /* 판별 실패 시 그대로 수집 */ }
+    }
     const universe = await colUniverse(env);
     st = { ymd, started: new Date().toISOString(), universe, cursor: 0, stocks: {}, errors: [], phase: "stocks" };
     try {
