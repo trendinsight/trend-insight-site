@@ -4474,8 +4474,8 @@ const COL_ETF_RE = /^(KODEX|TIGER|ACE|RISE|SOL|KBSTAR|HANARO|PLUS|ARIRANG|KOSEF|
 const COL_FLAG = [
   [/전환사채|신주인수권부사채|교환사채/, "메자닌 발행"],
   [/유상증자/, "유상증자"], [/무상증자/, "무상증자"], [/감자/, "감자"],
-  [/최대주주\s*변경|최대주주등소유주식변동/, "최대주주 변동"],
-  [/주식등의대량보유|임원ㆍ주요주주특정증권/, "지분 변동"],
+  [/최대주주\s*변경/, "최대주주 변경"],
+  [/주식등의대량보유|임원ㆍ주요주주특정증권|최대주주등소유주식변동/, "지분 변동"],
   [/담보|질권/, "주식 담보"],
   [/감사보고서|감사의견|계속기업/, "감사 관련"],
   [/횡령|배임|소송|가압류/, "소송·횡령"],
@@ -4486,7 +4486,7 @@ const COL_FLAG = [
   [/합병|분할|영업양수|영업양도|타법인주식및출자증권취득/, "M&A·분할"],
   [/현금ㆍ현물배당|배당/, "배당"],
 ];
-const COL_RISKY = new Set(["메자닌 발행", "유상증자", "감자", "주식 담보", "감사 관련", "소송·횡령", "거래·상장 위험", "최대주주 변동"]);
+const COL_RISKY = new Set(["메자닌 발행", "유상증자", "감자", "주식 담보", "감사 관련", "소송·횡령", "거래·상장 위험", "최대주주 변경"]);
 
 function colYmd(ms = Date.now()) { return new Date(ms + 9 * 3600e3).toISOString().slice(0, 10).replace(/-/g, ""); }
 function colN(v) {
@@ -4730,7 +4730,7 @@ async function collectStep(env, { reset = false } = {}) {
     }
     st.cursor += chunk.length;
     await save();
-    return { ymd, phase: "stocks", done: st.cursor, total: st.universe.length };
+    return { ymd, phase: "stocks", done: st.cursor, total: st.universe.length, errors: st.errors.slice(-3) };
   }
 
   if (st.earnQueue && st.earnQueue.length) {
