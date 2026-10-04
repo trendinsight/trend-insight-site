@@ -109,7 +109,7 @@
     fh.title = '홈으로';
     fh.setAttribute('aria-label', '홈으로');
 
-    document.body.appendChild(fb);
+    // 뒤로는 좌하단 ←/→ 화살표(history-nav.js)가 맡으므로 우하단에는 홈만 둔다
     document.body.appendChild(fh);
   }
 

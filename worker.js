@@ -2713,9 +2713,11 @@ export default {
           // 리포트 페이지에는 종목 도구 연결 위젯을 자동 주입 (기존·신규 게시물 공통)
           if (isPost) el.append(`<script defer src="/post-tools.js?v=2026080802"></script>`, { html: true });
           // 리포트·PDF 뷰어 페이지에는 뒤로/홈 내비를 자동 주입 (상단 고정 + 우하단 플로팅)
-          if (isPost || isPdfView) el.append(`<script defer src="/post-nav.js?v=2026080802"></script>`, { html: true });
+          if (isPost || isPdfView) el.append(`<script defer src="/post-nav.js?v=2026100501"></script>`, { html: true });
           // PDF는 페이지 안에서 직접 렌더링 (iOS Safari가 PDF 주소로 통째 이동하는 것을 방지)
           if (isPost || isPdfView) el.append(`<script defer src="/pdf-viewer.js?v=2026080802"></script>`, { html: true });
+          // 홈 포함 모든 페이지에 뒤로 ← / 앞으로 → 화살표 내비 주입 (좌하단)
+          el.append(`<script defer src="/history-nav.js?v=2026100501"></script>`, { html: true });
           // 홈을 제외한 모든 페이지에 공용 플로팅 내비 주입
           if (!isHome) el.append(`<script defer src="/site-nav.js?v=2026092101"></script>`, { html: true });
           // 3단계 공용 위젯(종목 즉석 조회 패널·메모/댓글·SOTP 동기화) — 홈·로그인 화면 제외
@@ -3566,9 +3568,10 @@ main{max-width:1000px;margin:0 auto;padding:20px 14px 40px}
 <iframe class="viewer" src="${esc(url.pathname)}?raw=1"></iframe>
 <p class="fallback">PDF가 보이지 않으면 위의 'PDF 다운로드' 버튼을 눌러 파일을 직접 여세요.</p>
 </main>
-<script defer src="/post-nav.js?v=2026080802"></script>
+<script defer src="/post-nav.js?v=2026100501"></script>
 <script defer src="/pdf-viewer.js?v=2026080802"></script>
 <script defer src="/site-nav.js?v=2026092101"></script>
+<script defer src="/history-nav.js?v=2026100501"></script>
 </body></html>`;
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
 }
