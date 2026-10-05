@@ -2705,7 +2705,7 @@ export default {
 
     if ((assetRes.headers.get("content-type") || "").includes("text/html")) {
       const isPost = url.pathname.startsWith("/posts/");
-      const isHome = url.pathname === "/" || url.pathname === "/index.html";
+      const isHome = url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/start.html"; // 스타트 페이지도 홈처럼 플로팅 내비·위젯 미주입
       const isPdfView = url.pathname === "/research-digest.html" || url.pathname === "/crypto-report.html";
       return new HTMLRewriter().on("head", {
         element(el) {
@@ -3252,7 +3252,7 @@ async function handleReceipts(req, url, env, ctx) {
 const AUTH_COOKIE = "ti_sess";
 const AUTH_SESSION_DAYS = 90;
 const AUTH_PW_ITER = 50000;
-const AUTH_OPEN_PAGES = new Set(["/login.html", "/signup.html", "/login", "/signup", "/terms.html", "/terms"]);
+const AUTH_OPEN_PAGES = new Set(["/login.html", "/signup.html", "/login", "/signup", "/terms.html", "/terms", "/start.html", "/start"]); // start = 입문용 스타트 페이지(ti-start 서브도메인 홈)
 
 async function authEnsureTables(env) {
   await env.RISK_DB.batch([

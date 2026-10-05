@@ -1,0 +1,14 @@
+// Trend Insight Start — 입문자용 간소화 홈 (ti-start.sungsangkyung77.workers.dev)
+// 자체 파일 없이 본 사이트(trend-insight-site)를 서비스 바인딩으로 그대로 보여주는 얇은 프록시.
+//  - "/" · "/index.html"  → 본 사이트의 /start.html (스타트 페이지)
+//  - 그 외 모든 경로        → 본 사이트 동일 경로 (상세 페이지·/data·/api·로그인 모두 공유)
+// 배포는 다른 서브 Worker(cat-meow 등)처럼 main 커밋 → Workers Builds(루트 디렉터리: ti-start)로만.
+{
+  "name": "ti-start",
+  "main": "worker.js",
+  "compatibility_date": "2026-01-01",
+  "workers_dev": true,
+  "services": [
+    { "binding": "MAIN", "service": "trend-insight-site" }
+  ]
+}
