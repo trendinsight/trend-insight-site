@@ -6,7 +6,7 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/index") {
-      url.pathname = "/start.html";
+      url.pathname = "/start"; // 에셋 html_handling이 /start.html → /start 로 307 시키므로 최종 경로로 바로 요청
       req = new Request(url.toString(), req);
     }
     try {

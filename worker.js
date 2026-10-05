@@ -2705,7 +2705,7 @@ export default {
 
     if ((assetRes.headers.get("content-type") || "").includes("text/html")) {
       const isPost = url.pathname.startsWith("/posts/");
-      const isHome = url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/start.html"; // 스타트 페이지도 홈처럼 플로팅 내비·위젯 미주입
+      const isHome = url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/start.html" || url.pathname === "/start"; // 스타트 페이지도 홈처럼 플로팅 내비·위젯 미주입
       const isPdfView = url.pathname === "/research-digest.html" || url.pathname === "/crypto-report.html";
       return new HTMLRewriter().on("head", {
         element(el) {
