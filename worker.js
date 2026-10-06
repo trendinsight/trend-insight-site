@@ -4483,7 +4483,7 @@ async function handleBoard(req, url, env, ctx) {
 //  조회: GET /api/collect/latest | /api/collect/day/YYYYMMDD | /api/collect/status (회원 로그인 필요)
 //  수동 실행: POST /api/collect/run (Bearer git_token) — ?reset=1 오늘 처음부터
 // ════════════════════════════════════════════════════════════════════
-const COL_CRON = "*/8 9 * * 1-5";
+const COL_CRON = "*/8 9 * * MON-FRI";   // Cloudflare 크론은 요일 숫자 1=일요일이라 이름으로 지정
 const COL_MAX = 50, COL_CHUNK = 10;
 const COL_UA = { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36" };
 const COL_ETF_RE = /^(KODEX|TIGER|ACE|RISE|SOL|KBSTAR|HANARO|PLUS|ARIRANG|KOSEF|TIMEFOLIO|KIWOOM|WON|1Q|BNK|FOCUS|TREX|마이티|파워|히어로즈|에셋플러스|KoAct|UNICORN|VITA|DAISHIN343|ITF)\b/i;
