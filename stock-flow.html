@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>종목 수급 | Trend Insight</title>
+<meta name="description" content="종목별 투자자(개인·외국인·기관 세부주체) 매집·분산 추이 — 영웅문4 수급분석툴 방법론, 키움 데이터">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+:root{--navy:#0b1f3f;--accent:#2e6ff2;--red:#c62828;--blue:#1565c0;--orange:#e8830c;--green:#2e7d32;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg:#f5f7fb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{text-decoration:none;color:inherit}
+header{background:var(--navy);padding:16px 24px}
+header a{color:#fff;font-weight:800}
+.wrap{max-width:1120px;margin:0 auto;padding:34px 16px 60px}
+h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:.92rem;margin:6px 0 14px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 1px 3px rgba(11,31,63,.05);margin-bottom:22px}
+.card h2{font-size:1.12rem;color:var(--navy);margin-bottom:10px;display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px}
+.card h2 small{font-size:.8rem;color:var(--muted);font-weight:600}
+.search{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.search input{flex:1;min-width:180px;font-family:inherit;font-size:.95rem;padding:9px 14px;border:1px solid var(--line);border-radius:10px}
+.tblwrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.85rem;white-space:nowrap}
+th{background:#f2f5fa;color:#39506e;font-weight:700;padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);cursor:pointer;user-select:none}
+th:first-child,td:first-child{text-align:left}
+td{padding:8px 10px;text-align:right;border-bottom:1px solid #eef1f6}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:#f7f9fd}
+tr.sel{background:#eaf1ff!important}
+.tag{display:inline-block;font-size:.7rem;font-weight:800;border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+.tag.KOSPI{background:#e3ecff;color:#1d4ed8}.tag.KOSDAQ{background:#fdeedd;color:#b45309}
+.up{color:var(--red)}.down{color:var(--blue)}
+.bar{display:inline-block;height:8px;border-radius:4px;background:#d6deea;width:60px;position:relative;vertical-align:middle;margin-left:6px;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:6px 0 4px}
+.kpi{background:#f6f8fc;border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.kpi .l{font-size:.78rem;color:var(--muted);font-weight:600}
+.kpi .v{font-size:1.25rem;font-weight:800;color:var(--navy)}
+.kpi .s{font-size:.78rem;font-weight:600}
+.toolbar{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 6px;align-items:center}
+.toolbar .lbl{font-size:.78rem;color:var(--muted);font-weight:700;margin-right:4px}
+.toolbar button{font-family:inherit;font-size:.78rem;font-weight:700;border:1px solid var(--line);background:#fff;color:#39506e;border-radius:999px;padding:4px 12px;cursor:pointer}
+.toolbar button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.toolbar button.g.on{color:#fff}
+.chartbox{position:relative;height:380px;margin-top:6px}
+.chartbox.sm{height:220px}
+.verdict{border-left:4px solid var(--accent);background:#f6f9ff;border-radius:8px;padding:10px 14px;font-size:.9rem;margin:12px 0 2px}
+.note{font-size:.78rem;color:var(--muted);margin-top:10px}
+.empty{color:var(--muted);padding:30px 0;text-align:center}
+footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:.78rem;color:var(--muted)}
+@media(max-width:700px){.chartbox{height:280px}.chartbox.sm{height:180px}h1{font-size:1.3rem}}
+</style>
+</head>
+<body>
+<header><a href="index.html">T Trend Insight</a></header>
+<div class="wrap">
+<h1>종목 수급 — 투자자별 매집·분산 추이</h1>
+<p class="sub">영웅문4 수급분석툴 방법론으로 계산한 종목별 투자자(개인·외국인·기관 세부주체) 추정 보유량과 분산비율. 데이터: 키움 REST API(KRX+NXT 통합, 일별 순매수 수량). <span id="idx-upd"></span></p>
+
+<div class="card">
+  <h2>분석 종목 <small>행을 누르면 아래에 상세가 표시됩니다 · 머리글 클릭 정렬</small></h2>
+  <div class="search"><input id="q" placeholder="종목명 또는 코드 검색"></div>
+  <div class="tblwrap"><table id="list">
+    <thead><tr>
+      <th data-k="name">종목</th><th data-k="last">기준일</th><th data-k="close">종가</th><th data-k="chg1m">1개월</th>
+      <th data-k="force_ratio">세력 분산비율</th><th data-k="ind_ratio">개인 분산비율</th>
+      <th data-k="force_1m">세력 1달</th><th data-k="frgn_1m">외국인 1달</th><th data-k="inst_1m">기관 1달</th><th data-k="ind_1m">개인 1달</th>
+    </tr></thead><tbody></tbody></table></div>
+  <p class="note">분산비율 = 현재 추정 보유량 ÷ 최대 보유량. 1에 가까울수록 매집 물량을 대부분 보유(향후 매도 가능 물량 큼), 0에 가까울수록 분산 완료(추가 매수 여력 큼). 1달 = 최근 20거래일 순매수(주).</p>
+</div>
+
+<div class="card" id="detail"><div class="empty">종목을 선택하세요.</div></div>
+
+<p class="note">· 추정 보유량(매집수량) = 순매수 누적합 − 기간 내 최저 누적합. 원본 툴과 동일하게 최근 4,999거래일 합산·3,998거래일 기준점으로 계산하며, 차트는 최근 약 6년만 표시합니다.<br>
+· 기관 세부 주체의 실제 보유량은 공개되지 않으므로 모든 수치는 장내 순매수 누적 기반 <b>추정치</b>입니다. 블록딜·시간외 대량매매·증자/전환 물량은 반영되지 않을 수 있습니다.<br>
+· 데이터 갱신은 회원님 PC의 Claude에서 "OO 수급분석툴 만들어줘 / 종목 수급 갱신" 실행 시 이루어지며, 같은 데이터로 바탕화면 트랜드_종목분석 폴더의 엑셀도 함께 갱신됩니다.</p>
+</div>
+<footer>본 페이지의 모든 정보는 투자 참고 자료이며, 특정 종목·자산의 매수·매도를 권유하지 않습니다.</footer>
+
+<script>
+const COLORS={"개인":"#e8830c","세력합":"#0b1f3f","외국인":"#c62828","기관계":"#2e7d32","금융투자":"#7b1fa2","투신":"#00838f","연기금":"#5d4037","사모펀드":"#ad1457","기타법인":"#607d8b","보험":"#f9a825","은행":"#3949ab","기타금융":"#8d6e63","국가":"#455a64","내외국인":"#9e9d24"};
+const GROUPS=Object.keys(COLORS);
+const RANGES={"3M":63,"6M":126,"1Y":248,"3Y":744,"전체":99999};
+let INDEX={stocks:{}}, sortKey="last", sortDir=-1, cur=null, chHold=null, chNet=null;
+let state={range:"1Y", groups:new Set(["개인","세력합","외국인","기관계"])};
+const fmt=n=>n==null?"-":Math.round(n).toLocaleString("ko-KR");
+const pct=r=>r==null?"-":(r*100).toFixed(1)+"%";
+const sgn=n=>n==null?"":(n>0?"up":n<0?"down":"");
+const fmtD=s=>s?s.slice(2,4)+"."+s.slice(4,6)+"."+s.slice(6,8):"-";
+function man(n){if(n==null)return"-";const a=Math.abs(n);return (n<0?"-":"+")+(a>=1e4?(a/1e4).toFixed(a>=1e6?0:1)+"만":Math.round(a).toLocaleString("ko-KR"));}
+function ratioBar(r){if(r==null)return"-";const c=r>=.85?"#c62828":r<=.3?"#1565c0":"#8a94a6";return pct(r)+`<span class="bar"><i style="width:${Math.max(2,r*100)}%;background:${c}"></i></span>`;}
+
+async function init(){
+  try{INDEX=await (await fetch("data/stock-flow/index.json?t="+Date.now())).json();}catch(e){}
+  document.getElementById("idx-upd").textContent=INDEX.updated?"· 최종 업데이트 "+INDEX.updated:"";
+  document.querySelectorAll("#list th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;sortDir=(sortKey===k)?-sortDir:-1;sortKey=k;renderList();});
+  document.getElementById("q").oninput=renderList;
+  renderList();
+  const p=new URLSearchParams(location.search).get("code");
+  const codes=Object.keys(INDEX.stocks);
+  if(p&&INDEX.stocks[p])load(p);
+  else if(codes.length){const latest=codes.sort((a,b)=>(INDEX.stocks[b].updated||"").localeCompare(INDEX.stocks[a].updated||""))[0];load(latest);}
+}
+function renderList(){
+  const q=document.getElementById("q").value.trim();
+  let arr=Object.values(INDEX.stocks).filter(s=>!q||s.name.includes(q)||s.code.includes(q));
+  arr.sort((a,b)=>{const x=a[sortKey],y=b[sortKey];if(x==null)return 1;if(y==null)return -1;return (x>y?1:x<y?-1:0)*sortDir;});
+  const tb=document.querySelector("#list tbody");
+  if(!arr.length){tb.innerHTML=`<tr><td colspan="10" class="empty">등록된 종목이 없습니다.</td></tr>`;return;}
+  tb.innerHTML=arr.map(s=>`<tr data-c="${s.code}" class="${cur&&cur.code===s.code?"sel":""}">
+    <td><b>${s.name}</b><span class="tag ${s.market}">${s.market==="KOSDAQ"?"코스닥":"코스피"}</span></td>
+    <td>${fmtD(s.last)}</td><td>${fmt(s.close)}</td><td class="${sgn(s.chg1m)}">${s.chg1m==null?"-":(s.chg1m>0?"+":"")+s.chg1m+"%"}</td>
+    <td>${ratioBar(s.force_ratio)}</td><td>${ratioBar(s.ind_ratio)}</td>
+    <td class="${sgn(s.force_1m)}">${man(s.force_1m)}</td><td class="${sgn(s.frgn_1m)}">${man(s.frgn_1m)}</td>
+    <td class="${sgn(s.inst_1m)}">${man(s.inst_1m)}</td><td class="${sgn(s.ind_1m)}">${man(s.ind_1m)}</td></tr>`).join("");
+  tb.querySelectorAll("tr[data-c]").forEach(tr=>tr.onclick=()=>{load(tr.dataset.c);document.getElementById("detail").scrollIntoView({behavior:"smooth"});});
+}
+async function load(code){
+  const box=document.getElementById("detail");box.innerHTML=`<div class="empty">불러오는 중…</div>`;
+  try{cur=await (await fetch(`data/stock-flow/${code}.json?t=`+Date.now())).json();}catch(e){box.innerHTML=`<div class="empty">데이터를 불러오지 못했습니다.</div>`;return;}
+  history.replaceState(null,"","?code="+code);renderList();renderDetail();
+}
+function verdict(t){
+  const f=t["세력합"]||{},i=t["개인"]||{};const r=f["분산비율"],m=f["1달순매수"],w=f["1주순매수"];
+  if(r==null)return"";
+  let a=[];
+  if(r>=.85)a.push(`세력 분산비율 ${pct(r)} — 매집 물량 대부분 보유 중. 매도 가능 물량이 커 고점 분산 시작 여부 경계`);
+  else if(r<=.3)a.push(`세력 분산비율 ${pct(r)} — 분산이 상당 부분 진행. 추가 매집 여력이 크며 재매집 전환 주시`);
+  else a.push(`세력 분산비율 ${pct(r)} — 중간 구간`);
+  if(m!=null)a.push(`세력 최근 1달 ${m>0?"순매수":"순매도"} ${man(m)}주, 1주 ${w>0?"순매수":"순매도"} ${man(w)}주${(m>0)!==(w>0)?" (단기 방향 전환)":""}`);
+  if(i["분산비율"]!=null)a.push(`개인 분산비율 ${pct(i["분산비율"])}`);
+  return a.join(" · ");
+}
+function renderDetail(){
+  const d=cur,t=d.table||{},n=d.close.length,c=d.close;
+  const ch=k=>n>k&&c[n-1-k]?((c[n-1]/c[n-1-k]-1)*100):null;
+  const kp=(l,v,s,cls)=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="s ${cls||""}">${s||""}</div></div>`;
+  const R=g=>(t[g]||{})["분산비율"];
+  document.getElementById("detail").innerHTML=`
+  <h2>${d.name} <span class="tag ${d.market}">${d.market==="KOSDAQ"?"코스닥":"코스피"}</span> <small>${d.code} · 기준일 ${fmtD(d.dates[n-1])} · 업데이트 ${d.updated}${d.since?" · "+fmtD(d.since)+" 이후(액면분할 보정)":""}</small></h2>
+  <div class="kpis">
+   ${kp("종가",fmt(c[n-1]),(ch(1)==null?"":"전일 "+(ch(1)>0?"+":"")+ch(1).toFixed(2)+"%"),sgn(ch(1)))}
+   ${kp("세력 분산비율",pct(R("세력합")),"현재 "+fmt((t["세력합"]||{})["현재보유량"])+"주")}
+   ${kp("개인 분산비율",pct(R("개인")),"현재 "+fmt((t["개인"]||{})["현재보유량"])+"주")}
+   ${kp("외국인 분산비율",pct(R("외국인")),"가능 "+fmt((t["외국인"]||{})["가능보유량"])+"주")}
+   ${kp("기관계 분산비율",pct(R("기관계")),"1달 "+man((t["기관계"]||{})["1달순매수"])+"주",sgn((t["기관계"]||{})["1달순매수"]))}
+  </div>
+  <div class="verdict">${verdict(t)}</div>
+  <div class="toolbar"><span class="lbl">기간</span>${Object.keys(RANGES).map(r=>`<button class="rg ${state.range===r?"on":""}" data-r="${r}">${r}</button>`).join("")}</div>
+  <div class="toolbar"><span class="lbl">주체</span>${GROUPS.map(g=>`<button class="g ${state.groups.has(g)?"on":""}" data-g="${g}" style="${state.groups.has(g)?`background:${COLORS[g]};border-color:${COLORS[g]}`:""}">${g}</button>`).join("")}</div>
+  <h2 style="margin-top:12px">추정 보유량(매집수량) 추이 <small>왼쪽 축: 주 · 오른쪽 축: 종가</small></h2>
+  <div class="chartbox"><canvas id="c-hold"></canvas></div>
+  <h2 style="margin-top:18px">일별 순매수 <small>선택 주체 · 막대(주)</small></h2>
+  <div class="chartbox sm"><canvas id="c-net"></canvas></div>
+  <h2 style="margin-top:18px">주체별 수급분석표 <small>엑셀 수급분석표 재계산값</small></h2>
+  <div class="tblwrap"><table><thead><tr><th>주체</th><th>분산비율</th><th>현재 보유량</th><th>가능 보유량</th><th>최대 보유량</th><th>1주</th><th>1달</th><th>1년</th><th>주가선도비중</th></tr></thead><tbody>
+  ${["개인","세력합","외국인","기관계","금융투자","보험","투신","기타금융","은행","연기금","사모펀드","국가","기타법인","내외국인"].filter(g=>t[g]&&(t[g]["최대보유량"]||t[g]["1년순매수"])).map(g=>{const x=t[g];return`<tr style="cursor:default"><td><span style="color:${COLORS[g]};font-weight:800">●</span> ${g}</td><td>${ratioBar(x["분산비율"])}</td><td>${fmt(x["현재보유량"])}</td><td>${fmt(x["가능보유량"])}</td><td>${fmt(x["최대보유량"])}</td><td class="${sgn(x["1주순매수"])}">${man(x["1주순매수"])}</td><td class="${sgn(x["1달순매수"])}">${man(x["1달순매수"])}</td><td class="${sgn(x["1년순매수"])}">${man(x["1년순매수"])}</td><td>${g==="세력합"||g==="기관계"?"-":pct(x["주가선도비중"])}</td></tr>`}).join("")}
+  </tbody></table></div>
+  <p class="note">현재 보유량 = 향후 매도 가능 물량, 가능 보유량 = 최대 보유량까지 추가 매수 여력. 세력합 = 외국인+금융투자+보험+투신+기타금융+은행+연기금+사모펀드+국가+기타법인.</p>`;
+  document.querySelectorAll("#detail .rg").forEach(b=>b.onclick=()=>{state.range=b.dataset.r;renderDetail();});
+  document.querySelectorAll("#detail .g").forEach(b=>b.onclick=()=>{const g=b.dataset.g;state.groups.has(g)?state.groups.delete(g):state.groups.add(g);if(!state.groups.size)state.groups.add("세력합");renderDetail();});
+  drawCharts();
+}
+function drawCharts(){
+  const d=cur,n=d.dates.length,k=Math.min(RANGES[state.range],n),s=n-k;
+  const labels=d.dates.slice(s).map(fmtD);const gs=[...state.groups];
+  if(chHold)chHold.destroy();if(chNet)chNet.destroy();
+  const ds=gs.map(g=>({label:g,data:d.hold[g].slice(-k),borderColor:COLORS[g],backgroundColor:COLORS[g],borderWidth:g==="세력합"||g==="개인"?2.2:1.5,pointRadius:0,tension:.15,yAxisID:"y"}));
+  ds.push({label:"종가",data:d.close.slice(s),borderColor:"#9aa4b5",borderDash:[4,3],borderWidth:1.3,pointRadius:0,yAxisID:"y1"});
+  const tick={callback:v=>Math.abs(v)>=1e4?(v/1e4).toLocaleString("ko-KR")+"만":v.toLocaleString("ko-KR")};
+  chHold=new Chart(document.getElementById("c-hold"),{type:"line",data:{labels,datasets:ds},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+      plugins:{legend:{position:"bottom",labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${Math.round(c.raw).toLocaleString("ko-KR")}${c.dataset.yAxisID==="y1"?"원":"주"}`}}},
+      scales:{x:{ticks:{maxTicksLimit:8,font:{size:10}},grid:{display:false}},y:{ticks:tick,grid:{color:"#eef1f6"}},y1:{position:"right",grid:{display:false},ticks:{font:{size:10}}}}}});
+  const kb=Math.min(k,state.range==="3M"?63:state.range==="6M"?126:248), sb=n-kb;
+  chNet=new Chart(document.getElementById("c-net"),{type:"bar",data:{labels:d.dates.slice(sb).map(fmtD),
+    datasets:gs.map(g=>({label:g,data:d.net[g].slice(-kb),backgroundColor:COLORS[g]+"cc",borderWidth:0}))},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${Math.round(c.raw).toLocaleString("ko-KR")}주`}}},
+      scales:{x:{ticks:{maxTicksLimit:8,font:{size:10}},grid:{display:false}},y:{ticks:tick,grid:{color:"#eef1f6"}}}}});
+}
+init();
+</script>
+</body>
+</html>
