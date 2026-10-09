@@ -140,7 +140,7 @@ function renderDetail(){
   const kp=(l,v,s,cls)=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="s ${cls||""}">${s||""}</div></div>`;
   const R=g=>(t[g]||{})["분산비율"];
   document.getElementById("detail").innerHTML=`
-  <h2>${d.name} <span class="tag ${d.market}">${d.market==="KOSDAQ"?"코스닥":"코스피"}</span> <small>${d.code} · 기준일 ${fmtD(d.dates[n-1])} · 업데이트 ${d.updated}${d.since?" · "+fmtD(d.since)+" 이후(액면분할 보정)":""}</small></h2>
+  <h2><span>${d.name}<span class="tag ${d.market}">${d.market==="KOSDAQ"?"코스닥":"코스피"}</span></span><small>${d.code} · 기준일 ${fmtD(d.dates[n-1])} · 업데이트 ${d.updated}${d.since?" · "+fmtD(d.since)+" 이후(액면분할 보정)":""}</small></h2>
   <div class="kpis">
    ${kp("종가",fmt(c[n-1]),(ch(1)==null?"":"전일 "+(ch(1)>0?"+":"")+ch(1).toFixed(2)+"%"),sgn(ch(1)))}
    ${kp("세력 분산비율",pct(R("세력합")),"현재 "+fmt((t["세력합"]||{})["현재보유량"])+"주")}
@@ -166,7 +166,7 @@ function renderDetail(){
 }
 function drawCharts(){
   const d=cur,n=d.dates.length,k=Math.min(RANGES[state.range],n),s=n-k;
-  const labels=d.dates.slice(s).map(fmtD);const gs=[...state.groups];
+  const labels=d.dates.slice(s).map(fmtD);const gs=[...state.groups].filter(g=>d.hold[g]&&d.net[g]);
   if(chHold)chHold.destroy();if(chNet)chNet.destroy();
   const ds=gs.map(g=>({label:g,data:d.hold[g].slice(-k),borderColor:COLORS[g],backgroundColor:COLORS[g],borderWidth:g==="세력합"||g==="개인"?2.2:1.5,pointRadius:0,tension:.15,yAxisID:"y"}));
   ds.push({label:"종가",data:d.close.slice(s),borderColor:"#9aa4b5",borderDash:[4,3],borderWidth:1.3,pointRadius:0,yAxisID:"y1"});
