@@ -1,55 +1,67 @@
 {
-  "updated": "2026-10-09 15:16",
-  "run_date": "2026-10-09",
-  "summary_url": "/posts/2026-10-01-all-skills-summary.html",
-  "total": {
-    "ok": 16,
-    "partial": 0,
-    "skip": 0,
-    "fail": 0
+ "updated": "2026-10-09 16:01",
+ "run_date": "2026-10-09",
+ "summary_url": "/posts/2026-10-01-all-skills-summary.html",
+ "total": {
+  "ok": 29,
+  "partial": 3,
+  "skip": 4,
+  "fail": 0
+ },
+ "parts": {
+  "1": {
+   "date": "2026-10-09",
+   "ok": 16,
+   "partial": 0,
+   "skip": 0,
+   "fail": 0,
+   "headline": "국면 BEAR(62.5)·권장 예수금 45%·레버리지 CASH·금리 인상기, 게이트 YELLOW 추정",
+   "items": [
+    "예수금 종합 45.0% (코스피 38.4/코스닥 51.6)",
+    "하락장 BEAR 62.5",
+    "스타일 현금45/가치29.1/성장25.9 (DIVERGE)",
+    "레버리지 CASH 40.0",
+    "한은 3.00%·Fed 3.75~4.00% 인상기",
+    "볼밴 PANIC(A) 신호"
+   ]
   },
-  "parts": {
-    "1": {
-      "date": "2026-10-09",
-      "ok": 16,
-      "partial": 0,
-      "skip": 0,
-      "fail": 0,
-      "headline": "국면 BEAR(62.5)·권장 예수금 45%·레버리지 CASH·금리 인상기, 게이트 YELLOW 추정",
-      "items": [
-        "예수금 종합 45.0% (코스피 38.4/코스닥 51.6)",
-        "하락장 BEAR 62.5",
-        "스타일 현금45/가치29.1/성장25.9 (DIVERGE)",
-        "레버리지 CASH 40.0",
-        "한은 3.00%·Fed 3.75~4.00% 인상기",
-        "볼밴 PANIC(A) 신호"
-      ]
-    },
-    "2": {
-      "date": "2026-10-01",
-      "ok": 16,
-      "partial": 2,
-      "skip": 2,
-      "fail": 0,
-      "headline": "주도 업종 반도체 장비·후공정·기판 · 발굴 Top3 전부 EXTENDED(진입 보류)",
-      "items": [
-        "대덕전자·이수페타시스·디아이",
-        "외국인 코스피 대형주 20일 순매도",
-        "숏 WATCH 15종"
-      ]
-    },
-    "3": {
-      "date": "2026-10-01",
-      "ok": 22,
-      "partial": 2,
-      "skip": 2,
-      "fail": 0,
-      "headline": "손절 검토 135종 · 한온시스템 축소 · 신규 매수 0 · 현금 3.6% 규정 위반",
-      "items": [
-        "손절레이더 RISK_OFF",
-        "유효 종목수 31.5/340",
-        "팀장 손절 · 공명 조건부동의"
-      ]
-    }
+  "2": {
+   "date": "2026-10-09",
+   "ok": 13,
+   "partial": 3,
+   "skip": 4,
+   "fail": 0,
+   "headline": "게이트 RED(코스피 고점 -27%) · Top3 대덕전자·산일전기 EXTENDED, SK스퀘어 NO_SETUP → 신규 진입 0 · 외국인 반도체 20일 -29.8조",
+   "items": [
+    "research-digest ✅ 목표가 ▲8/▼7",
+    "sector-flow ✅ 외인 -2.49조",
+    "weekly-flow ✅ 우리금융·고영",
+    "new-high ✅ 코스피17/코스닥42",
+    "canslim 🟡 C등급 3",
+    "dividend ✅ PRIME 15(보정 12)",
+    "horizon 🟡 RED·중기3",
+    "fisher ✅ 후보2",
+    "korekawa ✅ 관찰5",
+    "sa-conviction ✅ CORE 산일전기",
+    "ltcm ✅ ENTRY6·L4 진입금지",
+    "short 🟡 CANDIDATE 2",
+    "crypto ✅ BTC 관망",
+    "entry-timer ✅ 0 BUY",
+    "⏭ broker-report·industry·export·value-chain"
+   ]
+  },
+  "3": {
+   "date": "2026-10-01",
+   "ok": 22,
+   "partial": 2,
+   "skip": 2,
+   "fail": 0,
+   "headline": "손절 검토 135종 · 한온시스템 축소 · 신규 매수 0 · 현금 3.6% 규정 위반",
+   "items": [
+    "손절레이더 RISK_OFF",
+    "유효 종목수 31.5/340",
+    "팀장 손절 · 공명 조건부동의"
+   ]
   }
+ }
 }
