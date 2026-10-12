@@ -2447,11 +2447,15 @@ async function tdHandle(req, url, env, ctx) {
    어제와 판정이 바뀐 종목만 텔레그램(@Tistock_bot)으로 보낸다.
    - 보유 목록: PC의 bb_sync_holdings.py 가 portfolio-manager 보유 파일을 읽어 POST /api/bbstock/sync
      (Bearer 토큰, 해시는 RISK_DB meta 'bbstock_token_hash') → D1 bbstock_state("bbstock-holdings")
-   - 크론: 평일 UTC 8시대 7분 간격(17:00~17:56 KST, 9회) — 1회당 BBS.CHUNK(40) 종목씩 — 최대 360종목 이어서 판정,
+   - 크론: 금요일 UTC 8시대 7분 간격(17:00~17:56 KST, 9회) — 주봉(완성된 주) 판정, 주 1회 알림 — 1회당 BBS.CHUNK(40) 종목씩 — 최대 360종목 이어서 판정,
      마지막 묶음에서 어제 결과와 비교 → 변경분 알림 → D1 bbstock_state("bbstock-result")
    - 결과 조회는 사이트 소유자 로그인만 허용(보유 수량·평단 포함) */
 const BBS = { N: 20, K: 2, M: 60, LAG: 5, SQLB: 125, SQTH: 0.10, ATRN: 22, CHM: 3, RSIN: 14, SRAT: 1 / 3,
-  CHUNK: 40, BARS: 220, STOP: 0.10, BUDGET_MULT: 1 / 0.6, METHOD: [.3, .3, .4, 0], MAX_LINES: 30 };
+  CHUNK: 40, BARS: 220, TF: "week", STOP: 0.10, BUDGET_MULT: 1 / 0.6, METHOD: [.3, .3, .4, 0], MAX_LINES: 30 };
+// 봉 주기별 파라미터 — 주봉: 20주 밴드 · 40주선(≈200일선) 추세 · 20주선 4주 전 비교 · 스퀴즈 52주 · ATR 14주
+const BBS_TF = {
+  day:  { M: 60, LAG: 5, SQLB: 125, ATRN: 22, BARS: 220, MIN: 122, label: "일봉" },
+  week: { M: 40, LAG: 4, SQLB: 52,  ATRN: 14, BARS: 200, MIN: 60,  label: "주봉" } };
 const BBS_ZONES = [
   { lo: -99, name: "하단 이탈", act: ["추가매수", "추가매수", "전액매도"] },
   { lo: 0.0, name: "하단권", act: ["추가매수", "추가매수", "홀딩"] },
@@ -2467,10 +2471,11 @@ function bbsZone(b) { let z = 0; for (let i = 0; i < BBS_ZONES.length; i++) if (
 function bbsSum(a, s, e) { let t = 0; for (let k = s; k <= e; k++) t += a[k]; return t; }
 
 // rows: [{date,open,high,low,close}] 오름차순. h: {qty, avg, budget}. opt: {stop, sq, bull, ch}
-function bbsJudge(rows, h, opt) {
-  const { N, K, M, LAG, SQLB, SQTH, ATRN, CHM, RSIN } = BBS;
+function bbsJudge(rows, h, opt, tf = "day") {
+  const T = BBS_TF[tf] || BBS_TF.day;
+  const { N, K, SQTH, CHM, RSIN } = BBS, { M, LAG, SQLB, ATRN } = T;
   const c = rows.map(r => r.close), hi = rows.map(r => r.high), lo = rows.map(r => r.low), n = c.length;
-  if (n < M + SQLB / 2) throw new Error("일봉 부족");
+  if (n < T.MIN) throw new Error(`${T.label} ${n}개 — 최소 ${T.MIN}개 필요(상장 초기)`);
   // 밴드폭·상승/하락폭·TR 시리즈
   const bw = [], gain = [0], loss = [0], tr = [hi[0] - lo[0]];
   for (let i = 0; i < n; i++) {
@@ -2545,6 +2550,24 @@ async function bbsGet(env, k) {
 async function bbsPut(env, k, v) {
   await env.RISK_DB.prepare("INSERT OR REPLACE INTO bbstock_state VALUES(?,?,?)").bind(k, JSON.stringify(v), kstNow()).run();
 }
+// 일봉/주봉 공용 시세 (fchart). 주봉은 진행 중인 주(이번 주 금요일 장 마감 전)를 빼고 완성된 주만 쓴다
+async function bbsBars(code, tf = "day", count = 220) {
+  const url = `https://fchart.stock.naver.com/sise.nhn?symbol=${code}&timeframe=${tf}&count=${count}&requestType=0`;
+  const res = await fetch(url, { headers: { "user-agent": "Mozilla/5.0" } });
+  if (!res.ok) throw new Error(`fchart ${code}: HTTP ${res.status}`);
+  const txt = new TextDecoder("utf-8", { fatal: false }).decode(await res.arrayBuffer());
+  const rows = []; const re = /data="([0-9|.\-]+)"/g; let m;
+  while ((m = re.exec(txt))) { const f = m[1].split("|");
+    if (f.length >= 6) rows.push({ date: `${f[0].slice(0, 4)}-${f[0].slice(4, 6)}-${f[0].slice(6, 8)}`, open: +f[1], high: +f[2], low: +f[3], close: +f[4], volume: +f[5] }); }
+  rows.sort((a, b) => (a.date < b.date ? -1 : 1));
+  if (tf === "week" && rows.length) {
+    const k = new Date(Date.now() + 9 * 36e5), dow = k.getUTCDay() || 7;            // 1=월 … 7=일
+    const mon = new Date(k.getTime() - (dow - 1) * 864e5).toISOString().slice(0, 10);
+    const weekDone = dow >= 6 || (dow === 5 && k.getUTCHours() >= 16);
+    if (!weekDone && rows[rows.length - 1].date >= mon) rows.pop();
+  }
+  return rows;
+}
 function bbsTodayKST() { return new Date(Date.now() + 9 * 36e5).toISOString().slice(0, 10); }
 
 // 크론 1회 = 한 묶음. force=true 면 오늘 이미 끝났어도 처음부터 다시
@@ -2555,10 +2578,11 @@ async function bbsStep(env, { force = false, notify = true } = {}) {
   let st = await bbsGet(env, "bbstock-run");
   if (force || !st || st.day !== today) st = { day: today, cursor: 0, results: [], errors: [], done: false, started: kstNow() };
   if (st.done) return { ok: true, skipped: "오늘 판정 완료", day: today };
-  const opt = Object.assign({ stop: BBS.STOP, sq: true, bull: true, ch: false }, H.settings || {});
+  const opt = Object.assign({ stop: BBS.STOP, sq: true, bull: true, ch: false, tf: BBS.TF }, H.settings || {});
+  const tf = BBS_TF[opt.tf] ? opt.tf : BBS.TF;
   const batch = H.items.slice(st.cursor, st.cursor + BBS.CHUNK);
   const out = await Promise.all(batch.map(async h => {
-    try { const rows = await slBars(h.code, BBS.BARS); return { code: h.code, name: h.name, ...bbsJudge(rows, h, opt) }; }
+    try { const rows = await bbsBars(h.code, tf, BBS_TF[tf].BARS); return { code: h.code, name: h.name, ...bbsJudge(rows, h, opt, tf) }; }
     catch (e) { return { code: h.code, name: h.name, error: String(e && e.message || e).slice(0, 60) }; }
   }));
   for (const r of out) (r.error ? st.errors : st.results).push(r);
@@ -2577,7 +2601,7 @@ async function bbsStep(env, { force = false, notify = true } = {}) {
   const ORD = { "전액매도": 0, "추가매도": 1, "추가매수": 2, "홀딩": 3 };
   st.results.sort((a, b) => (b.changed - a.changed) || (ORD[a.verdict] - ORD[b.verdict]) || (b.qty * b.price - a.qty * a.price));
   const counts = {}; for (const r of st.results) counts[r.verdict] = (counts[r.verdict] || 0) + 1;
-  const data = { updated: kstNow(), asof, total: H.items.length, holdings_updated: H.updated, source: H.source || null,
+  const data = { updated: kstNow(), asof, tf, total: H.items.length, holdings_updated: H.updated, source: H.source || null,
     settings: opt, counts, changed: st.results.filter(r => r.changed).length, results: st.results, errors: st.errors };
   await bbsPut(env, "bbstock-result", data);
   if (notify) { try { await slTelegram(env, bbsMessage(data, first)); } catch (e) { /* 알림 실패는 무시 */ } }
@@ -2588,7 +2612,8 @@ function bbsMessage(d, first) {
   const fmt = v => v == null ? "–" : Number(v).toLocaleString("ko-KR");
   const nm = r => `${r.name || r.code}(${r.code})`;
   const cnt = ["전액매도", "추가매도", "추가매수", "홀딩"].map(k => `${BBS_ICON[k]}${k} ${d.counts[k] || 0}`).join(" · ");
-  const head = [`🎯 <b>보유종목 볼린저 판정</b> (종가 ${d.asof})`, cnt];
+  const wk = d.tf === "week";
+  const head = [wk ? `🎯 <b>보유종목 주간 볼린저 판정</b> (주봉 · ${d.asof} 시작 주 마감)` : `🎯 <b>보유종목 볼린저 판정</b> (종가 ${d.asof})`, cnt];
   const url = "https://trend-insight-site.sungsangkyung77.workers.dev/bb-stock.html";
   // 현재 판정별 종목명 요약 (평가액 큰 순)
   const byV = v => d.results.filter(r => r.verdict === v).sort((a, b) => b.qty * b.price - a.qty * a.price);
@@ -2599,9 +2624,9 @@ function bbsMessage(d, first) {
   if (vs.length) now.push(`🔵 추가매도: ${names(vs, 15)}`);
   if (vx.length) now.push(`⚫ 전액매도(평가액 상위): ${names(vx, 10)}`);
   const tail = now.length ? ["", "<b>현재 판정</b>", ...now] : [];
-  if (first) return [...head, "", `첫 판정 — ${d.total}종목 기준선 저장. 내일부터 판정이 바뀐 종목을 알립니다.`, ...tail, "", url].join("\n");
+  if (first) return [...head, "", `첫 판정 — ${d.total}종목 기준선 저장. ${wk ? "다음 주부터 지난주 대비" : "내일부터"} 판정이 바뀐 종목을 알립니다.`, ...tail, "", url].join("\n");
   const ch = d.results.filter(r => r.changed || r.isNew);
-  if (!ch.length) return [...head, "", "판정 변경 없음 — 대기.", ...tail, "", url].join("\n");
+  if (!ch.length) return [...head, "", (wk ? "지난주 대비 판정 변경 없음 — 대기." : "판정 변경 없음 — 대기."), ...tail, "", url].join("\n");
   const line = r => {
     let act = "";
     if (r.verdict === "추가매수") act = ` → ${r.nextT}차 ${fmt(r.exQ)}주 (다음 ${fmt(r.buy2)}·${fmt(r.buy3)})`;
@@ -2611,7 +2636,7 @@ function bbsMessage(d, first) {
   };
   const lines = ch.slice(0, BBS.MAX_LINES).map(line);
   if (ch.length > BBS.MAX_LINES) lines.push(`…외 ${ch.length - BBS.MAX_LINES}종목: ${names(ch.slice(BBS.MAX_LINES), 20)}`);
-  return [...head, `판정 변경 ${ch.length}종목`, "", ...lines, ...tail, "", url].join("\n");
+  return [...head, `${wk ? "지난주 대비 " : ""}판정 변경 ${ch.length}종목`, "", ...lines, ...tail, "", url].join("\n");
 }
 
 async function handleBbStock(req, url, env, ctx) {
@@ -2630,6 +2655,15 @@ async function handleBbStock(req, url, env, ctx) {
     if (p === "run" && req.method === "POST") {   // 수동 실행(PC 스크립트용) — 한 묶음씩
       if (!(await bbsTokenOk(req, env))) return J({ ok: false, error: "unauthorized" }, 401);
       return J(await bbsStep(env, { force: url.searchParams.get("reset") === "1", notify: url.searchParams.get("notify") !== "0" }));
+    }
+    if (p === "judge") {   // 단건 계산(저장 없음) — 스킬·외부 호출용: ?code=005930&tf=week&avg=&qty=&budget=&stop=0.1
+      const code = (url.searchParams.get("code") || "").toUpperCase();
+      if (!/^[0-9A-Z]{6}$/.test(code)) return J({ ok: false, error: "code 6자리 필요" }, 400);
+      const tf = url.searchParams.get("tf") === "day" ? "day" : "week";
+      const n = k => parseFloat(url.searchParams.get(k) || "0") || 0;
+      const opt = { stop: n("stop") || BBS.STOP, sq: url.searchParams.get("sq") !== "0", bull: url.searchParams.get("bull") !== "0", ch: url.searchParams.get("ch") === "1" };
+      const rows = await bbsBars(code, tf, BBS_TF[tf].BARS);
+      return J({ ok: true, tf, data: { code, ...bbsJudge(rows, { qty: n("qty"), avg: n("avg"), budget: n("budget") || null }, opt, tf) } });
     }
     if (p === "status") {
       const st = await bbsGet(env, "bbstock-run");
@@ -2651,7 +2685,7 @@ export default {
     ctx.waitUntil((async () => { try { const k = "cron:log"; const a = JSON.parse((await env.GAUGE_KV.get(k)) || "[]");
       a.unshift({ cron: event.cron, at: new Date(event.scheduledTime || Date.now()).toISOString() });
       await env.GAUGE_KV.put(k, JSON.stringify(a.slice(0, 40))); } catch (e) {} })());
-    // 보유종목 볼린저 일일 판정 — 평일 UTC 8시대(17:00~17:56 KST) 7분 간격 단계 실행
+    // 보유종목 주간 볼린저 판정 — 금요일 UTC 8시대(17:00~17:56 KST) 7분 간격 단계 실행(크론이 금요일만 울림)
     if (new Date(event.scheduledTime || Date.now()).getUTCHours() === 8) {
       ctx.waitUntil(bbsStep(env).catch(e => console.log("bbstock", e && e.message))); return; }
     // 크론 문자열 표기가 대시보드에서 바뀌어도 동작하도록 시각(UTC 9시대)으로도 판별
