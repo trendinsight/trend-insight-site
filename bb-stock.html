@@ -97,6 +97,14 @@
     <div id="loadmsg" class="meta" style="margin-top:8px"></div>
   </div>
 
+  <div class="card" id="mycard" style="display:none">
+    <h2>📋 내 보유종목 — 오늘의 볼린저 판정 <span id="myasof" style="color:var(--sub);font-weight:400;font-size:12px"></span></h2>
+    <div class="meta">매 거래일 17:00~17:56 서버가 보유종목 전체를 같은 규칙으로 판정하고, 어제와 <b>판정이 바뀐 종목만</b> 텔레그램으로 보낸다.
+      행을 누르면 그 종목이 평단·수량과 함께 아래로 불러와진다. (사이트 소유자 로그인에만 보임)</div>
+    <div id="mycnt" class="chips"></div>
+    <div class="tw" style="max-height:440px;overflow:auto"><table id="mytbl"></table></div>
+  </div>
+
   <div class="card" id="poscard" style="display:none">
     <h2>② 내 포지션 · 전략 설정</h2>
     <div class="meta">비워 두면 신규 진입 기준으로 판정한다. 입력값은 이 브라우저에만 종목별로 저장된다.</div>
@@ -478,9 +486,39 @@ function init(){
   ["px","op","avg","qty","bud","meth","stop","tSq","tBull","tCh"].forEach(id=>{$(id).addEventListener("input",render);$(id).addEventListener("change",render);});
   fetch("data/bb-gauge.json").then(r=>r.json()).then(j=>{MKT=j;render();}).catch(()=>{});
   $("doc").innerHTML=DOC;
+  loadMine();
   const u=new URLSearchParams(location.search);
   if(u.get("code")) load(u.get("code"),u.get("name")||u.get("code"));
   else if(u.get("q")){$("sq").value=u.get("q");search(u.get("q"));}
+}
+
+/* ================= 내 보유종목 일일 판정 (서버 크론 결과) ================= */
+let MY=null, MYF="changed";
+async function loadMine(){
+  try{
+    const r=await fetch("/api/bbstock/result",{credentials:"same-origin"}); if(!r.ok) return;
+    const j=await r.json(); if(!j.ok||!j.data) return;
+    MY=j.data; $("mycard").style.display=""; renderMine();
+  }catch(e){}
+}
+function renderMine(){
+  const d=MY, nCh=d.results.filter(r=>r.changed).length;
+  $("myasof").textContent=`종가 ${d.asof} · ${d.results.length}종목 · 보유목록 ${String(d.holdings_updated||"").slice(0,10)} 기준`;
+  const F=[["changed",`변경 ${nCh}`],["전액매도",`전액매도 ${d.counts["전액매도"]||0}`],["추가매도",`추가매도 ${d.counts["추가매도"]||0}`],
+           ["추가매수",`추가매수 ${d.counts["추가매수"]||0}`],["홀딩",`홀딩 ${d.counts["홀딩"]||0}`],["all","전체"]];
+  $("mycnt").innerHTML=F.map(([k,t])=>`<span class="chip" data-f="${k}" style="${MYF===k?"border-color:#1f6feb;color:#fff":""}">${t}</span>`).join("");
+  $("mycnt").querySelectorAll(".chip").forEach(el=>el.onclick=()=>{MYF=el.dataset.f;renderMine();});
+  let L=d.results; if(MYF==="changed") L=L.filter(r=>r.changed); else if(MYF!=="all") L=L.filter(r=>r.verdict===MYF);
+  if(!L.length){$("mytbl").innerHTML=`<tr><td style="text-align:left;color:var(--sub)">${MYF==="changed"?"오늘은 판정이 바뀐 종목이 없다 — 대기.":"해당 없음"}</td></tr>`;return;}
+  $("mytbl").innerHTML=`<tr><th>종목</th><th>판정</th><th>어제</th><th>현재가</th><th>%B</th><th>구간 · 추세</th><th>손익</th><th>실행</th></tr>`+
+    L.map(r=>`<tr style="cursor:pointer" data-c="${r.code}"><td>${r.name}</td><td>${tag(r.verdict)}</td><td>${r.prev?tag(r.prev):"–"}</td><td>${fmt(r.price)}</td><td>${r.pb}</td>
+      <td style="text-align:left">${r.zone} · ${r.trend}</td><td style="color:${(r.pl||0)>=0?"var(--up)":"var(--dn)"}">${r.pl!=null?(r.pl>0?"+":"")+r.pl+"%":"–"}</td>
+      <td>${r.verdict==="추가매수"?`${r.nextT}차 ${fmt(r.exQ)}주`:(r.verdict==="추가매도"||r.verdict==="전액매도")?`${fmt(r.exQ)}주 매도`:"–"}</td></tr>`).join("");
+  $("mytbl").querySelectorAll("tr[data-c]").forEach(el=>el.onclick=()=>{
+    const r=MY.results.find(x=>x.code===el.dataset.c);
+    store.set("bbs:"+r.code,{avg:r.avg,qty:r.qty,bud:Math.round(r.qty*r.avg/0.6),meth:"3분할 30/30/40",stop:(MY.settings&&MY.settings.stop)||0.1});
+    $("sq").value=r.name; load(r.code,r.name); setTimeout(()=>$("poscard").scrollIntoView({behavior:"smooth"}),400);
+  });
 }
 
 const DOC=`
@@ -541,7 +579,7 @@ const DOC=`
 <li>주도주(상승추세 비중 높은 종목)와 박스권 종목을 나눠 <b>두 개의 매트릭스</b>를 운영 — 주도주는 상단 매도 금지·중심선 눌림 매수, 박스권은 하단 매수·상단 매도.</li>
 <li>판정 결과를 매매일지(trade-journal)와 ti-brain에 남겨, 판정과 실제 결과(20일 뒤 수익)를 쌓아 <b>내 데이터로 승률을 검증</b>.</li></ul>
 <h3>장기 — 자동화 로드맵</h3>
-<ul><li><b>보유종목 자동 스캔</b>: portfolio-manager 보유 목록을 매일 장 마감 후 일괄 판정 → 텔레그램(@Tistock_bot)으로 판정이 바뀐 종목만 알림.</li>
+<ul><li><b>보유종목 자동 스캔 — 가동 중</b>: portfolio-manager 보유 목록을 매 거래일 17시대에 서버가 일괄 판정 → 판정이 바뀐 종목만 텔레그램(@Tistock_bot). 결과는 이 페이지 맨 위 「내 보유종목」 카드.</li>
 <li><b>350종목 개별 판정 집계</b>: 온도계가 세는 '상단돌파/하단이탈 종목수'에 더해, 이 매트릭스 판정이 '추가매수'인 종목수를 시장 지표로 추가.</li>
 <li><b>확인 지표 결합</b>: RSI·MFI(거래량 가중 RSI) 다이버전스와 bb-gauge의 W바닥·2바 반전 셋업을 판정 가중치로 편입.</li>
 <li><b>국면 전환 대응</b>: 강세장이 끝나 박스·하락 국면이 오면 밴드 평균회귀 전략의 상대 성과가 좋아지는 구간이다 — 그때 백테스트를 다시 돌려 기본값(필터·분할 비중)을 재조정.</li></ul>

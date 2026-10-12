@@ -2442,6 +2442,189 @@ async function tdHandle(req, url, env, ctx) {
   }
 }
 
+/* ═══════════════════ 보유종목 볼린저 일일 판정 (/api/bbstock/*) ═══════════════════
+   bb-stock.html·엑셀 시뮬레이터와 같은 규칙으로 보유종목 전체를 매 거래일 판정하고
+   어제와 판정이 바뀐 종목만 텔레그램(@Tistock_bot)으로 보낸다.
+   - 보유 목록: PC의 bb_sync_holdings.py 가 portfolio-manager 보유 파일을 읽어 POST /api/bbstock/sync
+     (Bearer 토큰, 해시는 RISK_DB meta 'bbstock_token_hash') → KV "bbstock-holdings"
+   - 크론: 평일 UTC 8시대 7분 간격(17:00~17:56 KST, 9회) — 1회당 BBS.CHUNK 종목씩 이어서 판정,
+     마지막 묶음에서 어제 결과와 비교 → 변경분 알림 → KV "bbstock-result"
+   - 결과 조회는 사이트 소유자 로그인만 허용(보유 수량·평단 포함) */
+const BBS = { N: 20, K: 2, M: 60, LAG: 5, SQLB: 125, SQTH: 0.10, ATRN: 22, CHM: 3, RSIN: 14, SRAT: 1 / 3,
+  CHUNK: 25, BARS: 220, STOP: 0.10, BUDGET_MULT: 1 / 0.6, METHOD: [.3, .3, .4, 0], MAX_LINES: 30 };
+const BBS_ZONES = [
+  { lo: -99, name: "하단 이탈", act: ["추가매수", "추가매수", "전액매도"] },
+  { lo: 0.0, name: "하단권", act: ["추가매수", "추가매수", "홀딩"] },
+  { lo: 0.2, name: "중하단", act: ["추가매수", "추가매수", "홀딩"] },
+  { lo: 0.4, name: "중심선", act: ["추가매수", "홀딩", "홀딩"] },
+  { lo: 0.6, name: "중상단", act: ["홀딩", "홀딩", "추가매도"] },
+  { lo: 0.8, name: "상단권", act: ["홀딩", "추가매도", "추가매도"] },
+  { lo: 1.0, name: "상단 돌파", act: ["홀딩", "추가매도", "추가매도"] }];
+const BBS_TR = ["상승추세", "횡보", "하락추세"];
+const BBS_ICON = { "추가매수": "🔴", "홀딩": "🟡", "추가매도": "🔵", "전액매도": "⚫" };
+
+function bbsZone(b) { let z = 0; for (let i = 0; i < BBS_ZONES.length; i++) if (b >= BBS_ZONES[i].lo) z = i; return z; }
+function bbsSum(a, s, e) { let t = 0; for (let k = s; k <= e; k++) t += a[k]; return t; }
+
+// rows: [{date,open,high,low,close}] 오름차순. h: {qty, avg, budget}. opt: {stop, sq, bull, ch}
+function bbsJudge(rows, h, opt) {
+  const { N, K, M, LAG, SQLB, SQTH, ATRN, CHM, RSIN } = BBS;
+  const c = rows.map(r => r.close), hi = rows.map(r => r.high), lo = rows.map(r => r.low), n = c.length;
+  if (n < M + SQLB / 2) throw new Error("일봉 부족");
+  // 밴드폭·상승/하락폭·TR 시리즈
+  const bw = [], gain = [0], loss = [0], tr = [hi[0] - lo[0]];
+  for (let i = 0; i < n; i++) {
+    if (i >= N - 1) { const m = bbsSum(c, i - N + 1, i) / N; let v = 0; for (let j = i - N + 1; j <= i; j++) v += (c[j] - m) ** 2;
+      bw.push(4 * Math.sqrt(v / N) / m * (K / 2)); } else bw.push(null);
+    if (i > 0) { gain.push(Math.max(c[i] - c[i - 1], 0)); loss.push(Math.max(c[i - 1] - c[i], 0));
+      tr.push(Math.max(hi[i] - lo[i], Math.abs(hi[i] - c[i - 1]), Math.abs(lo[i] - c[i - 1]))); }
+  }
+  const P = c[n - 1], q = n - 2;
+  const ma = (bbsSum(c, q - N + 2, q) + P) / N;
+  let ss = P * P; for (let j = q - N + 2; j <= q; j++) ss += c[j] * c[j];
+  const sd = Math.sqrt(Math.max(0, ss / N - ma * ma));
+  const up = ma + K * sd, dn = ma - K * sd, pb = up === dn ? 0.5 : (P - dn) / (up - dn), bwNow = (up - dn) / ma;
+  let cnt = 1; for (let j = q - SQLB + 2; j <= q; j++) if (bw[j] != null && bw[j] <= bwNow) cnt++;
+  const bwp = cnt / SQLB;
+  const malag = bbsSum(c, q + 1 - LAG - N + 1, q + 1 - LAG) / N;
+  const ma60 = (bbsSum(c, q - M + 2, q) + P) / M;
+  const t = (P > ma60 && ma > malag) ? 0 : ((P < ma60 && ma < malag) ? 2 : 1);
+  const zi = bbsZone(pb);
+  const g = bbsSum(gain, q - RSIN + 2, q) + Math.max(P - c[q], 0), L = bbsSum(loss, q - RSIN + 2, q) + Math.max(c[q] - P, 0);
+  const rsi = L === 0 ? 100 : 100 - 100 / (1 + g / L);
+  const atr = bbsSum(tr, q - ATRN + 1, q) / ATRN;
+  const ch = Math.max(P, ...hi.slice(q - ATRN + 1, q + 1)) - CHM * atr;
+  const candle = P > rows[n - 1].open ? "양봉" : "음봉";
+  const qty = h.qty || 0, avg = h.avg || 0, invested = qty * avg;
+  const budget = h.budget || invested * BBS.BUDGET_MULT, remain = Math.max(0, budget - invested);
+  const stopPx = avg > 0 ? avg * (1 - opt.stop) : null;
+  const base = BBS_ZONES[zi].act[t];
+  let fin = base, why = `${BBS_TR[t]} · ${BBS_ZONES[zi].name}`;
+  if (qty > 0 && stopPx != null && P <= stopPx) { fin = "전액매도"; why = `손절선(평단 −${Math.round(opt.stop * 100)}%) 이탈`; }
+  else if (opt.ch && qty > 0 && P < ch) { fin = "전액매도"; why = "샹들리에 스탑 이탈"; }
+  else if (base === "추가매수") {
+    if (remain <= 0) { fin = "홀딩"; why += " · 매수 구간이나 예산 소진"; }
+    else if (opt.sq && bwp <= SQTH) { fin = "홀딩"; why += " · 스퀴즈(방향 대기)"; }
+    else if (opt.bull && candle === "음봉") { fin = "홀딩"; why += " · 매수 구간이나 음봉(양봉 확인 대기)"; }
+  } else if ((base === "추가매도" || base === "전액매도") && qty === 0) { fin = "홀딩"; why += " · 보유 없음"; }
+  // 실행 수량
+  const W = BBS.METHOD; let cum = 0, done = 0;
+  W.forEach(w => { cum += w; if (w > 0 && cum * budget <= invested + 1) done++; });
+  const nextT = Math.min(4, done + 1);
+  let exQ = 0;
+  if (fin === "추가매수") exQ = Math.floor(Math.min(remain, budget * (W[nextT - 1] || 0)) / P);
+  else if (fin === "추가매도") exQ = Math.max(1, Math.round(qty * BBS.SRAT));
+  else if (fin === "전액매도") exQ = qty;
+  const R = v => Math.round(v);
+  return { date: rows[n - 1].date, price: P, verdict: fin, base, why, pb: Math.round(pb * 100) / 100, zone: BBS_ZONES[zi].name,
+    trend: BBS_TR[t], bwp: Math.round(bwp * 100), rsi: Math.round(rsi * 10) / 10, candle,
+    up: R(up), mid: R(ma), dn: R(dn), stop: stopPx ? R(stopPx) : null, chand: R(ch),
+    pl: avg > 0 ? Math.round((P / avg - 1) * 1000) / 10 : null, qty, avg: R(avg), nextT, exQ,
+    buy1: R(dn + 0.5 * (up - dn)), buy2: R(dn + 0.2 * (up - dn)), buy3: R(dn), sell1: R(dn + 0.8 * (up - dn)), sell2: R(up) };
+}
+
+async function bbsOwner(req, env) {
+  const m = await authMember(req, env);
+  if (!m) return false;
+  let owner = AI_OWNER_EMAIL;
+  try { const o = await env.RISK_DB.prepare("SELECT value FROM secrets WHERE key='owner_email'").first(); if (o && o.value) owner = o.value; } catch (e) {}
+  return String(m.email || "").toLowerCase() === String(owner).toLowerCase();
+}
+async function bbsTokenOk(req, env) {
+  const auth = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!auth) return false;
+  const row = await env.RISK_DB.prepare("SELECT value FROM meta WHERE key='bbstock_token_hash'").first();
+  return !!row && (await rkSha256(auth)) === row.value;
+}
+function bbsTodayKST() { return new Date(Date.now() + 9 * 36e5).toISOString().slice(0, 10); }
+
+// 크론 1회 = 한 묶음. force=true 면 오늘 이미 끝났어도 처음부터 다시
+async function bbsStep(env, { force = false, notify = true } = {}) {
+  const H = JSON.parse((await env.GAUGE_KV.get("bbstock-holdings")) || "null");
+  if (!H || !Array.isArray(H.items) || !H.items.length) return { ok: false, error: "보유 목록 없음 — PC에서 bb_sync_holdings.py 실행 필요" };
+  const today = bbsTodayKST();
+  let st = JSON.parse((await env.GAUGE_KV.get("bbstock-run")) || "null");
+  if (force || !st || st.day !== today) st = { day: today, cursor: 0, results: [], errors: [], done: false, started: kstNow() };
+  if (st.done) return { ok: true, skipped: "오늘 판정 완료", day: today };
+  const opt = Object.assign({ stop: BBS.STOP, sq: true, bull: true, ch: false }, H.settings || {});
+  const batch = H.items.slice(st.cursor, st.cursor + BBS.CHUNK);
+  const out = await Promise.all(batch.map(async h => {
+    try { const rows = await slBars(h.code, BBS.BARS); return { code: h.code, name: h.name, ...bbsJudge(rows, h, opt) }; }
+    catch (e) { return { code: h.code, name: h.name, error: String(e && e.message || e).slice(0, 60) }; }
+  }));
+  for (const r of out) (r.error ? st.errors : st.results).push(r);
+  st.cursor += batch.length;
+  if (st.cursor < H.items.length) { await env.GAUGE_KV.put("bbstock-run", JSON.stringify(st)); return { ok: true, progress: `${st.cursor}/${H.items.length}` }; }
+  // ── 마지막 묶음: 비교·저장·알림 ──
+  const prev = JSON.parse((await env.GAUGE_KV.get("bbstock-result")) || "null");
+  const freq = {}; for (const r of st.results) freq[r.date] = (freq[r.date] || 0) + 1;
+  const asof = Object.keys(freq).sort((a, b) => freq[b] - freq[a])[0] || null;
+  st.done = true;
+  await env.GAUGE_KV.put("bbstock-run", JSON.stringify(st));
+  if (prev && prev.asof === asof && !force) return { ok: true, skipped: "새 거래일 데이터 없음(휴장)", asof };
+  const pm = {}; if (prev && Array.isArray(prev.results)) for (const r of prev.results) pm[r.code] = r.verdict;
+  const first = !prev;
+  for (const r of st.results) { r.prev = pm[r.code] || null; r.changed = !first && r.prev !== null && r.prev !== r.verdict; r.isNew = !first && r.prev === null; }
+  const ORD = { "전액매도": 0, "추가매도": 1, "추가매수": 2, "홀딩": 3 };
+  st.results.sort((a, b) => (b.changed - a.changed) || (ORD[a.verdict] - ORD[b.verdict]) || ((a.pb ?? 0) - (b.pb ?? 0)));
+  const counts = {}; for (const r of st.results) counts[r.verdict] = (counts[r.verdict] || 0) + 1;
+  const data = { updated: kstNow(), asof, total: H.items.length, holdings_updated: H.updated, source: H.source || null,
+    settings: opt, counts, changed: st.results.filter(r => r.changed).length, results: st.results, errors: st.errors };
+  await env.GAUGE_KV.put("bbstock-result", JSON.stringify(data));
+  if (notify) { try { await slTelegram(env, bbsMessage(data, first)); } catch (e) { /* 알림 실패는 무시 */ } }
+  return { ok: true, finished: true, asof, changed: data.changed, counts };
+}
+
+function bbsMessage(d, first) {
+  const fmt = v => v == null ? "–" : Number(v).toLocaleString("ko-KR");
+  const cnt = ["전액매도", "추가매도", "추가매수", "홀딩"].map(k => `${BBS_ICON[k]}${k} ${d.counts[k] || 0}`).join(" · ");
+  const head = [`🎯 <b>보유종목 볼린저 판정</b> (종가 ${d.asof})`, cnt];
+  const url = "https://trend-insight-site.sungsangkyung77.workers.dev/bb-stock.html";
+  if (first) return [...head, "", `첫 판정 — ${d.total}종목 기준선 저장. 내일부터 판정이 바뀐 종목만 알립니다.`, url].join("\n");
+  const ch = d.results.filter(r => r.changed || r.isNew);
+  if (!ch.length) return [...head, "", "판정 변경 없음 — 대기.", url].join("\n");
+  const line = r => {
+    let act = "";
+    if (r.verdict === "추가매수") act = ` → ${r.nextT}차 ${fmt(r.exQ)}주 (다음 ${fmt(r.buy2)}·${fmt(r.buy3)})`;
+    else if (r.verdict === "추가매도") act = ` → ${fmt(r.exQ)}주 매도 (상단 ${fmt(r.sell2)})`;
+    else if (r.verdict === "전액매도") act = ` → ${fmt(r.exQ)}주 전량`;
+    return `${BBS_ICON[r.verdict]} <b>${r.name}</b> ${r.prev ? r.prev + "→" : "신규 "}${r.verdict}${act}\n   ${fmt(r.price)}원 · %B ${r.pb} · ${r.why}${r.pl != null ? ` · 손익 ${r.pl > 0 ? "+" : ""}${r.pl}%` : ""}`;
+  };
+  const lines = ch.slice(0, BBS.MAX_LINES).map(line);
+  if (ch.length > BBS.MAX_LINES) lines.push(`…외 ${ch.length - BBS.MAX_LINES}종목`);
+  return [...head, `판정 변경 ${ch.length}종목`, "", ...lines, "", url].join("\n");
+}
+
+async function handleBbStock(req, url, env, ctx) {
+  const p = url.pathname.slice("/api/bbstock/".length).replace(/\/+$/, "");
+  const J = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: JSON_HEADERS });
+  try {
+    if (p === "sync" && req.method === "POST") {
+      if (!(await bbsTokenOk(req, env))) return J({ ok: false, error: "unauthorized" }, 401);
+      const b = await req.json();
+      const items = (b.holdings || []).map(h => ({ code: String(h.code).toUpperCase(), name: h.name || null,
+        qty: +h.qty || 0, avg: +h.avg || 0, budget: +h.budget || null }))
+        .filter(h => /^[0-9A-Z]{6}$/.test(h.code) && h.qty > 0);
+      await env.GAUGE_KV.put("bbstock-holdings", JSON.stringify({ updated: kstNow(), source: b.source || null, settings: b.settings || {}, items }));
+      return J({ ok: true, holdings: items.length });
+    }
+    if (p === "run" && req.method === "POST") {   // 수동 실행(PC 스크립트용) — 한 묶음씩
+      if (!(await bbsTokenOk(req, env))) return J({ ok: false, error: "unauthorized" }, 401);
+      return J(await bbsStep(env, { force: url.searchParams.get("reset") === "1", notify: url.searchParams.get("notify") !== "0" }));
+    }
+    if (p === "status") {
+      const st = JSON.parse((await env.GAUGE_KV.get("bbstock-run")) || "null");
+      const H = JSON.parse((await env.GAUGE_KV.get("bbstock-holdings")) || "null");
+      return J({ ok: true, day: st && st.day, cursor: st && st.cursor, done: st && st.done, total: H ? H.items.length : 0, holdings_updated: H && H.updated });
+    }
+    if (p === "result") {
+      if (!(await bbsOwner(req, env))) return J({ ok: false, error: "owner only" }, 403);
+      return J({ ok: true, data: JSON.parse((await env.GAUGE_KV.get("bbstock-result")) || "null") });
+    }
+    return J({ ok: false, error: "unknown endpoint" }, 404);
+  } catch (e) { return J({ ok: false, error: String(e) }, 500); }
+}
+
 export default {
   async scheduled(event, env, ctx) {
     // 서버 자동 수집(18:00~18:56 KST, 8분 간격 단계 실행) — 기존 마감 작업과 분리
@@ -2449,6 +2632,9 @@ export default {
     ctx.waitUntil((async () => { try { const k = "cron:log"; const a = JSON.parse((await env.GAUGE_KV.get(k)) || "[]");
       a.unshift({ cron: event.cron, at: new Date(event.scheduledTime || Date.now()).toISOString() });
       await env.GAUGE_KV.put(k, JSON.stringify(a.slice(0, 40))); } catch (e) {} })());
+    // 보유종목 볼린저 일일 판정 — 평일 UTC 8시대(17:00~17:56 KST) 7분 간격 단계 실행
+    if (new Date(event.scheduledTime || Date.now()).getUTCHours() === 8) {
+      ctx.waitUntil(bbsStep(env).catch(e => console.log("bbstock", e && e.message))); return; }
     // 크론 문자열 표기가 대시보드에서 바뀌어도 동작하도록 시각(UTC 9시대)으로도 판별
     if (event.cron === COL_CRON || new Date(event.scheduledTime || Date.now()).getUTCHours() === 9) {
       ctx.waitUntil(collectStep(env).catch(e => console.log("collect", e && e.message))); return; }
@@ -2496,6 +2682,9 @@ export default {
       return handleRisk(req, url, env);
     }
 
+    if (url.pathname.startsWith("/api/bbstock/")) {
+      return handleBbStock(req, url, env, ctx);
+    }
     if (url.pathname.startsWith("/api/stoploss/")) {
       return handleStopLoss(req, url, env);
     }
