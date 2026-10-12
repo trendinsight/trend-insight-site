@@ -2501,7 +2501,8 @@ function bbsJudge(rows, h, opt, tf = "day") {
   const ch = Math.max(P, ...hi.slice(q - ATRN + 1, q + 1)) - CHM * atr;
   const candle = P > rows[n - 1].open ? "양봉" : "음봉";
   const qty = h.qty || 0, avg = h.avg || 0, invested = qty * avg;
-  const budget = h.budget || invested * BBS.BUDGET_MULT, remain = Math.max(0, budget - invested);
+  const noBudget = !h.budget && invested === 0;             // 무보유·예산 미지정 = 신규 진입 판정(수량 계산 생략)
+  const budget = h.budget || invested * BBS.BUDGET_MULT, remain = noBudget ? Infinity : Math.max(0, budget - invested);
   const stopPx = avg > 0 ? avg * (1 - opt.stop) : null;
   const base = BBS_ZONES[zi].act[t];
   let fin = base, why = `${BBS_TR[t]} · ${BBS_ZONES[zi].name}`;
@@ -2517,7 +2518,7 @@ function bbsJudge(rows, h, opt, tf = "day") {
   W.forEach(w => { cum += w; if (w > 0 && cum * budget <= invested + 1) done++; });
   const nextT = Math.min(4, done + 1);
   let exQ = 0;
-  if (fin === "추가매수") exQ = Math.floor(Math.min(remain, budget * (W[nextT - 1] || 0)) / P);
+  if (fin === "추가매수") exQ = noBudget ? 0 : Math.floor(Math.min(remain, budget * (W[nextT - 1] || 0)) / P);
   else if (fin === "추가매도") exQ = Math.max(1, Math.round(qty * BBS.SRAT));
   else if (fin === "전액매도") exQ = qty;
   const R = v => Math.round(v);
@@ -2576,25 +2577,29 @@ async function bbsStep(env, { force = false, notify = true } = {}) {
   if (!H || !Array.isArray(H.items) || !H.items.length) return { ok: false, error: "보유 목록 없음 — PC에서 bb_sync_holdings.py 실행 필요" };
   const today = bbsTodayKST();
   let st = await bbsGet(env, "bbstock-run");
-  if (force || !st || st.day !== today) st = { day: today, cursor: 0, results: [], errors: [], done: false, started: kstNow() };
+  if (force || !st || st.day !== today) st = { day: today, cursor: 0, results: [], errors: [], done: false, force, started: kstNow() };
   if (st.done) return { ok: true, skipped: "오늘 판정 완료", day: today };
   const opt = Object.assign({ stop: BBS.STOP, sq: true, bull: true, ch: false, tf: BBS.TF }, H.settings || {});
   const tf = BBS_TF[opt.tf] ? opt.tf : BBS.TF;
   const batch = H.items.slice(st.cursor, st.cursor + BBS.CHUNK);
   const out = await Promise.all(batch.map(async h => {
     try { const rows = await bbsBars(h.code, tf, BBS_TF[tf].BARS); return { code: h.code, name: h.name, ...bbsJudge(rows, h, opt, tf) }; }
-    catch (e) { return { code: h.code, name: h.name, error: String(e && e.message || e).slice(0, 60) }; }
+    catch (e) {
+      if (tf === "week" && /최소/.test(String(e && e.message))) {   // 상장 1년 남짓 ETF 등 — 일봉으로 대체 판정
+        try { const rows = await bbsBars(h.code, "day", BBS_TF.day.BARS); const r = bbsJudge(rows, h, opt, "day");
+          return { code: h.code, name: h.name, ...r, tfUsed: "day", why: "(일봉 대체) " + r.why }; } catch (e2) { e = e2; }
+      } return { code: h.code, name: h.name, error: String(e && e.message || e).slice(0, 60) }; }
   }));
   for (const r of out) (r.error ? st.errors : st.results).push(r);
   st.cursor += batch.length;
   if (st.cursor < H.items.length) { await bbsPut(env, "bbstock-run", st); return { ok: true, progress: `${st.cursor}/${H.items.length}` }; }
   // ── 마지막 묶음: 비교·저장·알림 ──
   const prev = await bbsGet(env, "bbstock-result");
-  const freq = {}; for (const r of st.results) freq[r.date] = (freq[r.date] || 0) + 1;
+  const freq = {}; for (const r of st.results) if (!r.tfUsed) freq[r.date] = (freq[r.date] || 0) + 1;
   const asof = Object.keys(freq).sort((a, b) => freq[b] - freq[a])[0] || null;
   st.done = true;
   await bbsPut(env, "bbstock-run", st);
-  if (prev && prev.asof === asof && !force) return { ok: true, skipped: "새 거래일 데이터 없음(휴장)", asof };
+  if (prev && prev.asof === asof && !st.force) return { ok: true, skipped: "새 거래일 데이터 없음(휴장)", asof };
   const pm = {}; if (prev && Array.isArray(prev.results)) for (const r of prev.results) pm[r.code] = r.verdict;
   const first = !prev;
   for (const r of st.results) { r.prev = pm[r.code] || null; r.changed = !first && r.prev !== null && r.prev !== r.verdict; r.isNew = !first && r.prev === null; }
