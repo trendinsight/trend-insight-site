@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>종목 볼린저 전략 — Trend Insight</title>
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--line:#252a34;--txt:#e6e9ef;--sub:#9aa4b2;
+        --up:#e5484d;--dn:#3e8ef7;--good:#12b886;--warn:#f5a524;--neu:#7c8598;--navy:#1B3A6B;--org:#E8621B;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR","Malgun Gothic",sans-serif}
+  header{padding:22px 16px 8px;max-width:1060px;margin:0 auto}
+  h1{font-size:21px;margin:0 0 4px}
+  .sub{color:var(--sub);font-size:13px;line-height:1.6}
+  .nav{font-size:12.5px;margin-top:8px;display:flex;gap:12px;flex-wrap:wrap}
+  .nav a{color:#7fb0ff;text-decoration:none}
+  .wrap{max-width:1060px;margin:0 auto;padding:10px 16px 70px}
+  .row{display:flex;gap:14px;flex-wrap:wrap}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px;min-width:0}
+  .card h2{font-size:15px;margin:0 0 2px}
+  .meta{color:var(--sub);font-size:12px;margin-bottom:10px;line-height:1.6}
+  .sbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .sbar input{flex:1;min-width:180px;background:#0c0e12;color:var(--txt);border:1px solid var(--line);
+              border-radius:9px;padding:9px 12px;font-size:14px}
+  button{background:#1f6feb;color:#fff;border:0;border-radius:9px;padding:9px 16px;font-size:14px;font-weight:700;cursor:pointer}
+  button.ghost{background:#12151b;border:1px solid var(--line);color:var(--txt);font-weight:600;font-size:12.5px;padding:7px 12px}
+  button:disabled{opacity:.5;cursor:default}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chip{background:#12151b;border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:12px;color:var(--sub);cursor:pointer}
+  .chip:hover{border-color:#1f6feb;color:var(--txt)}
+  .sugg{margin-top:6px;display:flex;flex-direction:column;gap:2px}
+  .sugg div{padding:6px 10px;border-radius:8px;font-size:13px;cursor:pointer;background:#12151b}
+  .sugg div:hover{background:#1b2130}
+  .form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}
+  .form label{font-size:11.5px;color:var(--sub);display:flex;flex-direction:column;gap:4px}
+  .form input,.form select{background:#0c0e12;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px;width:100%}
+  .tog{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--sub)}
+  .tog label{display:flex;gap:6px;align-items:center;cursor:pointer}
+  .verdict{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+  .badge{font-size:26px;font-weight:900;padding:12px 22px;border-radius:12px;min-width:150px;text-align:center}
+  .vt{flex:1;min-width:240px;font-size:13.5px;line-height:1.7}
+  .kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:9px;margin-top:12px}
+  .kv>div{background:#12151b;border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+  .kv .k{font-size:11.5px;color:var(--sub)}
+  .kv .v{font-size:16px;font-weight:800;margin-top:3px}
+  .kv .s{font-size:11px;color:var(--sub);margin-top:2px}
+  .bbline{position:relative;height:40px;margin:16px 0 18px;background:#0c0e12;border-radius:8px}
+  .bbline .z{position:absolute;top:0;bottom:0;border-right:1px dashed #2c3340}
+  .bbline .mk{position:absolute;top:-4px;bottom:-4px;width:4px;background:#fff;border-radius:2px;box-shadow:0 0 0 2px #0f1115}
+  .bbline .lb{position:absolute;bottom:-17px;font-size:10.5px;color:var(--sub);transform:translateX(-50%);white-space:nowrap}
+  .bbline .zl{position:absolute;top:12px;font-size:10.5px;color:#c4ccd8;transform:translateX(-50%);white-space:nowrap}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+  th,td{padding:6px 7px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+  th{color:var(--sub);font-weight:600}
+  th:first-child,td:first-child{text-align:left}
+  .tw{overflow-x:auto}
+  .tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11.5px;font-weight:800}
+  .mx td,.mx th{text-align:center}
+  .mx td.on{outline:2px solid #fff;outline-offset:-2px}
+  .hl td{background:#1b2130}
+  svg{display:block;width:100%;height:auto}
+  .doc{margin-top:26px;font-size:13.2px;line-height:1.85;color:#cfd6e0}
+  .doc h2{font-size:17px;margin:26px 0 8px;padding-top:16px;border-top:1px solid var(--line);color:#fff}
+  .doc h3{font-size:14.5px;margin:18px 0 6px;color:#fff}
+  .doc p{margin:6px 0}
+  .doc ul,.doc ol{margin:6px 0 6px 20px;padding:0}
+  .doc li{margin:4px 0}
+  .doc td,.doc th{text-align:left;vertical-align:top;white-space:normal}
+  .box{background:#12151b;border:1px solid var(--line);border-radius:11px;padding:13px 15px;margin:10px 0}
+  .warn{border-color:#4a3a12;background:#191509}
+  b.u{color:var(--up)} b.d{color:var(--dn)}
+  .foot{margin-top:26px;color:var(--sub);font-size:11.5px;line-height:1.7;border-top:1px solid var(--line);padding-top:14px}
+  .err{color:#ff8a8a;font-size:13px;margin-top:8px}
+  .mkt{font-size:12.8px;line-height:1.7;border-left:4px solid var(--neu);background:#12151b;padding:10px 12px;border-radius:0 10px 10px 0}
+  @media (max-width:560px){.badge{font-size:22px;min-width:120px;padding:10px 14px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎯 종목 볼린저 전략 — 추가매수 · 홀딩 · 추가매도 · 전액매도</h1>
+  <div class="sub">종목과 내 포지션(평단·수량·예산)을 넣으면 볼린저밴드(20일·2σ) 안에서 <b>현재가가 어디에 있는지</b>와
+    <b>추세</b>를 함께 읽어 행동을 하나로 정하고, 볼린저 가격대별 <b>분할매수·분할매도 계획</b>과 이 규칙을
+    과거 1년 반 일봉에 돌린 <b>백테스트</b>까지 보여준다. 엑셀 시뮬레이터와 같은 규칙이다.</div>
+  <div class="nav"><a href="bb-gauge.html">← 볼린저밴드 온도계(시장)</a><a href="index.html">홈</a></div>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <h2>① 종목 선택</h2>
+    <div class="sbar">
+      <input id="sq" type="text" placeholder="종목명 또는 6자리 코드 — 예: 삼성전자 · 000660" autocomplete="off">
+      <button id="sgo">불러오기</button>
+    </div>
+    <div class="sugg" id="sugg"></div>
+    <div class="chips" id="chips"></div>
+    <div id="loadmsg" class="meta" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card" id="poscard" style="display:none">
+    <h2>② 내 포지션 · 전략 설정</h2>
+    <div class="meta">비워 두면 신규 진입 기준으로 판정한다. 입력값은 이 브라우저에만 종목별로 저장된다.</div>
+    <div class="form">
+      <label>현재가 (비우면 마지막 종가)<input id="px" type="number" inputmode="numeric"></label>
+      <label>오늘 시가 (양봉 확인용, 선택)<input id="op" type="number" inputmode="numeric"></label>
+      <label>평단가<input id="avg" type="number" inputmode="numeric"></label>
+      <label>보유수량 (주)<input id="qty" type="number" inputmode="numeric"></label>
+      <label>이 종목 총 투자예산 (원)<input id="bud" type="number" inputmode="numeric" value="20000000"></label>
+      <label>분할 방식<select id="meth"></select></label>
+      <label>손절률 (평단 대비 %)<input id="stop" type="number" value="10"></label>
+    </div>
+    <div class="tog">
+      <label><input type="checkbox" id="tSq" checked> 스퀴즈 필터(밴드폭 하위 10%면 매수 보류)</label>
+      <label><input type="checkbox" id="tBull" checked> 양봉 확인 후 매수</label>
+      <label><input type="checkbox" id="tCh"> 샹들리에 스탑(22일 고가 − 3×ATR)</label>
+    </div>
+  </div>
+
+  <div id="out"></div>
+
+  <div class="doc" id="doc"></div>
+  <div class="foot">데이터: Trend Insight 워커 API <code>/api/cockpit/ohlcv</code>(네이버 금융 수정주가, 장 마감 후 갱신) ·
+    시장 국면: <code>data/bb-gauge.json</code>(볼린저밴드 온도계). 이 페이지는 투자 판단 보조 도구이며 매매 권유가 아니다.
+    백테스트는 종가 체결·슬리피지 없음 가정이라 실제보다 유리하다.</div>
+</div>
+
+<script>
+/* ================= 설정 — 엑셀 '설정' 시트와 동일 ================= */
+const CFG={N:20,K:2,M:60,LAG:5,SQLB:125,SQTH:0.10,ATRN:22,CHM:3,RSIN:14,BGAP:5,SGAP:5,SRAT:1/3,FB:0.00015,FS:0.00215,BT_BUDGET:10000000};
+const ZONES=[ // %B 하한, 이름, [상승, 횡보, 하락]
+ {lo:-99,code:"Z1",name:"하단 이탈",act:["추가매수","추가매수","전액매도"]},
+ {lo:0.0,code:"Z2",name:"하단권",act:["추가매수","추가매수","홀딩"]},
+ {lo:0.2,code:"Z3",name:"중하단",act:["추가매수","추가매수","홀딩"]},
+ {lo:0.4,code:"Z4",name:"중심선",act:["추가매수","홀딩","홀딩"]},
+ {lo:0.6,code:"Z5",name:"중상단",act:["홀딩","홀딩","추가매도"]},
+ {lo:0.8,code:"Z6",name:"상단권",act:["홀딩","추가매도","추가매도"]},
+ {lo:1.0,code:"Z7",name:"상단 돌파",act:["홀딩","추가매도","추가매도"]}];
+const TRENDS=["상승추세","횡보","하락추세"];
+const METHODS={"3분할 30/30/40":[.3,.3,.4,0],"하방가중 20/30/50":[.2,.3,.5,0],"균등 4분할 25×4":[.25,.25,.25,.25],"상방가중 50/30/20":[.5,.3,.2,0]};
+const BUYLV=[{pb:.5,n:"중심선(20일선)"},{pb:.2,n:"하단 근접"},{pb:0,n:"하단 밴드"},{pb:-.25,n:"하단 −1σ"}];
+const SELLV=[{pb:.8,r:1/3,n:"상단권 진입"},{pb:1.0,r:1/3,n:"상단 밴드"},{pb:1.25,r:null,n:"상단 +1σ (나머지)"}];
+const ACOL={"추가매수":["#e5484d","#fff"],"홀딩":["#f5c542","#111"],"추가매도":["#3e8ef7","#fff"],"전액매도":["#1B3A6B","#fff"]};
+const CHIPS=[["005930","삼성전자"],["000660","SK하이닉스"],["005380","현대차"],["035420","NAVER"],["012450","한화에어로스페이스"],["247540","에코프로비엠"],["068270","셀트리온"],["042700","한미반도체"]];
+const API="/api/cockpit";
+
+/* ================= 유틸 ================= */
+const $=id=>document.getElementById(id);
+const fmt=(v,d=0)=>v==null||!isFinite(v)?"–":Number(v).toLocaleString("ko-KR",{minimumFractionDigits:d,maximumFractionDigits:d});
+const pct=(v,d=1,sign=true)=>v==null||!isFinite(v)?"–":((sign&&v>0?"+":"")+(v*100).toFixed(d)+"%");
+const tag=a=>`<span class="tag" style="background:${ACOL[a][0]};color:${ACOL[a][1]}">${a}</span>`;
+const sum=(a,s,e)=>{let t=0;for(let k=s;k<=e;k++)t+=a[k];return t;};
+const store={get(k){try{return JSON.parse(localStorage.getItem(k)||"null");}catch(e){return null;}},
+             set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
+function zoneIdx(b){let z=0;for(let i=0;i<ZONES.length;i++) if(b>=ZONES[i].lo) z=i;return z;}
+function todayKST(){const d=new Date(Date.now()+9*3600e3);return d.toISOString().slice(0,10);}
+
+/* ================= 지표 시리즈 (엑셀 '백테스트' 시트와 1:1) ================= */
+function series(D){
+  const {N,K,M,LAG,ATRN,RSIN,SQLB}=CFG, c=D.close,h=D.high,l=D.low,o=D.open,n=c.length;
+  const S={ma:[],sd:[],up:[],dn:[],pb:[],bw:[],ma60:[],malag:[],trend:[],gain:[],loss:[],rsi:[],tr:[],atr:[],ch:[],bwp:[]};
+  for(let i=0;i<n;i++){
+    const k=i+1; // 1-based (엑셀 인덱스)
+    let ma=null,sd=null;
+    if(k>=N){ma=sum(c,i-N+1,i)/N;let v=0;for(let j=i-N+1;j<=i;j++)v+=(c[j]-ma)**2;sd=Math.sqrt(v/N);}
+    S.ma.push(ma);S.sd.push(sd);
+    const up=ma==null?null:ma+K*sd, dn=ma==null?null:ma-K*sd;
+    S.up.push(up);S.dn.push(dn);
+    S.pb.push(ma==null?null:(up===dn?0.5:(c[i]-dn)/(up-dn)));
+    S.bw.push(ma==null?null:(up-dn)/ma);
+    S.ma60.push(k>=M?sum(c,i-M+1,i)/M:null);
+    S.malag.push(k>=N+LAG?S.ma[i-LAG]:null);
+    let tr=null;
+    if(S.ma60[i]!=null&&S.malag[i]!=null)
+      tr=(c[i]>S.ma60[i]&&ma>S.malag[i])?0:((c[i]<S.ma60[i]&&ma<S.malag[i])?2:1);
+    S.trend.push(tr);
+    S.gain.push(i>0?Math.max(c[i]-c[i-1],0):null);S.loss.push(i>0?Math.max(c[i-1]-c[i],0):null);
+    if(k>RSIN){const g=sum(S.gain,i-RSIN+1,i),L=sum(S.loss,i-RSIN+1,i);S.rsi.push(L===0?100:100-100/(1+g/L));}else S.rsi.push(null);
+    S.tr.push(i>0?Math.max(h[i]-l[i],Math.abs(h[i]-c[i-1]),Math.abs(l[i]-c[i-1])):h[i]-l[i]);
+    if(k>ATRN){const a=sum(S.tr,i-ATRN+1,i)/ATRN;S.atr.push(a);S.ch.push(Math.max(...h.slice(i-ATRN+1,i+1))-CFG.CHM*a);}
+    else{S.atr.push(null);S.ch.push(null);}
+    if(ma!=null){const w=Math.min(SQLB,k-N+1);let cnt=0;for(let j=i-w+1;j<=i;j++) if(S.bw[j]<=S.bw[i])cnt++;S.bwp.push(cnt/w);}
+    else S.bwp.push(null);
+  }
+  return S;
+}
+
+/* ================= 백테스트 (엑셀 '백테스트' 상태열과 동일) ================= */
+function backtest(D,S,opt){
+  const {M,N,LAG,RSIN,ATRN,BGAP,SGAP,SRAT,FB,FS,SQTH}=CFG, c=D.close,o=D.open,n=c.length,B=CFG.BT_BUDGET;
+  const W=METHODS[opt.meth], NT=W.filter(x=>x>0).length;
+  const START=Math.max(M,N+LAG,RSIN+1,ATRN+1);
+  let sh=0,cash=B,avg=0,bc=0,lb=-999,ls=-999,pk=B,bpk=B,mdd=0,bmdd=0,buys=0,sells=0,expo=0,cnt=0;
+  const b0=c[START-1], eq=[], bh=[], marks=[];
+  for(let i=0;i<n;i++){
+    const k=i+1; if(k<START){continue;}
+    let sig=null;
+    if(S.trend[i]!=null){
+      sig=ZONES[zoneIdx(S.pb[i])].act[S.trend[i]];
+      if(sig==="추가매수"){
+        if(opt.sq&&S.bwp[i]<=SQTH) sig="홀딩";
+        else if(opt.bull&&!(c[i]>o[i])) sig="홀딩";
+      }
+    }
+    if(sh>0&&c[i]<=avg*(1-opt.stop)) sig="전액매도";
+    else if(opt.ch&&sh>0&&S.ch[i]!=null&&c[i]<S.ch[i]) sig="전액매도";
+    let bq=0,sq=0;
+    if(sig==="추가매수"&&bc<NT&&k-lb>=BGAP){
+      bq=Math.max(0,Math.min(Math.floor(B*W[bc]/(c[i]*(1+FB))),Math.floor(cash/(c[i]*(1+FB)))));
+    }
+    if(sig==="전액매도") sq=sh;
+    else if(sig==="추가매도"&&sh>0&&k-ls>=SGAP) sq=Math.min(sh,Math.max(1,Math.round(sh*SRAT)));
+    const nsh=sh+bq-sq;
+    cash=cash-bq*c[i]*(1+FB)+sq*c[i]*(1-FS);
+    avg=nsh===0?0:(bq>0?(avg*sh+bq*c[i])/nsh:avg);
+    bc=nsh===0?0:bc+(bq>0?1:0);
+    if(bq>0){lb=k;buys++;marks.push({i,t:"B"});}
+    if(sq>0){ls=k;sells++;marks.push({i,t:sig==="전액매도"?"X":"S"});}
+    sh=nsh;
+    const e=cash+sh*c[i], bv=B*c[i]/b0;
+    pk=Math.max(pk,e);bpk=Math.max(bpk,bv);mdd=Math.min(mdd,e/pk-1);bmdd=Math.min(bmdd,bv/bpk-1);
+    expo+=sh*c[i]/e;cnt++;eq.push({i,e,bv});
+  }
+  const last=eq[eq.length-1];
+  return {start:START-1,ret:last.e/B-1,bh:last.bv/B-1,mdd,bmdd,buys,sells,expo:expo/cnt,eq,marks,sh,avg};
+}
+
+/* ================= 현재가 판정 (엑셀 '판단' 시트와 동일) ================= */
+function judge(D,S,inp){
+  const {N,K,M,LAG,SQLB,SQTH,RSIN,ATRN,CHM}=CFG, c=D.close,n=c.length;
+  const lastDate=D.date[n-1], tod=(lastDate===todayKST());
+  const P=inp.px>0?inp.px:c[n-1];
+  const off=(!(inp.px>0)||tod)?n-1:n;        // 1-based 엑셀 F7
+  const q=off-1;                              // 0-based 직전 실봉
+  const ma=(sum(c,q-N+2,q)+P)/N;
+  let ss=P*P;for(let j=q-N+2;j<=q;j++)ss+=c[j]*c[j];
+  const sd=Math.sqrt(Math.max(0,ss/N-ma*ma));
+  const up=ma+K*sd, dn=ma-K*sd, pb=up===dn?0.5:(P-dn)/(up-dn), bw=(up-dn)/ma;
+  let cnt=1;for(let j=q-SQLB+2;j<=q;j++) if(S.bw[j]!=null&&S.bw[j]<=bw)cnt++;
+  const bwp=cnt/SQLB;
+  const malag=sum(c,q+1-LAG-N+1,q+1-LAG)/N;
+  const ma60=(sum(c,q-M+2,q)+P)/M;
+  const tr=(P>ma60&&ma>malag)?0:((P<ma60&&ma<malag)?2:1);
+  const zi=zoneIdx(pb);
+  const g=sum(S.gain,q-RSIN+2,q)+Math.max(P-c[q],0), L=sum(S.loss,q-RSIN+2,q)+Math.max(c[q]-P,0);
+  const rsi=L===0?100:100-100/(1+g/L);
+  const ch=Math.max(P,...D.high.slice(q-ATRN+1,q+1))-CHM*S.atr[q];
+  const open=tod?D.open[n-1]:(inp.op>0?inp.op:null);
+  const candle=open==null?"미확인":(P>open?"양봉":"음봉");
+  const qty=inp.qty||0, avg=inp.avg||0, invested=qty*avg, remain=Math.max(0,inp.bud-invested);
+  const stopPx=avg>0?avg*(1-inp.stop):null;
+  const base=ZONES[zi].act[tr];
+  let fin=base, why="";
+  if(qty>0&&stopPx!=null&&P<=stopPx){fin="전액매도";why=`손절선(평단 −${(inp.stop*100).toFixed(0)}% = ${fmt(stopPx)}원) 이탈 — 규칙대로 전량 정리. 손절선은 '틀렸을 때 얼마나 잃을지'를 미리 정한 약속이다.`;}
+  else if(inp.ch&&qty>0&&P<ch){fin="전액매도";why=`샹들리에 스탑(${fmt(ch)}원) 이탈 — 22일 최고가에서 3×ATR 이상 밀렸다. 추세 추종 포지션 청산.`;}
+  else if(base==="추가매수"){
+    if(remain<=0){fin="홀딩";why="매수 구간이지만 이 종목 예산을 모두 썼다 — 비중 한도 지키며 홀딩.";}
+    else if(inp.sq&&bwp<=SQTH){fin="홀딩";why=`스퀴즈(밴드폭이 최근 125일 중 하위 ${(bwp*100).toFixed(0)}%) — 변동성이 곧 커지지만 방향은 아직 모른다. 밴드 돌파 방향 확인 전 매수 보류.`;}
+    else if(inp.bull&&candle==="음봉"){fin="홀딩";why="매수 구간이지만 오늘은 음봉 — 볼린저 규칙상 매수 셋업은 양봉 확인 후. 내일 양봉이면 실행.";}
+    else why=`${TRENDS[tr]} · ${ZONES[zi].name} → 매수 구간.`+(candle==="미확인"?" 장 마감이 양봉이면 실행(오늘 시가를 넣으면 자동 확인).":" 확인 조건(양봉) 충족.");
+  } else if((base==="추가매도"||base==="전액매도")&&qty===0){fin="홀딩";why="매도 구간이지만 보유가 없다 — 관망. 이 자리에서 신규 매수는 하지 않는다.";}
+  else why=explain(tr,zi);
+  const W=METHODS[inp.meth];
+  const cum=[];W.reduce((a,x,i)=>(cum[i]=a+x,a+x),0);
+  const done=W.map((w,i)=>w>0&&cum[i]*inp.bud<=invested+1);
+  const nextT=Math.min(4,done.filter(Boolean).length+1);
+  let exQ=0;
+  if(fin==="추가매수") exQ=Math.floor(Math.min(remain,inp.bud*(W[nextT-1]||0))/P);
+  else if(fin==="추가매도") exQ=Math.max(1,Math.round(qty*CFG.SRAT));
+  else if(fin==="전액매도") exQ=qty;
+  const afterAvg=fin==="추가매수"&&qty+exQ>0?(avg*qty+exQ*P)/(qty+exQ):(qty-exQ>0?avg:null);
+  return {P,tod,lastDate,ma,sd,up,dn,pb,bw,bwp,malag,ma60,tr,zi,rsi,ch,candle,qty,avg,invested,remain,stopPx,base,fin,why,
+          W,done,nextT,exQ,afterAvg,pl:avg>0?P/avg-1:null,priorSum:sum(c,q-N+2,q),priorSq:ss-P*P,m60Sum:sum(c,q-M+2,q)};
+}
+function explain(tr,zi){
+  const z=ZONES[zi].name, t=TRENDS[tr];
+  const T={
+   "0":["상승추세에서 밴드 아래로 밀렸다 — 과매도 눌림. 손절선 위라면 분할 추가매수 자리.","상승추세의 하단권 — 눌림 매수 자리.","상승추세의 중심선 아래 눌림 — 추가매수 자리.","상승추세가 20일선까지 눌렸다 — 1차 추가매수 자리.","상승추세 중상단 — 보유 유지, 추격매수 금지.","상승추세 상단권 — 홀딩. 한국은 모멘텀 시장이라 상단은 '과열'이 아니라 '힘'이다.","상승추세에서 상단 돌파 = 밴드 타기. 팔지 말고 중심선 이탈·손절선으로만 청산."],
+   "1":["횡보장 하단 이탈 — 박스 하단 과매도. 분할 추가매수(RSI 30 근처면 신뢰도↑).","횡보장 하단권 — 박스 하단, 분할 추가매수.","횡보장 중하단 — 1차 추가매수.","횡보장 중심선 — 방향이 없다. 홀딩.","횡보장 중상단 — 홀딩.","횡보장 상단권 — 박스 상단, 일부 차익(1/3).","횡보장 상단 돌파 — 박스 상단 초과, 일부 차익. 다만 60일선 위로 추세 전환되면 홀딩으로 바뀐다."],
+   "2":["하락추세에서 하단 이탈 — 밴드를 타고 내려가는 중(추세 붕괴). 물타기 금지, 전액 정리.","하락추세 하단권 — 떨어지는 칼. 사지 않고 버틴다.","하락추세 중하단 — 매수 금지, 홀딩.","하락추세 중심선 — 저항 확인 구간, 홀딩.","하락추세에서 중심선 위로 반등 — 비중 줄일 기회(1/3).","하락추세 상단권 반등 — 추가매도.","하락추세 상단 돌파 — 반등 매도 자리, 단 60일선 회복이면 추세 전환 점검."]
+  };
+  return `${t} · ${z} → `+T[tr][zi];
+}
+
+/* ================= 렌더 ================= */
+let D=null,S=null,NAME="",CODE="",MKT=null;
+function inputs(){
+  const v=id=>parseFloat($(id).value);
+  return {px:v("px")||0,op:v("op")||0,avg:v("avg")||0,qty:v("qty")||0,bud:v("bud")||0,meth:$("meth").value,
+          stop:(v("stop")||10)/100,sq:$("tSq").checked,bull:$("tBull").checked,ch:$("tCh").checked};
+}
+function render(){
+  if(!D)return;
+  const inp=inputs(); store.set("bbs:"+CODE,inp);
+  const J=judge(D,S,inp);
+  const BT=backtest(D,S,inp);
+  const [bg,fg]=ACOL[J.fin];
+  let h=`<div class="card"><h2>③ 판정 — ${NAME} <span style="color:var(--sub);font-weight:400;font-size:12px">${CODE} · 데이터 ${D.date[D.date.length-1]}${inp.px>0?(J.tod?" · 오늘 봉을 현재가로 대체":" · 현재가를 오늘 새 봉으로 계산"):" · 마지막 종가 기준"}</span></h2>
+   <div class="verdict" style="margin-top:10px"><div class="badge" style="background:${bg};color:${fg}">${J.fin}</div>
+   <div class="vt"><b>${J.why}</b><br>
+   ${J.fin==="추가매수"?`이번 실행: <b>${J.nextT}차 · ${fmt(J.exQ)}주 · ${fmt(J.exQ*J.P)}원</b> → 실행 후 평단 <b>${fmt(J.afterAvg)}원</b>`:""}
+   ${J.fin==="추가매도"?`이번 실행: 보유의 1/3 <b>${fmt(J.exQ)}주 매도 · ${fmt(J.exQ*J.P)}원</b> (남는 수량 ${fmt(J.qty-J.exQ)}주)`:""}
+   ${J.fin==="전액매도"&&J.qty>0?`이번 실행: <b>${fmt(J.exQ)}주 전량 매도</b>`:""}
+   ${J.base!==J.fin?`<br><span style="color:var(--sub)">매트릭스 기본 판정은 ${tag(J.base)} 였으나 위 사유로 바뀜.</span>`:""}</div></div>
+   ${bbBar(J)}
+   <div class="kv">
+    <div><div class="k">판정 가격</div><div class="v">${fmt(J.P)}</div><div class="s">${J.pl!=null?"평단 대비 "+pct(J.pl):"신규 진입 기준"}</div></div>
+    <div><div class="k">%B (밴드 내 위치)</div><div class="v">${J.pb.toFixed(2)}</div><div class="s">${ZONES[J.zi].code} ${ZONES[J.zi].name}</div></div>
+    <div><div class="k">추세</div><div class="v">${TRENDS[J.tr]}</div><div class="s">60일선 ${fmt(J.ma60)} · 20일선 ${J.ma>J.malag?"상승":"하락"}</div></div>
+    <div><div class="k">상단 / 중심 / 하단</div><div class="v" style="font-size:13.5px">${fmt(J.up)} / ${fmt(J.ma)} / ${fmt(J.dn)}</div><div class="s">밴드폭 ${(J.bw*100).toFixed(1)}%</div></div>
+    <div><div class="k">밴드폭 125일 백분위</div><div class="v">${(J.bwp*100).toFixed(0)}%</div><div class="s">${J.bwp<=CFG.SQTH?"스퀴즈 — 방향 대기":J.bwp>=.9?"확장 극단 — 추세 피로":"보통"}</div></div>
+    <div><div class="k">RSI14 (확인 지표)</div><div class="v">${J.rsi.toFixed(1)}</div><div class="s">${J.rsi<30?"과매도":J.rsi>70?"과매수":"중립"}</div></div>
+    <div><div class="k">손절가 / 샹들리에</div><div class="v" style="font-size:13.5px">${J.stopPx?fmt(J.stopPx):"–"} / ${fmt(J.ch)}</div><div class="s">샹들리에 ${inp.ch?"사용":"참고용"}</div></div>
+    <div><div class="k">투입 / 잔여 예산</div><div class="v" style="font-size:13.5px">${fmt(J.invested)} / ${fmt(J.remain)}</div><div class="s">예산의 ${inp.bud?((J.invested/inp.bud)*100).toFixed(0):0}% 투입</div></div>
+   </div>
+   ${mktLine(J)}
+  </div>`;
+  h+=matrixCard(J);
+  h+=planCard(J,inp);
+  h+=scenarioCard(J,inp);
+  h+=chartCard(J,BT);
+  h+=btCard(BT,inp);
+  $("out").innerHTML=h;
+  const dl=$("csvbtn"); if(dl) dl.onclick=downloadCSV;
+}
+function bbBar(J){
+  const lo=-0.5,hi=1.5, X=v=>Math.max(0,Math.min(100,(v-lo)/(hi-lo)*100));
+  let z="";
+  [0,0.2,0.4,0.6,0.8,1].forEach(t=>z+=`<div class="z" style="left:0;width:${X(t)}%"></div>`);
+  const zl=[[-0.25,"하단 이탈"],[0.1,"하단권"],[0.3,"중하단"],[0.5,"중심"],[0.7,"중상단"],[0.9,"상단권"],[1.25,"상단 돌파"]].map(([v,t])=>`<div class="zl" style="left:${X(v)}%">${t}</div>`).join("");
+  const lb=[[0,"하단"],[0.5,"MA20"],[1,"상단"]].map(([v,t])=>`<div class="lb" style="left:${X(v)}%">${t}</div>`).join("");
+  return `<div class="bbline" style="background:linear-gradient(90deg,#16253f 0%,#16253f ${X(0)}%,#13202f ${X(0)}%,#1a1d24 ${X(0.5)}%,#2a1a1d ${X(1)}%,#3a1a1d ${X(1)}%)">${z}${zl}${lb}<div class="mk" style="left:calc(${X(J.pb)}% - 2px)"></div></div>`;
+}
+function mktLine(J){
+  if(!MKT) return "";
+  const r=MKT.history[MKT.history.length-1], PHN={P1:"① 확산 우위",P2:"② 변동 큰 상승",P3:"③ 조정 진행중",P4:"④ 조용한 소멸"};
+  const sig=(r.signals||[]).map(s=>s.title).join(" · ")||"신호 없음";
+  let cross="";
+  if(r.phase==="P4"&&J.fin==="추가매수") cross="시장이 ④ 조용한 소멸이라 종목 매수 신호라도 1차 비중을 절반으로 줄이는 편이 낫다.";
+  else if((r.signals||[]).some(s=>s.code==="PANIC"&&s.grade==="A")&&J.fin==="추가매수") cross="시장도 공포 매수 구간(PANIC A) — 종목·시장 신호가 같은 방향이다.";
+  else if(r.phase==="P1"&&J.fin==="추가매도"&&J.tr!==2) cross="시장이 ① 확산 우위라 종목 상단 매도는 1/3로 제한하고 나머지는 추세에 맡긴다.";
+  const ds=r.date.replace(/(\d{4})(\d\d)(\d\d)/,"$1-$2-$3");
+  return `<div class="mkt" style="margin-top:12px">🌡️ 시장 볼린저 온도계(${ds}): 에너지 온도 <b>${r.temp!=null?r.temp.toFixed(0):"–"}</b> · 국면 <b>${PHN[r.phase]||r.phase}</b> · ${sig}${cross?`<br>→ ${cross}`:""}</div>`;
+}
+function matrixCard(J){
+  let t=`<table class="mx"><tr><th>구간</th><th>%B</th>${TRENDS.map((x,i)=>`<th>${x}${i===J.tr?" ◀":""}</th>`).join("")}</tr>`;
+  for(let z=ZONES.length-1;z>=0;z--){
+    const Z=ZONES[z], rng=z===0?"< 0":(z===6?"> 1.0":`${Z.lo.toFixed(1)}~${ZONES[z+1].lo.toFixed(1)}`);
+    t+=`<tr${z===J.zi?' class="hl"':""}><td style="text-align:left">${Z.code} ${Z.name}${z===J.zi?" ◀":""}</td><td>${rng}</td>${Z.act.map((a,i)=>`<td class="${z===J.zi&&i===J.tr?"on":""}">${tag(a)}</td>`).join("")}</tr>`;
+  }
+  return `<div class="card"><h2>④ 행동 매트릭스 — %B 구간 × 추세</h2><div class="meta">흰 테두리 칸이 지금 위치. 같은 '상단 돌파'라도 상승추세면 홀딩(밴드 타기), 횡보·하락추세면 매도다 — %B만 보고 팔면 한국 주도주를 너무 일찍 판다.</div><div class="tw">${t}</table></div></div>`;
+}
+function planCard(J,inp){
+  const lvP=pb=>J.dn+pb*(J.up-J.dn);
+  let cumQ=J.qty, cumC=J.qty*J.avg, rows="";
+  BUYLV.forEach((L,i)=>{
+    const w=J.W[i], p=lvP(L.pb), amt=inp.bud*w;
+    const st=w===0?"-":(J.done[i]?"집행(추정)":(J.P<=p?"현재 도달":"대기"));
+    const q=(w===0||J.done[i])?0:Math.floor(amt/p);
+    cumQ+=q;cumC+=q*p;
+    rows+=`<tr${st==="현재 도달"?' class="hl"':""}><td>${i+1}차</td><td>${L.n}</td><td>${L.pb.toFixed(2)}</td><td>${fmt(p)}</td><td>${(w*100).toFixed(0)}%</td><td>${fmt(amt)}</td><td>${st}</td><td>${fmt(q)}</td><td>${fmt(cumQ)}</td><td>${cumQ?fmt(cumC/cumQ):"–"}</td><td>${pct(p/J.P-1)}</td></tr>`;
+  });
+  let srows="",soldQ=0;
+  SELLV.forEach((L,i)=>{
+    const p=lvP(L.pb), q=L.r==null?Math.max(0,J.qty-soldQ):Math.round(J.qty*L.r); soldQ+=q;
+    const st=J.tr===0?"보류(밴드 타기)":(J.P>=p?"현재 도달":"대기");
+    srows+=`<tr><td>${i+1}차</td><td>${L.n}</td><td>${L.pb.toFixed(2)}</td><td>${fmt(p)}</td><td>${fmt(q)}</td><td>${J.avg?pct(p/J.avg-1):"–"}</td><td>${pct(p/J.P-1)}</td><td>${st}</td></tr>`;
+  });
+  return `<div class="card"><h2>⑤ 분할매수 · 분할매도 계획 (볼린저 가격대)</h2>
+   <div class="meta">분할 방식 <b>${inp.meth}</b> · 예산 ${fmt(inp.bud)}원. '집행(추정)'은 현재 투입금(평단×수량)으로 이미 채운 차수. 가격대는 오늘 밴드 기준이라 매일 조금씩 움직인다 — 지정가는 매일 아침 갱신.</div>
+   <div class="tw"><table><tr><th>차수</th><th>가격 기준</th><th>%B</th><th>목표가</th><th>비중</th><th>금액</th><th>상태</th><th>수량</th><th>누적 보유</th><th>누적 평단</th><th>현재가 대비</th></tr>${rows}</table></div>
+   <div class="meta" style="margin-top:12px">분할매도 — ${J.tr===0?"<b>지금은 상승추세라 보류</b>. 중심선 이탈 또는 손절선으로만 청산.":"횡보·하락추세에서 상단 쪽 반등 시 1/3씩."}</div>
+   <div class="tw"><table><tr><th>차수</th><th>가격 기준</th><th>%B</th><th>목표가</th><th>매도 수량</th><th>평단 대비</th><th>현재가 대비</th><th>상태</th></tr>${srows}</table></div></div>`;
+}
+function scenarioCard(J,inp){
+  const {N,K,M}=CFG; let rows="";
+  [-.15,-.125,-.1,-.075,-.05,-.025,0,.025,.05,.075,.1,.125,.15].forEach(st=>{
+    const p=Math.round(J.P*(1+st)), ma=(J.priorSum+p)/N, sd=Math.sqrt(Math.max(0,(J.priorSq+p*p)/N-ma*ma));
+    const pb=sd===0?.5:(p-(ma-K*sd))/(2*K*sd), m60=(J.m60Sum+p)/M;
+    const tr=(p>m60&&ma>J.malag)?0:((p<m60&&ma<J.malag)?2:1), zi=zoneIdx(pb);
+    let a=ZONES[zi].act[tr];
+    if(J.qty>0&&J.stopPx&&p<=J.stopPx)a="전액매도"; else if(inp.ch&&J.qty>0&&p<J.ch)a="전액매도";
+    rows+=`<tr${st===0?' class="hl"':""}><td>${st===0?"현재":pct(st,1)}</td><td>${fmt(p)}</td><td>${pb.toFixed(2)}</td><td>${ZONES[zi].name}</td><td>${TRENDS[tr]}</td><td>${tag(a)}</td><td>${J.avg?pct(p/J.avg-1):"–"}</td></tr>`;
+  });
+  return `<div class="card"><h2>⑥ 가격 시나리오 — 다음 봉이 이 가격이면?</h2><div class="meta">±15%를 2.5% 간격으로 다시 계산(밴드·추세가 가격에 따라 함께 움직이는 것까지 반영). 손절·샹들리에는 반영, 스퀴즈·양봉 필터는 제외. 미리 지정가·감시주문을 걸어둘 때 쓴다.</div><div class="tw"><table><tr><th>등락</th><th>가격</th><th>%B</th><th>구간</th><th>추세</th><th>판정</th><th>평단 대비</th></tr>${rows}</table></div></div>`;
+}
+function chartCard(J,BT){
+  const n=D.close.length, s=Math.max(0,n-140), W=1000,H=330,pl=8,pr=62,pt=10,pb=24;
+  const idx=[];for(let i=s;i<n;i++)idx.push(i);
+  let lo=Infinity,hi=-Infinity;idx.forEach(i=>{lo=Math.min(lo,D.low[i],S.dn[i]??Infinity);hi=Math.max(hi,D.high[i],S.up[i]??-Infinity);});
+  lo=Math.min(lo,J.P);hi=Math.max(hi,J.P);const pad=(hi-lo)*.05;lo-=pad;hi+=pad;
+  const xw=(W-pl-pr)/idx.length, X=k=>pl+(k+.5)*xw, Y=v=>pt+(hi-v)/(hi-lo)*(H-pt-pb);
+  const path=arr=>{let d="";idx.forEach((i,k)=>{if(arr[i]!=null)d+=(d?"L":"M")+X(k).toFixed(1)+","+Y(arr[i]).toFixed(1);});return d;};
+  let band="";{let top="",bot="";idx.forEach((i,k)=>{if(S.up[i]!=null){top+=(top?"L":"M")+X(k).toFixed(1)+","+Y(S.up[i]).toFixed(1);}});
+    for(let k=idx.length-1;k>=0;k--){const i=idx[k];if(S.dn[i]!=null)bot+="L"+X(k).toFixed(1)+","+Y(S.dn[i]).toFixed(1);}
+    band=`<path d="${top}${bot}Z" fill="#3e8ef7" opacity=".08"/>`;}
+  let candles="";idx.forEach((i,k)=>{const up=D.close[i]>=D.open[i],col=up?"#e5484d":"#3e8ef7",x=X(k);
+    candles+=`<line x1="${x}" x2="${x}" y1="${Y(D.high[i])}" y2="${Y(D.low[i])}" stroke="${col}" stroke-width="1"/>`+
+    `<rect x="${x-xw*.35}" width="${xw*.7}" y="${Y(Math.max(D.open[i],D.close[i]))}" height="${Math.max(1,Math.abs(Y(D.open[i])-Y(D.close[i])))}" fill="${col}"/>`;});
+  let mk="";BT.marks.filter(m=>m.i>=s).forEach(m=>{const k=m.i-s,x=X(k);
+    if(m.t==="B")mk+=`<path d="M${x},${Y(D.low[m.i])+6}l-5,9h10z" fill="#ffd43b"/>`;
+    else mk+=`<path d="M${x},${Y(D.high[m.i])-6}l-5,-9h10z" fill="${m.t==="X"?"#c084fc":"#74c0fc"}"/>`;});
+  const ticks=[];for(let t=0;t<=4;t++){const v=lo+(hi-lo)*t/4;ticks.push(`<text x="${W-pr+6}" y="${Y(v)+4}" fill="#9aa4b2" font-size="11">${fmt(v)}</text><line x1="${pl}" x2="${W-pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="#252a34"/>`);}
+  const dl=[0,Math.floor(idx.length/3),Math.floor(idx.length*2/3),idx.length-1].map((k,q)=>`<text x="${X(k)}" y="${H-6}" fill="#9aa4b2" font-size="11" text-anchor="${q===0?"start":q===3?"end":"middle"}">${D.date[idx[k]].slice(2)}</text>`).join("");
+  const now=`<line x1="${pl}" x2="${W-pr}" y1="${Y(J.P)}" y2="${Y(J.P)}" stroke="#fff" stroke-dasharray="4 4" opacity=".6"/><text x="${W-pr+6}" y="${Y(J.P)+4}" fill="#fff" font-size="11" font-weight="700">${fmt(J.P)}</text>`;
+  const avgL=J.avg?`<line x1="${pl}" x2="${W-pr}" y1="${Y(J.avg)}" y2="${Y(J.avg)}" stroke="#E8621B" stroke-dasharray="2 3"/><text x="${pl+4}" y="${Y(J.avg)-4}" fill="#E8621B" font-size="11">평단 ${fmt(J.avg)}</text>`:"";
+  return `<div class="card"><h2>⑦ 차트 — 최근 140거래일 · 볼린저밴드 · 백테스트 체결</h2>
+   <div class="meta">파란 띠 = 볼린저밴드(상단~하단), 노란 점선 = 20일선, 회색 = 60일선. ▲노랑 = 규칙상 매수 체결, ▼하늘 = 1/3 매도, ▼보라 = 전액매도. 주황 점선 = 내 평단.</div>
+   <svg viewBox="0 0 ${W} ${H}">${ticks.join("")}${band}
+    <path d="${path(S.up)}" stroke="#3e8ef7" fill="none" stroke-width="1.2" opacity=".8"/><path d="${path(S.dn)}" stroke="#3e8ef7" fill="none" stroke-width="1.2" opacity=".8"/>
+    <path d="${path(S.ma)}" stroke="#f5c542" fill="none" stroke-width="1.2" stroke-dasharray="5 3"/><path d="${path(S.ma60)}" stroke="#7c8598" fill="none" stroke-width="1.2"/>
+    ${candles}${mk}${avgL}${now}${dl}</svg></div>`;
+}
+function btCard(BT,inp){
+  const W=1000,H=200,pl=8,pr=70,pt=10,pb=22, E=BT.eq;
+  let lo=Infinity,hi=-Infinity;E.forEach(p=>{lo=Math.min(lo,p.e,p.bv);hi=Math.max(hi,p.e,p.bv);});
+  const X=k=>pl+k/(E.length-1)*(W-pl-pr), Y=v=>pt+(hi-v)/(hi-lo)*(H-pt-pb);
+  const ln=key=>E.map((p,k)=>(k?"L":"M")+X(k).toFixed(1)+","+Y(p[key]).toFixed(1)).join("");
+  const win=BT.ret>BT.bh, ratio=BT.expo>0?BT.ret/BT.expo:null;
+  return `<div class="card"><h2>⑧ 백테스트 — 이 규칙을 이 종목 과거 일봉에 그대로 적용했다면</h2>
+   <div class="meta">${D.date[BT.start]} ~ ${D.date[D.date.length-1]} · 현금 ${fmt(CFG.BT_BUDGET)}원에서 시작 · 분할 ${inp.meth} · 종가 체결 · 수수료 0.015%/매도비용 0.215% 가정 · 위 토글(스퀴즈·양봉·샹들리에)과 연동.</div>
+   <div class="kv">
+    <div><div class="k">전략 수익률</div><div class="v" style="color:${BT.ret>=0?"var(--up)":"var(--dn)"}">${pct(BT.ret)}</div><div class="s">단순 보유 ${pct(BT.bh)}</div></div>
+    <div><div class="k">최대낙폭 MDD</div><div class="v">${pct(BT.mdd)}</div><div class="s">단순 보유 ${pct(BT.bmdd)}</div></div>
+    <div><div class="k">평균 투자비중</div><div class="v">${(BT.expo*100).toFixed(0)}%</div><div class="s">나머지는 현금</div></div>
+    <div><div class="k">노출 1단위당 수익</div><div class="v">${ratio!=null?ratio.toFixed(2):"–"}</div><div class="s">수익률 ÷ 평균 투자비중</div></div>
+    <div><div class="k">매수 / 매도 체결</div><div class="v">${BT.buys} / ${BT.sells}</div><div class="s">현재 ${BT.sh?fmt(BT.sh)+"주 보유":"무보유"}</div></div>
+   </div>
+   <svg viewBox="0 0 ${W} ${H}" style="margin-top:10px"><path d="${ln("bv")}" stroke="#7c8598" fill="none" stroke-width="1.5"/><path d="${ln("e")}" stroke="#E8621B" fill="none" stroke-width="2"/>
+    <text x="${W-pr+6}" y="${Y(E[E.length-1].e)+4}" fill="#E8621B" font-size="11">전략</text><text x="${W-pr+6}" y="${Y(E[E.length-1].bv)+4}" fill="#9aa4b2" font-size="11">단순보유</text></svg>
+   <div class="box ${win?"":"warn"}" style="font-size:12.8px;line-height:1.7">${win
+     ?"이 종목에서는 규칙이 단순 보유를 이겼다. 박스권·하락 구간이 길었던 종목일수록 밴드 매매가 유리하다."
+     :"이 종목에서는 단순 보유가 더 벌었다. 밴드 매매는 평균 투자비중이 낮아(현금을 많이 들고 있어) <b>강한 상승장에서는 수익을 덜 먹는 대신 낙폭(MDD)을 줄이는</b> 전략이다. 수익률 숫자 하나가 아니라 MDD와 '노출 1단위당 수익'으로 비교하자."}
+     <br>표본이 이 종목 1년 반뿐이다. 토글을 바꿔 좋아진 결과는 <b>다른 종목 3~5개에서도 같은 방향</b>일 때만 믿는다.</div>
+   <div style="margin-top:10px"><button class="ghost" id="csvbtn">⬇ 일봉 CSV 받기 (엑셀 '데이터' 시트에 붙여넣기용)</button></div></div>`;
+}
+function downloadCSV(){
+  let s="날짜,시가,고가,저가,종가,거래량\n";
+  D.date.forEach((d,i)=>s+=[d,D.open[i],D.high[i],D.low[i],D.close[i],D.volume[i]].join(",")+"\n");
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["﻿"+s],{type:"text/csv"}));
+  a.download=`bb_${CODE}.csv`;a.click();
+}
+
+/* ================= 로딩 ================= */
+async function load(code,name){
+  $("loadmsg").textContent="불러오는 중…";$("sugg").innerHTML="";
+  try{
+    const r=await fetch(`${API}/ohlcv/${code}?days=400`);const j=await r.json();
+    if(!j.ok||!j.data||!j.data.close||j.data.close.length<160) throw new Error("일봉이 160개 미만이라 판정할 수 없다(신규 상장 등).");
+    D=j.data;S=series(D);CODE=code;NAME=name||code;
+    $("loadmsg").textContent=`${NAME} (${code}) · ${D.date[0]} ~ ${D.date[D.date.length-1]} · ${D.close.length}거래일`;
+    $("poscard").style.display="";
+    const saved=store.get("bbs:"+code);
+    ["px","op","avg","qty"].forEach(id=>$(id).value="");
+    if(saved){["avg","qty","bud"].forEach(id=>{if(saved[id])$(id).value=saved[id];});
+      if(saved.meth)$("meth").value=saved.meth; if(saved.stop)$("stop").value=(saved.stop*100).toFixed(1).replace(/\.0$/,"");}
+    try{history.replaceState(null,"",`?code=${code}&name=${encodeURIComponent(NAME)}`);}catch(e){}
+    render();
+  }catch(e){$("loadmsg").innerHTML=`<span class="err">불러오기 실패: ${e.message}</span>`;}
+}
+async function search(q){
+  q=q.trim();if(!q)return;
+  if(/^[0-9A-Z]{6}$/i.test(q)){load(q.toUpperCase(),q.toUpperCase());return;}
+  try{
+    const r=await fetch(`${API}/search?q=${encodeURIComponent(q)}`);const j=await r.json();
+    const L=(j.data||[]).slice(0,8);
+    if(!L.length){$("sugg").innerHTML=`<div>검색 결과 없음</div>`;return;}
+    if(L.length===1||L[0].name===q){load(L[0].code,L[0].name);return;}
+    $("sugg").innerHTML=L.map(x=>`<div data-c="${x.code}" data-n="${x.name}">${x.name} <span style="color:var(--sub)">${x.code} · ${x.market||""}</span></div>`).join("");
+    $("sugg").querySelectorAll("div[data-c]").forEach(el=>el.onclick=()=>load(el.dataset.c,el.dataset.n));
+  }catch(e){$("sugg").innerHTML=`<div class="err">검색 실패</div>`;}
+}
+function init(){
+  $("meth").innerHTML=Object.keys(METHODS).map(m=>`<option>${m}</option>`).join("");
+  $("chips").innerHTML=CHIPS.map(([c,n])=>`<span class="chip" data-c="${c}" data-n="${n}">${n}</span>`).join("");
+  $("chips").querySelectorAll(".chip").forEach(el=>el.onclick=()=>{$("sq").value=el.dataset.n;load(el.dataset.c,el.dataset.n);});
+  $("sgo").onclick=()=>search($("sq").value);
+  $("sq").addEventListener("keydown",e=>{if(e.key==="Enter")search($("sq").value);});
+  ["px","op","avg","qty","bud","meth","stop","tSq","tBull","tCh"].forEach(id=>{$(id).addEventListener("input",render);$(id).addEventListener("change",render);});
+  fetch("data/bb-gauge.json").then(r=>r.json()).then(j=>{MKT=j;render();}).catch(()=>{});
+  $("doc").innerHTML=DOC;
+  const u=new URLSearchParams(location.search);
+  if(u.get("code")) load(u.get("code"),u.get("name")||u.get("code"));
+  else if(u.get("q")){$("sq").value=u.get("q");search(u.get("q"));}
+}
+
+const DOC=`
+<h2>📖 이 페이지를 읽는 법</h2>
+<h3>1. %B — 현재가가 밴드 안 어디에 있나</h3>
+<p><b>%B = (현재가 − 하단) ÷ (상단 − 하단)</b>. 0이면 하단 밴드, 0.5면 중심선(20일선), 1이면 상단 밴드다.
+0 밑이나 1 위는 밴드 밖이다. 밴드는 최근 20일 평균에서 표준편차(가격이 평소 흔들리는 폭)의 2배만큼 위아래로 그린 선이라,
+정상적인 날의 약 95%는 밴드 안에서 끝난다. 그래서 %B는 "이 종목 기준으로 지금이 비싼 편인가 싼 편인가"를 <b>종목 자신의 변동성 단위</b>로 알려준다.
+1만원짜리와 100만원짜리, 하루 1% 움직이는 종목과 5% 움직이는 종목을 같은 잣대로 비교할 수 있다는 게 핵심이다.</p>
+<h3>2. 왜 %B만으로 정하지 않고 추세를 겹치나</h3>
+<p>존 볼린저 본인의 제1원칙은 <b>"밴드는 상대적 고저를 정의할 뿐, 그 자체로 매매 신호가 아니다"</b>다.
+같은 %B 1.1(상단 돌파)이라도 ① 60일선 위에서 20일선이 올라가는 <b>상승추세</b>면 주가가 밴드를 타고 계속 오르는 '밴드 타기'이고,
+② 60일선 근처에서 방향이 없는 <b>횡보</b>면 박스 상단이라 일부 차익 자리이며, ③ <b>하락추세</b>에서의 상단 터치는 반등 매도 자리다.
+특히 한국은 모멘텀 시장이라 상단 돌파가 많을수록 이후 더 올랐다(볼린저밴드 온도계의 8년 검증). 그래서 상승추세의 상단은 <b>매도 금지</b>로 두었다.</p>
+<table><tr><th>추세</th><th>판정 기준</th><th>밴드 해석</th></tr>
+<tr><td>상승추세</td><td>현재가 &gt; 60일선, 그리고 20일선 &gt; 5일 전 20일선</td><td>중심선·하단은 눌림 매수 자리, 상단은 밴드 타기(보유)</td></tr>
+<tr><td>횡보</td><td>나머지</td><td>밴드 = 박스. 하단 매수 · 상단 일부 매도의 평균회귀 전략</td></tr>
+<tr><td>하락추세</td><td>현재가 &lt; 60일선, 그리고 20일선 &lt; 5일 전 20일선</td><td>하단은 떨어지는 칼(매수 금지), 중심선 위 반등은 비중 축소, 하단 이탈은 전액 정리</td></tr></table>
+<h3>3. 판정 순서 — 우선순위가 높은 것부터</h3>
+<ol><li><b>손절선</b>(평단 −10%, 조정 가능) 이탈 → 무조건 전액매도. 다른 어떤 신호보다 먼저다.</li>
+<li>(선택) <b>샹들리에 스탑</b> — 22일 최고가 − 3×ATR(하루 평균 변동폭) 이탈 → 전액매도. 볼린저가 권한 추세 추종 청산법이지만 아래 백테스트처럼 2025~26 고변동 장에서는 너무 자주 털려 기본값은 꺼 두었다.</li>
+<li><b>행동 매트릭스</b> — %B 7구간 × 추세 3종 = 21칸에서 기본 행동을 꺼낸다.</li>
+<li>매수일 때 <b>확인 필터</b>: 예산 소진 / 스퀴즈(밴드폭이 125일 중 하위 10% — 곧 크게 움직이지만 방향은 모름) / 음봉이면 '홀딩'으로 내린다. 볼린저 규칙상 매수 셋업은 양봉으로 확인한다.</li>
+<li>매도 신호인데 보유가 없으면 '홀딩(관망)' — 그 자리에서 신규 매수는 하지 않는다.</li></ol>
+<h3>4. 분할매수 — 얼마씩, 어디서</h3>
+<p>예산을 한 번에 넣지 않고 볼린저 가격대에 나눠 건다. 가격대는 <b>중심선 → 하단 근접(%B 0.2) → 하단 밴드 → 하단 −1σ</b> 순서로 내려간다.
+밴드 기준이라 변동성이 큰 종목은 간격이 넓게, 조용한 종목은 좁게 자동 조정된다(고정 −5%·−10% 물타기와 다른 점).</p>
+<table><tr><th>분할 방식</th><th>비중</th><th>맞는 상황</th></tr>
+<tr><td>3분할 30/30/40</td><td>30·30·40%</td><td>기본값. 상승추세 눌림 매수</td></tr>
+<tr><td>하방가중 20/30/50</td><td>20·30·50%</td><td>횡보 박스 하단을 노릴 때 — 쌀수록 많이, 평단을 가장 크게 낮춤</td></tr>
+<tr><td>균등 4분할</td><td>25%×4</td><td>변동성 큰 코스닥·테마주 — 하단 −1σ까지 여력 남김</td></tr>
+<tr><td>상방가중 50/30/20</td><td>50·30·20%</td><td>확신 높은 주도주 첫 눌림 — 못 살 위험을 줄임</td></tr></table>
+<p>분할매도는 횡보·하락추세에서만 <b>상단권(%B 0.8) → 상단 밴드 → 상단+1σ</b>에서 1/3씩. 상승추세에서는 보류하고 중심선 이탈·손절선으로만 정리한다.</p>
+<h3>5. 시장 온도계와 같이 읽기</h3>
+<p>판정 카드 아래 줄은 <a href="bb-gauge.html" style="color:#7fb0ff">볼린저밴드 온도계</a>의 오늘 시장 국면이다.
+종목은 매수 자리여도 시장이 <b>④ 조용한 소멸</b>이면 1차 비중을 절반으로, 시장이 <b>PANIC(A) 공포 매수 구간</b>이면 종목·시장 신호가 같은 방향이라 계획대로 집행한다.
+온도계는 '언제 담을까', 이 페이지는 '무엇을 얼마나'를 답한다.</p>
+
+<h2>🧪 백테스트로 확인한 것 (2025-05 ~ 2026-10, 대형·주도주 10종목)</h2>
+<div class="box warn"><b>먼저 불리한 사실부터.</b> 이 기간은 코스피가 두 배 오른 강세장이었고, 규칙(기본값)은 10종목 평균 수익률이 <b>+21%</b>로 단순 보유 평균 <b>+135%</b>에 크게 못 미쳤다(10종목 중 1종목만 보유를 이김).
+대신 최대낙폭은 평균 <b>−23%</b>로 단순 보유 <b>−50%</b>의 절반이었고, 평균 투자비중은 24%에 그쳤다.
+즉 이 규칙은 <b>'수익 극대화'가 아니라 '평단 관리와 낙폭 통제' 도구</b>다. 이미 보유한 종목을 어떻게 다룰지(물탈지·덜지)를 정하는 데 쓰고, 강한 추세 종목에서 '얼마나 오래 들고 갈지'는 추세·실적으로 판단해야 한다.</div>
+<table><tr><th>설정</th><th>평균 수익</th><th>평균 MDD</th><th>평균 비중</th><th>해석</th></tr>
+<tr><td>샹들리에 켬 + 필터 켬</td><td>−2.6%</td><td>−10.0%</td><td>4%</td><td>너무 자주 털려 거의 현금 — 방어는 최고, 수익은 없음</td></tr>
+<tr><td><b>기본값</b>: 샹들리에 끔 + 필터 켬</td><td><b>+21.0%</b></td><td>−22.9%</td><td>24%</td><td>낙폭 절반, 신호 품질 위주</td></tr>
+<tr><td>샹들리에 끔 + 필터 끔</td><td>+38.4%</td><td>−27.5%</td><td>41%</td><td>더 많이 사서 더 벌지만 낙폭도 큼</td></tr>
+<tr><td>단순 보유</td><td>+134.7%</td><td>−50.1%</td><td>100%</td><td>강세장의 기준선</td></tr></table>
+<p style="color:var(--sub);font-size:12px">대상: 삼성전자·SK하이닉스·현대차·NAVER·한화에어로스페이스·에코프로비엠·셀트리온·카카오·한미반도체·삼성바이오로직스(현재 상장 종목만 → 생존편향). 현금 1,000만원 시작, 종가 체결.
+1년 반 한 국면 표본이라 통계적 결론이 아니라 '성격 파악'용이다.</p>
+
+<h2>🧭 향후 전개 전략</h2>
+<h3>단기 (지금 바로) — 보유 종목 점검 루틴</h3>
+<ul><li>장 마감 후 보유 종목을 이 페이지에 하나씩 넣고 판정만 기록: <b>전액매도·추가매도가 뜬 종목부터</b> 처리, 추가매수는 다음 날 양봉 확인 후.</li>
+<li>추가매수 판정이 나와도 <b>시장 온도계 국면</b>과 <b>예수금 온도계 권장 현금비중</b>을 넘지 않는 범위에서만 집행.</li>
+<li>분할매수표의 목표가를 다음 날 아침 지정가로 걸어두되, 밴드는 매일 움직이므로 <b>아침마다 갱신</b>.</li></ul>
+<h3>중기 (1~2개월) — 규칙을 내 종목에 맞추기</h3>
+<ul><li>엑셀 시뮬레이터의 '설정' 시트에서 매트릭스 칸·분할 방식·필터를 바꿔 보며 내 주력 종목 5~10개에 공통으로 좋아지는 규칙만 채택(한 종목 맞춤은 과최적화).</li>
+<li>주도주(상승추세 비중 높은 종목)와 박스권 종목을 나눠 <b>두 개의 매트릭스</b>를 운영 — 주도주는 상단 매도 금지·중심선 눌림 매수, 박스권은 하단 매수·상단 매도.</li>
+<li>판정 결과를 매매일지(trade-journal)와 ti-brain에 남겨, 판정과 실제 결과(20일 뒤 수익)를 쌓아 <b>내 데이터로 승률을 검증</b>.</li></ul>
+<h3>장기 — 자동화 로드맵</h3>
+<ul><li><b>보유종목 자동 스캔</b>: portfolio-manager 보유 목록을 매일 장 마감 후 일괄 판정 → 텔레그램(@Tistock_bot)으로 판정이 바뀐 종목만 알림.</li>
+<li><b>350종목 개별 판정 집계</b>: 온도계가 세는 '상단돌파/하단이탈 종목수'에 더해, 이 매트릭스 판정이 '추가매수'인 종목수를 시장 지표로 추가.</li>
+<li><b>확인 지표 결합</b>: RSI·MFI(거래량 가중 RSI) 다이버전스와 bb-gauge의 W바닥·2바 반전 셋업을 판정 가중치로 편입.</li>
+<li><b>국면 전환 대응</b>: 강세장이 끝나 박스·하락 국면이 오면 밴드 평균회귀 전략의 상대 성과가 좋아지는 구간이다 — 그때 백테스트를 다시 돌려 기본값(필터·분할 비중)을 재조정.</li></ul>
+`;
+init();
+</script>
+</body>
+</html>
