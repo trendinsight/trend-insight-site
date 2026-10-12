@@ -2446,12 +2446,12 @@ async function tdHandle(req, url, env, ctx) {
    bb-stock.html·엑셀 시뮬레이터와 같은 규칙으로 보유종목 전체를 매 거래일 판정하고
    어제와 판정이 바뀐 종목만 텔레그램(@Tistock_bot)으로 보낸다.
    - 보유 목록: PC의 bb_sync_holdings.py 가 portfolio-manager 보유 파일을 읽어 POST /api/bbstock/sync
-     (Bearer 토큰, 해시는 RISK_DB meta 'bbstock_token_hash') → KV "bbstock-holdings"
-   - 크론: 평일 UTC 8시대 7분 간격(17:00~17:56 KST, 9회) — 1회당 BBS.CHUNK 종목씩 이어서 판정,
-     마지막 묶음에서 어제 결과와 비교 → 변경분 알림 → KV "bbstock-result"
+     (Bearer 토큰, 해시는 RISK_DB meta 'bbstock_token_hash') → D1 bbstock_state("bbstock-holdings")
+   - 크론: 평일 UTC 8시대 7분 간격(17:00~17:56 KST, 9회) — 1회당 BBS.CHUNK(40) 종목씩 — 최대 360종목 이어서 판정,
+     마지막 묶음에서 어제 결과와 비교 → 변경분 알림 → D1 bbstock_state("bbstock-result")
    - 결과 조회는 사이트 소유자 로그인만 허용(보유 수량·평단 포함) */
 const BBS = { N: 20, K: 2, M: 60, LAG: 5, SQLB: 125, SQTH: 0.10, ATRN: 22, CHM: 3, RSIN: 14, SRAT: 1 / 3,
-  CHUNK: 25, BARS: 220, STOP: 0.10, BUDGET_MULT: 1 / 0.6, METHOD: [.3, .3, .4, 0], MAX_LINES: 30 };
+  CHUNK: 40, BARS: 220, STOP: 0.10, BUDGET_MULT: 1 / 0.6, METHOD: [.3, .3, .4, 0], MAX_LINES: 30 };
 const BBS_ZONES = [
   { lo: -99, name: "하단 이탈", act: ["추가매수", "추가매수", "전액매도"] },
   { lo: 0.0, name: "하단권", act: ["추가매수", "추가매수", "홀딩"] },
@@ -2536,14 +2536,23 @@ async function bbsTokenOk(req, env) {
   const row = await env.RISK_DB.prepare("SELECT value FROM meta WHERE key='bbstock_token_hash'").first();
   return !!row && (await rkSha256(auth)) === row.value;
 }
+
+// 상태 저장은 D1(강한 일관성) — KV는 읽기 캐시(60초) 때문에 단계 실행 커서가 꼬인다
+async function bbsGet(env, k) {
+  const r = await env.RISK_DB.prepare("SELECT value FROM bbstock_state WHERE key=?").bind(k).first();
+  return r ? JSON.parse(r.value) : null;
+}
+async function bbsPut(env, k, v) {
+  await env.RISK_DB.prepare("INSERT OR REPLACE INTO bbstock_state VALUES(?,?,?)").bind(k, JSON.stringify(v), kstNow()).run();
+}
 function bbsTodayKST() { return new Date(Date.now() + 9 * 36e5).toISOString().slice(0, 10); }
 
 // 크론 1회 = 한 묶음. force=true 면 오늘 이미 끝났어도 처음부터 다시
 async function bbsStep(env, { force = false, notify = true } = {}) {
-  const H = JSON.parse((await env.GAUGE_KV.get("bbstock-holdings")) || "null");
+  const H = await bbsGet(env, "bbstock-holdings");
   if (!H || !Array.isArray(H.items) || !H.items.length) return { ok: false, error: "보유 목록 없음 — PC에서 bb_sync_holdings.py 실행 필요" };
   const today = bbsTodayKST();
-  let st = JSON.parse((await env.GAUGE_KV.get("bbstock-run")) || "null");
+  let st = await bbsGet(env, "bbstock-run");
   if (force || !st || st.day !== today) st = { day: today, cursor: 0, results: [], errors: [], done: false, started: kstNow() };
   if (st.done) return { ok: true, skipped: "오늘 판정 완료", day: today };
   const opt = Object.assign({ stop: BBS.STOP, sq: true, bull: true, ch: false }, H.settings || {});
@@ -2554,23 +2563,23 @@ async function bbsStep(env, { force = false, notify = true } = {}) {
   }));
   for (const r of out) (r.error ? st.errors : st.results).push(r);
   st.cursor += batch.length;
-  if (st.cursor < H.items.length) { await env.GAUGE_KV.put("bbstock-run", JSON.stringify(st)); return { ok: true, progress: `${st.cursor}/${H.items.length}` }; }
+  if (st.cursor < H.items.length) { await bbsPut(env, "bbstock-run", st); return { ok: true, progress: `${st.cursor}/${H.items.length}` }; }
   // ── 마지막 묶음: 비교·저장·알림 ──
-  const prev = JSON.parse((await env.GAUGE_KV.get("bbstock-result")) || "null");
+  const prev = await bbsGet(env, "bbstock-result");
   const freq = {}; for (const r of st.results) freq[r.date] = (freq[r.date] || 0) + 1;
   const asof = Object.keys(freq).sort((a, b) => freq[b] - freq[a])[0] || null;
   st.done = true;
-  await env.GAUGE_KV.put("bbstock-run", JSON.stringify(st));
+  await bbsPut(env, "bbstock-run", st);
   if (prev && prev.asof === asof && !force) return { ok: true, skipped: "새 거래일 데이터 없음(휴장)", asof };
   const pm = {}; if (prev && Array.isArray(prev.results)) for (const r of prev.results) pm[r.code] = r.verdict;
   const first = !prev;
   for (const r of st.results) { r.prev = pm[r.code] || null; r.changed = !first && r.prev !== null && r.prev !== r.verdict; r.isNew = !first && r.prev === null; }
   const ORD = { "전액매도": 0, "추가매도": 1, "추가매수": 2, "홀딩": 3 };
-  st.results.sort((a, b) => (b.changed - a.changed) || (ORD[a.verdict] - ORD[b.verdict]) || ((a.pb ?? 0) - (b.pb ?? 0)));
+  st.results.sort((a, b) => (b.changed - a.changed) || (ORD[a.verdict] - ORD[b.verdict]) || (b.qty * b.price - a.qty * a.price));
   const counts = {}; for (const r of st.results) counts[r.verdict] = (counts[r.verdict] || 0) + 1;
   const data = { updated: kstNow(), asof, total: H.items.length, holdings_updated: H.updated, source: H.source || null,
     settings: opt, counts, changed: st.results.filter(r => r.changed).length, results: st.results, errors: st.errors };
-  await env.GAUGE_KV.put("bbstock-result", JSON.stringify(data));
+  await bbsPut(env, "bbstock-result", data);
   if (notify) { try { await slTelegram(env, bbsMessage(data, first)); } catch (e) { /* 알림 실패는 무시 */ } }
   return { ok: true, finished: true, asof, changed: data.changed, counts };
 }
@@ -2605,7 +2614,7 @@ async function handleBbStock(req, url, env, ctx) {
       const items = (b.holdings || []).map(h => ({ code: String(h.code).toUpperCase(), name: h.name || null,
         qty: +h.qty || 0, avg: +h.avg || 0, budget: +h.budget || null }))
         .filter(h => /^[0-9A-Z]{6}$/.test(h.code) && h.qty > 0);
-      await env.GAUGE_KV.put("bbstock-holdings", JSON.stringify({ updated: kstNow(), source: b.source || null, settings: b.settings || {}, items }));
+      await bbsPut(env, "bbstock-holdings", { updated: kstNow(), source: b.source || null, settings: b.settings || {}, items });
       return J({ ok: true, holdings: items.length });
     }
     if (p === "run" && req.method === "POST") {   // 수동 실행(PC 스크립트용) — 한 묶음씩
@@ -2613,13 +2622,13 @@ async function handleBbStock(req, url, env, ctx) {
       return J(await bbsStep(env, { force: url.searchParams.get("reset") === "1", notify: url.searchParams.get("notify") !== "0" }));
     }
     if (p === "status") {
-      const st = JSON.parse((await env.GAUGE_KV.get("bbstock-run")) || "null");
-      const H = JSON.parse((await env.GAUGE_KV.get("bbstock-holdings")) || "null");
+      const st = await bbsGet(env, "bbstock-run");
+      const H = await bbsGet(env, "bbstock-holdings");
       return J({ ok: true, day: st && st.day, cursor: st && st.cursor, done: st && st.done, total: H ? H.items.length : 0, holdings_updated: H && H.updated });
     }
     if (p === "result") {
       if (!(await bbsOwner(req, env))) return J({ ok: false, error: "owner only" }, 403);
-      return J({ ok: true, data: JSON.parse((await env.GAUGE_KV.get("bbstock-result")) || "null") });
+      return J({ ok: true, data: await bbsGet(env, "bbstock-result") });
     }
     return J({ ok: false, error: "unknown endpoint" }, 404);
   } catch (e) { return J({ ok: false, error: String(e) }, 500); }
