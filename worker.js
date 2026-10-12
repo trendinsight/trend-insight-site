@@ -2586,22 +2586,32 @@ async function bbsStep(env, { force = false, notify = true } = {}) {
 
 function bbsMessage(d, first) {
   const fmt = v => v == null ? "–" : Number(v).toLocaleString("ko-KR");
+  const nm = r => `${r.name || r.code}(${r.code})`;
   const cnt = ["전액매도", "추가매도", "추가매수", "홀딩"].map(k => `${BBS_ICON[k]}${k} ${d.counts[k] || 0}`).join(" · ");
   const head = [`🎯 <b>보유종목 볼린저 판정</b> (종가 ${d.asof})`, cnt];
   const url = "https://trend-insight-site.sungsangkyung77.workers.dev/bb-stock.html";
-  if (first) return [...head, "", `첫 판정 — ${d.total}종목 기준선 저장. 내일부터 판정이 바뀐 종목만 알립니다.`, url].join("\n");
+  // 현재 판정별 종목명 요약 (평가액 큰 순)
+  const byV = v => d.results.filter(r => r.verdict === v).sort((a, b) => b.qty * b.price - a.qty * a.price);
+  const names = (L, max) => L.slice(0, max).map(r => r.name || r.code).join(", ") + (L.length > max ? ` 외 ${L.length - max}` : "");
+  const now = [];
+  const vb = byV("추가매수"), vs = byV("추가매도"), vx = byV("전액매도");
+  if (vb.length) now.push(`🔴 추가매수: ${names(vb, 15)}`);
+  if (vs.length) now.push(`🔵 추가매도: ${names(vs, 15)}`);
+  if (vx.length) now.push(`⚫ 전액매도(평가액 상위): ${names(vx, 10)}`);
+  const tail = now.length ? ["", "<b>현재 판정</b>", ...now] : [];
+  if (first) return [...head, "", `첫 판정 — ${d.total}종목 기준선 저장. 내일부터 판정이 바뀐 종목을 알립니다.`, ...tail, "", url].join("\n");
   const ch = d.results.filter(r => r.changed || r.isNew);
-  if (!ch.length) return [...head, "", "판정 변경 없음 — 대기.", url].join("\n");
+  if (!ch.length) return [...head, "", "판정 변경 없음 — 대기.", ...tail, "", url].join("\n");
   const line = r => {
     let act = "";
     if (r.verdict === "추가매수") act = ` → ${r.nextT}차 ${fmt(r.exQ)}주 (다음 ${fmt(r.buy2)}·${fmt(r.buy3)})`;
     else if (r.verdict === "추가매도") act = ` → ${fmt(r.exQ)}주 매도 (상단 ${fmt(r.sell2)})`;
     else if (r.verdict === "전액매도") act = ` → ${fmt(r.exQ)}주 전량`;
-    return `${BBS_ICON[r.verdict]} <b>${r.name}</b> ${r.prev ? r.prev + "→" : "신규 "}${r.verdict}${act}\n   ${fmt(r.price)}원 · %B ${r.pb} · ${r.why}${r.pl != null ? ` · 손익 ${r.pl > 0 ? "+" : ""}${r.pl}%` : ""}`;
+    return `${BBS_ICON[r.verdict]} <b>${nm(r)}</b> ${r.prev ? r.prev + "→" : "신규 "}${r.verdict}${act}\n   ${fmt(r.price)}원 · %B ${r.pb} · ${r.why}${r.pl != null ? ` · 손익 ${r.pl > 0 ? "+" : ""}${r.pl}%` : ""}`;
   };
   const lines = ch.slice(0, BBS.MAX_LINES).map(line);
-  if (ch.length > BBS.MAX_LINES) lines.push(`…외 ${ch.length - BBS.MAX_LINES}종목`);
-  return [...head, `판정 변경 ${ch.length}종목`, "", ...lines, "", url].join("\n");
+  if (ch.length > BBS.MAX_LINES) lines.push(`…외 ${ch.length - BBS.MAX_LINES}종목: ${names(ch.slice(BBS.MAX_LINES), 20)}`);
+  return [...head, `판정 변경 ${ch.length}종목`, "", ...lines, ...tail, "", url].join("\n");
 }
 
 async function handleBbStock(req, url, env, ctx) {
