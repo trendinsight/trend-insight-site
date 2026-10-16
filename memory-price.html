@@ -22,10 +22,21 @@ svg{vertical-align:middle}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}
 .tabs button{border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:16px;padding:5px 12px;cursor:pointer;font-size:13px}
 .tabs button.on{background:var(--acc);color:var(--bg);border-color:var(--acc)}
+.sel{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 10px}
+select{background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:6px 10px;font-size:13px;max-width:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin:6px 2px}
+.legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px;border-radius:2px}
+#chartbox{position:relative}
+#tip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:6px 9px;font-size:12px;display:none;box-shadow:0 2px 8px rgba(0,0,0,.18);white-space:nowrap}
 </style></head><body><div class="w">
 <h1>메모리 가격 추이</h1>
 <div class="sub" id="meta">불러오는 중…</div>
 <div class="note"><b>읽기 전에</b> — 현물가는 DRAMeXchange 공개 표의 일/주 평균가(USD)이며 일부 품목은 거래 빈도가 낮아 하루 변동이 불규칙합니다. 계약가·HBM·기업용 SSD는 공개 일 단위 가격이 없어 아래 "추정·전망" 표에 출처와 함께 방향·QoQ 범위로만 표기합니다. 누적 이력은 수집 시작일(2026-10-16)부터 쌓이므로 차트는 시간이 지나며 채워집니다. 투자 권유가 아닙니다.</div>
+<h2>3년 추이 + 삼성전자·SK하이닉스 주가</h2>
+<div class="sel"><select id="prod"></select><span class="sub" id="cov"></span></div>
+<div class="card" style="padding:8px"><div id="chartbox"><svg id="ch" viewBox="0 0 1000 400" width="100%" role="img" aria-label="메모리 가격과 주가 3년 차트"></svg><div id="tip"></div></div>
+<div class="legend" id="lg"></div></div>
+<div class="note" id="cnote"></div>
 <div class="tabs" id="tabs"></div>
 <div id="spot"></div>
 <h2>추정·전망 (계약가 / 비공개 가격)</h2>
@@ -45,9 +56,56 @@ function render(h,cat){const rows=Object.entries(h).filter(([k,v])=>v.cat===cat)
 return`<div class="card"><table><thead><tr><th>품목 (USD)</th><th>평균가</th><th>당일/주 변동</th><th>7회 전 대비</th><th>30회 전 대비</th><th>고가 / 저가</th><th>추이</th></tr></thead><tbody>`+rows.map(([k,v])=>{const s=v.s,l=s[s.length-1];
 const g=n=>s.length>n?pct(l[1],s[s.length-1-n][1]):null;
 return`<tr><td>${k}<span class="tag">${v.per==="D"?"일":"주"}</span></td><td><b>${f(l[1],3)}</b></td><td>${cell(l[4])}</td><td>${cell(g(7))}</td><td>${cell(g(30))}</td><td class="mut">${f(l[2])} / ${f(l[3])}</td><td>${spark(s)}</td></tr>`}).join("")+`</tbody></table></div>`}
+
+const SC={삼성전자:"#1d6fd1",SK하이닉스:"#e0701a"};
+const D=s=>new Date(s+"T00:00:00Z").getTime();
+function qStart(q){const[y,n]=q.split("-");return Date.UTC(+y,(+n[0]-1)*3,1)}
+function nice(mn,mx,n=5){const r=(mx-mn)||1,st=Math.pow(10,Math.floor(Math.log10(r/n)));const m=[1,2,2.5,5,10].find(k=>r/n<=k*st)*st;const a=Math.floor(mn/m)*m,b=Math.ceil(mx/m)*m,t=[];for(let v=a;v<=b+1e-9;v+=m)t.push(v);return{a,b,t}}
+function drawChart(P,Q,S,key){
+ const svg=document.getElementById("ch"),W=1000,H=400,L=62,R=62,T=14,B=34,pw=W-L-R,ph=H-T-B;
+ const stk=S&&S.s?S.s:{};const names=Object.keys(stk);
+ const tl=Math.max(...names.map(n=>D(stk[n][stk[n].length-1][0])),Date.now()-864e5),t1=tl+(key.startsWith('Q:')?50*864e5:0),t0=tl-3*365.25*864e5;
+ const X=t=>L+(t-t0)/(t1-t0)*pw;
+ // 주가: 3년 시작 100 기준 지수, 로그축
+ const idx={};names.forEach(n=>{const a=stk[n].filter(r=>D(r[0])>=t0);idx[n]=a.map(r=>[D(r[0]),r[1]/a[0][1]*100,r[1]])});
+ const all=names.flatMap(n=>idx[n].map(r=>r[1]));const lmn=Math.log(Math.min(...all)*.9),lmx=Math.log(Math.max(...all)*1.1);
+ const YR=v=>T+ph-(Math.log(v)-lmn)/(lmx-lmn)*ph;
+ // 메모리 지표
+ let kind,pts=[],bars=[];
+ if(key.startsWith("Q:")){kind="q";bars=(Q[key.slice(2)]||[]).map(r=>({t:qStart(r.q),lo:r.lo,hi:r.hi,m:(r.lo+r.hi)/2,q:r.q,b:r.basis}))}
+ else{kind="s";const h=(P.history||{})[key];pts=h?h.s.map(r=>[D(r[0]),r[1],r]).filter(r=>r[0]>=t0):[]}
+ let vmin,vmax;if(kind==="q"){const v=bars.flatMap(b=>[b.lo,b.hi,0]);vmin=Math.min(...v,0);vmax=Math.max(...v,1)}else{const v=pts.map(p=>p[1]);vmin=v.length?Math.min(...v)*.9:0;vmax=v.length?Math.max(...v)*1.1:1;if(vmin===vmax){vmin*=.9;vmax*=1.1}}
+ const ny=nice(vmin,vmax,5),YL=v=>T+ph-(v-ny.a)/(ny.b-ny.a)*ph;
+ let o="";
+ ny.t.forEach(v=>{o+=`<line x1="${L}" x2="${W-R}" y1="${YL(v)}" y2="${YL(v)}" stroke="var(--bd)"/><text x="${L-6}" y="${YL(v)+4}" text-anchor="end" font-size="11" fill="var(--mut)">${kind==="q"?v+"%":v}</text>`});
+ [100,200,500,1000,2000].filter(v=>Math.log(v)>lmn&&Math.log(v)<lmx).forEach(v=>{o+=`<text x="${W-R+6}" y="${YR(v)+4}" font-size="11" fill="var(--mut)">${v}</text>`});
+ for(let y=new Date(t0).getUTCFullYear();y<=new Date(t1).getUTCFullYear();y++)for(let m=0;m<12;m+=3){const t=Date.UTC(y,m,1);if(t<t0||t>t1)continue;o+=`<line x1="${X(t)}" x2="${X(t)}" y1="${T}" y2="${T+ph}" stroke="var(--bd)" stroke-dasharray="2 4"/><text x="${X(t)}" y="${H-12}" text-anchor="middle" font-size="11" fill="var(--mut)">${m===0?y:(y%100)+"."+String(m+1).padStart(2,"0")}</text>`}
+ if(kind==="q"){const bw=pw/12*.7;bars.forEach(b=>{const x=X(b.t)+(X(b.t+91*864e5)-X(b.t))/2-bw/2,c=b.m>=0?"var(--up)":"var(--dn)";
+  o+=`<rect x="${x}" y="${Math.min(YL(b.m),YL(0))}" width="${bw}" height="${Math.abs(YL(b.m)-YL(0))}" fill="${c}" opacity=".35"/><line x1="${x+bw/2}" x2="${x+bw/2}" y1="${YL(b.hi)}" y2="${YL(b.lo)}" stroke="${c}" stroke-width="2"/><text x="${x+bw/2}" y="${YL(b.hi)-5}" text-anchor="middle" font-size="10" fill="${c}">${b.m>0?"+":""}${b.m}</text>`});
+  o+=`<line x1="${L}" x2="${W-R}" y1="${YL(0)}" y2="${YL(0)}" stroke="var(--mut)"/>`}
+ else if(pts.length){if(pts.length>1)o+=`<polyline fill="none" stroke="var(--tx)" stroke-width="2.2" points="${pts.map(p=>X(p[0])+","+YL(p[1])).join(" ")}"/>`;pts.forEach(p=>o+=`<circle cx="${X(p[0])}" cy="${YL(p[1])}" r="${pts.length>40?1.8:4}" fill="var(--tx)"/>`)}
+ names.forEach(n=>{o+=`<polyline fill="none" stroke="${SC[n]}" stroke-width="1.6" opacity=".9" points="${idx[n].map(r=>X(r[0]).toFixed(1)+","+YR(r[1]).toFixed(1)).join(" ")}"/>`});
+ o+=`<text x="${L-50}" y="10" font-size="11" fill="var(--mut)">${kind==="q"?"계약가 QoQ(%)":"현물가(USD)"}</text><text x="${W-2}" y="10" text-anchor="end" font-size="11" fill="var(--mut)">주가 지수(3년전=100)</text>`;
+ o+=`<line id="vx" y1="${T}" y2="${T+ph}" stroke="var(--mut)" stroke-dasharray="3 3" style="display:none"/>`;
+ svg.innerHTML=o;
+ document.getElementById("lg").innerHTML=`<span><i style="background:var(--tx)"></i>${kind==="q"?"계약가 QoQ 전망(막대=중앙값, 선=범위)":"메모리 현물가"}</span>`+names.map(n=>`<span><i style="background:${SC[n]}"></i>${n}</span>`).join("");
+ const tip=document.getElementById("tip"),vx=svg.querySelector("#vx");
+ svg.onmousemove=e=>{const r=svg.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*W;if(x<L||x>W-R){tip.style.display="none";vx.style.display="none";return}
+  const t=t0+(x-L)/pw*(t1-t0);let h=`<b>${new Date(t).toISOString().slice(0,10)}</b>`;
+  names.forEach(n=>{const a=idx[n];let b=a[0];for(const q of a){if(Math.abs(q[0]-t)<Math.abs(b[0]-t))b=q}h+=`<br><span style="color:${SC[n]}">●</span> ${n} ${b[2].toLocaleString("ko-KR")}원 (지수 ${b[1].toFixed(0)})`});
+  if(kind==="q"){const b=bars.find(b=>t>=b.t&&t<b.t+91*864e5);if(b)h+=`<br>${b.q} QoQ ${b.lo}~${b.hi}%<br><span class="mut">${b.b}</span>`}else if(pts.length){let b=pts[0];for(const q of pts){if(Math.abs(q[0]-t)<Math.abs(b[0]-t))b=q}if(Math.abs(b[0]-t)<12*864e5)h+=`<br>현물 ${b[1]} (${new Date(b[0]).toISOString().slice(0,10)})`}
+  tip.innerHTML=h;tip.style.display="block";vx.setAttribute("x1",x);vx.setAttribute("x2",x);vx.style.display="";const bx=document.getElementById("chartbox").getBoundingClientRect();tip.style.left=Math.min(e.clientX-bx.left+14,bx.width-250)+"px";tip.style.top="30px"};
+ svg.onmouseleave=()=>{tip.style.display="none";vx.style.display="none"};
+ document.getElementById("cov").textContent=kind==="q"?`${bars.length}개 분기 확인 (공개 보도 기준, 빈 분기는 확인 못 함)`:(pts.length?`현물 이력 ${pts.length}점 (${new Date(pts[0][0]).toISOString().slice(0,10)}~)`:"이력 없음");
+ document.getElementById("cnote").innerHTML=kind==="q"?"막대는 TrendForce가 해당 분기 직전·직후 낸 <b>전망</b> 범위의 중앙값입니다(확정 실적 아님). 이후 상향·하향 수정은 별도 반영하지 않았고, 확인하지 못한 분기는 비웠습니다. 주가가 가격을 <b>선행</b>하는지는 막대와 선의 시차로 직접 확인하세요.":"현물가 이력은 수집 시작일(2026-10-16)부터 쌓입니다. DRAMeXchange 일별 3년 이력은 유료(MI 회원) 자료라 공개로는 받을 수 없습니다. 보유한 CSV를 가져오면(스킬의 import-csv) 이 차트에 3년치가 그대로 그려집니다."}
+
 async function main(){
+const [Qd,Sd]=await Promise.all([fetch('/api/board/memory-price-q').then(r=>r.json()).catch(()=>null),fetch('/api/board/memory-stocks').then(r=>r.json()).catch(()=>null)]);
 const [p,e]=await Promise.all([fetch("/api/board/memory-prices").then(r=>r.json()),fetch("/api/board/memory-price-est").then(r=>r.json()).catch(()=>null)]);
 const h=p.history||{};document.getElementById("meta").textContent=`갱신 ${p.updated} · 현물 ${p.n}개 품목 · 출처 DRAMeXchange, TrendForce`;
+const Q={dram:(Qd&&Qd.dram)||[],nand:(Qd&&Qd.nand)||[]};const sel=document.getElementById("prod");
+sel.innerHTML='<optgroup label="계약가 QoQ (분기, 전망)"><option value="Q:dram">범용 DRAM 계약가</option><option value="Q:nand">NAND 계약가</option></optgroup>'+ORDER.map(c=>`<optgroup label="현물 · ${c}">`+Object.keys(h).filter(k=>h[k].cat===c).map(k=>`<option value="${k}">${k}</option>`).join("")+"</optgroup>").join("");
+sel.onchange=()=>drawChart(p,Q,Sd,sel.value);drawChart(p,Q,Sd,sel.value);
 const cats=ORDER.filter(c=>Object.values(h).some(v=>v.cat===c));let cur=cats[0];
 const tabs=document.getElementById("tabs"),spot=document.getElementById("spot");
 function draw(){tabs.innerHTML=cats.map(c=>`<button class="${c===cur?"on":""}" data-c="${c}">${c}</button>`).join("");spot.innerHTML=render(h,cur);
