@@ -324,10 +324,12 @@ function render(){
   </div>`;
   h+=matrixCard(J);
   h+=planCard(J,inp);
+  h+='<div id="fcbox"></div>';
   h+=scenarioCard(J,inp);
   h+=chartCard(J,BT);
   h+=btCard(BT,inp);
   $("out").innerHTML=h;
+  fcPaint(); fcWant(inp);
   const dl=$("csvbtn"); if(dl) dl.onclick=downloadCSV;
 }
 function bbBar(J){
@@ -492,6 +494,57 @@ function init(){
   else if(u.get("q")){$("sq").value=u.get("q");search(u.get("q"));}
 }
 
+
+/* ================= 🔮 1~3주 예측 (서버 /api/bbstock/forecast) ================= */
+let FC=null, FCKEY="", FCTF="week";
+function fcWant(inp){
+  const k=`${CODE}|${inp.avg||0}|${inp.stop}`;
+  if(k===FCKEY) return;
+  FCKEY=k; FC=null;
+  fetch(`/api/bbstock/forecast?code=${CODE}&tf=both&avg=${inp.avg||0}&stop=${inp.stop}`).then(r=>r.json())
+    .then(j=>{ if(FCKEY!==k) return; FC=j.ok?j.data:{err:j.error||"오류"}; fcPaint(); })
+    .catch(e=>{ if(FCKEY===k){FC={err:String(e)};fcPaint();} });
+}
+function fcPaint(){
+  const el=$("fcbox"); if(!el) return;
+  if(!FC){el.innerHTML=`<div class="card"><h2>🔮 1~3주 예측</h2><div class="meta">계산 중…</div></div>`;return;}
+  if(FC.err){el.innerHTML=`<div class="card"><h2>🔮 1~3주 예측</h2><div class="err">불러오기 실패: ${FC.err}</div></div>`;return;}
+  const f=FC[FCTF]; const other=FCTF==="week"?"day":"week";
+  const tabs=["week","day"].map(t=>`<span class="chip" data-t="${t}" style="${FCTF===t?"border-color:#1f6feb;color:#fff":""}">${t==="week"?"주봉 기준":"일봉 기준"}</span>`).join("");
+  if(!f||f.error){el.innerHTML=`<div class="card"><h2>🔮 1~3주 예측</h2><div class="chips">${tabs}</div><div class="err">${f&&f.error||"데이터 없음"}</div></div>`;fcTabs();return;}
+  const s=f.state, H=f.horizons, unit=f.tf==="day"?"거래일":"주";
+  const heat=p=>`background:rgba(31,111,235,${(p/100*0.55).toFixed(2)})`;
+  const sg=v=>(v>0?"+":"")+v;
+  const o=FC[other]; const agree=o&&!o.error?`<span style="color:var(--sub)">· ${other==="day"?"일봉":"주봉"}: ${o.state.zone}·${o.state.trend}·${o.regime.name}</span>`:"";
+  const lvRows=H[0].levels.map((x,j)=>`<tr${x.side==="위"?"":' style="background:#121722"'}><td>${x.name}</td><td>${fmt(x.price)}</td><td>${sg(x.dist)}%</td>${H.map(h=>`<td style="${heat(h.levels[j].p)}"><b>${h.levels[j].p}%</b></td>`).join("")}</tr>`).join("");
+  const stopRow=H[0].stop?`<tr><td><b class="u">손절가</b> (평단 −${Math.round((+$("stop").value||10))}%)</td><td>${fmt(H[0].stop.price)}</td><td>${sg(Math.round((H[0].stop.price/f.price-1)*1000)/10)}%</td>${H.map(h=>`<td style="${heat(h.stop.p)}"><b>${h.stop.p}%</b></td>`).join("")}</tr>`:"";
+  el.innerHTML=`<div class="card"><h2>🔮 1~3주 예측 — 같은 상태였던 과거 ${fmt(f.meta.samples)}건 기준</h2>
+   <div class="meta">코스피200+코스닥150 ${f.meta.stocks}종목 ${f.meta.period[0].slice(0,4)}~${f.meta.period[1].slice(0,4)} ${f.tf==="day"?"일봉":"주봉"}에서 지금과 같은 <b>%B 구간 × 추세 × 밴드폭 × %B 기울기</b>였던 시점 이후를 집계했다(동일 상태 ${fmt(s.n)}건).
+   <b>방향(오를지 내릴지)은 표본외 검증에서 거의 맞히지 못했다</b> — 그래서 이 카드의 본체는 방향이 아니라 <b>가격대 도달 확률</b>과 <b>예상 범위</b>다(둘 다 보정 확인).</div>
+   <div class="chips">${tabs}</div>
+   <div class="kv">
+    <div><div class="k">현재 상태</div><div class="v" style="font-size:14px">${s.zone} · ${s.trend}</div><div class="s">%B ${s.pb} · 밴드폭 ${s.bw}(${s.bwp}%) · %B ${s.slope}</div></div>
+    <div><div class="k">국면</div><div class="v" style="font-size:14px">${f.regime.name}</div><div class="s">${f.regime.note}</div></div>
+    <div><div class="k">${f.tf==="day"?"일":"주"} 변동성(20봉)</div><div class="v">${s.vol}%</div><div class="s">범위 계산에 이 종목 변동성을 곱한다 ${agree}</div></div>
+   </div>
+   <div class="tw"><table><tr><th>기간</th><th>상승 확률</th><th>판단</th><th>P10 (하위 10%)</th><th>중앙값</th><th>P90 (상위 10%)</th><th>예상 %B</th><th>투영 밴드 상단 / 중심 / 하단</th></tr>
+    ${H.map(h=>`<tr><td><b>${h.weeks}주</b>${f.tf==="day"?` <span style="color:var(--sub)">(${h.h}거래일)</span>`:""}</td><td>${h.up}% <span style="color:var(--sub)">(평소 ${h.base}%)</span></td>
+      <td>${h.dir==="방향 우위 없음"?`<span style="color:var(--sub)">우위 없음</span>`:`<b class="u">${h.dir}</b>`}</td>
+      <td>${fmt(h.range.p10)} <span style="color:var(--dn)">${sg(h.rangePct.p10)}%</span></td><td>${fmt(h.range.p50)} <span style="color:var(--sub)">${sg(h.rangePct.p50)}%</span></td>
+      <td>${fmt(h.range.p90)} <span style="color:var(--up)">${sg(h.rangePct.p90)}%</span></td><td>${h.pbMed} <span style="color:var(--sub)">≈${fmt(h.pbMedPx)}</span></td>
+      <td style="font-size:12px">${fmt(h.band.up)} / ${fmt(h.band.mid)} / ${fmt(h.band.dn)}</td></tr>`).join("")}
+   </table></div>
+   <h2 style="margin-top:16px">가격대별 도달 확률 — 분할 계획(⑤)의 지정가가 기간 안에 체결될 가능성</h2>
+   <div class="meta">오늘 밴드 기준 가격. 짙을수록 높다. 아래쪽(어두운 행)은 저가가, 위쪽은 고가가 그 가격에 한 번이라도 닿을 확률. 손절가는 변동성 근사(표본 보정).</div>
+   <div class="tw"><table><tr><th>가격대</th><th>가격</th><th>현재가 대비</th>${H.map(h=>`<th>${h.weeks}주 내</th>`).join("")}</tr>${lvRows}${stopRow}</table></div>
+   <div class="box" style="font-size:12.5px;line-height:1.7"><b>쓰는 법</b> — ① 추가매수 판정인데 아래 가격대 도달 확률이 높으면(예: 2주 내 60%↑) 시장가 대신 그 가격에 지정가를 건다.
+    ② 도달 확률이 낮은 가격대(20%↓)에 물량을 몰아두면 체결이 안 된 채 기회를 놓친다 — 배분을 위쪽으로 옮긴다.
+    ③ 손절가 도달 확률이 높으면(2주 내 50%↑) 손절률을 미리 정하고 감시주문을 건다. ④ 상승 확률 칸은 참고만 — '우위 없음'이 기본값이다.</div>
+  </div>`;
+  fcTabs();
+}
+function fcTabs(){ document.querySelectorAll('#fcbox .chip[data-t]').forEach(c=>c.onclick=()=>{FCTF=c.dataset.t;fcPaint();}); }
+
 /* ================= 내 보유종목 일일 판정 (서버 크론 결과) ================= */
 let MY=null, MYF="changed";
 async function loadMine(){
@@ -510,10 +563,11 @@ function renderMine(){
   $("mycnt").querySelectorAll(".chip").forEach(el=>el.onclick=()=>{MYF=el.dataset.f;renderMine();});
   let L=d.results; if(MYF==="changed") L=L.filter(r=>r.changed); else if(MYF!=="all") L=L.filter(r=>r.verdict===MYF);
   if(!L.length){$("mytbl").innerHTML=`<tr><td style="text-align:left;color:var(--sub)">${MYF==="changed"?"이번 주는 판정이 바뀐 종목이 없다 — 대기.":"해당 없음"}</td></tr>`;return;}
-  $("mytbl").innerHTML=`<tr><th>종목</th><th>판정</th><th>어제</th><th>현재가</th><th>%B</th><th>구간 · 추세</th><th>손익</th><th>실행</th></tr>`+
+  $("mytbl").innerHTML=`<tr><th>종목</th><th>판정</th><th>어제</th><th>현재가</th><th>%B</th><th>구간 · 추세</th><th>손익</th><th>실행</th><th>2주 예측</th></tr>`+
     L.map(r=>`<tr style="cursor:pointer" data-c="${r.code}"><td>${r.name}</td><td>${tag(r.verdict)}</td><td>${r.prev?tag(r.prev):"–"}</td><td>${fmt(r.price)}</td><td>${r.pb}</td>
       <td style="text-align:left">${r.zone} · ${r.trend}</td><td style="color:${(r.pl||0)>=0?"var(--up)":"var(--dn)"}">${r.pl!=null?(r.pl>0?"+":"")+r.pl+"%":"–"}</td>
-      <td>${r.verdict==="추가매수"?`${r.nextT}차 ${fmt(r.exQ)}주`:(r.verdict==="추가매도"||r.verdict==="전액매도")?`${fmt(r.exQ)}주 매도`:"–"}</td></tr>`).join("");
+      <td>${r.verdict==="추가매수"?`${r.nextT}차 ${fmt(r.exQ)}주`:(r.verdict==="추가매도"||r.verdict==="전액매도")?`${fmt(r.exQ)}주 매도`:"–"}</td>
+      <td style="text-align:left;font-size:11.5px;color:var(--sub)">${r.fc?[r.fc.below?`↓${r.fc.below.n} ${r.fc.below.p}%`:"",r.fc.above?`↑${r.fc.above.n} ${r.fc.above.p}%`:"",r.fc.stop&&r.fc.stop.p>=30?`<b class="u">손절 ${r.fc.stop.p}%</b>`:"",`${r.fc.p10}~+${r.fc.p90}%`].filter(Boolean).join(" · "):"–"}</td></tr>`).join("");
   $("mytbl").querySelectorAll("tr[data-c]").forEach(el=>el.onclick=()=>{
     const r=MY.results.find(x=>x.code===el.dataset.c);
     store.set("bbs:"+r.code,{avg:r.avg,qty:r.qty,bud:Math.round(r.qty*r.avg/0.6),meth:"3분할 30/30/40",stop:(MY.settings&&MY.settings.stop)||0.1});
@@ -557,6 +611,17 @@ const DOC=`
 종목은 매수 자리여도 시장이 <b>④ 조용한 소멸</b>이면 1차 비중을 절반으로, 시장이 <b>PANIC(A) 공포 매수 구간</b>이면 종목·시장 신호가 같은 방향이라 계획대로 집행한다.
 온도계는 '언제 담을까', 이 페이지는 '무엇을 얼마나'를 답한다.</p>
 
+<h2>🔮 1~3주 예측 — 무엇을 믿고 무엇을 믿지 말까</h2>
+<p>밴드 위치만으로 "다음 주에 오른다/내린다"를 맞힐 수 있는지 코스피200+코스닥150 350종목, 일봉 2017~2026·주봉 2018~2026 자료로 직접 확인했다.
+앞 기간(일봉 ~2022, 주봉 ~2022-06)으로 조회표를 만들고 뒤 기간으로만 채점했다(표본외 검증).</p>
+<table><tr><th>예측 항목</th><th>표본외 결과</th><th>그래서</th></tr>
+<tr><td>상승 확률 (1·2·3주)</td><td>Brier skill ≈ 0.000 (평소 상승 비율 49%를 그대로 쓰는 것과 차이 없음). 예측 46~53% 구간이 실제로는 모두 48~50%</td><td><b>방향 판단에 쓰지 않는다.</b> 기본값 '우위 없음'</td></tr>
+<tr><td>예외: 하단 이탈(%B&lt;0) 후 5거래일</td><td>세 추세 모두 앞·뒤 기간 둘 다 상승 비율이 평소보다 +3.5~+5.3%p 높음</td><td>일봉 1주에만 '단기 반등 우위' 표시. 우위는 작다(동전 던지기 54:46 수준)</td></tr>
+<tr><td>가격대 도달 확률 (분할 매수·매도가 7개)</td><td>Brier skill +0.25~+0.31, 보정 오차 대부분 ±4%p 이내</td><td><b>이 카드의 본체.</b> 지정가 배치·분할 비중 조정에 쓴다</td></tr>
+<tr><td>P10~P90 예상 범위</td><td>실제가 범위 안에 든 비율 78~80% (목표 80%) — 종목 변동성으로 표준화해서 맞췄다</td><td>손절률·지정가 간격을 정할 때 쓴다</td></tr>
+<tr><td>손절가 도달 확률</td><td>변동성 반사원리 근사 → 표본 보정(0.03+0.87p) 후 대체로 ±5%p</td><td>근사치임을 감안</td></tr>
+<tr><td>국면(밴드 타기·W/M·스퀴즈·평균회귀)</td><td>방향 우위 없음. 단 밴드 타기·스퀴즈는 범위가 평소보다 5~13% 넓다</td><td>해석·범위 보조용</td></tr></table>
+<div class="box warn">⚠️ 현재 구성종목으로 과거를 본 것이라 <b>생존 편향</b>이 있다(상장폐지·탈락 종목 제외). 강세장(2023~2026)이 검증 기간이라 하락장 성능은 따로 확인되지 않았다. 투자 권유가 아니다.</div>
 <h2>🧪 백테스트로 확인한 것 (2025-05 ~ 2026-10, 대형·주도주 10종목)</h2>
 <div class="box warn"><b>먼저 불리한 사실부터.</b> 이 기간은 코스피가 두 배 오른 강세장이었고, 규칙(기본값)은 10종목 평균 수익률이 <b>+21%</b>로 단순 보유 평균 <b>+135%</b>에 크게 못 미쳤다(10종목 중 1종목만 보유를 이김).
 대신 최대낙폭은 평균 <b>−23%</b>로 단순 보유 <b>−50%</b>의 절반이었고, 평균 투자비중은 24%에 그쳤다.
