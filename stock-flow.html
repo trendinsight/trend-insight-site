@@ -84,7 +84,7 @@ footer{max-width:1120px;margin:0 auto;padding:0 16px 50px;font-size:.78rem;color
 const COLORS={"개인":"#e8830c","세력합":"#0b1f3f","외국인":"#c62828","기관계":"#2e7d32","금융투자":"#7b1fa2","투신":"#00838f","연기금":"#5d4037","사모펀드":"#ad1457","기타법인":"#607d8b","보험":"#f9a825","은행":"#3949ab","기타금융":"#8d6e63","국가":"#455a64","내외국인":"#9e9d24"};
 const GROUPS=Object.keys(COLORS);
 const RANGES={"3M":63,"6M":126,"1Y":248,"3Y":744,"전체":99999};
-let INDEX={stocks:{}}, sortKey="last", sortDir=-1, cur=null, chHold=null, chNet=null;
+let INDEX={stocks:{}}, sortKey="name", sortDir=1, cur=null, chHold=null, chNet=null;
 let state={range:"1Y", groups:new Set(["개인","세력합","외국인","기관계"])};
 const fmt=n=>n==null?"-":Math.round(n).toLocaleString("ko-KR");
 const pct=r=>r==null?"-":(r*100).toFixed(1)+"%";
@@ -96,7 +96,7 @@ function ratioBar(r){if(r==null)return"-";const c=r>=.85?"#c62828":r<=.3?"#1565c
 async function init(){
   try{INDEX=await (await fetch("data/stock-flow/index.json?t="+Date.now())).json();}catch(e){}
   document.getElementById("idx-upd").textContent=INDEX.updated?"· 최종 업데이트 "+INDEX.updated:"";
-  document.querySelectorAll("#list th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;sortDir=(sortKey===k)?-sortDir:-1;sortKey=k;renderList();});
+  document.querySelectorAll("#list th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;sortDir=(sortKey===k)?-sortDir:(k==="name"?1:-1);sortKey=k;renderList();});
   document.getElementById("q").oninput=renderList;
   renderList();
   const p=new URLSearchParams(location.search).get("code");
@@ -107,7 +107,7 @@ async function init(){
 function renderList(){
   const q=document.getElementById("q").value.trim();
   let arr=Object.values(INDEX.stocks).filter(s=>!q||s.name.includes(q)||s.code.includes(q));
-  arr.sort((a,b)=>{const x=a[sortKey],y=b[sortKey];if(x==null)return 1;if(y==null)return -1;return (x>y?1:x<y?-1:0)*sortDir;});
+  arr.sort((a,b)=>{const x=a[sortKey],y=b[sortKey];if(x==null)return 1;if(y==null)return -1;if(typeof x==="string"&&typeof y==="string")return x.localeCompare(y,"ko")*sortDir;return (x>y?1:x<y?-1:0)*sortDir;});
   const tb=document.querySelector("#list tbody");
   if(!arr.length){tb.innerHTML=`<tr><td colspan="10" class="empty">등록된 종목이 없습니다.</td></tr>`;return;}
   tb.innerHTML=arr.map(s=>`<tr data-c="${s.code}" class="${cur&&cur.code===s.code?"sel":""}">
