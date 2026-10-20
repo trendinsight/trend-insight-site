@@ -291,6 +291,9 @@
   .sig-card .d .dash-stale{margin-left:6px;}
   .theme-toggle{border:1px solid var(--line);background:var(--card);border-radius:999px;width:38px;height:38px;font-size:1rem;cursor:pointer;line-height:1;transition:transform .15s;}
   .theme-toggle:hover{transform:scale(1.08);}
+  #reload-btn{color:var(--navy);font-size:1.2rem;font-weight:700;margin-right:6px;}
+  #reload-btn.spin{animation:rl-spin .6s linear infinite;}
+  @keyframes rl-spin{to{transform:rotate(360deg);}}
   .gauge-refresh{font-family:inherit;font-size:.82rem;font-weight:700;color:#fff;background:var(--accent);border:none;border-radius:999px;padding:9px 18px;cursor:pointer;transition:background .15s,transform .12s;}
   .gauge-refresh:hover{background:var(--accent-2);transform:translateY(-1px);}
   .gauge-refresh:disabled{background:#8a94a6;cursor:default;transform:none;}
@@ -463,6 +466,7 @@
       </div>
     </nav>
     <button type="button" class="nav-toggle" id="nav-toggle" aria-label="메뉴 열기">☰</button>
+    <button type="button" id="reload-btn" class="theme-toggle" aria-label="새로 고침" title="새로 고침 (F5)" onclick="this.classList.add('spin');location.reload();">↻</button>
     <button type="button" id="theme-toggle" class="theme-toggle" aria-label="다크모드 전환">🌙</button>
     <div class="auth-box" id="auth-box">
       <a href="/login.html" class="auth-login">로그인</a>
