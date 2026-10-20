@@ -99,6 +99,11 @@
       'background:#0b1f3f;color:#fff;border:none;cursor:pointer;font-size:19px;line-height:1;'+
       'box-shadow:0 6px 20px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;}'+
     '#sn-fab:hover{background:#1a3a6b;}'+
+    '#sn-rl{position:fixed;right:22px;bottom:76px;z-index:99990;width:40px;height:40px;border-radius:50%;'+
+      'background:#fff;color:#0b1f3f;border:1px solid #d5dce8;cursor:pointer;font-size:19px;font-weight:700;line-height:1;'+
+      'box-shadow:0 4px 14px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;}'+
+    '#sn-rl:hover{background:#eef3fb;}'+
+    '#sn-rl.spin{animation:sn-spin .6s linear infinite;}@keyframes sn-spin{to{transform:rotate(360deg);}}'+
     '#sn-ov{position:fixed;inset:0;background:rgba(8,16,32,.55);z-index:99991;display:none;}'+
     '#sn-panel{position:fixed;top:0;right:0;bottom:0;width:min(320px,88vw);background:#fff;z-index:99992;'+
       'display:none;flex-direction:column;box-shadow:-12px 0 40px rgba(0,0,0,.25);'+
@@ -165,7 +170,10 @@
   head.querySelector('#sn-close').addEventListener('click',close);
   document.addEventListener('keydown',function(e){if(e.key==='Escape')close();});
 
+  var rl=document.createElement('button');rl.type='button';rl.id='sn-rl';rl.title='새로 고침 (F5)';rl.setAttribute('aria-label','새로 고침');rl.textContent='↻';
+  rl.addEventListener('click',function(){rl.classList.add('spin');location.reload();});
   function mount(){
+    document.body.appendChild(rl);
     document.body.appendChild(fab);
     document.body.appendChild(ov);
     document.body.appendChild(panel);
