@@ -3991,7 +3991,7 @@ main{max-width:1000px;margin:0 auto;padding:20px 14px 40px}
 
 const AI_OWNER_EMAIL = "sungsangkyung77@gmail.com";
 const AI_MODEL = "claude-sonnet-5";
-const AI_MAX_TURNS = 6;
+const AI_MAX_TURNS = 8;
 
 function aiJ(o, status) {
   return new Response(JSON.stringify(o), {
@@ -4185,6 +4185,9 @@ const AI_TOOLS = [
 async function aiRunTool(env, name, inp) {
   inp = inp || {};
   if (name === "query_brain") return aiQuery(env, inp.sql);
+  if (name === "read_board") return aiReadBoard(env, inp);
+  if (name === "search_boards") return aiSearchBoards(env, inp);
+  if (name === "boards_status") return aiBoardsStatus(env);
 
   if (name === "enqueue_job") {
     if (!env.BRAIN_DB) return { error: "BRAIN_DB 바인딩 없음" };
@@ -4270,6 +4273,13 @@ async function aiRunTool(env, name, inp) {
         "ORDER BY asof_date DESC LIMIT 3", e.id),
       sources: await one(
         "SELECT title,url,published_at FROM sources WHERE entity_id=? ORDER BY published_at DESC LIMIT 8", e.id),
+      // 서버 자동수집(평일 18시): 종가·외국인/기관 5일 순매수 — 최근 10거래일
+      prices: await one(
+        "SELECT asof_date, MAX(CASE WHEN metric='close' THEN value END) AS close, " +
+        "MAX(CASE WHEN metric='flow5_foreign' THEN value END) AS flow5_foreign, " +
+        "MAX(CASE WHEN metric='flow5_inst' THEN value END) AS flow5_inst " +
+        "FROM snapshots WHERE entity_id=? AND skill='server-collect' " +
+        "GROUP BY asof_date ORDER BY asof_date DESC LIMIT 10", e.id),
     };
   }
 
@@ -4302,6 +4312,324 @@ async function aiRunTool(env, name, inp) {
   return { error: "알 수 없는 도구: " + name };
 }
 
+/* ══ Trend Insight AI 확장 (2026-10-21) — 스킬 보드 조회 ═══════════════════
+   ti-brain에 적재되지 않는 스킬(돈의 흐름·메모리 가격·볼밴 온도계·턴어라운드·
+   신고가·반도체 사이클 등)도 사이트 보드 JSON(/data/{name}.json, KV 최신본 우선)을
+   읽기 전용으로 조회한다. 쓰기 경로 없음. */
+
+let AI_ORIGIN = "https://trend-insight-site.sungsangkyung77.workers.dev";
+
+// [board, 표시명, 스킬, 페이지, 이 보드로 답할 수 있는 질문]
+const AI_BOARDS = [
+  // ── 온도계·국면 ──
+  ["market-gauge", "시장 온도계", "market-thermometer", "gauge.html", "코스피·코스닥·미국 3대지수 가격 과열도 0~100"],
+  ["macro-gauge", "거시 온도계", "macro-thermometer", "macro-gauge.html", "금리·환율·유가 등 거시 순풍/역풍 온도"],
+  ["crowd-gauge", "군중심리 온도계", "crowd-thermometer", "crowd-gauge.html", "시장·종목·글로벌 자산 심리 과열/공포"],
+  ["cash-gauge", "예수금 온도계", "cash-ratio-advisor", "cash-gauge.html", "권장 현금 비중(공격~방어)"],
+  ["bb-gauge", "볼린저밴드 온도계", "bollinger-thermometer", "bb-gauge.html", "350종목 볼밴 상단돌파·하단이탈 폭, 4분면 국면, 실전 신호"],
+  ["basis-gauge", "선물 베이시스", "futures-basis", "basis-gauge.html", "지수-선물 괴리로 본 방향(BULL/BEAR)"],
+  ["bear-gauge", "하락장 레이더", "bear-market-trader", "bear-gauge.html", "약세 5단계 국면, 인버스·숏·낙폭과대 전략"],
+  ["switch-gauge", "레버리지 스위처", "leverage-switcher", "switch-gauge.html", "레버리지/인버스 전환 신호와 백테스트"],
+  ["crypto-gauge", "코인 온도계", "crypto-thermometer", "crypto-gauge.html", "BTC·ETH 등 코인 과열도"],
+  ["crypto-report", "코인 리포트", "crypto-analysis", "crypto-report.html", "코인 분석 요약"],
+  ["style-rotation", "스타일 로테이션", "style-rotation", "style-rotation.html", "금리 방향별 가치/성장 배분"],
+  // ── 자금·수급·산업 ──
+  ["money-flow", "돈의 흐름 지도", "money-flow", "money-flow.html", "전 세계·한국 자산군별 자금 소재(평상시 대비 %)"],
+  ["weekly-flow", "주간 수급 레이더", "weekly-flow-radar", "weekly-flow.html", "주간 외국인·기관 수급 상위 종목"],
+  ["sector-flow-live", "업종 수급(실시간)", "sector-flow", "sector-flow.html", "업종별 투자자 순매수"],
+  ["supply-gauge", "수급 콕핏", "supply-demand-analyzer", "supply.html", "종목별 매집수량·분산비율·매수여력"],
+  ["volume-radar", "거래량 레이더", "volume-insight", "volume-radar.html", "거래량 급증·고갈 종목"],
+  ["volume-profile-board", "매물대 보드", "volume-profile", "volume-profile-board.html", "종목별 매물대·POC·지지/저항"],
+  ["industry-board", "산업지표 보드", "industry-indicator", "industry-board.html", "12개 업종 선행지표 + 거시 종합 + 추천 종목"],
+  ["export-pulse", "수출 펄스", "export-pulse", "export-pulse.html", "관세청 품목(HS) 수출 YoY·일평균 → 관련 종목"],
+  ["memory-prices", "메모리 가격 추이", "memory-price-tracker", "memory-price.html", "DRAM·NAND 제품별 일별 가격 추이"],
+  ["memory-price-q", "메모리 분기 가격", "memory-price-tracker", "memory-price.html", "DRAM·NAND 분기 계약가 전망"],
+  ["memory-price-est", "메모리 가격 추정", "memory-price-tracker", "memory-price.html", "메모리 가격 추정치·관점"],
+  ["memory-stocks", "메모리 관련주", "memory-price-tracker", "memory-price.html", "삼성전자·SK하이닉스 주가 대비"],
+  ["semicon-cycle-data", "반도체 사이클 고점 지도", "semicon-cycle-map", "semicon-cycle.html", "소부장 40종목 고점 시기·고점가 추정"],
+  ["semicon-cycle-prices", "반도체 사이클 시세", "semicon-cycle-map", "semicon-cycle.html", "소부장 40종목 현재가·120일선·RSI·1개월 수익률"],
+  // ── 스크리닝·발굴 ──
+  ["new-high", "52주 신고가 레이더", "new-high-radar", "new-high.html", "52주 신고가 종목과 판정"],
+  ["turnaround", "턴어라운드 스크리너", "turnaround-screener", "turnaround.html", "흑자전환 종목 퍼널"],
+  ["horizon-picks", "기간별 종목선정", "horizon-stock-picker", "horizon-picks.html", "단기/중기/장기 후보"],
+  ["dividend-growth", "배당성장", "dividend-compounder", "dividend-growth.html", "배당 복리 후보"],
+  ["short-radar", "숏 후보 레이더", "short-candidate-screener", "short-radar.html", "공매도·대주 후보"],
+  ["sa-conviction", "SA 컨빅션", "sa-conviction", "sa-conviction.html", "AGI 인프라 병목 집중투자 후보"],
+  ["ltcm-board", "LTCM 수렴", "ltcm-convergence", "ltcm-board.html", "페어·수렴 거래 후보"],
+  ["fisher-board", "위대한 기업(피셔)", "fisher-method", "fisher-board.html", "피셔 15포인트 판정"],
+  ["philip-fisher-board", "필립 피셔 보드", "philip-fisher-method", "philip-fisher-board.html", "필립 피셔 채점"],
+  ["korekawa-board", "고레가와 보드", "korekawa-method", "korekawa-board.html", "고레가와 5개조 게이트 종목"],
+  ["canslim", "CANSLIM", "canslim-screener", "canslim.html", "CANSLIM 후보"],
+  ["screener", "종목 스크리너", "korean-stock-screener", "screener.html", "정배열 등 스크리닝 결과"],
+  ["rsi-adr", "RSI·ADR", "rsi-adr", "rsi-adr.html", "RSI·등락비율 시장 폭"],
+  ["sejong-data", "세종 재무데이터", "sejong-data", "sejong-data.html", "2,555종목 분기 재무 (종목 찾기 전용, find 필수)"],
+  // ── 종목 판단·결재 ──
+  ["thesis-board", "논거 보드", "investment-thesis", "thesis-board.html", "보유·관심 종목 투자 논거 상태"],
+  ["decision-board", "결재 보드(팀장)", "team-leader", "decision-board.html", "승인/축소/보류/손절 결재"],
+  ["kongming-board", "공명 책략 보드", "kongming", "kongming-board.html", "공명 5축 결재, 역풍 축 빈도"],
+  ["stoploss", "손절 스크리너", "stop-loss-screener", "", "보유종목 SELL/WATCH/HOLD, 트레일링"],
+  ["adjusted-value", "조정 적정주가", "adjusted-fair-value", "adjusted-value.html", "컨센서스 × 26변수 조정 적정가"],
+  ["forensic", "포렌식 체크리스트", "forensic-checklist", "forensic.html", "회계·지배구조 GO/NO-GO"],
+  ["correlation", "상관 리스크", "correlation-risk", "correlation.html", "보유종목 상관·집중 리스크"],
+  ["macro-analysis", "거시 분석", "macro-analysis", "macro-analysis.html", "거시 → 섹터·종목 시사점"],
+  ["trend-rider-board", "추세 라이더", "trend-rider", "trend-rider-board.html", "추세 단계·트레일링 출구"],
+  ["stock-graph", "종목 그래프", "stock-graph", "stock-graph.html", "종목 관계·밸류체인 그래프"],
+  ["watchlist-all", "관심종목", "", "my-stocks.html", "등록된 관심종목 목록"],
+  // ── 리서치·운영 ──
+  ["report-summaries", "증권사 리포트 요약", "broker-report-digest", "report-summary.html", "종목별 1년치 리포트 요약 목록"],
+  ["research-digest", "리서치 다이제스트", "research-digest", "research-digest.html", "날짜별 리포트 훑기"],
+  ["digest-index", "리포트 인덱스", "research-digest", "research-digest.html", "리포트 1,500여 건 색인 (find 권장)"],
+  ["skillrun-status", "전체 스킬런 현황", "all-skills-runner", "skill-run.html", "1·2·3부 실행 결과 요약"],
+  ["vault-audit", "볼트 감사", "vault-auditor", "", "옵시디언 볼트 점검"],
+  ["proverb-history", "오늘의 격언", "daily-proverb", "proverb.html", "국면별 격언 기록"],
+];
+const AI_BOARD_SET = new Set(AI_BOARDS.map((b) => b[0]));
+
+// 보드 없이 PC에서만 돌아가는 스킬 (챗봇이 '어떤 스킬을 돌리면 되는지' 안내용)
+const AI_PC_ONLY_SKILLS =
+  "stock-analysis(종합분석)·entry-timer(진입)·signal-analyzer(보조지표)·ichimoku-analyzer(일목)·" +
+  "stock-flow(종목 투자자 수급 추이)·kospi-sector-rotation(업종 로테이션)·bb-stock-strategy(종목 볼린저 판정)·" +
+  "growth-exhaustion-alarm(성장주 과열 경보)·value-chain-interview(밸류체인 면접)·masters-council(거장 자문단)·" +
+  "trend-masters·fair-value-band(4층 적정가)·sotp-valuation·pyramid-calculator·portfolio-manager·risk-manager·" +
+  "performance-attribution·trade-journal·index-direction-forecast·rate-forecast·horizon-timing·trading-desk·" +
+  "brazil-bond-manager·carry/chesley/daily-briefing 등 브리핑류";
+
+function aiCatalogText() {
+  return AI_BOARDS.map((b) => "- " + b[0] + " — " + b[1] + " (" + (b[2] || "-") + "): " + b[4]).join("\n");
+}
+
+async function aiBoardRaw(env, name) {
+  // KV 최신본(정적 파일이 더 새로우면 정적) → 저장소 정적 파일
+  try {
+    const meta = await env.GAUGE_KV.get("boardmeta:" + name, "json");
+    if (meta) {
+      const cur = await boardStaticSha(env, AI_ORIGIN, name);
+      if ((cur || null) === (meta.static_sha || null)) {
+        const body = await env.GAUGE_KV.get("board:" + name);
+        if (body != null) return { text: body, source: "kv", updated: meta.updated_at || null };
+      }
+    }
+  } catch (e) {}
+  try {
+    const r = await env.ASSETS.fetch(new Request(AI_ORIGIN + "/data/" + name + ".json"));
+    if (r.status === 200) return { text: await r.text(), source: "static", updated: null };
+  } catch (e) {}
+  return null;
+}
+
+const AI_DATE_KEYS = ["date", "asof", "as_of", "generated", "updated", "data_date", "run_date", "market_date"];
+
+function aiDateOf(o) {
+  if (!o || typeof o !== "object" || Array.isArray(o)) return null;
+  for (const k of AI_DATE_KEYS) if (o[k] != null && o[k] !== "") return String(o[k]).replace(/[^0-9]/g, "").slice(0, 14);
+  return null;
+}
+
+// 큰 JSON을 모델이 읽을 크기로 줄인다: 날짜 있는 배열은 최신 keep건, 시계열 배열은 끝 5개,
+// 일반 배열은 앞 12개, 긴 문자열은 자른다. 무엇을 줄였는지 _trimmed 로 남긴다.
+function aiCompact(v, opt, depth) {
+  depth = depth || 0;
+  if (v == null || typeof v !== "object") {
+    if (typeof v === "string" && v.length > opt.str) return v.slice(0, opt.str) + "…(" + v.length + "자)";
+    return v;
+  }
+  if (depth > opt.depth) return Array.isArray(v) ? "[배열 " + v.length + "건]" : "{객체 " + Object.keys(v).length + "키}";
+  if (Array.isArray(v)) {
+    const n = v.length;
+    let out, note = null;
+    const dated = n > 1 && v.every((x) => aiDateOf(x) != null);
+    if (dated) {
+      out = v.slice().sort((a, b) => (aiDateOf(b) > aiDateOf(a) ? 1 : aiDateOf(b) < aiDateOf(a) ? -1 : 0)).slice(0, opt.keep);
+      if (n > opt.keep) note = "날짜 기준 최신 " + opt.keep + "건만 (전체 " + n + "건)";
+    } else if (n > 0 && Array.isArray(v[0])) {
+      out = v.slice(-5);
+      if (n > 5) note = "끝 5개만 (전체 " + n + "건)";
+    } else {
+      out = v.slice(0, opt.list);
+      if (n > opt.list) note = "앞 " + opt.list + "건만 (전체 " + n + "건) — find 로 특정 항목 검색 가능";
+    }
+    out = out.map((x) => aiCompact(x, opt, depth + 1));
+    if (note) out.push({ _trimmed: note });
+    return out;
+  }
+  const o = {};
+  for (const k of Object.keys(v)) o[k] = aiCompact(v[k], opt, depth + 1);
+  return o;
+}
+
+function aiCompactFit(j, limit) {
+  const tries = [
+    { keep: 3, list: 12, str: 400, depth: 7 },
+    { keep: 2, list: 8, str: 250, depth: 6 },
+    { keep: 1, list: 5, str: 160, depth: 5 },
+    { keep: 1, list: 3, str: 100, depth: 4 },
+    { keep: 1, list: 2, str: 80, depth: 3 },
+  ];
+  for (const t of tries) {
+    const s = JSON.stringify(aiCompact(j, t));
+    if (s.length <= limit) return s;
+  }
+  return JSON.stringify(aiCompact(j, tries[tries.length - 1])).slice(0, limit) + "…(잘림)";
+}
+
+function aiGetPath(j, path) {
+  let cur = j;
+  for (const p of String(path).split(".").filter(Boolean)) {
+    if (cur == null) return undefined;
+    if (Array.isArray(cur)) {
+      let i = parseInt(p, 10);
+      if (isNaN(i)) return undefined;
+      if (i < 0) i = cur.length + i;
+      cur = cur[i];
+    } else cur = cur[p];
+  }
+  return cur;
+}
+
+// 값(문자열·숫자)에 q가 들어있는 가장 작은 객체들을 모은다 (종목명·코드 찾기)
+function aiFind(j, q, max) {
+  const hits = [];
+  const ql = String(q).toLowerCase();
+  const walk = (v, path) => {
+    if (hits.length >= max || v == null || typeof v !== "object") return false;
+    let selfHit = false, childHit = false;
+    for (const k of Object.keys(v)) {
+      const x = v[k];
+      if (x != null && typeof x === "object") {
+        if (walk(x, path + "." + k)) childHit = true;
+      } else if (x != null && String(x).toLowerCase().includes(ql)) selfHit = true;
+      if (!Array.isArray(v) && String(k).toLowerCase() === ql) selfHit = true; // {"005930": {...}} 형태
+    }
+    if (selfHit && !childHit && hits.length < max) { hits.push({ path: path.slice(1), item: v }); return true; }
+    return selfHit || childHit;
+  };
+  walk(j, "");
+  return hits;
+}
+
+async function aiReadBoard(env, inp) {
+  const name = String(inp.name || "").trim();
+  if (!AI_BOARD_SET.has(name)) return { error: "알 수 없는 보드: " + name, boards: [...AI_BOARD_SET] };
+  const raw = await aiBoardRaw(env, name);
+  if (!raw) return { error: "보드 데이터 없음: " + name + " — 아직 게시되지 않았습니다." };
+  let j;
+  try { j = JSON.parse(raw.text); } catch (e) { return { error: "보드 JSON 파싱 실패: " + name }; }
+  const info = AI_BOARDS.find((b) => b[0] === name);
+  const head = { board: name, label: info[1], skill: info[2], page: info[3] ? AI_ORIGIN + "/" + info[3] : null,
+                 source: raw.source, kv_updated: raw.updated, bytes: raw.text.length };
+  if (inp.find) {
+    const hits = aiFind(j, inp.find, 12);
+    return { ...head, find: inp.find, hit_count: hits.length,
+             hits: JSON.parse(aiCompactFit(hits, 40000)),
+             note: hits.length ? undefined : "이 보드에 해당 항목 없음" };
+  }
+  let target = j;
+  if (inp.path) {
+    target = aiGetPath(j, inp.path);
+    if (target === undefined) return { ...head, error: "경로 없음: " + inp.path, top_keys: Array.isArray(j) ? "배열 " + j.length + "건" : Object.keys(j) };
+  }
+  return { ...head, path: inp.path || null,
+           top_keys: Array.isArray(j) ? "배열 " + j.length + "건" : Object.keys(j),
+           data: JSON.parse(aiCompactFit(target, 45000)) };
+}
+
+// 전 보드 문자열 검색 — 종목이 어느 스킬 보드에 올라 있는지 한 번에 찾는다
+async function aiSearchBoards(env, inp) {
+  const q = String(inp.q || "").trim();
+  if (q.length < 2) return { error: "검색어는 2자 이상" };
+  const names = [...AI_BOARD_SET].filter((n) => n !== "digest-index" || inp.include_reports);
+  const res = await Promise.all(names.map(async (n) => {
+    const raw = await aiBoardRaw(env, n);
+    if (!raw) return null;
+    const t = raw.text;
+    let i = t.indexOf(q), c = 0;
+    const snips = [];
+    while (i >= 0 && c < 50) {
+      if (snips.length < 2) snips.push(t.slice(Math.max(0, i - 90), i + q.length + 90).replace(/\s+/g, " "));
+      c++;
+      i = t.indexOf(q, i + q.length);
+    }
+    if (!c) return null;
+    const info = AI_BOARDS.find((b) => b[0] === n);
+    return { board: n, label: info[1], hits: c >= 50 ? "50+" : c, snippets: snips };
+  }));
+  const rows = res.filter(Boolean);
+  return { q, board_count: rows.length, rows,
+           next: rows.length ? "자세한 내용은 read_board(name, find=검색어) 로 확인" : "어느 보드에도 없음" };
+}
+
+async function aiBoardsStatus(env) {
+  const out = [];
+  for (const b of AI_BOARDS) {
+    let updated = null, source = null;
+    try {
+      const m = await env.GAUGE_KV.get("boardmeta:" + b[0], "json");
+      if (m) { updated = m.updated_at; source = "kv"; }
+    } catch (e) {}
+    let latest = null;
+    if (!updated) {
+      const raw = await aiBoardRaw(env, b[0]);
+      if (raw) {
+        const re = /"(updated|generated|asof|as_of|data_date|run_date|date)"\s*:\s*"([^"]{6,25})"/g;
+        let m;
+        while ((m = re.exec(raw.text))) {
+          const d = m[2].replace(/[^0-9]/g, "").slice(0, 8);
+          if (d.length === 8 && (!latest || d > latest)) latest = d;
+        }
+        source = raw.source;
+      }
+    }
+    out.push({ board: b[0], label: b[1], skill: b[2], kv_updated: updated,
+               latest_date_in_data: latest ? latest.slice(0, 4) + "-" + latest.slice(4, 6) + "-" + latest.slice(6) : null,
+               source: source || "없음" });
+  }
+  return { count: out.length, boards: out,
+           note: "kv_updated(KV 게시 시각) 또는 latest_date_in_data(본문 최신 날짜)로 신선도를 판단한다." };
+}
+
+const AI_BOARD_TOOLS = [
+  {
+    name: "read_board",
+    description:
+      "사이트 스킬 보드(웹페이지에 게시된 최신 JSON)를 읽는다. ti-brain에 없는 스킬 결과(돈의 흐름·메모리 가격·" +
+      "볼밴 온도계·신고가·턴어라운드·반도체 사이클·수출 펄스·산업지표 등)는 여기서 찾는다. " +
+      "큰 보드는 자동 축약된다(날짜 배열은 최신 몇 건만). 특정 종목은 find, 특정 부분은 path(점 경로, 음수 인덱스 가능 예: history.-1)로 좁힌다. " +
+      "보드 목록과 용도는 시스템 프롬프트의 '스킬 보드 카탈로그'를 본다.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "보드 이름 (예: money-flow, bb-gauge, memory-prices)" },
+        find: { type: "string", description: "보드 안에서 찾을 종목명·코드·키워드 (선택)" },
+        path: { type: "string", description: "점 경로로 일부만 (선택, 예: history.-1 / kospi / markets.KOSPI)" },
+      },
+      required: ["name"],
+    },
+  },
+  {
+    name: "search_boards",
+    description:
+      "모든 스킬 보드에서 문자열을 찾는다. '삼성전자 어느 스킬에 걸려 있어?', 'OO 신고가·턴어라운드·수급 어디 나와?' 처럼 " +
+      "종목이 어떤 스킬 결과에 등장하는지 한 번에 볼 때 쓴다. 종목명은 사이트 표기 그대로(예: SK하이닉스).",
+    input_schema: {
+      type: "object",
+      properties: {
+        q: { type: "string", description: "종목명·6자리 코드·키워드" },
+        include_reports: { type: "boolean", description: "리포트 인덱스(digest-index)까지 포함 (기본 false)" },
+      },
+      required: ["q"],
+    },
+  },
+  {
+    name: "boards_status",
+    description: "스킬 보드 전체의 최근 갱신 시각 목록. '어떤 스킬이 오래 안 돌았어?', '보드 신선도' 질문에 쓴다.",
+    input_schema: { type: "object", properties: {} },
+  },
+];
+
+// 기존 6종 + 보드 3종. 마지막 도구에 cache_control → 도구 정의·시스템 프롬프트 캐시
+const AI_TOOLS_ALL = AI_TOOLS.concat(AI_BOARD_TOOLS).map((t, i, a) =>
+  i === a.length - 1 ? Object.assign({}, t, { cache_control: { type: "ephemeral" } }) : t);
+
 /* ── 답변 품질 규약 (설계도 5항) ─────────────────────────────── */
 function aiSystemPrompt(todayKST) {
   return [
@@ -4309,14 +4637,24 @@ function aiSystemPrompt(todayKST) {
     "오늘은 " + todayKST + " (KST) 이다.",
     "",
     "## 당신이 아는 것",
-    "ti-brain은 이 운용사의 정본 기억이다. 78개 투자 스킬(온도계·스크리너·진입·손절·포렌식·논거·결재·복기)이",
-    "내린 판정이 전부 여기 쌓인다. 도구로만 이 기억에 접근할 수 있고, 그 밖의 지식은 신뢰하지 않는다.",
+    "기억은 두 층이다. 도구로만 접근하고, 그 밖의 지식은 신뢰하지 않는다.",
+    "① ti-brain(D1) — 판정·논거·교훈·온도 시계열의 정본. entity_timeline / market_snapshot / search_brain / query_brain.",
+    "② 스킬 보드 — 각 스킬이 웹페이지에 게시한 최신 결과 JSON. read_board / search_boards / boards_status.",
+    "   ti-brain에 없는 스킬(돈의 흐름·메모리 가격·볼밴 온도계·신고가·턴어라운드·반도체 사이클·수출 펄스·산업지표 등)은 보드에서 찾는다.",
+    "   종목 질문이면 entity_timeline 다음에 search_boards 로 그 종목이 걸린 스킬 보드를 함께 확인한다.",
+    "",
+    "## 스킬 보드 카탈로그 (read_board 의 name)",
+    aiCatalogText(),
+    "",
+    "## 보드가 없는 스킬 (PC에서 직접 실행해야 함)",
+    AI_PC_ONLY_SKILLS,
     "",
     "## 절대 규칙 (위반 금지)",
     "1. 수치는 반드시 도구로 조회한 값만 인용하고, **항상 기준일(asof_date)을 함께 밝힌다.**",
     "   예: \"코스피 온도 63.2 (8/21 기준)\". 날짜 없는 수치는 쓰지 않는다.",
     "2. 도구 결과에 없으면 **\"ti-brain에 데이터 없음\"이라고 말한다.** 추정·기억·일반지식으로 채우지 않는다.",
-    "   현재가·실시간 시세는 ti-brain에 없다 — 물으면 없다고 답하고 해당 스킬 실행을 권한다.",
+    "   실시간 시세는 없다. entity_timeline.prices 의 종가(평일 18시 서버 수집, 일부 종목)는 'OO일 종가'로만 인용한다.",
+    "   보드 수치는 보드 안의 날짜(updated/date/asof) 또는 kv_updated 를 기준일로 밝힌다.",
     "3. 종목 판단을 말하기 전 **entity_timeline으로 논거 상태와 교훈을 먼저 확인한다.**",
     "   논거가 BROKEN인데 보유 중이거나, 관련 실수 패턴(hit_count≥2)이 있으면 **그 사실을 답변 맨 앞에 먼저 알린다.**",
     "4. 매수·매도 방향을 말할 때는 **반드시 무효화 조건(손절가·훼손 조건)을 함께** 제시한다. 없으면 없다고 밝힌다.",
@@ -4570,7 +4908,8 @@ async function aiHandle(req, url, env, ctx) {
   if (question) messages.push({ role: "user", content: question });
 
   const todayKST = new Date(Date.now() + 9 * 36e5).toISOString().slice(0, 10);
-  const system = aiSystemPrompt(todayKST);
+  AI_ORIGIN = url.origin;
+  const system = [{ type: "text", text: aiSystemPrompt(todayKST), cache_control: { type: "ephemeral" } }];
   const apiBase = await aiBaseUrl(env);
   const trace = [];
   let usage = { input_tokens: 0, output_tokens: 0 };
@@ -4584,9 +4923,9 @@ async function aiHandle(req, url, env, ctx) {
         headers: await aiApiHeaders(env, apiKey),
         body: JSON.stringify({
           model: AI_MODEL,
-          max_tokens: 2000,
+          max_tokens: 3000,
           system: system,
-          tools: AI_TOOLS,
+          tools: AI_TOOLS_ALL,
           messages: messages,
         }),
       });
