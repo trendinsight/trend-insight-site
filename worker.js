@@ -1,3 +1,4 @@
+import { WorkerEntrypoint } from "cloudflare:workers";
 // Trend Insight — Cloudflare Worker
 // 1) 시장 온도계: cron(매 거래일 13:00·16:00 KST)마다 코스피/코스닥 + 다우/나스닥/S&P500
 //    지표를 KV에 저장,
@@ -4182,12 +4183,12 @@ const AI_TOOLS = [
   },
 ];
 
-async function aiRunTool(env, name, inp) {
+async function aiRunTool(env, name, inp, rt) {
   inp = inp || {};
   if (name === "query_brain") return aiQuery(env, inp.sql);
   if (name === "read_board") return aiReadBoard(env, inp);
-  if (name === "search_boards") return aiSearchBoards(env, inp);
-  if (name === "boards_status") return aiBoardsStatus(env);
+  if (name === "search_boards") return aiSearchBoards(env, inp, rt);
+  if (name === "boards_status") return aiBoardsStatus(env, rt);
 
   if (name === "enqueue_job") {
     if (!env.BRAIN_DB) return { error: "BRAIN_DB 바인딩 없음" };
@@ -4399,21 +4400,24 @@ function aiCatalogText() {
 }
 
 async function aiBoardRaw(env, name) {
-  // KV 최신본(정적 파일이 더 새로우면 정적) → 저장소 정적 파일
+  // 정적 파일은 1회만 읽어 sha 비교(KV 최신본 판정)와 본문에 같이 쓴다 — 서브요청 절약
+  let meta = null, st = null;
+  try { meta = await env.GAUGE_KV.get("boardmeta:" + name, "json"); } catch (e) {}
   try {
-    const meta = await env.GAUGE_KV.get("boardmeta:" + name, "json");
-    if (meta) {
-      const cur = await boardStaticSha(env, AI_ORIGIN, name);
+    const r = await env.ASSETS.fetch(new Request(AI_ORIGIN + "/data/" + name + ".json"));
+    if (r.status === 200) st = await r.arrayBuffer();
+    else if (r.body) r.body.cancel();
+  } catch (e) {}
+  if (meta) {
+    try {
+      const cur = st ? await boardShaBuf(st) : null;
       if ((cur || null) === (meta.static_sha || null)) {
         const body = await env.GAUGE_KV.get("board:" + name);
         if (body != null) return { text: body, source: "kv", updated: meta.updated_at || null };
       }
-    }
-  } catch (e) {}
-  try {
-    const r = await env.ASSETS.fetch(new Request(AI_ORIGIN + "/data/" + name + ".json"));
-    if (r.status === 200) return { text: await r.text(), source: "static", updated: null };
-  } catch (e) {}
+    } catch (e) {}
+  }
+  if (st) return { text: new TextDecoder().decode(st), source: "static", updated: null };
   return null;
 }
 
@@ -4534,10 +4538,11 @@ async function aiReadBoard(env, inp) {
 }
 
 // 전 보드 문자열 검색 — 종목이 어느 스킬 보드에 올라 있는지 한 번에 찾는다
-async function aiSearchBoards(env, inp) {
+async function aiSearchBoardsLocal(env, inp) {
   const q = String(inp.q || "").trim();
   if (q.length < 2) return { error: "검색어는 2자 이상" };
-  const names = [...AI_BOARD_SET].filter((n) => n !== "digest-index" || inp.include_reports);
+  const names = [...AI_BOARD_SET].filter((n) => n !== "digest-index" || inp.include_reports)
+    .filter((n) => !Array.isArray(inp.names) || inp.names.includes(n));
   const res = await Promise.all(names.map(async (n) => {
     const raw = await aiBoardRaw(env, n);
     if (!raw) return null;
@@ -4558,9 +4563,9 @@ async function aiSearchBoards(env, inp) {
            next: rows.length ? "자세한 내용은 read_board(name, find=검색어) 로 확인" : "어느 보드에도 없음" };
 }
 
-async function aiBoardsStatus(env) {
+async function aiBoardsStatusLocal(env, inp) {
   const out = [];
-  for (const b of AI_BOARDS) {
+  for (const b of AI_BOARDS.filter((x) => !inp || !Array.isArray(inp.names) || inp.names.includes(x[0]))) {
     let updated = null, source = null;
     try {
       const m = await env.GAUGE_KV.get("boardmeta:" + b[0], "json");
@@ -4912,6 +4917,7 @@ async function aiHandle(req, url, env, ctx) {
   const system = [{ type: "text", text: aiSystemPrompt(todayKST), cache_control: { type: "ephemeral" } }];
   const apiBase = await aiBaseUrl(env);
   const trace = [];
+  const aiRt = { ctx: ctx, fan: 0 }; // 루프백 스캔 횟수 집계
   let usage = { input_tokens: 0, output_tokens: 0 };
 
   // 2) 에이전트 루프 — 도구 호출이 없을 때까지 (최대 AI_MAX_TURNS)
@@ -4961,7 +4967,7 @@ async function aiHandle(req, url, env, ctx) {
 
     const results = [];
     for (const tu of toolUses) {
-      const out = await aiRunTool(env, tu.name, tu.input);
+      const out = await aiRunTool(env, tu.name, tu.input, aiRt);
       trace.push({
         tool: tu.name,
         input: tu.input,
@@ -6164,4 +6170,77 @@ async function handleStage3(req, url, env, ctx) {
   } catch (e) {
     return s3Json({ ok: false, error: String(e && e.message || e) }, 500);
   }
+}
+
+/* ══ Trend Insight AI 서브요청 한도 수정 (2026-10-21b) ══════════════════════
+   무료 플랜 Worker 는 1회 호출당 외부 서브요청 50개 한도. search_boards·boards_status 가
+   보드 56개를 한 호출에서 ASSETS.fetch 로 읽어 한도를 넘기고, 이어지는 Anthropic 호출이
+   "Too many subrequests" 로 실패했다.
+   ① aiBoardRaw: 정적 파일을 1회만 읽어 sha 비교와 본문에 같이 쓴다(보드당 최대 2→1회).
+   ② 전 보드 스캔은 ctx.exports 루프백(AiBoardScanner)으로 14개씩 나눠 별도 호출에서 실행
+      → 호출마다 서브요청 한도가 따로 잡히고, 본 호출은 묶음당 1회만 쓴다.
+   ③ 루프백을 못 쓰면 본 호출에서 최대 AI_LOCAL_CAP 개만 읽고 '부분 검색'으로 표시. */
+
+const AI_FAN_CHUNK = 14;   // 루프백 1회당 보드 수 (ASSETS ≤14 + KV ≤28)
+const AI_FAN_MAX = 20;     // 요청 1건당 루프백 호출 상한 (플랫폼 한도 32 invocations)
+const AI_LOCAL_CAP = 20;   // 루프백 불가 시 본 호출에서 읽는 보드 상한
+
+function aiChunks(arr, n) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+  return out;
+}
+
+async function aiFanOut(rt, method, names, inp) {
+  const ex = rt && rt.ctx && rt.ctx.exports && rt.ctx.exports.AiBoardScanner;
+  if (!ex) return null;
+  const parts = aiChunks(names, AI_FAN_CHUNK);
+  if ((rt.fan || 0) + parts.length > AI_FAN_MAX)
+    return { error: "이번 질문에서 전 보드 조회를 너무 여러 번 했습니다. 질문을 나눠서 다시 물어보세요." };
+  rt.fan = (rt.fan || 0) + parts.length;
+  try {
+    return await Promise.all(parts.map((p) => ex[method](Object.assign({}, inp, { names: p }))));
+  } catch (e) {
+    return { error: "보드 스캔 루프백 실패: " + String((e && e.message) || e).slice(0, 200) };
+  }
+}
+
+async function aiSearchBoards(env, inp, rt) {
+  inp = inp || {};
+  const q = String(inp.q || "").trim();
+  if (q.length < 2) return { error: "검색어는 2자 이상" };
+  const all = [...AI_BOARD_SET].filter((n) => n !== "digest-index" || inp.include_reports);
+  const parts = await aiFanOut(rt, "search", all, inp);
+  if (parts && parts.error) return parts;
+  if (!parts) {
+    const r = await aiSearchBoardsLocal(env, Object.assign({}, inp, { names: all.slice(0, AI_LOCAL_CAP) }));
+    if (all.length > AI_LOCAL_CAP)
+      r.partial = "부분 검색 " + AI_LOCAL_CAP + "/" + all.length + "개 보드 (루프백 미사용) — 나머지는 read_board 로 개별 확인";
+    return r;
+  }
+  const rows = [];
+  for (const p of parts) if (p && Array.isArray(p.rows)) rows.push(...p.rows);
+  return { q, scanned: all.length, board_count: rows.length, rows,
+           next: rows.length ? "자세한 내용은 read_board(name, find=검색어) 로 확인" : "어느 보드에도 없음" };
+}
+
+async function aiBoardsStatus(env, rt) {
+  const all = AI_BOARDS.map((b) => b[0]);
+  const parts = await aiFanOut(rt, "status", all, {});
+  if (parts && parts.error) return parts;
+  if (!parts) {
+    const r = await aiBoardsStatusLocal(env, { names: all.slice(0, AI_LOCAL_CAP) });
+    if (all.length > AI_LOCAL_CAP) r.partial = "부분 점검 " + AI_LOCAL_CAP + "/" + all.length + "개 보드 (루프백 미사용)";
+    return r;
+  }
+  const boards = [];
+  for (const p of parts) if (p && Array.isArray(p.boards)) boards.push(...p.boards);
+  return { count: boards.length, boards,
+           note: "kv_updated(KV 게시 시각) 또는 latest_date_in_data(본문 최신 날짜)로 신선도를 판단한다." };
+}
+
+// 루프백 엔트리포인트 — 외부 URL 로는 호출할 수 없고 ctx.exports 로만 불린다(읽기 전용).
+export class AiBoardScanner extends WorkerEntrypoint {
+  async search(inp) { return aiSearchBoardsLocal(this.env, inp || {}); }
+  async status(inp) { return aiBoardsStatusLocal(this.env, inp || {}); }
 }
