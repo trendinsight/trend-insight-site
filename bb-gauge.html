@@ -108,7 +108,6 @@
       <button id="sgo">분석</button>
     </div>
     <div class="chips" id="schips"></div>
-    <div style="margin-top:8px;font-size:12.5px"><a href="bb-stock.html" id="bbstocklink" style="color:#7fb0ff;font-weight:700">🎯 내 포지션으로 판정하기 — 추가매수·홀딩·추가매도·전액매도 + 분할매수 계획 + 백테스트 →</a></div>
     <div id="sres"></div>
   </div>
 
@@ -917,11 +916,6 @@ document.getElementById("foot").innerHTML=
   본 자료는 과거 데이터에 기반한 통계적 관찰이며 미래 수익을 보장하지 않습니다.
   투자 판단과 그 결과에 대한 책임은 투자자 본인에게 있습니다.`;
 }
-</script>
-<script>
-(function(){var a=document.getElementById('bbstocklink');if(!a)return;
- var sq=document.getElementById('sq');
- a.addEventListener('click',function(e){var v=(sq&&sq.value||'').trim();if(v){e.preventDefault();location.href='bb-stock.html?q='+encodeURIComponent(v);}});})();
 </script>
 </body>
 </html>
