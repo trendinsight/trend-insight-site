@@ -59,6 +59,13 @@
   svg text{font-family:inherit}
   .doc{margin-top:26px;color:var(--sub);font-size:12px;line-height:1.7;border-top:1px solid var(--line);padding-top:14px}
   a{color:var(--act)}
+  /* 외국인 선물 포지션 */
+  .fgrid{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
+  .fbox{flex:1;min-width:230px;background:#0c0e12;border:1px solid var(--line);border-radius:10px;padding:12px}
+  .fbox h3{font-size:13.5px;margin:0 0 6px}
+  .fnet{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+  .fstate{display:inline-block;font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 10px;margin-left:6px;color:#0b0d10;vertical-align:middle}
+  .fint{margin-top:10px;font-size:12.5px;line-height:1.6;background:#0c0e12;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 </style>
 </head>
 <body>
@@ -71,6 +78,17 @@
   <div class="ctrl">날짜별 조회: <select id="dateSel"></select> <span id="cd91"></span></div>
   <div class="row" id="cards"></div>
 
+
+  <div class="card" id="foreign" style="margin-top:14px">
+    <h2>🌐 외국인 선물 포지션 <span id="fgnDate" class="chip"></span></h2>
+    <div class="meta">KRX 투자자별 거래실적(정규 세션) 기준 외국인 순매수. 포지션은 순매수 누적으로 추정한 값이며 실제 보유 잔고와 다를 수 있습니다.</div>
+    <div class="fgrid" id="fgnBoxes"></div>
+    <div class="fint" id="fgnInt" style="display:none"></div>
+    <div class="meta" style="margin-top:12px">코스피200 선물 — 외국인 일별 순매수(막대, 계약) · 만기 후 누적(선) · 최근 40거래일</div>
+    <svg id="chFgn" width="100%" height="190" viewBox="0 0 1000 190" preserveAspectRatio="none"></svg>
+    <div class="fleg">상태 기준: 20일 누적 ÷ (일간 순매수 60일 표준편차×√20) = z20 · ≥1.5 강한 순매수 / ≥0.5 순매수 우위 / ≤−0.5 순매도 우위 / ≤−1.5 강한 순매도.
+      현선 조합은 같은 날 현물(KOSPI·KOSDAQ) 외국인 순매수와 선물 순매수 금액의 부호로 판정(각 300억 미만은 '약함').</div>
+  </div>
   <div class="card" style="margin-top:14px">
     <h2>최근 20거래일 신호 흐름</h2>
     <div class="meta">하루 = 타일 하나. 색이 초록으로 갈수록 매수 우위, 빨강으로 갈수록 매도 우위. 타일을 누르면 그 날짜로 이동합니다.</div>
@@ -99,6 +117,7 @@
     괴리율 = (선물 − 이론가) / 현물 × 100 · z-score는 괴리율 60일 롤링, 모멘텀 = 5일 − 20일 평균<br>
     방향점수 = 50 + 20·clip(괴리율/0.30) + 20·clip(z/2) + 10·clip(모멘텀/0.15) · ≥65 BULL / ≤35 BEAR<br>
     선물은 최근월물(미결제약정 최대 계약), 만기 D-5 이내는 롤오버 왜곡에 유의. 데이터: KRX 정보데이터시스템.<br>
+    외국인 선물 포지션: KRX 투자자별 거래실적(MDCSTAT13102, 정규 세션) 외국인 순매수의 5·20·60일·만기 후 누적. 투자자별 실제 미결제 잔고는 공개되지 않아 누적 순매수로 추정합니다.<br>
     본 자료는 투자 참고용이며 매수·매도를 권유하지 않습니다.
   </div>
 </div>
@@ -169,6 +188,7 @@ function render(date){
   }
   drawFlows(date);
   drawCharts(date);
+  if(typeof renderForeign==="function"&&F.length) renderForeign(date);
 }
 function drawFlows(selDate){
   const idx=H.findIndex(h=>h.date===selDate);
@@ -241,6 +261,72 @@ fetch("data/basis-gauge.json?cb="+Date.now()).then(r=>r.json()).then(d=>{
   if(d.provisional) document.getElementById("hdrProv").style.display="";
   render(H[H.length-1].date);
 }).catch(e=>{document.getElementById("cards").innerHTML='<div class="card">데이터 로드 실패: '+e+'</div>';});
+
+let F=[];
+const FN=[["k200","코스피200 선물"],["k200mini","미니코스피200"],["kq150","코스닥150 선물"]];
+function fsColor(st){return /강한 순매수/.test(st)?"#12b886":/순매수/.test(st)?"#4f9a7e":/강한 순매도/.test(st)?"#e5484d":/순매도/.test(st)?"#b06a4a":"#7c8598";}
+function sg(v,u=""){return v==null?"—":(v>0?"+":"")+Math.round(v).toLocaleString("ko-KR")+u;}
+function fInterp(s,b){
+  const st=s.state||"",c=s.combo||"",bv=b?b.verdict:null;
+  const sell=/순매도/.test(st)||s.streak<=-3, buy=/순매수/.test(st)||s.streak>=3;
+  if(/동반 순매도/.test(c)&&bv==="BEAR") return "현·선물 동반 매도 + 선물 할인 — 단기 하방 압력 우위. 신규 매수 보류, 헤지 점검.";
+  if(/동반 순매수/.test(c)&&bv==="BULL") return "현·선물 동반 매수 + 선물 프리미엄 — 순풍. 추세 추종·보유 지속에 유리.";
+  if(sell&&bv!=="BEAR") return "선물 누적 매도가 쌓이는 중이나 베이시스는 버팀 — 할인 전환(프로그램 매도) 여부를 다음 관찰 포인트로.";
+  if(buy&&bv==="BEAR") return "외국인은 선물을 사는데 베이시스는 할인 — 숏커버/저가 매수 가능성, 반등 확인 전 추격 자제.";
+  if(/헤지성/.test(c)) return "현물 매수·선물 매도 — 현물 노출을 선물로 헤지하는 구도. 지수 상단은 무거울 수 있음.";
+  if(/엇갈림/.test(c)) return "현물 매도·선물 매수 — 방향성 혼재. 만기·차익 수급 영향 가능, 하루 더 확인.";
+  return "뚜렷한 방향성 없음 — 기존 계획 유지.";
+}
+function renderForeign(date){
+  const card=document.getElementById("foreign"); if(!F.length){card.style.display="none";return;}
+  card.style.display="";
+  let i=F.findIndex(h=>h.date===date); if(i<0) i=F.findIndex(h=>h.date>date)-1; if(i<0) i=F.length-1;
+  const rec=F[i]; document.getElementById("fgnDate").textContent=rec.date;
+  const box=document.getElementById("fgnBoxes"); box.innerHTML="";
+  for(const [k,name] of FN){
+    const s=rec[k]; if(!s) continue;
+    const c=(s.fgn||0)>=0?"var(--bull)":"var(--bear)";
+    const stk=s.streak>0?`연속 순매수 ${s.streak}일`:s.streak<0?`연속 순매도 ${-s.streak}일`:"방향 전환";
+    box.insertAdjacentHTML("beforeend",`<div class="fbox"><h3>${name}<span class="fstate" style="background:${fsColor(s.state)}">${s.state}</span></h3>
+      <div class="fnet" style="color:${c}">${sg(s.fgn,"계약")}</div>
+      <div class="meta" style="margin:2px 0 6px">≈ ${sg(s.fgn_amt,"억원")} · ${stk}</div>
+      <table class="mx" style="margin-top:4px">
+        <tr><td>만기 후 누적 (${s.cum_exp_days||0}일)</td><td>${sg(s.cum_exp)} (${sg(s.cum_exp_amt,"억")})</td></tr>
+        <tr><td>5일 / 20일 / 60일</td><td>${sg(s.cum5)} / ${sg(s.cum20)} / ${sg(s.cum60)}</td></tr>
+        <tr><td>강도 z20</td><td>${s.z20==null?"—":(s.z20>0?"+":"")+s.z20}</td></tr>
+        ${k==="k200mini"?`<tr><td>정규 환산(÷5)</td><td>${sg((s.fgn||0)*0.2)}</td></tr>`:`<tr><td>현물 외국인</td><td>${sg(s.spot_fgn,"억")}</td></tr>
+        <tr><td>현선 조합</td><td>${s.combo||"—"}</td></tr>`}
+        <tr><td>개인 / 기관</td><td>${sg(s.ind)} / ${sg(s.inst)}</td></tr>
+      </table></div>`);
+  }
+  const it=document.getElementById("fgnInt");
+  if(rec.k200){const b=(H.find(h=>h.date===rec.date)||{}).k200;it.style.display="";it.innerHTML="💡 <b>코스피200 해석</b> — "+fInterp(rec.k200,b);}
+  else it.style.display="none";
+  fgnChart(i);
+}
+function fgnChart(i){
+  const svg=document.getElementById("chFgn"),W=1000,Hh=190,P=26;
+  const win=F.slice(Math.max(0,i-39),i+1).filter(h=>h.k200);
+  if(!win.length){svg.innerHTML="";return;}
+  const nets=win.map(h=>h.k200.fgn||0),cums=win.map(h=>h.k200.cum_exp||0);
+  const mb=Math.max(1,...nets.map(Math.abs)),mc=Math.max(1,...cums.map(Math.abs));
+  const bw=(W-2*P)/win.length,mid=Hh/2;
+  let o=`<line x1="${P}" y1="${mid}" x2="${W-P}" y2="${mid}" stroke="#3a4150"/>`;
+  win.forEach((h,j)=>{const v=nets[j],hgt=(Hh/2-P)*Math.abs(v)/mb,x=P+j*bw+bw*0.15;
+    o+=`<rect x="${x.toFixed(1)}" y="${(v>=0?mid-hgt:mid).toFixed(1)}" width="${(bw*0.7).toFixed(1)}" height="${hgt.toFixed(1)}" fill="${v>=0?"#12b886":"#e5484d"}" opacity=".75"><title>${h.date} ${sg(v,"계약")}</title></rect>`;});
+  let d="";win.forEach((h,j)=>{const x=P+j*bw+bw/2,y=mid-(Hh/2-P)*cums[j]/mc;d+=(j?"L":"M")+x.toFixed(1)+" "+y.toFixed(1);});
+  o+=`<path d="${d}" fill="none" stroke="#f5a524" stroke-width="2.2"/>`;
+  o+=`<text x="${P}" y="14" fill="#9aa4b2" font-size="10">막대 최대 ${sg(mb)} · 누적선 최대 ${sg(mc)}</text>
+      <text x="${W-P}" y="${Hh-6}" fill="#9aa4b2" font-size="10" text-anchor="end">${win[win.length-1].date}</text>
+      <text x="${P}" y="${Hh-6}" fill="#9aa4b2" font-size="10">${win[0].date}</text>`;
+  svg.innerHTML=o;
+}
+fetch("data/foreign-futures.json?cb="+Date.now()).then(r=>r.ok?r.json():{history:[]}).then(d=>{
+  F=(d.history||[]).slice().sort((a,b)=>a.date<b.date?-1:1);
+  const cur=document.getElementById("dateSel").value||(F.length?F[F.length-1].date:"");
+  if(!H.length&&F.length){document.getElementById("cards").innerHTML="";}
+  renderForeign(cur);
+}).catch(()=>{document.getElementById("foreign").style.display="none";});
 </script>
 </body>
 </html>
