@@ -1,5 +1,316 @@
 [
  {
+  "date": "2026-10-24",
+  "code": "003490",
+  "name": "대한항공",
+  "market": "코스피",
+  "price": 25850,
+  "base": {
+   "value": 37000.0,
+   "source": "broker",
+   "detail": "증권사 3곳 목표가 평균(삼성 32,000 10/16 · KB 42,000 9/23 · 미래 37,000 9/8)"
+  },
+  "vars": [
+   {
+    "id": "next_q_earnings",
+    "name": "다음분기 예상실적",
+    "group": "실적·성장",
+    "w": 3.0,
+    "verdict": "N",
+    "basis": "회사 4Q 전망: 중동 전쟁 장기화로 연료비 부담 지속(10/15 잠정실적 발표문)",
+    "auto": false,
+    "selected": true,
+    "contrib": -3.0
+   },
+   {
+    "id": "eps_growth",
+    "name": "EPS 성장률",
+    "group": "실적·성장",
+    "w": 3.0,
+    "verdict": "P",
+    "basis": "흑자전환 예상 (후행 -693 -> 컨센 1,063)",
+    "auto": true,
+    "selected": true,
+    "contrib": 3.0
+   },
+   {
+    "id": "revenue_growth",
+    "name": "매출성장률·지속성",
+    "group": "실적·성장",
+    "w": 3.0,
+    "verdict": "P",
+    "basis": "3Q 별도 매출 5조448억 +26% YoY(10/15 잠정, KB·미래 리포트 이후 신규 정보)",
+    "auto": false,
+    "selected": true,
+    "contrib": 3.0
+   },
+   {
+    "id": "opm_trend",
+    "name": "영업이익률 추이",
+    "group": "실적·성장",
+    "w": 3.0,
+    "verdict": "N",
+    "basis": "3Q 영업이익 +12%로 매출 증가율 절반 — OPM 9.2%→8.3%, 유가 비용 부담(삼성증권 10/16)",
+    "auto": false,
+    "selected": true,
+    "contrib": -3.0
+   },
+   {
+    "id": "roe",
+    "name": "ROE",
+    "group": "실적·성장",
+    "w": 3.0,
+    "verdict": "N",
+    "basis": "예상ROE 3.7% (컨센EPS/BPS)",
+    "auto": true,
+    "selected": true,
+    "contrib": -3.0
+   },
+   {
+    "id": "fcf",
+    "name": "FCF 창출력",
+    "group": "재무·주주환원",
+    "w": 1.5,
+    "verdict": "0",
+    "basis": "판정 없음(중립 처리)",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "debt_ratio",
+    "name": "부채비율·이자보상배율",
+    "group": "재무·주주환원",
+    "w": 1.5,
+    "verdict": "0",
+    "basis": "판정 없음(중립 처리)",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "dividend",
+    "name": "배당성향·주주환원",
+    "group": "재무·주주환원",
+    "w": 1.5,
+    "verdict": "N",
+    "basis": "적자에도 배당 지급 — 지속성 의문",
+    "auto": true,
+    "selected": true,
+    "contrib": -1.5
+   },
+   {
+    "id": "asset_value",
+    "name": "유·무형 자산가치",
+    "group": "재무·주주환원",
+    "w": 1.5,
+    "verdict": "0",
+    "basis": "판정 없음(중립 처리)",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "cb_issue",
+    "name": "CB/BW 발행",
+    "group": "이벤트·공시",
+    "w": 3.0,
+    "verdict": "0",
+    "basis": "판정 없음(중립 처리)",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "bonus_issue",
+    "name": "무상증자",
+    "group": "이벤트·공시",
+    "w": 3.0,
+    "verdict": "0",
+    "basis": "판정 없음(중립 처리)",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "positive_disclosure",
+    "name": "호재성 공시",
+    "group": "이벤트·공시",
+    "w": 3.0,
+    "verdict": "0",
+    "basis": "판정 없음(중립 처리)",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "owner_governance",
+    "name": "최대주주 지분율·지배구조",
+    "group": "이벤트·공시",
+    "w": 1.5,
+    "verdict": "0",
+    "basis": "판정 없음(중립 처리)",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "industry_trend",
+    "name": "산업 동향",
+    "group": "산업·경쟁",
+    "w": 3.0,
+    "verdict": "0",
+    "basis": "판정 없음(중립 처리)",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "competitive_edge",
+    "name": "경쟁사 대비 강점 우월성",
+    "group": "산업·경쟁",
+    "w": 3.0,
+    "verdict": "0",
+    "basis": "판정 없음(중립 처리)",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "competition_share",
+    "name": "경쟁강도·시장점유율 변화",
+    "group": "산업·경쟁",
+    "w": 1.5,
+    "verdict": "0",
+    "basis": "판정 없음(중립 처리)",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "orderbook",
+    "name": "전방산업·수주잔고",
+    "group": "산업·경쟁",
+    "w": 3.0,
+    "verdict": "0",
+    "basis": "판정 없음(중립 처리)",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "regulation",
+    "name": "규제·정책 환경",
+    "group": "산업·경쟁",
+    "w": 1.5,
+    "verdict": "0",
+    "basis": "판정 없음(중립 처리)",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "per_band",
+    "name": "시장부여 PER 역사적 밴드",
+    "group": "밸류·수급·기술",
+    "w": 1.5,
+    "verdict": "0",
+    "basis": "컨센PER 24.3배 — 중립 (52주 위치 42%)",
+    "auto": true,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "float_structure",
+    "name": "유통주식수·수급구조",
+    "group": "밸류·수급·기술",
+    "w": 1.5,
+    "verdict": "0",
+    "basis": "판정 없음(중립 처리)",
+    "auto": false,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "volume",
+    "name": "거래량",
+    "group": "밸류·수급·기술",
+    "w": 1.5,
+    "verdict": "0",
+    "basis": "거래량 비율 1.1배 — 특이 없음",
+    "auto": true,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "tech_rebound",
+    "name": "차트 기술적 반등 시점",
+    "group": "밸류·수급·기술",
+    "w": 1.5,
+    "verdict": "N",
+    "basis": "MA20 하회, 역배열성 흐름 (RSI 23.5)",
+    "auto": true,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "rates",
+    "name": "금리",
+    "group": "거시",
+    "w": 1.5,
+    "verdict": "N",
+    "basis": "리스부채 큰 항공사 — 금통위 11/26 인상 확률 50%, 미 10Y 5%대(1부 금리예측)",
+    "auto": false,
+    "selected": true,
+    "contrib": -1.5
+   },
+   {
+    "id": "fx",
+    "name": "환율",
+    "group": "거시",
+    "w": 1.5,
+    "verdict": "P",
+    "basis": "원/달러 1,324로 원화 강세 전환(1부) — 달러 부채·유류비 부담 완화 방향",
+    "auto": false,
+    "selected": true,
+    "contrib": 1.5
+   },
+   {
+    "id": "market_regime",
+    "name": "시장 국면·유동성",
+    "group": "거시",
+    "w": 1.5,
+    "verdict": "N",
+    "basis": "KOSPI 역배열 — 약세 국면",
+    "auto": true,
+    "selected": false,
+    "contrib": 0.0
+   },
+   {
+    "id": "inflation",
+    "name": "인플레이션·원자재",
+    "group": "거시",
+    "w": 1.5,
+    "verdict": "N",
+    "basis": "WTI 100달러 안팎·항공유 정제마진 사상 최고(삼성증권 10/16)",
+    "auto": false,
+    "selected": true,
+    "contrib": -1.5
+   }
+  ],
+  "adj_pct": -6.0,
+  "adjusted": 34780.0,
+  "upside_pct": 34.5,
+  "cap": 25.0,
+  "entry": {
+   "verdict": "NO_SETUP",
+   "pivot": 32500,
+   "stop": 23305,
+   "unit_qty": 2564,
+   "note": "트렌드 템플릿 4/7, 다바스 박스 하단 30,200 이탈 — 박스 무효·재구축 대기"
+  }
+ },
+ {
   "date": "2026-07-30",
   "code": "018880",
   "name": "한온시스템",
