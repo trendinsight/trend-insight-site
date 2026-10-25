@@ -116,7 +116,10 @@ section{display:flex;flex-direction:column;gap:18px}
 .pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;font-weight:600;white-space:nowrap}
 .pill.good{background:var(--good-soft);color:var(--good)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.gray{background:var(--panel2);color:var(--muted)}
 /* table */
-.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+.tbl-wrap{overflow:auto;max-height:min(78vh,760px);overscroll-behavior:contain;border:1px solid var(--line);border-radius:6px;background:var(--panel);cursor:grab}
+.tbl-wrap.dragging{cursor:grabbing;user-select:none}
+.tbl-wrap.dragging *{cursor:grabbing!important}
+.tbl-hint{font-size:12px;color:var(--muted);margin:0 0 6px}
 table{border-collapse:collapse;width:100%;min-width:820px;font-size:13px}
 th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
 th{font-size:12px;color:var(--muted);font-weight:600;background:var(--panel2);position:sticky;top:0;cursor:pointer;user-select:none}
@@ -249,7 +252,7 @@ tbody tr:hover td.fz{background-image:linear-gradient(var(--accent-soft),var(--a
 <section aria-labelledby="h-all">
   <div class="sec-head"><span class="eyebrow">5 · 한눈에</span><h2 id="h-all">40종목 비교</h2>
   <p class="muted">열 제목을 누르면 정렬, 줄을 누르면 위 카드에 열립니다. 위 조절기 값이 그대로 적용됩니다.</p><p class="small muted" id="asof2">현재가·이평·RSI·거래대금은 평일 장 마감 후 매일 갱신됩니다.</p></div>
-  <div class="tbl-wrap"><table id="tbl"><thead><tr>
+  <p class="tbl-hint">↔↕ 표 안에서 마우스로 끌거나 스크롤하면 이동합니다. 제목 줄과 종목~현재가 열은 고정됩니다.</p><div class="tbl-wrap"><table id="tbl"><thead><tr>
     <th data-k="n" tabindex="0">종목</th><th data-k="cat" tabindex="0">분야</th><th data-k="px" class="r" tabindex="0">현재가</th>
     <th data-k="fromHi" class="r" tabindex="0">6월 고점 대비</th><th data-k="prog" class="r" tabindex="0">시간 진행</th>
     <th data-k="up" tabindex="0">예상 고점까지 여력</th><th data-k="stage" tabindex="0">실적 단계</th><th data-k="warn" tabindex="0">경고</th>
@@ -269,7 +272,7 @@ tbody tr:hover td.fz{background-image:linear-gradient(var(--accent-soft),var(--a
     <span class="per-legend"><i></i>적정 PER에 가장 가까운 배수</span>
     <a class="per-dl" id="per-dl" download="소부장_적정PER_매트릭스_20261016.xlsx">엑셀 받기 (.xlsx)</a>
   </div>
-  <div class="tbl-wrap"><table id="pertbl"><thead><tr>
+  <p class="tbl-hint">↔↕ 표 안에서 마우스로 끌거나 스크롤하면 이동합니다. 제목 줄과 종목~현재가 열은 고정됩니다.</p><div class="tbl-wrap"><table id="pertbl"><thead><tr>
     <th>종목</th><th>분야</th><th class="r">현재가</th><th class="r">고점 EPS</th>
     <th class="r">10배</th><th class="r">15배</th><th class="r">20배</th><th class="r">25배</th><th class="r">30배</th><th class="r">40배</th><th class="r">50배</th>
     <th class="sep"></th><th>적정 PER</th><th class="r">적정 주가</th><th class="r">여력</th><th class="r">하단 −20%</th><th class="r">상단 +20%</th><th>신뢰도</th>
@@ -673,6 +676,17 @@ function freezeCols(id){
 function freezeAll(){requestAnimationFrame(()=>{freezeCols('tbl');freezeCols('pertbl')})}
 addEventListener('resize',()=>{clearTimeout(freezeAll._t);freezeAll._t=setTimeout(freezeAll,150)});
 try{document.fonts&&document.fonts.ready.then(freezeAll)}catch(e){}
+/* ---------- 표 드래그 이동 (마우스) ---------- */
+document.querySelectorAll('.tbl-wrap').forEach(w=>{
+  let sx=0,sy=0,sl=0,st=0,down=false,moved=false;
+  w.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse'||e.button!==0)return;down=true;moved=false;sx=e.clientX;sy=e.clientY;sl=w.scrollLeft;st=w.scrollTop;});
+  addEventListener('pointermove',e=>{if(!down)return;const dx=e.clientX-sx,dy=e.clientY-sy;
+    if(!moved&&Math.abs(dx)+Math.abs(dy)>5){moved=true;w.classList.add('dragging');}
+    if(moved){w.scrollLeft=sl-dx;w.scrollTop=st-dy;e.preventDefault();}});
+  addEventListener('pointerup',()=>{if(!down)return;down=false;setTimeout(()=>w.classList.remove('dragging'),0);});
+  w.addEventListener('click',e=>{if(moved){e.stopPropagation();e.preventDefault();moved=false;}},true);
+  w.addEventListener('dragstart',e=>e.preventDefault());
+});
 addEventListener('load',freezeAll);
 function drawAll(){benchChart();qChart();render();table();perTable();freezeAll()}
 controls();drawAll();
