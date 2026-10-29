@@ -264,7 +264,7 @@ tbody tr:hover td.fz{background-image:linear-gradient(var(--accent-soft),var(--a
   <p class="muted">고점 EPS × PER 매트릭스에서 종목마다 적정 PER에 가장 가까운 배수 칸을 <b style="background:#ffe08a;color:#9b1c1c;padding:0 4px">노란 바탕·굵은 빨간 글씨</b>로 표시했습니다. 정확한 적정 PER로 계산한 적정 주가와 ±20% 범위는 오른쪽 열에 있습니다.</p></div>
   <div class="risk">
     <div class="item"><b>고점 이익에 높은 배수 = 이중 낙관</b><p>삼성전자·SK하이닉스는 6월 주가 고점에서 선행 PER이 8.2배·8.4배였습니다. 사이클 꼭대기 이익엔 시장이 낮은 배수를 줍니다. 감익 신호가 나오면 아래 적정 PER보다 5~10배 낮게 보세요.</p></div>
-    <div class="item"><b>여력이 큰 건 급락 효과도 있다</b><p>10/13~10/15 소부장 전반이 20% 안팎 빠졌습니다. 현재가는 매일 갱신되지만 적정 PER·고점 EPS는 10/16 기준 고정값입니다.</p></div>
+    <div class="item"><b>여력이 큰 건 급락 효과도 있다</b><p>10/13~10/15 소부장 전반이 20% 안팎 빠졌습니다. <span id="perx-asof">현재가와 함께 적정 PER·고점 EPS도 매일 다시 계산합니다.</span></p></div>
     <div class="item"><b>PER이 맞지 않는 13종목</b><p>적자(2) · 일회성 이익(2, 영업이익 기준으로 EPS 정상화) · 주가가 고점 EPS의 45배 초과 또는 ROE 6% 미만(9)은 신뢰도를 빨간 글씨로 표시했습니다.</p></div>
   </div>
   <div class="per-tools">
@@ -660,10 +660,17 @@ function applyPrices(d){
     if(d.ma120&&d.ma120[k]>0) s.ma120=d.ma120[k];
     if(d.rsi&&d.rsi[k]!=null) s.rsi=d.rsi[k];
     if(d.r1m&&d.r1m[k]!=null) s.r1m=d.r1m[k];
-    if(d.tv&&d.tv[k]!=null) s.tv=d.tv[k];});
+    if(d.tv&&d.tv[k]!=null) s.tv=d.tv[k];
+    if(d.e26&&(k in d.e26)) s.e26=d.e26[k];
+    if(d.ttm&&d.ttm[k]!=null) s.ttm=d.ttm[k];});
+  if(d.perx&&Array.isArray(d.perx.rows)&&d.perx.rows.length){const m={};d.perx.rows.forEach(r=>m[r.c]=r);
+    PERX.rows=PERX.rows.map(r=>m[r.c]?Object.assign({},r,m[r.c]):r);
+    d.perx.rows.forEach(r=>{if(!PERX.rows.some(x=>x.c===r.c))PERX.rows.push(r)});
+    if(d.perx.asof)PERX.asof=d.perx.asof;
+    const pe=document.getElementById('perx-asof');if(pe)pe.textContent='현재가와 함께 적정 PER·고점 EPS도 매일 다시 계산합니다(컨센서스·분기 실적·ROE·시총이 바뀐 만큼만 PER이 움직임). 기준 '+PERX.asof+'.';}
   if(d.asof){TODAY=new Date(d.asof);
     $('#asof').textContent='주가 기준 '+d.asof+' 종가 (매일 자동 갱신)';
-    $('#asof2').textContent='현재가·120일선·RSI·1개월 수익률·거래대금: '+d.asof+' 종가 기준, 평일 장 마감 후 자동 갱신 (마지막 갱신 '+(d.updated||d.asof)+'). 재무·컨센서스는 10/13 기준.';}
+    $('#asof2').textContent='현재가·120일선·RSI·1개월 수익률·거래대금: '+d.asof+' 종가 기준, 평일 장 마감 후 자동 갱신 (마지막 갱신 '+(d.updated||d.asof)+'). '+(d.e26?'고점 EPS·적정 PER(컨센서스)도 같은 날 기준으로 갱신.':'재무·컨센서스는 10/13 기준.');}
   render();table();perTable();freezeAll();
 }
 (async()=>{
