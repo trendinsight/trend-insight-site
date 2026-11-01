@@ -3126,7 +3126,7 @@ export default {
           // 홈 포함 모든 페이지에 뒤로 ← / 앞으로 → 화살표 내비 주입 (좌하단)
           el.append(`<script defer src="/history-nav.js?v=2026100501"></script>`, { html: true });
           // 홈을 제외한 모든 페이지에 공용 플로팅 내비 주입
-          if (!isHome) el.append(`<script defer src="/site-nav.js?v=2026092101"></script>`, { html: true });
+          if (!isHome) el.append(`<script defer src="/site-nav.js?v=2026110101"></script>`, { html: true });
           // 3단계 공용 위젯(종목 즉석 조회 패널·메모/댓글·SOTP 동기화) — 홈·로그인 화면 제외
           if (!isHome && !/^\/(login|signup|terms)(\.html)?$/.test(url.pathname)) el.append(`<script defer src="/ti-widgets.js?v=2026100201"></script>`, { html: true });
         }
@@ -3977,7 +3977,7 @@ main{max-width:1000px;margin:0 auto;padding:20px 14px 40px}
 </main>
 <script defer src="/post-nav.js?v=2026100501"></script>
 <script defer src="/pdf-viewer.js?v=2026080802"></script>
-<script defer src="/site-nav.js?v=2026092101"></script>
+<script defer src="/site-nav.js?v=2026110101"></script>
 <script defer src="/history-nav.js?v=2026100501"></script>
 </body></html>`;
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
