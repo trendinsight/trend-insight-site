@@ -802,18 +802,61 @@
   </div>
 </section>
 
+<style>
+/* 최신 글 삭제(숨김) — 운영자 전용 UI */
+#post-list:not(.ti-ready) .insight{visibility:hidden}
+#post-list .insight{position:relative}
+.post-del{position:absolute;top:10px;right:10px;z-index:3;width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,.35);background:rgba(11,31,63,.72);color:#fff;font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:.75;transition:opacity .15s,background .15s}
+.post-del:hover,.post-del:focus-visible{opacity:1;background:#d64545}
+.post-del:disabled{opacity:.4;cursor:wait}
+.hidden-toggle{margin-left:10px;background:none;border:1px solid rgba(255,255,255,.25);color:inherit;border-radius:999px;padding:3px 10px;font-size:.8rem;cursor:pointer;opacity:.8}
+.hidden-panel{margin:0 0 18px;padding:14px 16px;border:1px solid rgba(255,255,255,.15);border-radius:12px;background:rgba(255,255,255,.04);font-size:.88rem}
+.hidden-panel h4{margin:0 0 8px;font-size:.92rem}
+.hidden-panel ul{list-style:none;margin:0;padding:0;max-height:260px;overflow:auto}
+.hidden-panel li{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid rgba(255,255,255,.08)}
+.hidden-panel li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.hidden-panel li small{opacity:.6;margin-left:6px}
+.hidden-panel button{flex:none;background:#2e6ff2;color:#fff;border:0;border-radius:7px;padding:4px 12px;cursor:pointer;font-size:.8rem}
+</style>
 <script>
+/* 삭제(숨김) 목록을 먼저 받아온 뒤 카드 목록을 초기화한다 (1.5초 안에 응답 없으면 그냥 진행) */
 (function(){
+  var done=false;
+  function go(items){if(done)return;done=true;window.__tiHidden=items||[];window.__tiPostsInit();}
+  window.__tiHiddenReq=fetch('/api/posts/hidden',{cache:'no-store'}).then(function(r){return r.json();})
+    .then(function(j){go(j&&j.ok?j.items:[]);}).catch(function(){go([]);});
+  setTimeout(function(){go([]);},1500);
+})();
+window.__tiPostsInit=function(){
   var PAGE=12, shown=PAGE, activeCat='all', activeChip=null;
-  var cards=Array.prototype.slice.call(document.querySelectorAll('#post-list .insight'));
+  var listEl=document.getElementById('post-list');
+  var allCards=Array.prototype.slice.call(document.querySelectorAll('#post-list .insight'));
   var searchEl=document.getElementById('post-search');
   var countEl=document.getElementById('post-count');
   var chipsEl=document.getElementById('stock-chips');
   var moreWrap=document.getElementById('load-more-wrap');
   var moreBtn=document.getElementById('load-more');
-  if(!searchEl||!cards.length)return;
+  if(listEl)listEl.classList.add('ti-ready');
+  if(!searchEl||!allCards.length)return;
 
-  cards.forEach(function(c){c._text=(c.textContent||'').toLowerCase();});
+  /* 삭제(숨김)된 글 제외 */
+  function slugOf(c){var a=c.querySelector('a[href*="posts/"]');if(!a)return '';var m=(a.getAttribute('href')||'').match(/posts\/([^\/?#]+)\.(html|pdf)/);return m?decodeURIComponent(m[1]):'';}
+  function titleOf(c){var h=c.querySelector('h3');return h?h.textContent.trim():'';}
+  var hidden={};
+  (window.__tiHidden||[]).forEach(function(h){hidden[h.slug]=h;});
+  allCards.forEach(function(c){c._slug=slugOf(c);});
+  var cards=[];
+  function rebuild(){
+    cards=allCards.filter(function(c){
+      if(c._slug&&hidden[c._slug]){c.style.display='none';return false;}
+      return true;
+    });
+    var st=document.getElementById('stat-posts');
+    if(st)st.textContent=cards.length+'+';
+  }
+  rebuild();
+
+  allCards.forEach(function(c){c._text=(c.textContent||'').toLowerCase();});
 
   /* 히어로 통계: 실제 게시물 수 자동 반영 */
   var statEl=document.getElementById('stat-posts');
@@ -887,7 +930,61 @@
     syncChips();
   }
   apply(true);
-})();
+
+  /* ── 운영자 전용: 카드 ✕ 삭제 + "삭제한 글" 복원 패널 ── */
+  function postJSON(path,body){
+    return fetch(path,{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(body)})
+      .then(function(r){return r.json().then(function(j){if(!r.ok||!j.ok)throw new Error(j.error||('HTTP '+r.status));return j;});});
+  }
+  var toggleBtn=null, panel=null;
+  function esc(s){return String(s||'').replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});}
+  function renderPanel(){
+    var list=Object.keys(hidden).map(function(k){return hidden[k];}).sort(function(a,b){return (b.at||'')<(a.at||'')?-1:1;});
+    toggleBtn.textContent='삭제한 글 '+list.length+'건';
+    toggleBtn.style.display=list.length?'':'none';
+    if(!list.length)panel.style.display='none';
+    panel.innerHTML='<h4>삭제한 글 — 운영자에게만 보입니다. 복원하면 다시 목록에 나타납니다.</h4><ul>'+list.map(function(h){
+      return '<li><span>'+esc(h.title||h.slug)+'<small>'+esc(h.at||'')+'</small></span><button type="button" data-slug="'+esc(h.slug)+'">복원</button></li>';
+    }).join('')+'</ul>';
+  }
+  function hidePost(c,btn){
+    var t=titleOf(c);
+    if(!window.confirm('이 글을 최신 글에서 삭제할까요?\n\n'+t+'\n\n(파일은 남겨 두므로 "삭제한 글"에서 언제든 복원할 수 있습니다)'))return;
+    btn.disabled=true;
+    postJSON('/api/posts/hide',{slug:c._slug,title:t}).then(function(j){
+      hidden[c._slug]={slug:c._slug,title:t,at:j.at};
+      rebuild(); apply(false); renderPanel();
+    }).catch(function(e){btn.disabled=false;alert('삭제 실패: '+e.message);});
+  }
+  function enableOwner(){
+    allCards.forEach(function(c){
+      if(!c._slug||c.querySelector('.post-del'))return;
+      var b=document.createElement('button');
+      b.type='button'; b.className='post-del'; b.title='이 글 삭제'; b.setAttribute('aria-label','이 글 삭제'); b.textContent='✕';
+      b.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();hidePost(c,b);});
+      c.appendChild(b);
+    });
+    toggleBtn=document.createElement('button');
+    toggleBtn.type='button'; toggleBtn.className='hidden-toggle';
+    countEl.parentNode.insertBefore(toggleBtn,countEl.nextSibling);
+    panel=document.createElement('div');
+    panel.className='hidden-panel'; panel.style.display='none';
+    listEl.parentNode.insertBefore(panel,listEl);
+    toggleBtn.addEventListener('click',function(){panel.style.display=panel.style.display==='none'?'':'none';});
+    panel.addEventListener('click',function(ev){
+      var b=ev.target.closest('button[data-slug]'); if(!b)return;
+      var slug=b.getAttribute('data-slug'); b.disabled=true;
+      postJSON('/api/posts/unhide',{slug:slug}).then(function(){
+        delete hidden[slug];
+        allCards.forEach(function(c){if(c._slug===slug)c.style.display='';});
+        rebuild(); apply(false); renderPanel();
+      }).catch(function(e){b.disabled=false;alert('복원 실패: '+e.message);});
+    });
+    renderPanel();
+  }
+  fetch('/api/chat/status',{credentials:'same-origin'}).then(function(r){return r.json();})
+    .then(function(s){if(s&&s.owner)enableOwner();}).catch(function(){});
+};
 </script>
 
 <section id="contact" class="contact">

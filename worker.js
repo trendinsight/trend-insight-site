@@ -3090,6 +3090,22 @@ export default {
       return handleSkillrun(req, url, env, ctx);
     }
 
+    // 최신 글 삭제(숨김) — 운영자 전용 API. 목록 조회만 공개(홈 카드 필터용)
+    if (url.pathname.startsWith("/api/posts/")) {
+      return handlePostsHidden(req, url, env);
+    }
+
+    // 삭제(숨김)된 글의 상세 페이지·PDF는 운영자 외에는 410 안내로 막는다
+    {
+      const pm = url.pathname.match(/^\/posts\/([^\/]+)\.(html|pdf)$/);
+      if (pm) {
+        const slug = decodeURIComponent(pm[1]);
+        if ((await postsHiddenSlugs(env)).has(slug) && !(await bbsOwner(req, env))) {
+          return new Response(POSTS_GONE_HTML, { status: 410, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+        }
+      }
+    }
+
     const assetRes = await env.ASSETS.fetch(req);
 
     // PDF를 주소창/링크로 직접 열면(모바일에서 흔함) 브라우저 기본 PDF 화면으로 넘어가
@@ -6243,4 +6259,53 @@ async function aiBoardsStatus(env, rt) {
 export class AiBoardScanner extends WorkerEntrypoint {
   async search(inp) { return aiSearchBoardsLocal(this.env, inp || {}); }
   async status(inp) { return aiBoardsStatusLocal(this.env, inp || {}); }
+}
+
+
+// ───────────────────────────────────────────────────────────────
+// 최신 글 삭제(숨김) — 2026-11-08
+//  · 운영자가 홈 카드의 ✕ 버튼으로 글을 내리면 D1(RISK_DB.posts_hidden)에 기록
+//  · 저장소 파일은 그대로 두고(복원 가능) 홈 목록·상세 페이지에서만 가린다
+//  · D1을 쓰는 이유: KV는 쓰기 직후 읽기가 최대 60초 늦어 삭제/복원이 바로 안 보일 수 있음
+//  GET  /api/posts/hidden            → { ok, items:[{slug,title,at}] }  (공개)
+//  POST /api/posts/hide   {slug,title} → 운영자 전용
+//  POST /api/posts/unhide {slug}       → 운영자 전용
+// ───────────────────────────────────────────────────────────────
+const POSTS_GONE_HTML = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>삭제된 글 | Trend Insight</title><style>body{font-family:'Pretendard',-apple-system,sans-serif;background:#0f1a2e;color:#e6ecf5;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:16px}div{text-align:center;max-width:420px}h1{font-size:1.3rem}p{color:#9fb0c8;line-height:1.6}a{display:inline-block;margin-top:14px;background:#2e6ff2;color:#fff;padding:10px 20px;border-radius:9px;text-decoration:none;font-weight:700}</style></head><body><div><h1>삭제된 글입니다</h1><p>운영자가 이 글을 목록에서 내렸습니다.</p><a href="/">홈으로</a></div></body></html>`;
+
+async function postsHiddenEnsure(env) {
+  await env.RISK_DB.prepare("CREATE TABLE IF NOT EXISTS posts_hidden (slug TEXT PRIMARY KEY, title TEXT, at TEXT)").run();
+}
+async function postsHiddenAll(env) {
+  try {
+    const r = await env.RISK_DB.prepare("SELECT slug, title, at FROM posts_hidden ORDER BY at DESC").all();
+    return r.results || [];
+  } catch (e) { return []; } // 테이블이 아직 없으면 빈 목록
+}
+async function postsHiddenSlugs(env) {
+  return new Set((await postsHiddenAll(env)).map(r => r.slug));
+}
+async function handlePostsHidden(req, url, env) {
+  const J = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
+  const p = url.pathname;
+  if (p === "/api/posts/hidden" && req.method === "GET") {
+    return J({ ok: true, items: await postsHiddenAll(env) });
+  }
+  if ((p === "/api/posts/hide" || p === "/api/posts/unhide") && req.method === "POST") {
+    // JSON 본문 강제 → 교차 출처 폼 제출(CSRF) 차단
+    if (!(req.headers.get("content-type") || "").includes("application/json")) return J({ ok: false, error: "bad content-type" }, 415);
+    if (!(await bbsOwner(req, env))) return J({ ok: false, error: "운영자 전용 기능입니다." }, 403);
+    let b = {}; try { b = await req.json(); } catch (e) {}
+    const slug = String(b.slug || "").trim();
+    if (!/^[A-Za-z0-9._%\-]{1,200}$/.test(slug)) return J({ ok: false, error: "잘못된 slug" }, 400);
+    await postsHiddenEnsure(env);
+    if (p === "/api/posts/hide") {
+      const at = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16).replace("T", " ");
+      await env.RISK_DB.prepare("INSERT OR REPLACE INTO posts_hidden VALUES(?,?,?)").bind(slug, String(b.title || "").slice(0, 300), at).run();
+      return J({ ok: true, slug, at });
+    }
+    await env.RISK_DB.prepare("DELETE FROM posts_hidden WHERE slug=?").bind(slug).run();
+    return J({ ok: true, slug });
+  }
+  return J({ ok: false, error: "not found" }, 404);
 }
