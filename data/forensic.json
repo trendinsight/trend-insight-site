@@ -3,6 +3,12 @@
  "howto": "게시 방법: entries 배열 맨 앞에 {date:'YYYY-MM-DD', title:'제목', summary:'2~3문장 요약', html:'<h3>/<p>/<table> 본문 조각'}을 추가해 GitHub(trendinsight/trend-insight-site, main)에 커밋. 같은 날짜가 이미 있으면 교체. 스타일은 페이지가 입힌다.",
  "entries": [
   {
+   "date": "2026-11-08",
+   "title": "케0000 포렌식 6축 — NO-GO 권고",
+   "summary": "2년 내 CB 2회(최근 350억, 현재가<전환가)로 오버행 FAIL. 감사의견·증자는 PASS, 최대주주·회전일수·특수관계는 확인 제한으로 조건부.",
+   "html": "<h3>케0000 포렌식 6축 — NO-GO 권고</h3><p>※ 본 게시물은 보유 현황 노출을 피하기 위해 종목명을 첫 글자만 남기고 마스킹했습니다(예: 케0000).</p>\n<h4>게이트</h4><p>FAIL 1 · CONDITIONAL 3 · PASS 2 → <b>NO-GO 권고</b> (강행 시 사유 기록)</p>\n<table><tr><th>축</th><th>판정</th><th>근거</th></tr><tr><td>1 CB/BW/EB</td><td>FAIL</td><td>CB 2회(2024/7 300억·전환가 13,577 / 2026/10/16 사모 350억·쿠폰 0%·전환가 18,140·발행주식 4.37%), 현재가&lt;전환가 → 리픽싱 위험</td></tr><tr><td>2 최대주주·담보</td><td>CONDITIONAL</td><td>최대주주+특수관계 30.43%, 대량보유 보고 6건(사유 미확인)</td></tr><tr><td>3 유상증자</td><td>PASS</td><td>2021~ 0건</td></tr><tr><td>4 감사의견</td><td>PASS</td><td>2023~2025 적정</td></tr><tr><td>5 회전일수</td><td>CONDITIONAL</td><td>2024까지 개선, 2025 확인 제한</td></tr><tr><td>6 특수관계</td><td>CONDITIONAL</td><td>수시공시 이상 없음, 주석 미확인</td></tr></table>\n<h4>다음 확인</h4><ul><li>11/16 3Q 분기보고서</li><li>2027/10/26 CB 전환청구 개시·리픽싱 조정일</li></ul>"
+  },
+  {
    "date": "2026-10-23",
    "title": "포렌식 심층 로테이션 — #3 대000 (보유 비중 3위권)",
    "summary": "6축 게이트 GO(조건부): CB·BW·EB·유상증자 0건, 회전일수 개선. 최대주주 담보·합병 신주 희석과 특수관계 출자 규모는 원문 확인 필요(CONDITIONAL 2).",
