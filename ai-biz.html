@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 활용 기업 지도 | Trend Insight</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#14181f;--mut:#6b7280;--bd:#e3e6ea;--up:#d92d20;--dn:#175cd3;--acc:#0b1f44;--warn:#fff4e5;--warnb:#f5c27a;--risk:#fdeceb;--riskb:#f0b4ae;--good:#eaf6ee;--goodb:#a9d8b8;--chip:#eef1f5;--bar:#3b6fd4;--barn:#c4483c}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1116;--card:#171b22;--tx:#e8ebf0;--mut:#8b93a1;--bd:#262c36;--up:#ff6b61;--dn:#6ea8ff;--acc:#9db8ff;--warn:#2a2112;--warnb:#7a5a1f;--risk:#2b1716;--riskb:#7c3530;--good:#12241a;--goodb:#2f6b47;--chip:#1f252e;--bar:#6ea8ff;--barn:#ff7d72}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.6 -apple-system,"Malgun Gothic","Noto Sans KR",sans-serif}
+.w{max-width:1100px;margin:0 auto;padding:20px 16px 70px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:26px 0 8px;color:var(--acc)}h3{font-size:14px;margin:0 0 6px}
+.sub{color:var(--mut);font-size:12px}
+.note{background:var(--warn);border:1px solid var(--warnb);border-radius:8px;padding:10px 12px;margin:12px 0;font-size:13px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px}
+.pad{padding:12px 14px}.ox{overflow-x:auto}
+.ctl{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0 8px;border-bottom:1px solid var(--bd);margin-top:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--bd);border-radius:10px;overflow:hidden;background:var(--card)}
+.seg button{border:0;background:transparent;color:var(--tx);padding:9px 18px;font-size:14px;font-weight:700;cursor:pointer}
+.seg button.on{background:var(--acc);color:var(--bg)}
+.q{flex:1;min-width:200px;display:flex;gap:6px}
+.q input{flex:1;min-width:0;background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:10px;padding:9px 12px;font-size:14px}
+.q button{border:1px solid var(--acc);background:var(--acc);color:var(--bg);border-radius:10px;padding:9px 14px;font-weight:700;cursor:pointer;white-space:nowrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chips button{border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:16px;padding:4px 11px;cursor:pointer;font-size:12.5px}
+.chips button.on{background:var(--acc);color:var(--bg);border-color:var(--acc)}
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px 10px;border-bottom:1px solid var(--bd);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-size:12px;color:var(--mut);font-weight:600}
+tr:last-child td{border-bottom:0}
+#list tbody tr{cursor:pointer}#list tbody tr:hover{background:var(--chip)}#list tbody tr.sel{background:var(--chip);font-weight:700}
+.up{color:var(--up)}.dn{color:var(--dn)}.mut{color:var(--mut)}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:4px;border:1px solid var(--bd);color:var(--mut);margin-left:6px;font-weight:400;vertical-align:middle}
+.st{display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;font-weight:700}
+.st.g{background:var(--good);border:1px solid var(--goodb)}.st.r{background:var(--risk);border:1px solid var(--riskb)}.st.y{background:var(--warn);border:1px solid var(--warnb)}
+.kpi{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:10px 0}
+.kpi div{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:9px 11px}
+.kpi b{display:block;font-size:17px;line-height:1.3}.kpi span{font-size:11.5px;color:var(--mut)}.kpi small{display:block;font-size:11px;color:var(--mut)}
+.risk{background:var(--risk);border:1px solid var(--riskb);border-radius:10px;padding:12px 14px}
+.good{background:var(--good);border:1px solid var(--goodb);border-radius:10px;padding:12px 14px}
+ul{margin:4px 0 0;padding-left:18px}li{margin:3px 0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:760px){.two{grid-template-columns:1fr}}
+.hd{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}.hd .nm{font-size:20px;font-weight:800}
+.one{font-size:14px;margin:4px 0 0}
+details{border:1px solid var(--bd);border-radius:10px;background:var(--card);margin:6px 0}
+summary{cursor:pointer;padding:10px 14px;font-weight:700}details>div{padding:0 14px 12px}
+.lg{display:flex;gap:14px;font-size:12px;color:var(--mut);margin:2px 4px 6px}.lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:middle}
+a{color:var(--dn)}.src a{display:block;font-size:12.5px;margin:2px 0}
+.empty{padding:22px;text-align:center;color:var(--mut)}
+</style></head><body><div class="w">
+<h1>AI 활용 기업 지도</h1>
+<div class="sub" id="meta">불러오는 중…</div>
+<div class="note"><b>읽기 전에</b> — AI를 써서 신약을 개발하거나 실제 매출·이익을 만드는 상장사를 한국(상세)과 미국·해외(개요)로 나눠 정리했습니다. 각 기업은 <b>위험·반론을 먼저</b>, 투자 포인트를 그 다음에 씁니다. 한국 수치는 네이버 증권(연결 기준, 억원), 해외 수치는 Yahoo Finance 값이며 확인하지 못한 값은 추정하지 않고 비워 둡니다. 정성 내용은 공시·보도 기반 정리로, 이후 사정이 바뀌었을 수 있습니다. 투자 권유가 아닙니다.</div>
+
+<div class="ctl">
+ <div class="row">
+  <div class="seg" role="tablist" aria-label="지역 선택"><button id="bKR" class="on">한국 기업</button><button id="bGL">미국·해외 기업</button></div>
+  <div class="q"><input id="q" list="names" placeholder="기업 이름 또는 종목코드·티커 입력 (예: 루닛, 328130, NVDA)" autocomplete="off"><datalist id="names"></datalist><button id="go">찾기</button></div>
+ </div>
+ <div class="chips" id="cats"></div>
+</div>
+
+<h2 id="h-view">전체 총평</h2>
+<div class="card pad" id="view"></div>
+
+<h2 id="h-list">기업 목록 <span class="sub">— 행을 누르면 아래에 상세 설명이 나옵니다</span></h2>
+<div class="card ox"><table id="list"><thead></thead><tbody></tbody></table></div>
+
+<div id="detail"></div>
+
+<h2>재무제표·투자 지표 읽는 법 (AI 기업 전용)</h2>
+<details open><summary>1. AI로 돈을 버는 4가지 방식 — 어떤 유형인지부터 구분</summary><div>
+<ul><li><b>쓰는 만큼 과금형</b>(병상·검사 건수·구독): 씨어스테크놀로지, 뷰노, 쓰리빌리언, 루닛. 매출이 설치 기반에 비례해 쌓이므로 ‘설치 수 × 단가 × 유지율’로 검증할 수 있습니다. 보험 수가가 붙느냐가 확산 속도를 결정합니다.</li>
+<li><b>대행·구축형</b>(후보물질 발굴 용역, 공공 AI 구축): 신테카바이오, 온코크로스, 솔트룩스, 코난테크놀로지. 수주가 끊기면 매출도 끊기고 인건비 비중이 높아 이익률이 낮습니다. 수주잔고와 재계약 여부를 봅니다.</li>
+<li><b>신약 성과 배분형</b>(기술이전 계약금·마일스톤·로열티): 보로노이, 파로스아이바이오, 프로티나. AI는 내부 도구이고 매출은 임상 성공과 계약 체결에 달려 있습니다. 재무제표보다 임상 데이터와 현금 잔고가 중요합니다.</li>
+<li><b>기존 사업 강화형</b>(광고·커머스·클라우드 효율): NAVER, 카카오, 삼성SDS, 해외 빅테크. AI 매출이 따로 잡히지 않으므로 광고 성장률·영업이익률·설비투자 규모의 변화로 간접 확인합니다.</li></ul></div></details>
+<details><summary>2. 손익계산서 — 매출·영업이익·순이익을 볼 때</summary><div>
+<ul><li><b>영업이익과 순이익이 크게 다르면 이유를 확인</b>합니다. 전환사채를 발행한 적자 기업은 주가가 내리면 ‘파생상품 평가이익’이 잡혀 순손실이 줄어 보입니다(루닛 2025년, 쓰리빌리언). 본업이 좋아진 것이 아닙니다. 그래서 이 페이지는 영업이익을 기준으로 봅니다.</li>
+<li><b>매출 증가율은 기저를 함께</b> 봅니다. 1억원이 34억원이 되면 증가율은 수천 %지만 여전히 작은 회사입니다. 연 매출 10억원 미만에서 출발한 연평균 성장률은 표시하지 않습니다.</li>
+<li><b>분기 매출이 들쭉날쭉</b>한 회사는 프로젝트·계약금 매출 비중이 높다는 뜻입니다. 최근 4개 분기 합계(TTM)로 봐야 왜곡이 줄어듭니다.</li>
+<li><b>컨센서스(E)</b>는 증권사 추정치 평균으로 확정 실적이 아닙니다. 소형주는 추정 기관이 1~2곳뿐이라 신뢰도가 낮습니다.</li></ul></div></details>
+<details><summary>3. 가격 지표 — PSR, 시가총액÷영업이익, PBR</summary><div>
+<ul><li><b>PSR(시가총액÷최근 4개 분기 매출)</b>: 적자 기업은 PER을 쓸 수 없어 매출 배수로 봅니다. 구독형 소프트웨어 성장주가 보통 5~15배 범위에서 거래됩니다. 50배를 넘으면 가격이 현재 매출이 아니라 미래 이벤트(임상·허가·계약)에 걸려 있다는 뜻입니다.</li>
+<li><b>시가총액÷영업이익</b>: 영업흑자 기업에만 표시합니다. 숫자가 낮을수록 이익 대비 싸지만, 성장률이 꺾이는 중이면 낮은 것이 당연할 수 있습니다.</li>
+<li><b>PBR</b>: 적자 바이오·AI 기업에서 PBR이 높다는 것은 ‘순자산이 얇다’는 뜻이기도 합니다. 증자 가능성을 함께 읽습니다.</li>
+<li><b>52주 고점 대비</b>: 낙폭이 크다고 싼 것이 아닙니다. 낙폭의 원인(실적 후퇴·희석·규제)이 해소됐는지를 먼저 확인합니다.</li></ul></div></details>
+<details><summary>4. 재무상태표 — 적자 기업이 얼마나 버틸 수 있나</summary><div>
+<ul><li><b>자본 소진 연수(이 페이지의 대용 지표)</b> = 자기자본 ÷ 최근 4개 분기 순손실. 현재 속도로 적자가 이어질 때 자기자본이 바닥나기까지 걸리는 햇수의 근사치입니다. <b>실제 현금 잔고가 아니므로</b> 정확한 현금 여력은 분기보고서의 ‘현금및현금성자산+단기금융상품’과 영업활동현금흐름으로 확인해야 합니다. 2년 미만이면 1년 안에 증자·CB가 나올 가능성이 높다고 봅니다.</li>
+<li><b>부채비율</b>: 전환사채·상환전환우선주가 부채로 잡혀 있으면 높게 나옵니다. 주가가 전환가보다 낮으면 주식으로 바뀌지 않고 현금 상환(풋옵션) 요구가 들어옵니다.</li>
+<li><b>당좌비율</b>: 1년 안에 갚을 돈 대비 바로 쓸 수 있는 자산. 100% 미만이면 단기 유동성에 주의합니다.</li>
+<li><b>법인세차감전손실(법차손) 요건</b>: 코스닥 기업은 최근 3년 중 2회 이상 법차손이 자기자본의 50%를 넘으면 관리종목이 됩니다. 기술특례 상장사는 일정 기간 유예되지만, 유예가 끝나는 해부터 증자로 자본을 채우는 일이 흔합니다.</li></ul></div></details>
+<details><summary>5. 자금조달 공시 읽는 법 — 유상증자·전환사채·무상증자</summary><div>
+<ul><li><b>주주배정 유상증자</b>: 기존 주주에게 새 주식을 할인 발행. 주식 수가 늘어 주당 가치가 희석되고, 참여하지 않으면 지분율이 줄어듭니다. 사용 목적이 ‘채무상환’이면 과거 빚을 주주 돈으로 갚는 것입니다.</li>
+<li><b>전환사채(CB)</b>: 주식으로 바꿀 수 있는 채권. 전환가액, 리픽싱(주가 하락 시 전환가 하향) 조건, 조기상환청구권(풋옵션) 시작일을 확인합니다. 리픽싱 한도가 낮을수록 기존 주주에게 불리합니다.</li>
+<li><b>3자배정 증자</b>: 특정 투자자에게 발행. 전략적 투자자면 긍정 신호일 수 있으나, 소액을 반복하면 자금 사정이 급하다는 신호입니다.</li>
+<li><b>무상증자</b>: 주식 수만 늘고 기업가치는 그대로입니다. 주가가 그만큼 낮아 보일 뿐 호재도 악재도 아닙니다.</li></ul></div></details>
+<details><summary>6. 업종별 핵심 이벤트 — 무엇이 매출을 여는가</summary><div>
+<ul><li><b>의료 AI</b>: 식약처 허가 → 혁신의료기술·신의료기술평가(유예) → 비급여 사용 → 정식 등재 → 건강보험 수가. 허가만으로는 매출이 나지 않고, 병원이 돈을 청구할 수 있는 ‘수가’가 붙어야 확산됩니다. 미국은 FDA 허가 뒤 보험 코드가 관건입니다.</li>
+<li><b>AI 신약</b>: 후보물질 도출 → 전임상 → 임상 1·2·3상 → 허가. 기술이전은 계약 ‘총액’이 아니라 <b>반환 의무 없는 계약금(업프론트)</b>이 실제 현금입니다. 총액의 대부분은 성공해야 받는 마일스톤입니다. 양해각서(MOU)와 개념검증(PoC)은 매출 계약이 아닙니다.</li>
+<li><b>AI 소프트웨어</b>: 구축형 매출과 구독형 반복 매출의 비중, 공공 발주 일정(하반기 쏠림), 수주잔고를 봅니다.</li>
+<li><b>빅테크</b>: AI 설비투자(CAPEX)가 감가상각으로 돌아오는 시점의 영업이익률, 광고·클라우드 성장률을 봅니다.</li></ul></div></details>
+<details><summary>7. 이 페이지의 판정 표시</summary><div>
+<ul><li><span class="st g">흑자</span> 최근 4개 분기 합계 영업이익이 플러스 · <span class="st y">적자 축소</span> 영업손실이 줄어드는 중 · <span class="st r">적자 지속/확대</span> 손실이 유지되거나 커지는 중</li>
+<li>‘자동 재무 해석’은 수치로 기계적으로 만든 문장입니다. 사업 내용·위험·투자 포인트는 공시와 보도를 정리한 것으로, 문장 끝의 날짜가 기준 시점입니다.</li></ul></div></details>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const f=(x,d=0)=>x==null||isNaN(x)?"-":Number(x).toLocaleString("ko-KR",{minimumFractionDigits:d,maximumFractionDigits:d});
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const won=x=>x==null?"-":Math.abs(x)>=10000?f(x/10000,Math.abs(x)>=100000?1:2)+"조":f(x)+"억";
+const sg=(x,d=1,u="%")=>x==null?'<span class="mut">-</span>':`<span class="${x>0?"up":x<0?"dn":"mut"}">${x>0?"+":""}${f(x,d)}${u}</span>`;
+const neg=x=>x==null?'<span class="mut">-</span>':`<span class="${x<0?"dn":""}">${f(x)}</span>`;
+let D=null,region="KR",cat="all",sel=null;
+const stCls=s=>!s?"y":s.includes("흑자")?"g":s.includes("축소")?"y":"r";
+function items(){return (region==="KR"?D.kr:D.gl).filter(c=>cat==="all"||c.cat===cat)}
+function id(c){return c.code||c.ticker}
+function setRegion(r,keep){region=r;$("#bKR").classList.toggle("on",r==="KR");$("#bGL").classList.toggle("on",r==="GL");if(!keep){cat="all";sel=null}renderCats();renderList();renderDetail()}
+function renderCats(){const all=region==="KR"?D.kr:D.gl;const ks=[...new Set(all.map(c=>c.cat))];
+ $("#cats").innerHTML=[["all","전체 "+all.length]].concat(ks.map(k=>[k,(D.cats[k]||k)+" "+all.filter(c=>c.cat===k).length])).map(([k,t])=>`<button data-k="${k}" class="${cat===k?"on":""}">${esc(t)}</button>`).join("");
+ $("#cats").querySelectorAll("button").forEach(b=>b.onclick=()=>{cat=b.dataset.k;sel=null;renderCats();renderList();renderDetail()})}
+function renderList(){const it=items(),th=$("#list thead"),tb=$("#list tbody");
+ if(region==="KR"){th.innerHTML="<tr><th>기업</th><th>분야</th><th>상태</th><th>시가총액</th><th>최근 4분기 매출</th><th>최근 4분기 영업이익</th><th>분기 매출 전년비</th><th>PSR</th><th>52주 고점 대비</th></tr>";
+  tb.innerHTML=it.map(c=>{const F=c.fin||{},d=F.d||{};return `<tr data-id="${id(c)}" class="${sel===id(c)?"sel":""}"><td>${esc(c.name)} <span class="mut">${c.code}</span></td><td>${esc(D.cats[c.cat]||"")}</td><td><span class="st ${stCls(c.stage)}">${esc(c.stage||"-")}</span></td><td>${won(F.cap)}</td><td>${won(d.ttm_rev)}</td><td>${d.ttm_op==null?"-":`<span class="${d.ttm_op<0?"dn":"up"}">${won(d.ttm_op)}</span>`}</td><td>${sg(d.rev_yoy_q)}</td><td>${d.psr==null?"-":f(d.psr,1)+"배"}</td><td>${sg(d.from_hi)}</td></tr>`}).join("")}
+ else{th.innerHTML="<tr><th>기업</th><th>국가</th><th>분야</th><th>시가총액</th><th>최근 12개월 매출</th><th>영업이익률</th><th>매출 성장률</th></tr>";
+  tb.innerHTML=it.map(c=>{const F=c.fin||{};return `<tr data-id="${id(c)}" class="${sel===id(c)?"sel":""}"><td>${esc(c.kname)} <span class="mut">${esc(c.ticker)}</span></td><td>${esc(c.country)}</td><td>${esc(D.cats[c.cat]||"")}</td><td>${F.cap_b==null?"-":f(F.cap_b,F.cap_b<10?2:0)+"십억 "+esc(F.ccy||"")}</td><td>${F.rev_ttm_b==null?"-":f(F.rev_ttm_b,F.rev_ttm_b<10?2:0)+"십억 "+esc(F.fin_ccy||"")}</td><td>${sg(F.op_margin)}</td><td>${sg(F.rev_growth)}</td></tr>`}).join("")}
+ if(!it.length)tb.innerHTML='<tr><td colspan="9" class="empty">해당 분야 기업이 없습니다.</td></tr>';
+ tb.querySelectorAll("tr[data-id]").forEach(r=>r.onclick=()=>pick(r.dataset.id,true))}
+function pick(i,scroll){sel=i;renderList();renderDetail();try{history.replaceState(null,"","#"+region+":"+i)}catch(e){}if(scroll){const e=$("#detail");e&&e.scrollIntoView({behavior:"smooth",block:"start"})}}
+function finTable(t,cap){if(!t)return'<div class="empty">실적 표를 불러오지 못했습니다(미확인).</div>';
+ const want=["매출액","영업이익","당기순이익","영업이익률","순이익률","ROE","부채비율","당좌비율","EPS","BPS"];
+ const unit={"영업이익률":"%","순이익률":"%","ROE":"%","부채비율":"%","당좌비율":"%","EPS":"원","BPS":"원"};
+ return `<table><thead><tr><th>${cap}</th>${t.periods.map(p=>`<th>${esc(p.title)}${p.est?' <span class="tag" style="margin:0">E</span>':""}</th>`).join("")}</tr></thead><tbody>${want.filter(k=>t.rows[k]).map(k=>`<tr><td>${k}${unit[k]?` <span class="mut">(${unit[k]})</span>`:' <span class="mut">(억원)</span>'}</td>${t.rows[k].map(v=>`<td>${v==null?'<span class="mut">-</span>':`<span class="${v<0?"dn":""}">${f(v,unit[k]==="%"?1:0)}</span>`}</td>`).join("")}</tr>`).join("")}</tbody></table>`}
+function bars(t){if(!t)return"";const rev=t.rows["매출액"]||[],op=t.rows["영업이익"]||[];const n=t.periods.length;const vals=rev.concat(op).filter(v=>v!=null);if(vals.length<2)return"";
+ const mx=Math.max(0,...vals),mn=Math.min(0,...vals),W=520,H=170,pl=6,pt=10,pb=22,gh=H-pt-pb,sc=v=>pt+(mx-v)/((mx-mn)||1)*gh,gw=(W-pl*2)/n,bw=Math.min(26,gw/2-4);
+ let s=`<line x1="${pl}" x2="${W-pl}" y1="${sc(0)}" y2="${sc(0)}" stroke="var(--bd)"/>`;
+ t.periods.forEach((p,i)=>{const cx=pl+gw*i+gw/2;[[rev[i],-bw-1,"var(--bar)"],[op[i],1,op[i]<0?"var(--barn)":"var(--goodb)"]].forEach(([v,dx,c])=>{if(v==null)return;const y=Math.min(sc(v),sc(0)),h=Math.max(1,Math.abs(sc(v)-sc(0)));s+=`<rect x="${cx+dx}" y="${y}" width="${bw}" height="${h}" rx="2" fill="${c}" opacity="${p.est?.45:1}"><title>${p.title} ${f(v)}억</title></rect>`});
+  s+=`<text x="${cx}" y="${H-6}" text-anchor="middle" font-size="11" fill="var(--mut)">${p.title}${p.est?"E":""}</text>`});
+ return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="매출과 영업이익 막대 그래프">${s}</svg><div class="lg"><span><i style="background:var(--bar)"></i>매출액</span><span><i style="background:var(--barn)"></i>영업이익(적자)</span><span><i style="background:var(--goodb)"></i>영업이익(흑자)</span><span>흐린 막대 = 컨센서스</span></div>`}
+function autoRead(c){const F=c.fin||{},d=F.d||{},o=[];
+ if(d.ttm_rev!=null&&d.ttm_op!=null){if(d.ttm_op<0){const r=-d.ttm_op/d.ttm_rev;o.push(`최근 4개 분기(${d.ttm_period}) 매출 ${won(d.ttm_rev)}원에 영업손실 ${won(-d.ttm_op)}원 — 손실이 매출의 ${f(r,1)}배입니다.${r>=1?" 매출 100원을 벌 때 100원 넘게 까먹는 구조라 외부 자금 없이는 유지가 어렵습니다.":""}`)}
+  else o.push(`최근 4개 분기(${d.ttm_period}) 매출 ${won(d.ttm_rev)}원, 영업이익 ${won(d.ttm_op)}원(영업이익률 ${f(d.ttm_opm,1)}%)으로 본업에서 이익을 내고 있습니다.`)}
+ if(d.ttm_op!=null&&d.ttm_net!=null&&d.ttm_op<0&&d.ttm_net>d.ttm_op*0.6&&Math.abs(d.ttm_op-d.ttm_net)>20)o.push(`순손익(${won(d.ttm_net)}원)이 영업손익(${won(d.ttm_op)}원)보다 훨씬 좋게 나옵니다. 평가이익 등 영업외 요인일 가능성이 높으니 본업 개선으로 읽지 마세요.`);
+ if(d.rev_yoy_q!=null)o.push(`최근 분기(${d.last_q}) 매출은 전년 같은 분기보다 ${d.rev_yoy_q>0?"+":""}${f(d.rev_yoy_q,1)}% ${d.rev_yoy_q>=20?"늘어 고성장 구간입니다.":d.rev_yoy_q>=0?"늘었습니다.":d.rev_yoy_q<=-20?"줄었습니다 — 성장 스토리와 어긋나는 신호라 원인 확인이 먼저입니다.":"줄었습니다."}`);
+ if(d.op_q!=null&&d.op_q_prev_year!=null&&d.op_q<0)o.push(`분기 영업손실은 전년 동기 ${f(-d.op_q_prev_year)}억 → ${f(-d.op_q)}억원으로 ${-d.op_q<-d.op_q_prev_year?"줄었습니다.":"커졌습니다."}`);
+ if(d.psr!=null)o.push(`PSR ${f(d.psr,1)}배 — ${d.psr>=50?"현재 매출로는 설명되지 않는 가격으로, 임상·허가·계약 같은 미래 이벤트에 걸린 값입니다.":d.psr>=15?"성장주 중에서도 높은 편이라 성장률이 꺾이면 조정 폭이 큽니다.":d.psr>=5?"성장주 통상 범위입니다.":"매출 대비 가격 부담은 낮은 편입니다."}`);
+ if(d.pop!=null)o.push(`시가총액은 최근 4개 분기 영업이익의 ${f(d.pop,1)}배입니다.`);
+ if(d.equity_years!=null)o.push(`자본 소진 연수 약 ${f(d.equity_years,1)}년(자기자본 약 ${won(d.equity)}원 ÷ 최근 4개 분기 순손실)${d.equity_years_op!=null&&Math.abs(d.equity_years_op-d.equity_years)>0.5?`, 영업손실 기준으로는 약 ${f(d.equity_years_op,1)}년`:""}. ${Math.min(d.equity_years,d.equity_years_op??99)<2?"2년 미만이라 증자·전환사채 발행 가능성을 염두에 둬야 합니다.":"당장의 자본 압박은 상대적으로 덜합니다."} 실제 현금 잔고는 분기보고서로 확인하세요.`);
+ if(d.debt_ratio!=null)o.push(`부채비율 ${f(d.debt_ratio,0)}%${d.quick_ratio!=null?`, 당좌비율 ${f(d.quick_ratio,0)}%`:""}${d.debt_ratio>=100?" — 부채가 자본보다 많습니다. 전환사채·우선주 비중을 확인하세요.":d.quick_ratio!=null&&d.quick_ratio<100?" — 단기 지급 여력이 100%에 못 미칩니다.":"."}`);
+ if(d.from_hi!=null&&d.from_hi<=-40)o.push(`현재가는 52주 최고가(수정주가 ${f(F.hi52)}원) 대비 ${f(d.from_hi,0)}%입니다. 낙폭의 원인이 해소됐는지가 먼저입니다.`);
+ const a=F.annual;if(a){const e=a.periods.findIndex(p=>p.est);const op=a.rows["영업이익"]||[];if(e>0&&op[e]!=null&&op[e-1]!=null)o.push(`${a.periods[e].title.slice(0,4)}년 컨센서스 영업이익은 ${won(op[e])}원으로 전년(${won(op[e-1])}원)보다 ${op[e]>op[e-1]?"개선":"악화"}될 것으로 추정됩니다(추정치).`)}
+ (F.warn||[]).forEach(w=>o.push("데이터 주의: "+w));
+ return o.length?"<ul>"+o.map(x=>"<li>"+x+"</li>").join("")+"</ul>":'<div class="mut">해석할 수치가 부족합니다.</div>'}
+const li=a=>(a&&a.length)?"<ul>"+a.map(x=>"<li>"+esc(x)+"</li>").join("")+"</ul>":'<div class="mut">정리된 항목이 없습니다.</div>';
+function renderDetail(){const el=$("#detail"),it=items();const c=it.find(x=>id(x)===sel);
+ if(!c){el.innerHTML='<h2>기업 상세</h2><div class="card empty">위에서 기업 이름을 입력하거나 목록의 행을 눌러 주세요.</div>';return}
+ const F=c.fin||{},d=F.d||{};
+ if(region==="KR"){el.innerHTML=`<h2>기업 상세</h2>
+ <div class="hd"><span class="nm">${esc(c.name)}</span><span class="mut">${c.code} · ${esc(F.market||"")}</span><span class="tag">${esc(D.cats[c.cat]||"")}</span><span class="st ${stCls(c.stage)}">${esc(c.stage||"")}</span></div>
+ <p class="one">${esc(c.one)}</p>
+ <div class="kpi">
+  <div><span>주가 (${esc(F.asof||"")})</span><b>${f(F.price)}원</b><small>전일 대비 ${sg(F.chg,2)}</small></div>
+  <div><span>시가총액</span><b>${won(F.cap)}원</b><small>52주 고점 대비 ${sg(d.from_hi)}</small></div>
+  <div><span>최근 4분기 매출</span><b>${won(d.ttm_rev)}원</b><small>분기 전년비 ${sg(d.rev_yoy_q)}</small></div>
+  <div><span>최근 4분기 영업이익</span><b class="${d.ttm_op<0?"dn":""}">${won(d.ttm_op)}원</b><small>영업이익률 ${d.ttm_opm==null?"-":f(d.ttm_opm,1)+"%"}</small></div>
+  <div><span>PSR · PBR</span><b>${d.psr==null?"-":f(d.psr,1)+"배"}</b><small>PBR ${F.pbr==null?"-":f(F.pbr,2)+"배"}${F.per?" · PER "+f(F.per,1)+"배":""}</small></div>
+  <div><span>${d.pop!=null?"시가총액÷영업이익":"자본 소진 연수"}</span><b>${d.pop!=null?f(d.pop,1)+"배":d.equity_years!=null?"약 "+f(d.equity_years,1)+"년":"-"}</b><small>${d.pop!=null?"영업흑자 기업":"대용 지표 — 아래 설명 참고"}</small></div>
+  <div><span>부채비율 · 당좌비율</span><b>${d.debt_ratio==null?"-":f(d.debt_ratio,0)+"%"}</b><small>당좌 ${d.quick_ratio==null?"-":f(d.quick_ratio,0)+"%"}</small></div>
+  <div><span>매출 연평균 성장률</span><b>${d.rev_cagr==null?"-":(d.rev_cagr>0?"+":"")+f(d.rev_cagr,1)+"%"}</b><small>${esc(d.cagr_span||"기저 10억 미만은 미표시")}</small></div>
+ </div>
+ <div class="risk"><h3>① 먼저 볼 위험·반론</h3>${li(c.risks)}</div>
+ <h2>② 사업과 AI 활용 방식</h2>
+ <div class="card pad"><h3>무엇을 하는 회사인가</h3><p style="margin:0 0 10px">${esc(c.biz)}</p><h3>AI를 어디에 쓰는가</h3><p style="margin:0 0 10px">${esc(c.ai)}</p><h3>돈은 어떻게 버는가</h3><p style="margin:0">${esc(c.model)}</p></div>
+ <h2>③ 재무제표</h2>
+ <div class="two"><div class="card pad"><h3>연간 매출·영업이익 (억원)</h3>${bars(F.annual)}</div><div class="card pad"><h3>분기 매출·영업이익 (억원)</h3>${bars(F.quarter)}</div></div>
+ <div class="card ox" style="margin-top:10px">${finTable(F.annual,"연간")}</div>
+ <div class="card ox" style="margin-top:10px">${finTable(F.quarter,"분기")}</div>
+ <div class="sub" style="margin:6px 2px">연결 기준 · 단위 억원 · E는 증권사 컨센서스(추정) · 출처 네이버 증권 · 빈칸은 미확인(추정하지 않음)</div>
+ <h2>④ 자동 재무 해석</h2><div class="card pad">${autoRead(c)}</div>
+ <h2>⑤ 투자 포인트 <span class="sub">— 위험을 읽은 뒤에</span></h2><div class="good">${li(c.points)}</div>
+ <div class="two" style="margin-top:10px"><div class="card pad"><h3>⑥ 다음에 확인할 것</h3>${li(c.checks)}</div><div class="card pad"><h3>⑦ 자금조달·희석 이력</h3><p style="margin:0">${esc(c.funding||"확인된 내용 없음")}</p></div></div>
+ <h2>⑧ 출처</h2><div class="card pad src">${(c.src&&c.src.length)?c.src.map(s=>`<a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.t)}</a>`).join(""):'<span class="mut">수치: 네이버 증권. 정성 내용은 사업보고서·IR 자료 기반 일반 정리(개별 기사 출처 없음).</span>'}<a href="https://dart.fss.or.kr/dsab007/main.do?option=corp&textCrpNm=${encodeURIComponent(c.name)}" target="_blank" rel="noopener">DART 공시 검색 — ${esc(c.name)}</a></div>`}
+ else{el.innerHTML=`<h2>기업 개요</h2>
+ <div class="hd"><span class="nm">${esc(c.kname)}</span><span class="mut">${esc(c.name)} · ${esc(c.ticker)} · ${esc(c.country)}</span><span class="tag">${esc(D.cats[c.cat]||"")}</span></div>
+ <p class="one">${esc(c.one)}</p>
+ <div class="kpi">
+  <div><span>시가총액</span><b>${F.cap_b==null?"-":f(F.cap_b,F.cap_b<10?2:0)+"십억"}</b><small>${esc(F.ccy||"")}</small></div>
+  <div><span>주가</span><b>${F.price==null?"-":f(F.price,2)}</b><small>52주 ${F.lo52==null?"-":f(F.lo52,2)} ~ ${F.hi52==null?"-":f(F.hi52,2)}</small></div>
+  <div><span>최근 12개월 매출</span><b>${F.rev_ttm_b==null?"-":f(F.rev_ttm_b,F.rev_ttm_b<10?3:1)+"십억"}</b><small>${esc(F.fin_ccy||"")}</small></div>
+  <div><span>영업이익률</span><b>${F.op_margin==null?"-":f(F.op_margin,1)+"%"}</b><small>최근 분기 기준</small></div>
+  <div><span>매출 성장률</span><b>${F.rev_growth==null?"-":(F.rev_growth>0?"+":"")+f(F.rev_growth,1)+"%"}</b><small>전년 동기 대비</small></div>
+ </div>
+ <div class="risk"><h3>먼저 볼 위험</h3><p style="margin:0">${esc(c.risk)}</p></div>
+ <div class="card pad" style="margin-top:10px"><h3>무엇을 하는 회사인가</h3><p style="margin:0 0 10px">${esc(c.biz)}</p><h3>AI로 돈을 버는 방식</h3><p style="margin:0">${esc(c.ai)}</p></div>
+ <div class="sub" style="margin:6px 2px">해외 기업은 개요만 제공합니다 · 수치 출처 Yahoo Finance(자동 수집, 빈칸은 미확인) · ${(F.warn||[]).map(esc).join(" · ")}</div>`}}
+function norm(s){return String(s||"").toLowerCase().replace(/[\s.·\-()]/g,"")}
+function search(){const v=norm($("#q").value);if(!v)return;
+ const all=D.kr.map(c=>["KR",c]).concat(D.gl.map(c=>["GL",c]));
+ const key=c=>[c.name,c.kname,c.code,c.ticker].filter(Boolean).map(norm);
+ let hit=all.find(([r,c])=>key(c).includes(v))||all.find(([r,c])=>key(c).some(k=>k.startsWith(v)))||all.find(([r,c])=>key(c).some(k=>k.includes(v)));
+ if(!hit){sel=null;renderList();$("#detail").innerHTML=`<h2>기업 상세</h2><div class="card empty">‘${esc($("#q").value)}’ 은(는) 아직 목록에 없습니다.<br>Claude에게 <b>“AI 기업 지도에 ${esc($("#q").value)} 추가해줘”</b>라고 요청하면 분석해서 추가합니다.</div>`;$("#detail").scrollIntoView({behavior:"smooth"});return}
+ region=hit[0];cat="all";setRegion(region,true);pick(id(hit[1]),true)}
+async function main(){try{D=await fetch("/api/board/ai-biz").then(r=>r.json())}catch(e){D=null}
+ if(!D||!D.kr){$("#meta").textContent="데이터를 불러오지 못했습니다. 잠시 후 새로고침해 주세요.";return}
+ $("#meta").textContent=`갱신 ${D.updated||"-"} · 한국 ${D.kr.length}개(상세) · 미국·해외 ${D.gl.length}개(개요)`;
+ $("#view").innerHTML=D.view||"";
+ $("#names").innerHTML=D.kr.map(c=>`<option value="${esc(c.name)}">${c.code}</option>`).concat(D.gl.map(c=>`<option value="${esc(c.kname)}">${esc(c.ticker)} ${esc(c.name)}</option>`)).join("");
+ $("#bKR").onclick=()=>setRegion("KR");$("#bGL").onclick=()=>setRegion("GL");
+ $("#go").onclick=search;$("#q").addEventListener("keydown",e=>{if(e.key==="Enter")search()});$("#q").addEventListener("change",search);
+ const h=decodeURIComponent(location.hash.slice(1)).split(":");
+ if(h.length===2&&(h[0]==="KR"||h[0]==="GL")){region=h[0];setRegion(region,true);pick(h[1],false)}else setRegion("KR")}
+main();
+</script></body></html>
