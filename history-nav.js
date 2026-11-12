@@ -113,6 +113,8 @@
     bFwd.title = fwd > 0 ? '앞으로: ' + short(S.list[S.pos + 1].t) : '앞 화면 없음';
     nBack.textContent = back; nBack.style.display = back > 1 ? '' : 'none';
     nFwd.textContent = fwd; nFwd.style.display = fwd > 1 ? '' : 'none';
+    // 홈에서 갈 곳이 없으면(둘 다 비활성) 본문을 가리지 않게 숨긴다 (ti-polish)
+    bar.style.display = (isHome && bBack.disabled && bFwd.disabled) ? 'none' : '';
   }
 
   function goBack() {

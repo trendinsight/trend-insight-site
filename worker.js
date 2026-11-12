@@ -3130,7 +3130,7 @@ export default {
       const isPost = url.pathname.startsWith("/posts/");
       const isHome = url.pathname === "/" || url.pathname === "/index.html" || url.pathname === "/start.html" || url.pathname === "/start"; // 스타트 페이지도 홈처럼 플로팅 내비·위젯 미주입
       const isPdfView = url.pathname === "/research-digest.html" || url.pathname === "/crypto-report.html";
-      return new HTMLRewriter().on("head", {
+      const htmlOut = new HTMLRewriter().on("head", {
         element(el) {
           el.append(`<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "33e842c948b94e4787347cd2487af700"}'></script>`, { html: true });
           // 리포트 페이지에는 종목 도구 연결 위젯을 자동 주입 (기존·신규 게시물 공통)
@@ -3147,6 +3147,11 @@ export default {
           if (!isHome && !/^\/(login|signup|terms)(\.html)?$/.test(url.pathname)) el.append(`<script defer src="/ti-widgets.js?v=2026100201"></script>`, { html: true });
         }
       }).transform(assetRes);
+      // 기본 보안 헤더 (MIME 스니핑 방지 · 외부로 나가는 리퍼러 최소화)
+      const secH = new Headers(htmlOut.headers);
+      secH.set("x-content-type-options", "nosniff");
+      secH.set("referrer-policy", "strict-origin-when-cross-origin");
+      return new Response(htmlOut.body, { status: htmlOut.status, statusText: htmlOut.statusText, headers: secH });
     }
     return assetRes;
   },
