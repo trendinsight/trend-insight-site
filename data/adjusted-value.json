@@ -1,5 +1,150 @@
 [
  {
+  "date": "2026-11-14",
+  "code": "031980",
+  "name": "피에스케이홀딩스",
+  "market": "코스닥",
+  "price": 152800,
+  "base": {
+   "value": 118800.0,
+   "source": "fvband",
+   "detail": "fair-value-band 중앙(Fwd PER 20배 × FY26E EPS 5,940 자체추정, 컨센 미수집)"
+  },
+  "vars": [
+   {
+    "id": "next_q_earnings",
+    "name": "다음분기 예상실적",
+    "group": "실적·성장",
+    "w": 3,
+    "verdict": "N",
+    "basis": "3Q26 영업이익 350억(−15.1% YoY), 매출 830억(−8.3%)",
+    "auto": false,
+    "selected": true,
+    "contrib": -3
+   },
+   {
+    "id": "revenue_growth",
+    "name": "매출성장률·지속성",
+    "group": "실적·성장",
+    "w": 3,
+    "verdict": "N",
+    "basis": "9M26 매출 1,583억(+1.3%) — 2024 이후 성장 정체",
+    "auto": false,
+    "selected": true,
+    "contrib": -3
+   },
+   {
+    "id": "opm_trend",
+    "name": "영업이익률 추이",
+    "group": "실적·성장",
+    "w": 3,
+    "verdict": "P",
+    "basis": "9M26 OPM 36.6%, 3Q 42.2% — 고마진 유지",
+    "auto": false,
+    "selected": true,
+    "contrib": 3
+   },
+   {
+    "id": "roe",
+    "name": "ROE",
+    "group": "실적·성장",
+    "w": 3,
+    "verdict": "P",
+    "basis": "TTM 순이익 약 1,130억 / 자본 5,633억 ≈ 20%",
+    "auto": false,
+    "selected": true,
+    "contrib": 3
+   },
+   {
+    "id": "debt_ratio",
+    "name": "부채비율·이자보상배율",
+    "group": "재무·주주환원",
+    "w": 1.5,
+    "verdict": "P",
+    "basis": "부채비율 20.5%, 순현금 약 1,800억",
+    "auto": false,
+    "selected": true,
+    "contrib": 1.5
+   },
+   {
+    "id": "dividend",
+    "name": "배당성향·주주환원",
+    "group": "재무·주주환원",
+    "w": 1.5,
+    "verdict": "P",
+    "basis": "DPS 1,080원(2025), 배당성향 약 25%",
+    "auto": false,
+    "selected": true,
+    "contrib": 1.5
+   },
+   {
+    "id": "industry_trend",
+    "name": "산업 동향",
+    "group": "산업·경쟁",
+    "w": 3,
+    "verdict": "N",
+    "basis": "산업지표 반도체 75→62(낸드 보합·엔비디아 CEO 쇼크)",
+    "auto": false,
+    "selected": true,
+    "contrib": -3
+   },
+   {
+    "id": "per_band",
+    "name": "시장부여 PER 역사적 밴드",
+    "group": "밸류·수급·기술",
+    "w": 1.5,
+    "verdict": "N",
+    "basis": "Fwd PER 25.7배 — 밴드 상단권(위치 78%)",
+    "auto": false,
+    "selected": true,
+    "contrib": -1.5
+   },
+   {
+    "id": "tech_rebound",
+    "name": "차트 기술적 반등 시점",
+    "group": "밸류·수급·기술",
+    "w": 1.5,
+    "verdict": "N",
+    "basis": "MA50 167,768 하회, 일목 강한 하락",
+    "auto": false,
+    "selected": true,
+    "contrib": -1.5
+   },
+   {
+    "id": "rates",
+    "name": "금리",
+    "group": "거시",
+    "w": 1.5,
+    "verdict": "N",
+    "basis": "금통위 11/26 인상 60%·FOMC 12/9 인상 75%(자체추정)",
+    "auto": false,
+    "selected": true,
+    "contrib": -1.5
+   },
+   {
+    "id": "market_regime",
+    "name": "시장 국면·유동성",
+    "group": "거시",
+    "w": 1.5,
+    "verdict": "N",
+    "basis": "게이트 RED·하락장 CAPITULATION",
+    "auto": false,
+    "selected": true,
+    "contrib": -1.5
+   }
+  ],
+  "adj_pct": -6.0,
+  "adjusted": 111700.0,
+  "upside_pct": -26.9,
+  "cap": 25.0,
+  "entry": {
+   "verdict": "NO_SETUP",
+   "pivot": 204500,
+   "stop": null,
+   "note": "트렌드 템플릿 4/7·온도 34·일목 강한 하락·트렌드라이더 EXIT(2단계)·엘더 WAIT — 매트릭스 3-B 기준"
+  }
+ },
+ {
   "date": "2026-11-08",
   "code": "032500",
   "name": "케이엠더블유",
