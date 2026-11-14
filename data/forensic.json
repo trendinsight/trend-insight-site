@@ -3,6 +3,12 @@
  "howto": "게시 방법: entries 배열 맨 앞에 {date:'YYYY-MM-DD', title:'제목', summary:'2~3문장 요약', html:'<h3>/<p>/<table> 본문 조각'}을 추가해 GitHub(trendinsight/trend-insight-site, main)에 커밋. 같은 날짜가 이미 있으면 교체. 스타일은 페이지가 입힌다.",
  "entries": [
   {
+   "date": "2026-11-14",
+   "title": "피0000 포렌식 6축 — 조건부 GO",
+   "summary": "CB·유증 0건, 감사 적정, 회전일수 개선 — 지뢰 없음. 최대주주 지분 변동 사유·특수관계 주석은 확인 제한으로 조건부.",
+   "html": "<h3>피0000 포렌식 6축 — 조건부 GO</h3><p>※ 보유 현황 노출을 피하기 위해 종목명을 첫 글자만 남기고 마스킹했습니다(예: 피0000).</p>\n<h4>게이트</h4><p>FAIL 0 · CONDITIONAL 2 · PASS 4 → <b>조건부 GO</b></p>\n<table><tr><th>축</th><th>판정</th><th>근거</th></tr><tr><td>1 CB/BW/EB</td><td>PASS</td><td>2021~ 발행 0건</td></tr><tr><td>2 최대주주·담보</td><td>CONDITIONAL</td><td>최대주주+특수관계 약 39%, 담보 공시 없음, 최대주주 대량보유 변동 3회(사유 미확인)</td></tr><tr><td>3 유상증자</td><td>PASS</td><td>0건</td></tr><tr><td>4 감사의견</td><td>PASS</td><td>2023~2025 적정</td></tr><tr><td>5 회전일수</td><td>PASS</td><td>매출채권 64.6→47.8일 개선, OCF/순이익 0.89</td></tr><tr><td>6 특수관계</td><td>CONDITIONAL</td><td>상장 관계기업 32% 보유, 주석 미확인</td></tr></table>\n<h4>다음 확인</h4><ul><li>최대주주 지분 변동 사유</li><li>사업보고서 특수관계 주석</li></ul>"
+  },
+  {
    "date": "2026-11-08",
    "title": "케0000 포렌식 6축 — NO-GO 권고",
    "summary": "2년 내 CB 2회(최근 350억, 현재가<전환가)로 오버행 FAIL. 감사의견·증자는 PASS, 최대주주·회전일수·특수관계는 확인 제한으로 조건부.",
