@@ -37,6 +37,21 @@
   #sres .it small{color:var(--sub);font-size:11px;white-space:nowrap}
   #sres .it.on,#sres .it:hover{background:#1d2745}
   #sres .none{padding:12px;font-size:12.5px;color:var(--sub);line-height:1.6}
+  #hot{position:absolute;top:10px;right:12px;bottom:62px;width:300px;display:none;flex-direction:column;gap:10px;z-index:6}
+  #hot.show{display:flex}
+  #hot .hb{flex:1 1 0;min-height:0;display:flex;flex-direction:column;background:rgba(13,19,38,.88);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  #hot .hh{padding:9px 12px 7px;border-bottom:1px solid var(--line)}
+  #hot .hh b{font-size:13.5px;display:block}
+  #hot .hh small{font-size:10.5px;color:var(--sub);line-height:1.45;display:block;margin-top:2px}
+  #hot .hl{overflow:auto;flex:1}
+  #hot .hr{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:2px 8px;align-items:baseline;padding:4px 12px 3px;cursor:pointer;border-bottom:1px solid rgba(35,43,66,.6)}
+  #hot .hr:hover{background:#1d2745}
+  #hot .hr i{font-style:normal;font-size:11px;color:var(--sub);text-align:right}
+  #hot .hr .n{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #hot .hr .p{font-size:13px;font-weight:800;text-align:right}
+  #hot .hr .d{grid-column:2/4;font-size:10.8px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #hot .he{padding:14px 12px;font-size:12px;color:var(--sub);line-height:1.6}
+  @media(max-width:900px){#hot{left:12px;width:auto;top:8px;background:transparent}}
   #asof{font-size:11.5px;color:var(--sub);white-space:nowrap}
   #stage{position:relative;flex:1;min-height:0}
   #stars,#poly{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -129,6 +144,7 @@
       <button data-p="d1" class="on">1일</button><button data-p="w1">1주</button><button data-p="m1">1개월</button><button data-p="m3">3개월</button>
     </div>
     <button class="tbtn" id="allbtn">전체 펼치기</button>
+    <button class="tbtn" id="hotbtn" title="최근 특징주 20종목">🔥 특징주</button>
     <button class="tbtn" id="memobtn" title="이 페이지에 남기는 내 메모">📝 메모</button>
     <span id="asof"></span>
   </div>
@@ -137,6 +153,10 @@
     <canvas id="poly"></canvas>
     <div id="hint">드래그로 돌리고 · 면을 누르면 그 산업의 지도로 펼쳐집니다</div>
     <div id="chips"></div>
+    <aside id="hot">
+      <div class="hb"><div class="hh"><b>🔺 상승률 + 거래량 급증 10</b><small id="hot-up-m">상승률 상위 중 거래량이 20일 평균의 1.5배 이상 · 거래대금 30억 이상</small></div><div class="hl" id="hot-up"></div></div>
+      <div class="hb"><div class="hh"><b>💬 논쟁 중인 10</b><small id="hot-tk-m">인기검색 50종목 중 종목토론방 글이 가장 빠르게 올라오는 순</small></div><div class="hl" id="hot-tk"></div></div>
+    </aside>
     <div id="map"><div id="tiles"></div>
       <div id="zoomctl"><button class="tbtn" id="zin">＋</button><button class="tbtn" id="zout">－</button><button class="tbtn" id="zreset">맞춤</button></div>
       <div id="legend"></div>
@@ -155,6 +175,7 @@ const $=s=>document.querySelector(s);
 const SITE='https://trend-insight-site.sungsangkyung77.workers.dev';
 const API=(location.hostname.endsWith('workers.dev')?'':SITE);
 const PERIODS={d1:{lab:'1일',max:3},w1:{lab:'1주',max:8},m1:{lab:'1개월',max:15},m3:{lab:'3개월',max:30}};
+let hotOn=false,HOT=null;
 let D=null,SECT=[],period='d1',view='poly',cur=null,selCode=null,TH=null,ALL=new Map(),CUSTOM=null;
 
 /* ───────── 색 ───────── */
@@ -291,7 +312,7 @@ function frame(){
 function rotBy(dx,dy){q=Q.norm(Q.mul(Q.mul(Q.axis([0,1,0],dx),Q.axis([1,0,0],dy)),q));}
 function drawPoly(){
   cx.setTransform(dpr,0,0,dpr,0,0);cx.clearRect(0,0,W,H);
-  const chipsH=70,R=Math.min(W,H-chipsH)*.43*zoom,cxp=W/2,cyp=(H-chipsH)/2+6,cam=3.4;
+  const chipsH=70,hw=(hotOn&&W>900)?316:0,R=Math.min(W-hw,H-chipsH)*.43*zoom,cxp=(W-hw)/2,cyp=(H-chipsH)/2+6,cam=3.4;
   // 광채
   const gl=cx.createRadialGradient(cxp,cyp,R*.6,cxp,cyp,R*1.25);gl.addColorStop(0,'rgba(90,150,255,.20)');gl.addColorStop(1,'rgba(90,150,255,0)');
   cx.fillStyle=gl;cx.beginPath();cx.arc(cxp,cyp,R*1.25,0,7);cx.fill();
@@ -457,13 +478,13 @@ $('#zin').onclick=()=>zoomAt(1.6,W/2,H/2);$('#zout').onclick=()=>zoomAt(1/1.6,W/
 function openMap(i){
   cur=i;view='map';T={k:1,x:0,y:0};hideTip();
   mapEl.classList.remove('show');void mapEl.offsetWidth;mapEl.classList.add('show');
-  $('#hint').style.display='none';$('#chips').style.display='none';
+  $('#hint').style.display='none';$('#chips').style.display='none';$('#hot').classList.remove('show');
   buildMap();crumb();legend();$('#allbtn').textContent=i===-1?'다면체로':'전체 펼치기';
   history.replaceState(null,'',i===-2?'#q='+encodeURIComponent(CUSTOM.key):i===-1?'#all':'#'+encodeURIComponent(SECT[i].name));
 }
 function backToPoly(){
   view='poly';mapEl.classList.remove('show');closePanel();$('#hint').style.display='';$('#chips').style.display='';
-  crumb();$('#allbtn').textContent='전체 펼치기';idle=0;history.replaceState(null,'','#');
+  crumb();$('#allbtn').textContent='전체 펼치기';idle=0;$('#hot').classList.toggle('show',hotOn);history.replaceState(null,'','#');
 }
 function crumb(){
   const c=$('#crumb');
@@ -650,6 +671,26 @@ function drawChart(b){
 $('#period').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   period=b.dataset.p;$('#period').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
   SECT.forEach(recalc);buildChips();crumb();legend();if(view==='map')renderMap();});
+/* ───────── 특징주 패널 ───────── */
+function setHot(on){hotOn=on;$('#hot').classList.toggle('show',on&&view==='poly');$('#hotbtn').style.borderColor=on?'#ff7a45':'';try{localStorage.setItem('mp-hot',on?'1':'0');}catch(e){}}
+function hotRow(x,i,sub){return `<div class="hr" data-c="${x.c}"><i>${i+1}</i><span class="n">${x.n}</span><span class="p ${cls(x.d1)}">${pct(x.d1)}</span><span class="d">${sub}</span></div>`;}
+function renderHot(){
+  if(!HOT)return;
+  const up=HOT.up||[],tk=HOT.talk||[];
+  $('#hot-up').innerHTML=up.length?up.map((x,i)=>hotRow(x,i,`${x.s} · 거래량 ${x.vr}배 · 대금 ${capTxt(x.val)}`)).join(''):'<div class="he">조건에 맞는 종목이 없습니다.</div>';
+  $('#hot-tk').innerHTML=tk.length?tk.map((x,i)=>hotRow(x,i,`검색 ${x.rank}위 · 글 ${x.pph}건/시간${x.neg!=null?' · 비공감 '+x.neg+'%':''}`)).join(''):'<div class="he">자료가 없습니다.</div>';
+  $('#hot-up-m').textContent=`${HOT.asof} 종가 · 상승률 상위 중 거래량이 20일 평균의 1.5배 이상 · 대금 30억 이상`;
+  $('#hot-tk-m').textContent=`${HOT.generated} 수집 · 인기검색 50종목 중 토론방 글이 가장 빠른 순`;
+  $('#hot').querySelectorAll('.hr').forEach(e=>e.onclick=()=>{
+    const hx=[...up,...tk].find(y=>y.c===e.dataset.c),u=D.stocks.find(y=>y.c===e.dataset.c);
+    if(u){goStock(u);return;}
+    loadThemes().then(()=>{if(!ALL.has(hx.c))ALL.set(hx.c,hx);goStock(ALL.get(hx.c));});});
+}
+function loadHot(){
+  (window.__HOT__?Promise.resolve(window.__HOT__):fetch('data/market-polyhedron-hot.json?t='+Date.now()).then(r=>{if(!r.ok)throw 0;return r.json();}))
+    .then(h=>{HOT=h;renderHot();}).catch(()=>{$('#hot-up').innerHTML=$('#hot-tk').innerHTML='<div class="he">특징주 자료를 불러오지 못했습니다.</div>';});
+}
+$('#hotbtn').onclick=()=>{if(view!=='poly'){backToPoly();setHot(true);}else setHot(!hotOn);};
 $('#memobtn').onclick=()=>$('#memo').classList.toggle('show');
 document.addEventListener('pointerdown',e=>{if(!e.target.closest('#memo')&&!e.target.closest('#memobtn'))$('#memo').classList.remove('show');});
 $('#allbtn').onclick=()=>{if(view==='map'&&cur===-1)backToPoly();else openMap(-1);};
@@ -664,7 +705,8 @@ loadData().then(d=>{
   D=d;prep();FACES=buildPoly(SECT.length,faceWeights(SECT.map(x=>({cap:x.cap,cnt:x.stocks.length}))));
   $('#asof').textContent=D.asof+' 종가 기준';$('#load').style.display='none';
   resize();buildChips();crumb();legend();requestAnimationFrame(frame);
-  setTimeout(loadThemes,600);
+  setTimeout(loadThemes,600);loadHot();
+  {let pref=null;try{pref=localStorage.getItem('mp-hot');}catch(e){}setHot(pref?pref==='1':W>900);}
   const h=decodeURIComponent(location.hash.slice(1));
   if(h.startsWith('q=')){const key=h.slice(2);loadThemes().then(t=>{const th=t.themes.find(x=>x.n===key);
       if(th)openCustom('테마',th.n,th.c.map(c=>ALL.get(c)).filter(Boolean));
