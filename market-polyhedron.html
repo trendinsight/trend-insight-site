@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>산업 다면체 지도 — Trend Insight</title>
+<style>
+  :root{--bg:#070b1a;--card:#121829;--card2:#0d1222;--line:#232b42;--txt:#e8ecf5;--sub:#93a0bb;
+        --up:#e5484d;--dn:#3b82f6;--flat:#3a4258;--acc:#ff7a45;--good:#12b886;--warn:#f5a524}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--txt);overflow:hidden;
+       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR","Malgun Gothic",sans-serif}
+  button{font-family:inherit}
+  #app{position:fixed;inset:0;display:flex;flex-direction:column}
+  #top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line);
+       background:rgba(7,11,26,.86);z-index:5}
+  #top h1{font-size:16px;margin:0;font-weight:800;white-space:nowrap}
+  #top h1 a{color:inherit;text-decoration:none}
+  #crumb{font-size:13px;color:var(--sub);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  #crumb b{color:var(--txt)}
+  #crumb button{background:none;border:0;color:#8fb4ff;font-size:13px;cursor:pointer;padding:2px 0}
+  .sp{flex:1}
+  .seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg button{background:transparent;color:var(--sub);border:0;padding:6px 11px;font-size:12.5px;font-weight:700;cursor:pointer}
+  .seg button.on{background:#24304f;color:#fff}
+  .tbtn{background:#18203a;color:var(--txt);border:1px solid var(--line);border-radius:9px;padding:6px 11px;
+        font-size:12.5px;font-weight:700;cursor:pointer}
+  .tbtn:hover{border-color:#4767b8}
+  #asof{font-size:11.5px;color:var(--sub);white-space:nowrap}
+  #stage{position:relative;flex:1;min-height:0}
+  #stars,#poly{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #poly{cursor:grab;touch-action:none}
+  #poly.drag{cursor:grabbing}
+  #hint{position:absolute;left:0;right:0;bottom:64px;text-align:center;font-size:12.5px;color:var(--sub);pointer-events:none}
+  #chips{position:absolute;left:0;right:0;bottom:10px;display:flex;gap:6px;padding:0 12px;overflow-x:auto;scrollbar-width:thin}
+  .chip{flex:0 0 auto;border:1px solid var(--line);background:rgba(18,24,41,.9);color:var(--txt);border-radius:999px;
+        padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;display:flex;gap:6px;align-items:center}
+  .chip i{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .chip.on{border-color:#fff}
+  #tip{position:absolute;pointer-events:none;background:rgba(10,14,28,.96);border:1px solid var(--line);border-radius:10px;
+       padding:9px 11px;font-size:12px;line-height:1.6;z-index:8;display:none;max-width:260px}
+  #tip b{font-size:13.5px}
+  /* 마켓맵 */
+  #map{position:absolute;inset:0;display:none;background:var(--bg);overflow:hidden;touch-action:none;cursor:default}
+  #map.show{display:block;animation:zin .38s ease-out}
+  @keyframes zin{from{opacity:0;transform:scale(.72)}to{opacity:1;transform:scale(1)}}
+  .tile{position:absolute;overflow:hidden;border:1px solid rgba(7,11,26,.9);cursor:pointer;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;text-align:center;color:#fff;line-height:1.15;user-select:none}
+  .tile:hover{outline:2px solid #fff;outline-offset:-2px;z-index:2}
+  .tile.sel{outline:3px solid #ffd43b;outline-offset:-3px;z-index:3}
+  .tile .nm{font-weight:800;white-space:nowrap}
+  .tile .pc{font-weight:600;opacity:.92}
+  .grp{position:absolute;border:1px solid #05070f;background:#0b1020;overflow:hidden}
+  .grp>span{position:absolute;left:0;right:0;top:0;padding:0 5px;font-size:10.5px;font-weight:700;color:#c3cde3;
+            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#151c33;cursor:pointer}
+  .grp>span:hover{color:#fff;background:#24304f}
+  #legend{position:absolute;right:12px;bottom:10px;display:flex;align-items:center;gap:0;font-size:10.5px;z-index:4;
+          background:rgba(7,11,26,.8);padding:4px 6px;border-radius:8px;pointer-events:none}
+  #legend span{width:38px;text-align:center;padding:3px 0;color:#fff;font-weight:700}
+  #zoomctl{position:absolute;left:12px;bottom:10px;display:flex;gap:6px;z-index:4}
+  /* 종목 패널 */
+  #panel{position:absolute;top:0;right:0;bottom:0;width:min(430px,100%);background:var(--card);border-left:1px solid var(--line);
+         transform:translateX(102%);transition:transform .28s ease;z-index:10;display:flex;flex-direction:column}
+  #panel.show{transform:none}
+  #ph{padding:14px 16px 10px;border-bottom:1px solid var(--line);position:relative}
+  #ph .nm{font-size:20px;font-weight:800}
+  #ph .meta{font-size:12px;color:var(--sub);margin-top:2px}
+  #ph .px{font-size:18px;font-weight:800;margin-top:6px}
+  #pclose{position:absolute;right:10px;top:10px;background:#1c2540;border:1px solid var(--line);color:var(--txt);
+          width:32px;height:32px;border-radius:9px;font-size:16px;cursor:pointer}
+  #pb{overflow:auto;padding:12px 16px 30px;flex:1}
+  .kv{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+  .kv div{background:var(--card2);border:1px solid var(--line);border-radius:9px;padding:7px 6px;text-align:center}
+  .kv small{display:block;font-size:10.5px;color:var(--sub)}
+  .kv b{font-size:13.5px}
+  .sec{font-size:13px;font-weight:800;margin:16px 0 6px;display:flex;gap:6px;align-items:baseline}
+  .sec small{font-weight:500;color:var(--sub);font-size:11px}
+  .flag{font-size:12.5px;line-height:1.6;padding:7px 10px;border-radius:9px;margin-top:5px;background:var(--card2);
+        border-left:4px solid var(--up)}
+  .flag.g{border-left-color:var(--good)}
+  .flag.n{border-left-color:var(--flat);color:var(--sub)}
+  #chart{width:100%;height:170px;display:block;background:var(--card2);border:1px solid var(--line);border-radius:10px}
+  .bar52{height:8px;border-radius:5px;background:linear-gradient(90deg,#3b82f6,#3a4258,#e5484d);position:relative;margin:8px 2px 2px}
+  .bar52 i{position:absolute;top:-4px;width:4px;height:16px;background:#fff;border-radius:2px;transform:translateX(-2px)}
+  .links{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+  .links a{display:block;background:#18203a;border:1px solid var(--line);border-radius:10px;padding:9px 10px;color:var(--txt);
+           text-decoration:none;font-size:12.5px;font-weight:700}
+  .links a small{display:block;font-weight:500;color:var(--sub);font-size:10.8px;margin-top:2px}
+  .links a:hover{border-color:var(--acc)}
+  table.peer{width:100%;border-collapse:collapse;font-size:12px}
+  table.peer th,table.peer td{padding:5px 4px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+  table.peer th:first-child,table.peer td:first-child{text-align:left}
+  table.peer th{color:var(--sub);font-weight:600}
+  table.peer tr.me td{background:#1d2745;font-weight:800}
+  table.peer tr{cursor:pointer}
+  .up{color:#ff6b6f}.dn{color:#6ea4ff}
+  .note{font-size:11px;color:var(--sub);line-height:1.6;margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+  #load{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:14px;z-index:20;
+        background:var(--bg);text-align:center;padding:20px;line-height:1.7}
+  @media(max-width:640px){#top h1{font-size:14.5px}.kv{grid-template-columns:repeat(4,1fr)}#hint{bottom:58px;font-size:11.5px}
+    #panel{width:100%;top:auto;height:82%;border-left:0;border-top:1px solid var(--line);border-radius:16px 16px 0 0;transform:translateY(102%)}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="top">
+    <h1><a href="index.html">🧊 산업 다면체 지도</a></h1>
+    <div id="crumb"></div>
+    <div class="sp"></div>
+    <div class="seg" id="period">
+      <button data-p="d1" class="on">1일</button><button data-p="w1">1주</button><button data-p="m1">1개월</button><button data-p="m3">3개월</button>
+    </div>
+    <button class="tbtn" id="allbtn">전체 펼치기</button>
+    <span id="asof"></span>
+  </div>
+  <div id="stage">
+    <canvas id="stars"></canvas>
+    <canvas id="poly"></canvas>
+    <div id="hint">드래그로 돌리고 · 면을 누르면 그 산업의 지도로 펼쳐집니다</div>
+    <div id="chips"></div>
+    <div id="map"><div id="tiles"></div>
+      <div id="zoomctl"><button class="tbtn" id="zin">＋</button><button class="tbtn" id="zout">－</button><button class="tbtn" id="zreset">맞춤</button></div>
+      <div id="legend"></div>
+    </div>
+    <div id="tip"></div>
+    <div id="panel"><div id="ph"></div><div id="pb"></div></div>
+    <div id="load">지도 데이터를 불러오는 중…</div>
+  </div>
+</div>
+<script>
+/*__INLINE_DATA__*/
+(function(){
+'use strict';
+const $=s=>document.querySelector(s);
+const SITE='https://trend-insight-site.sungsangkyung77.workers.dev';
+const API=(location.hostname.endsWith('workers.dev')?'':SITE);
+const PERIODS={d1:{lab:'1일',max:3},w1:{lab:'1주',max:8},m1:{lab:'1개월',max:15},m3:{lab:'3개월',max:30}};
+let D=null,SECT=[],period='d1',view='poly',cur=null,selCode=null;
+
+/* ───────── 색 ───────── */
+function mix(a,b,t){return a.map((v,i)=>Math.round(v+(b[i]-v)*t));}
+const C_FLAT=[58,66,88],C_UP=[229,72,77],C_DN=[45,110,235];
+function colorOf(v,alpha){
+  if(v==null||isNaN(v))return 'rgb(40,45,60)';
+  const m=PERIODS[period].max,t=Math.max(-1,Math.min(1,v/m)),e=Math.pow(Math.abs(t),.75);
+  const c=mix(C_FLAT,t>=0?C_UP:C_DN,e);
+  return alpha!=null?`rgba(${c[0]},${c[1]},${c[2]},${alpha})`:`rgb(${c[0]},${c[1]},${c[2]})`;
+}
+const pct=v=>v==null||isNaN(v)?'–':(v>0?'+':'')+v.toFixed(2)+'%';
+const cls=v=>v>0?'up':v<0?'dn':'';
+function capTxt(e){if(e==null)return '–';return e>=10000?(e/10000).toFixed(e>=100000?0:1)+'조':Math.round(e).toLocaleString()+'억';}
+function wavg(list,k){let s=0,w=0;for(const x of list){if(x[k]!=null){s+=x[k]*x.cap;w+=x.cap;}}return w?s/w:null;}
+
+/* ───────── 데이터 ───────── */
+async function loadData(){
+  if(window.__DATA__)return window.__DATA__;
+  const r=await fetch('data/market-polyhedron.json?t='+Date.now());
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return r.json();
+}
+function prep(){
+  SECT=D.sectors.map((name,i)=>{
+    const st=D.stocks.filter(s=>s.s===name).sort((a,b)=>b.cap-a.cap);
+    return {i,name,stocks:st,cap:st.reduce((a,s)=>a+s.cap,0)};
+  });
+  SECT.forEach(recalc);
+}
+function recalc(s){s.chg=wavg(s.stocks,period);s.up=s.stocks.filter(x=>x[period]>0).length;s.dn=s.stocks.filter(x=>x[period]<0).length;}
+
+/* ───────── 다면체: 면 수 N에 맞춰 자동 생성 ─────────
+   구 위에 N개 방향을 고르게 놓고(피보나치 격자), 각 방향에 접하는 평면으로 구를 깎아
+   N개의 면을 가진 볼록 다면체를 만든다. N이 바뀌면 면 모양도 따라 바뀐다. */
+const V={add:(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],
+  mul:(a,k)=>[a[0]*k,a[1]*k,a[2]*k],dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],
+  cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],
+  norm:a=>{const l=Math.hypot(a[0],a[1],a[2])||1;return [a[0]/l,a[1]/l,a[2]/l];}};
+function buildPoly(n){
+  let normals=[];
+  if(n===4)normals=[[1,1,1],[1,-1,-1],[-1,1,-1],[-1,-1,1]].map(V.norm);
+  else if(n===6)normals=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+  else if(n===8)for(const x of[1,-1])for(const y of[1,-1])for(const z of[1,-1])normals.push(V.norm([x,y,z]));
+  else if(n===12){const p=(1+Math.sqrt(5))/2;for(const a of[1,-1])for(const b of[1,-1]){normals.push(V.norm([0,a,b*p]),V.norm([a,b*p,0]),V.norm([b*p,0,a]));}}
+  else{const g=Math.PI*(3-Math.sqrt(5));for(let i=0;i<n;i++){const y=1-2*(i+.5)/n,r=Math.sqrt(1-y*y),t=g*i;normals.push([Math.cos(t)*r,y,Math.sin(t)*r]);}
+    // 몇 번 밀어내 간격을 고르게
+    for(let it=0;it<60;it++){const f=normals.map(()=>[0,0,0]);
+      for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){const d=V.sub(normals[i],normals[j]),l=Math.max(.05,Math.hypot(...d)),k=.02/(l*l*l);
+        f[i]=V.add(f[i],V.mul(d,k));f[j]=V.sub(f[j],V.mul(d,k));}
+      normals=normals.map((p,i)=>V.norm(V.add(p,f[i])));}}
+  const faces=normals.map((nrm,i)=>{
+    const ref=Math.abs(nrm[1])<.9?[0,1,0]:[1,0,0],u=V.norm(V.cross(ref,nrm)),v=V.cross(nrm,u),B=6;
+    let poly=[[-B,-B],[B,-B],[B,B],[-B,B]].map(([a,b])=>V.add(nrm,V.add(V.mul(u,a),V.mul(v,b))));
+    normals.forEach((m,j)=>{if(j===i||!poly.length)return;const out=[];
+      for(let k=0;k<poly.length;k++){const A=poly[k],Bp=poly[(k+1)%poly.length],da=V.dot(m,A)-1,db=V.dot(m,Bp)-1;
+        if(da<=0)out.push(A);
+        if((da<0&&db>0)||(da>0&&db<0)){const t=da/(da-db);out.push(V.add(A,V.mul(V.sub(Bp,A),t)));}}
+      poly=out;});
+    const c=V.mul(poly.reduce((a,p)=>V.add(a,p),[0,0,0]),1/poly.length);
+    let rin=1e9;for(let k=0;k<poly.length;k++){const A=poly[k],Bp=poly[(k+1)%poly.length],e=V.norm(V.sub(Bp,A)),w=V.sub(c,A);
+      rin=Math.min(rin,Math.hypot(...V.sub(w,V.mul(e,V.dot(w,e)))));}
+    return {n:nrm,pts:poly,c,rin,u,v};
+  });
+  const R=Math.max(...faces.flatMap(f=>f.pts.map(p=>Math.hypot(...p))));
+  faces.forEach(f=>{f.pts=f.pts.map(p=>V.mul(p,1/R));f.c=V.mul(f.c,1/R);f.rin/=R;});
+  return faces;
+}
+
+/* 쿼터니언 */
+const Q={mul:(a,b)=>[a[0]*b[0]-a[1]*b[1]-a[2]*b[2]-a[3]*b[3],a[0]*b[1]+a[1]*b[0]+a[2]*b[3]-a[3]*b[2],
+    a[0]*b[2]-a[1]*b[3]+a[2]*b[0]+a[3]*b[1],a[0]*b[3]+a[1]*b[2]-a[2]*b[1]+a[3]*b[0]],
+  axis:(ax,ang)=>{const s=Math.sin(ang/2);return [Math.cos(ang/2),ax[0]*s,ax[1]*s,ax[2]*s];},
+  norm:q=>{const l=Math.hypot(...q)||1;return q.map(v=>v/l);},
+  rot:(q,p)=>{const u=[q[1],q[2],q[3]],t=V.mul(V.cross(u,p),2);return V.add(V.add(p,V.mul(t,q[0])),V.cross(u,t));},
+  slerp:(a,b,t)=>{let d=a[0]*b[0]+a[1]*b[1]+a[2]*b[2]+a[3]*b[3];if(d<0){b=b.map(v=>-v);d=-d;}
+    if(d>.9995)return Q.norm(a.map((v,i)=>v+(b[i]-v)*t));const th=Math.acos(d),s=Math.sin(th);
+    return a.map((v,i)=>(Math.sin((1-t)*th)*v+Math.sin(t*th)*b[i])/s);},
+  between:(from,to)=>{const d=V.dot(from,to);if(d>.99999)return [1,0,0,0];
+    if(d<-.99999){const ax=V.norm(V.cross(Math.abs(from[0])<.9?[1,0,0]:[0,1,0],from));return Q.axis(ax,Math.PI);}
+    return Q.axis(V.norm(V.cross(from,to)),Math.acos(d));}};
+
+const cv=$('#poly'),cx=cv.getContext('2d'),stars=$('#stars');
+let FACES=[],q=Q.norm(Q.mul(Q.axis([1,0,0],-.35),Q.axis([0,1,0],.5))),vel=[0,0],dragging=false,moved=0,lastP=null,
+    hover=-1,anim=null,zoom=1,idle=0,W=0,H=0,dpr=1,proj=[];
+function resize(){
+  const r=$('#stage').getBoundingClientRect();W=r.width;H=r.height;dpr=Math.min(2,window.devicePixelRatio||1);
+  for(const c of[cv,stars]){c.width=W*dpr;c.height=H*dpr;}
+  drawStars();if(view==='map')renderMap();
+}
+function drawStars(){
+  const c=stars.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);
+  const g=c.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*.7);g.addColorStop(0,'#101a3a');g.addColorStop(1,'#060916');
+  c.fillStyle=g;c.fillRect(0,0,W,H);
+  let s=7;const rnd=()=>(s=(s*16807)%2147483647)/2147483647;
+  for(let i=0;i<260;i++){c.globalAlpha=.25+rnd()*.6;c.fillStyle='#fff';const r=rnd()<.08?1.6:.8;
+    c.beginPath();c.arc(rnd()*W,rnd()*H,r,0,7);c.fill();}
+  c.globalAlpha=1;
+}
+function frame(){
+  requestAnimationFrame(frame);
+  if(view!=='poly'&&!anim)return;
+  if(anim){const t=Math.min(1,(performance.now()-anim.t0)/anim.dur),e=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+    q=Q.slerp(anim.from,anim.to,e);zoom=1+(anim.zoomTo-1)*Math.pow(t,3);
+    if(t>=1){const cb=anim.done;anim=null;cb&&cb();}}
+  else if(!dragging){
+    if(Math.abs(vel[0])+Math.abs(vel[1])>.0004){rotBy(vel[0],vel[1]);vel[0]*=.94;vel[1]*=.94;}
+    else if(++idle>90&&hover<0)rotBy(.0022,0);
+  }
+  drawPoly();
+}
+function rotBy(dx,dy){q=Q.norm(Q.mul(Q.mul(Q.axis([0,1,0],dx),Q.axis([1,0,0],dy)),q));}
+function drawPoly(){
+  cx.setTransform(dpr,0,0,dpr,0,0);cx.clearRect(0,0,W,H);
+  const chipsH=70,R=Math.min(W,H-chipsH)*.43*zoom,cxp=W/2,cyp=(H-chipsH)/2+6,cam=3.4;
+  // 광채
+  const gl=cx.createRadialGradient(cxp,cyp,R*.6,cxp,cyp,R*1.25);gl.addColorStop(0,'rgba(90,150,255,.20)');gl.addColorStop(1,'rgba(90,150,255,0)');
+  cx.fillStyle=gl;cx.beginPath();cx.arc(cxp,cyp,R*1.25,0,7);cx.fill();
+  proj=[];
+  FACES.forEach((f,i)=>{
+    const n=Q.rot(q,f.n),c=Q.rot(q,f.c);
+    if(V.dot(n,V.sub([0,0,cam],c))<=0)return;
+    const pts=f.pts.map(p=>{const r=Q.rot(q,p),k=cam/(cam-r[2]);return [cxp+r[0]*R*k*.86,cyp-r[1]*R*k*.86];});
+    const k=cam/(cam-c[2]);proj.push({i,pts,nz:n[2],c:[cxp+c[0]*R*k*.86,cyp-c[1]*R*k*.86],rin:f.rin*R*k*.86*Math.max(.25,n[2])});
+  });
+  proj.sort((a,b)=>a.nz-b.nz);
+  for(const p of proj){
+    const s=SECT[p.i],light=.5+.5*Math.max(0,p.nz);
+    cx.beginPath();p.pts.forEach((pt,k)=>k?cx.lineTo(pt[0],pt[1]):cx.moveTo(pt[0],pt[1]));cx.closePath();
+    cx.fillStyle=colorOf(s.chg);cx.fill();
+    cx.fillStyle=`rgba(4,8,20,${(1-light)*.72})`;cx.fill();
+    if(p.i===hover){cx.fillStyle='rgba(255,255,255,.14)';cx.fill();}
+    cx.lineWidth=p.i===hover?2.6:1.3;cx.strokeStyle=p.i===hover?'#fff':'rgba(215,228,255,.55)';cx.lineJoin='round';cx.stroke();
+    if(p.nz>.3){
+      const fs=Math.max(9,Math.min(26,p.rin*.36)),a=Math.min(1,(p.nz-.3)/.35);
+      cx.globalAlpha=a;cx.textAlign='center';cx.textBaseline='middle';cx.fillStyle='#fff';
+      cx.shadowColor='rgba(0,0,0,.55)';cx.shadowBlur=4;
+      const lines=(s.name.length>6&&s.name.includes('·')?s.name.split('·').map((t,k,arr)=>t+(k<arr.length-1?'·':'')):[s.name]).map(t=>({t,f:`800 ${fs}px sans-serif`,h:fs*1.1}));
+      lines.push({t:pct(s.chg),f:`700 ${fs*.82}px sans-serif`,h:fs*1.05});
+      if(p.rin>52)lines.push({t:s.stocks.length+'종목 · '+capTxt(s.cap),f:`500 ${Math.max(9,fs*.52)}px sans-serif`,h:fs*.8,o:.85});
+      let yy=p.c[1]-lines.reduce((x,l)=>x+l.h,0)/2;
+      for(const l of lines){cx.font=l.f;cx.globalAlpha=a*(l.o||1);cx.fillText(l.t,p.c[0],yy+l.h/2);yy+=l.h;}
+      cx.shadowBlur=0;cx.globalAlpha=1;
+    }
+  }
+}
+function hit(x,y){
+  for(let k=proj.length-1;k>=0;k--){const p=proj[k].pts;let ins=false;
+    for(let i=0,j=p.length-1;i<p.length;j=i++){if((p[i][1]>y)!==(p[j][1]>y)&&x<(p[j][0]-p[i][0])*(y-p[i][1])/(p[j][1]-p[i][1])+p[i][0])ins=!ins;}
+    if(ins)return proj[k].i;}
+  return -1;
+}
+function pos(e){const r=cv.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top];}
+cv.addEventListener('pointerdown',e=>{if(anim)return;dragging=true;moved=0;lastP=pos(e);vel=[0,0];idle=0;cv.setPointerCapture(e.pointerId);cv.classList.add('drag');});
+cv.addEventListener('pointermove',e=>{
+  const p=pos(e);
+  if(dragging){const dx=(p[0]-lastP[0])*.008,dy=(p[1]-lastP[1])*.008;moved+=Math.abs(p[0]-lastP[0])+Math.abs(p[1]-lastP[1]);
+    rotBy(dx,dy);vel=[dx,dy];lastP=p;idle=0;hideTip();}
+  else if(e.pointerType==='mouse'){const h=hit(p[0],p[1]);hover=h;cv.style.cursor=h>=0?'pointer':'grab';
+    if(h>=0){const s=SECT[h];showTip(e,`<b>${s.name}</b><br>${PERIODS[period].lab} <span class="${cls(s.chg)}">${pct(s.chg)}</span> (시총가중)<br>${s.stocks.length}종목 · 시총 ${capTxt(s.cap)}<br>상승 ${s.up} · 하락 ${s.dn}<br><span style="color:var(--sub)">대표: ${s.stocks.slice(0,3).map(x=>x.n).join(', ')}</span>`);}
+    else hideTip();}
+});
+cv.addEventListener('pointerup',e=>{dragging=false;cv.classList.remove('drag');
+  if(moved<6){const p=pos(e),h=hit(p[0],p[1]);if(h>=0)pick(h);}});
+cv.addEventListener('pointerleave',()=>{hover=-1;hideTip();});
+function pick(i){
+  if(anim)return;hideTip();hover=-1;vel=[0,0];
+  const to=Q.norm(Q.mul(Q.between(Q.rot(q,FACES[i].n),[0,0,1]),q));
+  anim={from:q,to,t0:performance.now(),dur:620,zoomTo:2.3,done:()=>{zoom=1;openMap(i);}};
+  markChips(i);
+}
+const tip=$('#tip');
+function showTip(e,html){tip.innerHTML=html;tip.style.display='block';const r=$('#stage').getBoundingClientRect();
+  let x=e.clientX-r.left+14,y=e.clientY-r.top+14;const tw=tip.offsetWidth,th=tip.offsetHeight;
+  if(x+tw>W-8)x=e.clientX-r.left-tw-12;if(y+th>H-8)y=e.clientY-r.top-th-12;tip.style.left=Math.max(6,x)+'px';tip.style.top=Math.max(6,y)+'px';}
+function hideTip(){tip.style.display='none';}
+
+/* ───────── 칩(면 목록) ───────── */
+function buildChips(){
+  $('#chips').innerHTML=SECT.map(s=>`<button class="chip" data-i="${s.i}"><i style="background:${colorOf(s.chg)}"></i>${s.name} <span class="${cls(s.chg)}">${pct(s.chg)}</span></button>`).join('');
+  $('#chips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;if(view==='poly')pick(i);else openMap(i);});
+  if(cur!=null&&cur>=0)markChips(cur);
+}
+function markChips(i){$('#chips').querySelectorAll('.chip').forEach(b=>b.classList.toggle('on',+b.dataset.i===i));}
+
+/* ───────── 트리맵(마켓맵) ───────── */
+function squarify(items,x,y,w,h){
+  const out=[],tot=items.reduce((a,b)=>a+b.v,0);if(tot<=0||w<=0||h<=0)return out;
+  const sc=w*h/tot;let rest=items.map(it=>({it,a:it.v*sc})),X=x,Y=y,Wd=w,Hd=h;
+  const worst=(row,side)=>{const s=row.reduce((a,b)=>a+b.a,0),mx=Math.max(...row.map(r=>r.a)),mn=Math.min(...row.map(r=>r.a));
+    return Math.max(side*side*mx/(s*s),s*s/(side*side*mn));};
+  while(rest.length){
+    const side=Math.min(Wd,Hd);let row=[rest[0]],i=1;
+    while(i<rest.length&&worst(row.concat(rest[i]),side)<=worst(row,side)){row.push(rest[i]);i++;}
+    const s=row.reduce((a,b)=>a+b.a,0);
+    if(Wd>=Hd){const cw=s/Hd;let yy=Y;for(const r of row){const ch=r.a/cw;out.push({it:r.it,x:X,y:yy,w:cw,h:ch});yy+=ch;}X+=cw;Wd-=cw;}
+    else{const ch=s/Wd;let xx=X;for(const r of row){const cw=r.a/ch;out.push({it:r.it,x:xx,y:Y,w:cw,h:ch});xx+=cw;}Y+=ch;Hd-=ch;}
+    rest=rest.slice(i);
+  }
+  return out;
+}
+const mapEl=$('#map'),tilesEl=$('#tiles');
+let LAY={groups:[],tiles:[]},T={k:1,x:0,y:0},MW=0,MH=0;
+function layoutMap(){
+  MW=W;MH=H;const HDR=17;
+  const groups=cur===-1
+    ? SECT.map(s=>({name:s.name,sect:s.i,stocks:s.stocks}))
+    : Object.entries(SECT[cur].stocks.reduce((m,s)=>{(m[s.g]=m[s.g]||[]).push(s);return m;},{})).map(([name,stocks])=>({name,stocks}));
+  groups.forEach(g=>g.v=g.stocks.reduce((a,s)=>a+s.cap,0));groups.sort((a,b)=>b.v-a.v);
+  const gl=squarify(groups,0,0,MW,MH);
+  LAY={groups:[],tiles:[]};
+  for(const g of gl){
+    const hd=g.h>HDR*2.2&&g.w>40?HDR:0;
+    LAY.groups.push({name:g.it.name,sect:g.it.sect,x:g.x,y:g.y,w:g.w,h:g.h,hd});
+    const items=g.it.stocks.map(s=>({s,v:Math.max(s.cap,1)})).sort((a,b)=>b.v-a.v);
+    for(const t of squarify(items,g.x+1,g.y+hd,g.w-2,g.h-hd-1))LAY.tiles.push({s:t.it.s,x:t.x,y:t.y,w:t.w,h:t.h});
+  }
+}
+function buildMap(){
+  layoutMap();
+  tilesEl.innerHTML=LAY.groups.map((g,i)=>`<div class="grp" data-g="${i}"><span>${g.name}</span></div>`).join('')+
+    LAY.tiles.map((t,i)=>`<div class="tile" data-t="${i}"><div class="nm"></div><div class="pc"></div></div>`).join('');
+  LAY.gEls=[...tilesEl.querySelectorAll('.grp')];LAY.tEls=[...tilesEl.querySelectorAll('.tile')];
+  renderMap();
+}
+function clampT(){T.k=Math.max(1,Math.min(14,T.k));T.x=Math.min(0,Math.max(MW-MW*T.k,T.x));T.y=Math.min(0,Math.max(MH-MH*T.k,T.y));}
+function renderMap(){
+  if(!LAY.tEls)return;
+  if(Math.abs(MW-W)>1||Math.abs(MH-H)>1){buildMap();return;}
+  clampT();const k=T.k;
+  LAY.groups.forEach((g,i)=>{const e=LAY.gEls[i],st=e.style;st.left=g.x*k+T.x+'px';st.top=g.y*k+T.y+'px';st.width=g.w*k+'px';st.height=g.h*k+'px';
+    e.firstChild.style.display=g.hd?'block':'none';e.firstChild.style.height=Math.min(g.hd*k,20)+'px';e.firstChild.style.lineHeight=Math.min(g.hd*k,20)+'px';});
+  LAY.tiles.forEach((t,i)=>{
+    const e=LAY.tEls[i],st=e.style,g=LAY.groups.find(g=>t.x>=g.x&&t.x<g.x+g.w&&t.y>=g.y&&t.y<g.y+g.h)||{hd:0,y:0};
+    const extra=g.hd?Math.min(g.hd*k,20)-g.hd*k:0; // 헤더는 확대해도 20px까지만 커지므로 남는 만큼 타일을 올린다
+    const w=t.w*k,top=t.y*k+T.y+(t.y-g.y<g.hd+1?extra:0),h=t.h*k-(t.y-g.y<g.hd+1?extra:0);
+    st.left=t.x*k+T.x+'px';st.top=top+'px';st.width=w+'px';st.height=h+'px';
+    const v=t.s[period];st.background=colorOf(v);
+    const nm=e.firstChild,pc=e.lastChild,len=Math.max(2,t.s.n.length);
+    const fs=Math.min(30,w/(len*.98),h/2.5);
+    if(fs>=7.5){nm.style.display='block';nm.textContent=t.s.n;nm.style.fontSize=fs+'px';
+      if(h>fs*2.4&&fs>=9){pc.style.display='block';pc.textContent=pct(v);pc.style.fontSize=Math.max(8,fs*.72)+'px';}else pc.style.display='none';}
+    else{nm.style.display='none';pc.style.display='none';}
+    e.classList.toggle('sel',t.s.c===selCode);
+  });
+}
+function zoomAt(f,cx0,cy0){const k0=T.k;T.k=Math.max(1,Math.min(14,T.k*f));const r=T.k/k0;T.x=cx0-(cx0-T.x)*r;T.y=cy0-(cy0-T.y)*r;renderMap();}
+mapEl.addEventListener('wheel',e=>{e.preventDefault();const r=mapEl.getBoundingClientRect();zoomAt(Math.exp(-e.deltaY*.0016),e.clientX-r.left,e.clientY-r.top);hideTip();},{passive:false});
+const ptrs=new Map();let mDrag=null,pinch=null;
+mapEl.addEventListener('pointerdown',e=>{if(e.target.closest('#zoomctl'))return;ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+  if(ptrs.size===1)mDrag={x:e.clientX,y:e.clientY,tx:T.x,ty:T.y,mv:0,target:e.target};
+  else if(ptrs.size===2){const p=[...ptrs.values()];pinch={d:Math.hypot(p[0][0]-p[1][0],p[0][1]-p[1][1])};mDrag&&(mDrag.mv=99);}});
+mapEl.addEventListener('pointermove',e=>{
+  if(ptrs.has(e.pointerId))ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+  if(pinch&&ptrs.size===2){const p=[...ptrs.values()],d=Math.hypot(p[0][0]-p[1][0],p[0][1]-p[1][1]),r=mapEl.getBoundingClientRect();
+    zoomAt(d/pinch.d,(p[0][0]+p[1][0])/2-r.left,(p[0][1]+p[1][1])/2-r.top);pinch.d=d;return;}
+  if(mDrag&&ptrs.size===1){const dx=e.clientX-mDrag.x,dy=e.clientY-mDrag.y;mDrag.mv=Math.max(mDrag.mv,Math.abs(dx)+Math.abs(dy));
+    if(mDrag.mv>5&&T.k>1){T.x=mDrag.tx+dx;T.y=mDrag.ty+dy;renderMap();hideTip();}return;}
+  if(e.pointerType==='mouse'){const el=e.target.closest('.tile');
+    if(el){const s=LAY.tiles[+el.dataset.t].s;showTip(e,`<b>${s.n}</b> <span style="color:var(--sub)">${s.c} · ${s.m==='K'?'코스피':'코스닥'}</span><br>${s.g}<br>시총 ${capTxt(s.cap)} · ${s.p?s.p.toLocaleString()+'원':''}<br>1일 <span class="${cls(s.d1)}">${pct(s.d1)}</span> · 1주 <span class="${cls(s.w1)}">${pct(s.w1)}</span><br>1개월 <span class="${cls(s.m1)}">${pct(s.m1)}</span> · 3개월 <span class="${cls(s.m3)}">${pct(s.m3)}</span>`);}
+    else hideTip();}
+});
+function endPtr(e){
+  const d=mDrag;ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=null;
+  if(d&&ptrs.size===0){mDrag=null;if(d.mv<=5&&e.type==='pointerup'){
+    const el=d.target.closest&&d.target.closest('.tile'),gh=d.target.closest&&d.target.closest('.grp>span');
+    if(el)openStock(LAY.tiles[+el.dataset.t].s);
+    else if(gh){const g=LAY.groups[+gh.parentNode.dataset.g];if(g.sect!=null)openMap(g.sect);else zoomToGroup(g);}}}
+}
+mapEl.addEventListener('pointerup',endPtr);mapEl.addEventListener('pointercancel',endPtr);
+mapEl.addEventListener('pointerleave',hideTip);
+mapEl.addEventListener('dblclick',e=>{if(e.target.closest('#zoomctl'))return;const r=mapEl.getBoundingClientRect();zoomAt(T.k>1.05?1/T.k:2.4,e.clientX-r.left,e.clientY-r.top);});
+function zoomToGroup(g){const k=Math.min(14,Math.min(MW/g.w,MH/g.h)*.96);T.k=k;T.x=MW/2-(g.x+g.w/2)*k;T.y=MH/2-(g.y+g.h/2)*k;renderMap();}
+$('#zin').onclick=()=>zoomAt(1.6,W/2,H/2);$('#zout').onclick=()=>zoomAt(1/1.6,W/2,H/2);$('#zreset').onclick=()=>{T={k:1,x:0,y:0};renderMap();};
+
+function openMap(i){
+  cur=i;view='map';T={k:1,x:0,y:0};hideTip();
+  mapEl.classList.remove('show');void mapEl.offsetWidth;mapEl.classList.add('show');
+  $('#hint').style.display='none';$('#chips').style.display='none';
+  buildMap();crumb();legend();$('#allbtn').textContent=i===-1?'다면체로':'전체 펼치기';
+  history.replaceState(null,'',i===-1?'#all':'#'+encodeURIComponent(SECT[i].name));
+}
+function backToPoly(){
+  view='poly';mapEl.classList.remove('show');closePanel();$('#hint').style.display='';$('#chips').style.display='';
+  crumb();$('#allbtn').textContent='전체 펼치기';idle=0;history.replaceState(null,'','#');
+}
+function crumb(){
+  const c=$('#crumb');
+  if(view==='poly'){c.innerHTML=`<span>코스피200 + 코스닥150 · <b>${SECT.length}면체</b> · 색 = ${PERIODS[period].lab} 등락(시총가중)</span>`;return;}
+  const s=cur>=0?SECT[cur]:null;
+  c.innerHTML=`<button id="bk">◀ 다면체</button><span>›</span>`+(s?`<b>${s.name}</b><span>${s.stocks.length}종목 · ${capTxt(s.cap)} · <span class="${cls(s.chg)}">${pct(s.chg)}</span></span>`
+    +`<button id="pv">‹ 이전 면</button><button id="nx">다음 면 ›</button>`:`<b>전체 지도</b><span>${D.stocks.length}종목</span>`);
+  $('#bk').onclick=backToPoly;
+  if(s){$('#pv').onclick=()=>openMap((cur-1+SECT.length)%SECT.length);$('#nx').onclick=()=>openMap((cur+1)%SECT.length);}
+}
+function legend(){const m=PERIODS[period].max,st=[-1,-.66,-.33,0,.33,.66,1];
+  $('#legend').innerHTML=st.map(t=>`<span style="background:${colorOf(t*m)}">${t>0?'+':''}${Math.round(t*m*10)/10}%</span>`).join('');}
+
+/* ───────── 종목 패널 ───────── */
+const panel=$('#panel');
+function closePanel(){panel.classList.remove('show');selCode=null;if(view==='map')renderMap();}
+const sma=(a,n,i)=>{if(i<n-1)return null;let s=0;for(let k=i-n+1;k<=i;k++)s+=a[k];return s/n;};
+function rsi(c,n=14){if(c.length<n+1)return null;let g=0,l=0;for(let i=1;i<=n;i++){const d=c[i]-c[i-1];d>0?g+=d:l-=d;}g/=n;l/=n;
+  for(let i=n+1;i<c.length;i++){const d=c[i]-c[i-1];g=(g*(n-1)+Math.max(d,0))/n;l=(l*(n-1)+Math.max(-d,0))/n;}return l===0?100:100-100/(1+g/l);}
+function openStock(s){
+  selCode=s.c;if(view==='map')renderMap();hideTip();
+  const sec=SECT.find(x=>x.name===s.s),qs=`?code=${s.c}&name=${encodeURIComponent(s.n)}&market=${s.m==='K'?'KOSPI':'KOSDAQ'}`;
+  $('#ph').innerHTML=`<button id="pclose">✕</button><div class="nm">${s.n}</div>
+    <div class="meta">${s.c} · ${s.m==='K'?'코스피200':'코스닥150'} · ${s.s} › ${s.g}</div>
+    <div class="px">${s.p?s.p.toLocaleString()+'원':'–'} <span class="${cls(s.d1)}" style="font-size:14px">${pct(s.d1)}</span></div>`;
+  $('#pclose').onclick=closePanel;
+  const peers=sec.stocks,rank=peers.findIndex(x=>x.c===s.c)+1;
+  const win=(()=>{const i=rank-1,a=Math.max(0,Math.min(i-3,peers.length-7));return peers.slice(a,a+7);})();
+  $('#pb').innerHTML=`
+    <div class="kv">${['d1','w1','m1','m3'].map(p=>`<div><small>${PERIODS[p].lab}</small><b class="${cls(s[p])}">${pct(s[p])}</b></div>`).join('')}</div>
+    <div class="kv">
+      <div><small>시총</small><b>${capTxt(s.cap)}</b></div><div><small>PER</small><b>${s.per!=null?s.per.toFixed(1):'–'}</b></div>
+      <div><small>추정PER</small><b>${s.fper!=null?s.fper.toFixed(1):'–'}</b></div><div><small>PBR</small><b>${s.pbr!=null?s.pbr.toFixed(2):'–'}</b></div>
+      <div><small>배당률</small><b>${s.div!=null?s.div.toFixed(1)+'%':'–'}</b></div><div><small>외인비중</small><b>${s.frn!=null?s.frn.toFixed(1)+'%':'–'}</b></div>
+      <div><small>거래대금</small><b>${capTxt(s.val)}</b></div><div><small>업종 내 시총</small><b>${rank}/${peers.length}위</b></div>
+    </div>
+    <div class="sec">52주 가격 위치 <small>${s.pos52!=null?'저점 0 ↔ 고점 100 중 '+s.pos52:'자료 없음'}</small></div>
+    <div class="bar52"><i style="left:${s.pos52!=null?s.pos52:50}%"></i></div>
+    <div class="sec">① 먼저 볼 불리한 점 <small>리스크·반론</small></div><div id="risk"><div class="flag n">가격 자료를 불러오는 중…</div></div>
+    <div class="sec">② 유리한 점</div><div id="good"></div>
+    <div class="sec">최근 1년 주가 <small id="cmeta">20·60·120일선</small></div><canvas id="chart"></canvas>
+    <div class="sec">업종 내 비교 <small>${s.s} · 시총순</small></div>
+    <table class="peer"><tr><th>종목</th><th>시총</th><th>1개월</th><th>3개월</th><th>PER</th><th>PBR</th></tr>
+      ${win.map(x=>`<tr data-c="${x.c}" class="${x.c===s.c?'me':''}"><td>${x.n}</td><td>${capTxt(x.cap)}</td><td class="${cls(x.m1)}">${pct(x.m1)}</td><td class="${cls(x.m3)}">${pct(x.m3)}</td><td>${x.per!=null?x.per.toFixed(1):'–'}</td><td>${x.pbr!=null?x.pbr.toFixed(2):'–'}</td></tr>`).join('')}
+      <tr><td style="color:var(--sub)">업종 가중평균</td><td>${capTxt(sec.cap)}</td><td class="${cls(wavg(peers,'m1'))}">${pct(wavg(peers,'m1'))}</td><td class="${cls(wavg(peers,'m3'))}">${pct(wavg(peers,'m3'))}</td><td>–</td><td>–</td></tr></table>
+    <div class="sec">③ 종목 분석으로 넘어가기 <small>같은 종목이 바로 열립니다</small></div>
+    <div class="links">
+      <a href="stock-hub.html${qs}">종목 360°<small>한 화면 종합</small></a>
+      <a href="timing-lens.html${qs}">타이밍 렌즈<small>단기·중기·장기 시점</small></a>
+      <a href="volume-profile.html${qs}">매물대<small>지지·저항·바닥·꼭지</small></a>
+      <a href="trend-rider.html${qs}">추세 라이더<small>추세 단계·강도·출구</small></a>
+      <a href="ichimoku.html${qs}">일목균형표<small>구름대·삼역호전</small></a>
+      <a href="fair-value.html${qs}">적정주가<small>밸류 밴드</small></a>
+      <a href="stock-flow.html${qs}">종목 수급<small>외국인·기관 추이</small></a>
+      <a href="sotp.html${qs}">SOTP<small>부분합산 목표가</small></a>
+    </div>
+    <div class="note">지도 수치는 ${D.asof} 종가 기준 스냅샷이고, 차트·지표는 열 때마다 새로 받습니다. 불리한 점·유리한 점은 가격과 기초 밸류 지표만으로 뽑은 기계적 점검이며 매수·매도 권유가 아닙니다. 실적·공시·수급은 위 분석 도구에서 확인하세요.</div>`;
+  $('#pb').querySelectorAll('tr[data-c]').forEach(tr=>tr.onclick=()=>{const x=D.stocks.find(y=>y.c===tr.dataset.c);if(x&&x.c!==s.c)openStock(x);});
+  $('#pb').scrollTop=0;panel.classList.add('show');
+  loadBars(s,sec);
+}
+async function loadBars(s,sec){
+  let b=null;
+  try{const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),9000);const r=await fetch(`${API}/api/cockpit/ohlcv/${s.c}?days=260`,{signal:ac.signal});clearTimeout(tm);const j=await r.json();if(j.ok)b=j.data;}catch(e){}
+  if(selCode!==s.c)return;
+  flags(s,sec,b);
+  if(b&&b.close&&b.close.length>30)drawChart(b);else $('#cmeta').textContent='가격 자료를 받지 못했습니다';
+}
+function flags(s,sec,b){
+  const R=[],G=[],sm1=wavg(sec.stocks,'m1'),sm3=wavg(sec.stocks,'m3');
+  let c=b&&b.close,last=c&&c[c.length-1],i=c?c.length-1:0,m20,m60,m120,rs,vr;
+  if(c&&c.length>=120){m20=sma(c,20,i);m60=sma(c,60,i);m120=sma(c,120,i);rs=rsi(c);
+    const v=b.volume,v5=sma(v,5,i),v20=sma(v,20,i);vr=v20?v5/v20:null;
+    if(last<m120)R.push(`종가가 120일선(${Math.round(m120).toLocaleString()}원) 아래 — 중기 추세가 꺾여 있어 반등이 짧게 끝날 수 있습니다.`);
+    if(m20<m60&&m60<m120)R.push('이동평균이 역배열(20<60<120일선) — 위에 쌓인 매물을 뚫어야 합니다.');
+    if(rs>72)R.push(`RSI ${rs.toFixed(0)} — 단기 과열권. 추격 매수는 눌림을 맞을 확률이 높습니다.`);
+    const gap=(last/m20-1)*100;if(gap>15)R.push(`20일선과 ${gap.toFixed(0)}% 벌어짐 — 평균으로 되돌아오는 조정 여지가 큽니다.`);
+    if(vr!=null&&vr<.6&&s.m1>10)R.push('최근 5일 거래량이 20일 평균의 60% 미만 — 오르는데 거래가 줄고 있습니다.');
+    if(last>m20&&m20>m60&&m60>m120)G.push('이동평균 정배열(20>60>120일선) — 추세가 살아 있습니다.');
+    if(rs<32)G.push(`RSI ${rs.toFixed(0)} — 과매도권. 다만 하락 추세 안의 과매도는 더 내려갈 수 있어 반등 확인이 먼저입니다.`);
+    if(vr!=null&&vr>1.8&&s.w1>0)G.push(`최근 5일 거래량이 20일 평균의 ${vr.toFixed(1)}배 — 관심이 붙었습니다.`);
+  }else if(b===null)R.push('가격 자료를 받지 못해 추세·과열 점검을 건너뛰었습니다. 아래 항목은 스냅샷 기준입니다.');
+  if(s.pos52!=null&&s.pos52>=92&&s.m1>20)R.push(`52주 고점권(${s.pos52})에서 1개월 ${pct(s.m1)} — 급등 직후 고점 추격 구간입니다.`);
+  if(s.m3!=null&&s.m3<-20)R.push(`3개월 ${pct(s.m3)} — 하락 추세. 싸 보여도 바닥 확인 전입니다.`);
+  if(s.per==null)R.push('PER 산출 불가 — 최근 4분기 합산 적자이거나 자료 없음. 이익으로 가치를 받치기 어렵습니다.');
+  else if(s.per>40&&!(s.fper&&s.fper<25))R.push(`PER ${s.per.toFixed(0)}배${s.fper?` (추정 ${s.fper.toFixed(0)}배)`:''} — 높은 기대가 이미 가격에 들어 있습니다.`);
+  if(s.fper&&s.per&&s.fper>s.per*1.15)R.push(`추정PER(${s.fper.toFixed(1)})이 현재 PER(${s.per.toFixed(1)})보다 높음 — 시장은 이익 감소를 예상합니다.`);
+  if(s.pbr!=null&&s.pbr>6)R.push(`PBR ${s.pbr.toFixed(1)}배 — 자산 대비 프리미엄이 큽니다.`);
+  if(sm1!=null&&s.m1!=null&&s.m1<sm1-10)R.push(`1개월 수익률이 업종 평균(${pct(sm1)})보다 ${(sm1-s.m1).toFixed(0)}%p 낮음 — 같은 업종 안에서 소외돼 있습니다.`);
+  if(s.val!=null&&s.val<30)R.push(`거래대금 ${capTxt(s.val)} — 유동성이 얕아 사고팔 때 가격이 밀릴 수 있습니다.`);
+  if(Math.abs(s.d1||0)>=10)R.push(`당일 ${pct(s.d1)} — 변동성이 매우 큰 날입니다. 원인(공시·뉴스) 확인이 먼저입니다.`);
+  if(sm3!=null&&s.m3!=null&&s.m3>sm3+10&&s.m1>0)G.push(`3개월 수익률이 업종 평균보다 ${(s.m3-sm3).toFixed(0)}%p 높음 — 업종 내 주도주 쪽입니다.`);
+  if(s.fper&&s.per&&s.fper<s.per*.8)G.push(`추정PER(${s.fper.toFixed(1)})이 현재 PER(${s.per.toFixed(1)})보다 낮음 — 이익 증가가 예상됩니다(컨센서스 기준, 빗나갈 수 있음).`);
+  if(s.pbr!=null&&s.pbr<1&&s.per!=null&&s.per<12)G.push(`PBR ${s.pbr.toFixed(2)} · PER ${s.per.toFixed(1)} — 자산·이익 대비 낮은 가격대입니다(싼 데는 이유가 있을 수 있음).`);
+  if(s.div!=null&&s.div>=3.5)G.push(`배당수익률 ${s.div.toFixed(1)}% — 하방을 받치는 요인입니다.`);
+  if(s.pos52!=null&&s.pos52>=85&&!(s.m1>20))G.push(`52주 고점 근처(${s.pos52}) — 위쪽 매물이 적습니다.`);
+  if(selCode!==s.c)return;
+  $('#risk').innerHTML=R.length?R.map(t=>`<div class="flag">${t}</div>`).join(''):'<div class="flag n">기계적 점검에서 걸린 항목이 없습니다. 실적·공시·수급 위험은 따로 확인해야 합니다.</div>';
+  $('#good').innerHTML=G.length?G.map(t=>`<div class="flag g">${t}</div>`).join(''):'<div class="flag n">기계적 점검에서 뚜렷한 강점이 잡히지 않았습니다.</div>';
+}
+function drawChart(b){
+  const el=$('#chart');if(!el)return;const w=el.clientWidth,h=el.clientHeight,d=Math.min(2,devicePixelRatio||1);el.width=w*d;el.height=h*d;
+  const c=el.getContext('2d');c.setTransform(d,0,0,d,0,0);const cl=b.close,n=cl.length,lo=Math.min(...b.low.slice(-n)),hi=Math.max(...b.high.slice(-n));
+  const X=i=>6+i*(w-12)/(n-1),Y=v=>10+(hi-v)*(h-34)/(hi-lo||1);
+  const vmax=Math.max(...b.volume);c.fillStyle='rgba(120,140,190,.28)';
+  for(let i=0;i<n;i++){const vh=b.volume[i]/vmax*22;c.fillRect(X(i)-.6,h-2-vh,1.4,vh);}
+  const line=(f,col,lw)=>{c.beginPath();let st=false;for(let i=0;i<n;i++){const v=f(i);if(v==null)continue;st?c.lineTo(X(i),Y(v)):(c.moveTo(X(i),Y(v)),st=true);}c.strokeStyle=col;c.lineWidth=lw;c.stroke();};
+  line(i=>sma(cl,120,i),'#8b5cf6',1);line(i=>sma(cl,60,i),'#f5a524',1);line(i=>sma(cl,20,i),'#12b886',1);
+  line(i=>cl[i],cl[n-1]>=cl[0]?'#ff6b6f':'#6ea4ff',1.8);
+  c.fillStyle='#93a0bb';c.font='10px sans-serif';c.textAlign='left';c.fillText(Math.round(hi).toLocaleString(),6,10);c.fillText(Math.round(lo).toLocaleString(),6,h-28);
+  $('#cmeta').innerHTML=`${b.date[0]} ~ ${b.date[n-1]} · <span style="color:#12b886">20</span>·<span style="color:#f5a524">60</span>·<span style="color:#8b5cf6">120</span>일선`;
+}
+
+/* ───────── 공통 조작 ───────── */
+$('#period').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  period=b.dataset.p;$('#period').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+  SECT.forEach(recalc);buildChips();crumb();legend();if(view==='map')renderMap();});
+$('#allbtn').onclick=()=>{if(view==='map'&&cur===-1)backToPoly();else openMap(-1);};
+addEventListener('keydown',e=>{
+  if(e.key==='Escape'){if(panel.classList.contains('show'))closePanel();else if(view==='map')backToPoly();}
+  if(view==='map'&&cur>=0&&!panel.classList.contains('show')){if(e.key==='ArrowRight')openMap((cur+1)%SECT.length);if(e.key==='ArrowLeft')openMap((cur-1+SECT.length)%SECT.length);}
+  if(view==='poly'){const s=.18;if(e.key==='ArrowLeft')rotBy(-s,0);if(e.key==='ArrowRight')rotBy(s,0);if(e.key==='ArrowUp')rotBy(0,-s);if(e.key==='ArrowDown')rotBy(0,s);idle=0;}
+});
+addEventListener('resize',resize);
+
+loadData().then(d=>{
+  D=d;prep();FACES=buildPoly(SECT.length);
+  $('#asof').textContent=D.asof+' 종가 기준';$('#load').style.display='none';
+  resize();buildChips();crumb();legend();requestAnimationFrame(frame);
+  const h=decodeURIComponent(location.hash.slice(1));
+  if(h==='all')openMap(-1);else{const i=SECT.findIndex(s=>s.name===h);if(i>=0)openMap(i);}
+  const code=new URLSearchParams(location.search).get('code');
+  if(code){const s=D.stocks.find(x=>x.c===code);if(s){openMap(SECT.findIndex(x=>x.name===s.s));openStock(s);}}
+}).catch(e=>{$('#load').innerHTML='지도 데이터를 불러오지 못했습니다.<br><small>'+e.message+' — 「산업 다면체 지도 갱신」을 요청해 데이터를 먼저 게시하세요.</small>';});
+})();
+</script>
+</body>
+</html>

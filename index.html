@@ -142,7 +142,19 @@
   .hero-card .motto b{color:var(--text);}
   .hero-card .motto .red{color:var(--t-red);font-weight:700;}
   .hero-card .motto .blue{color:var(--i-blue);font-weight:700;}
-  @media (max-width:980px){.hero-card{display:none;}}
+  .hero-side{flex:none;width:320px;display:flex;flex-direction:column;gap:18px;}
+  .hero-poly{display:block;position:relative;border-radius:24px;padding:10px 14px 14px;text-decoration:none;color:#fff;text-align:center;
+    background:radial-gradient(circle at 50% 42%,#16264f 0%,#0a1330 70%);border:1px solid rgba(125,167,247,.35);box-shadow:0 24px 60px rgba(0,0,0,.35);
+    opacity:0;transition:opacity .5s ease,transform .2s ease,border-color .2s ease;}
+  .hero-poly.ready{opacity:1;}
+  .hero-poly:hover{transform:translateY(-3px);border-color:#7da7f7;}
+  .hero-poly canvas{display:block;width:100%;height:250px;cursor:grab;touch-action:none;}
+  .hero-poly canvas:active{cursor:grabbing;}
+  .hpoly-cap{display:block;margin-top:2px;line-height:1.5;}
+  .hpoly-cap b{display:block;font-size:1rem;font-weight:800;}
+  .hpoly-cap em{display:block;font-style:normal;font-size:.76rem;color:#9fb0cf;}
+  .hpoly-go{display:inline-block;margin-top:9px;font-size:.8rem;font-weight:700;color:#0b1f3f;background:#9dbcf9;border-radius:999px;padding:5px 14px;}
+  @media (max-width:980px){.hero-side{display:none;}}
 
   /* Sections */
   section{padding:96px 0;}
@@ -491,6 +503,7 @@
         <div class="nav-dropdown">
           <a href="stock-hub.html" style="color:#ff7a45;">종목 360°</a>
           <a href="timing-lens.html" style="color:#7cd4c0;">타이밍 렌즈</a>
+          <a href="market-polyhedron.html" style="color:#7aa7ff;">산업 다면체 지도<span class="sid">industry-polyhedron</span></a>
           <a href="fair-value.html" style="color:#e6b422;">적정주가<span class="sid">fair-value-band</span></a>
           <a href="sotp.html" style="color:#ff922b;">SOTP<span class="sid">sotp-valuation</span></a>
           <a href="korekawa.html" style="color:#0e7c5a;">고레가와<span class="sid">korekawa-method</span></a>
@@ -556,6 +569,7 @@
           <a href="about.html" class="btn-ghost">회사 소개</a>
         </div>
       </div>
+      <div class="hero-side">
       <div class="hero-card">
         <svg width="150" height="185" viewBox="0 0 100 125" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Trend Insight 로고"><circle cx="50" cy="17" r="15" fill="#4a7ebd"/><text x="50" y="115" font-size="105" font-family="Georgia,serif" font-weight="bold" fill="#b22f2f" text-anchor="middle">T</text></svg>
         <div class="wordmark"><span class="w-red">Trend</span> <span class="w-blue">Insight</span></div>
@@ -564,6 +578,12 @@
           <span class="red">빨간 T</span>는 상승, <span class="blue">파란 I</span>는 하락,<br>
           T 위의 파란 볼은 <b>재무와 대중의 균형</b>
         </p>
+      </div>
+      <a class="hero-poly" id="hero-poly" href="market-polyhedron.html" aria-label="산업 다면체 지도 열기">
+        <canvas id="poly-mini"></canvas>
+        <span class="hpoly-cap"><b>🧊 산업 다면체 지도</b><em id="poly-mini-meta">돌려 보고, 눌러서 들어가기</em></span>
+        <span class="hpoly-go">전체 화면으로 열기 →</span>
+      </a>
       </div>
     </div>
     <div class="hero-stats">
@@ -1488,6 +1508,7 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
 </script>
 <script defer src="/site-nav.js?v=2026110101"></script>
 <script src="/skillrun.js" defer></script>
+<script src="poly-mini.js" defer></script>
 </body>
 </html>
 <!-- redeploy trigger 2026-06-28T14:33:25Z -->
