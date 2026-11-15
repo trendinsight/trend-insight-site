@@ -307,7 +307,7 @@ function frame(){
     if(t>=1){const cb=anim.done;anim=null;cb&&cb();}}
   else if(!dragging){
     if(Math.abs(vel[0])+Math.abs(vel[1])>.0004){rotBy(vel[0],vel[1]);vel[0]*=.94;vel[1]*=.94;}
-    else if(++idle>90&&hover<0)rotBy(.0022,0);
+    else if(++idle>90&&hover<0)rotBy(.0034,0);
   }
   drawPoly();
 }

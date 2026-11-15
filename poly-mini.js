@@ -57,12 +57,12 @@ function qrot(q,p){var u=[q[1],q[2],q[3]],t=V.mul(V.cross(u,p),2);return V.add(V
 function color(v){if(v==null||isNaN(v))return'rgb(40,45,60)';var t=Math.max(-1,Math.min(1,v/3)),e=Math.pow(Math.abs(t),.75),a=[58,66,88],b=t>=0?[229,72,77]:[45,110,235];
   return'rgb('+a.map(function(x,i){return Math.round(x+(b[i]-x)*e);}).join(',')+')';}
 function pct(v){return v==null?'–':(v>0?'+':'')+v.toFixed(2)+'%';}
-var S=[],F=[],q=qmul(qaxis([1,0,0],-.35),qaxis([0,1,0],.5)),W=0,H=0,dpr=1,drag=false,moved=0,last=null,vel=[.004,0],vis=true;
+var S=[],F=[],q=qmul(qaxis([1,0,0],-.35),qaxis([0,1,0],.5)),W=0,H=0,dpr=1,drag=false,moved=0,last=null,vel=[.006,0],vis=true;
 function rot(dx,dy){q=qmul(qmul(qaxis([0,1,0],dx),qaxis([1,0,0],dy)),q);var l=Math.hypot(q[0],q[1],q[2],q[3]);q=q.map(function(x){return x/l;});}
 function size(){var r=cv.getBoundingClientRect();W=r.width;H=r.height;dpr=Math.min(2,window.devicePixelRatio||1);cv.width=W*dpr;cv.height=H*dpr;}
 function draw(){
   requestAnimationFrame(draw);if(!vis||!F.length)return;
-  if(!drag){if(Math.abs(vel[0])+Math.abs(vel[1])>.0045){vel[0]*=.95;vel[1]*=.95;}else vel=[.004,0];rot(vel[0],vel[1]);}
+  if(!drag){if(Math.abs(vel[0])+Math.abs(vel[1])>.0065){vel[0]*=.95;vel[1]*=.95;}else vel=[.006,0];rot(vel[0],vel[1]);}
   cx.setTransform(dpr,0,0,dpr,0,0);cx.clearRect(0,0,W,H);
   var R=Math.min(W,H)*.47,ox=W/2,oy=H/2,cam=3.4,list=[];
   var gl=cx.createRadialGradient(ox,oy,R*.5,ox,oy,R*1.08);gl.addColorStop(0,'rgba(90,150,255,.22)');gl.addColorStop(1,'rgba(90,150,255,0)');
