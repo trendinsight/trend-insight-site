@@ -203,34 +203,47 @@ const V={add:(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],sub:(a,b)=>[a[0]-b[0],a[1]-b
   mul:(a,k)=>[a[0]*k,a[1]*k,a[2]*k],dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],
   cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],
   norm:a=>{const l=Math.hypot(a[0],a[1],a[2])||1;return [a[0]/l,a[1]/l,a[2]/l];}};
-function buildPoly(n){
-  let normals=[];
-  if(n===4)normals=[[1,1,1],[1,-1,-1],[-1,1,-1],[-1,-1,1]].map(V.norm);
-  else if(n===6)normals=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
-  else if(n===8)for(const x of[1,-1])for(const y of[1,-1])for(const z of[1,-1])normals.push(V.norm([x,y,z]));
-  else if(n===12){const p=(1+Math.sqrt(5))/2;for(const a of[1,-1])for(const b of[1,-1]){normals.push(V.norm([0,a,b*p]),V.norm([a,b*p,0]),V.norm([b*p,0,a]));}}
-  else{const g=Math.PI*(3-Math.sqrt(5));for(let i=0;i<n;i++){const y=1-2*(i+.5)/n,r=Math.sqrt(1-y*y),t=g*i;normals.push([Math.cos(t)*r,y,Math.sin(t)*r]);}
-    // 몇 번 밀어내 간격을 고르게
-    for(let it=0;it<60;it++){const f=normals.map(()=>[0,0,0]);
-      for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){const d=V.sub(normals[i],normals[j]),l=Math.max(.05,Math.hypot(...d)),k=.02/(l*l*l);
-        f[i]=V.add(f[i],V.mul(d,k));f[j]=V.sub(f[j],V.mul(d,k));}
-      normals=normals.map((p,i)=>V.norm(V.add(p,f[i])));}}
-  const faces=normals.map((nrm,i)=>{
-    const ref=Math.abs(nrm[1])<.9?[0,1,0]:[1,0,0],u=V.norm(V.cross(ref,nrm)),v=V.cross(nrm,u),B=6;
-    let poly=[[-B,-B],[B,-B],[B,B],[-B,B]].map(([a,b])=>V.add(nrm,V.add(V.mul(u,a),V.mul(v,b))));
-    normals.forEach((m,j)=>{if(j===i||!poly.length)return;const out=[];
-      for(let k=0;k<poly.length;k++){const A=poly[k],Bp=poly[(k+1)%poly.length],da=V.dot(m,A)-1,db=V.dot(m,Bp)-1;
-        if(da<=0)out.push(A);
-        if((da<0&&db>0)||(da>0&&db<0)){const t=da/(da-db);out.push(V.add(A,V.mul(V.sub(Bp,A),t)));}}
+function buildPoly(n,wt){
+  /* 면 크기 가변: wt[i](합 1)에 비례하도록 평면 거리 d[i]를 조절한다. 가까운 평면일수록 구를 깊게 깎아 면이 커진다. */
+  var N=[],i,j,it,L=function(a){return Math.hypot(a[0],a[1],a[2]);};
+  if(!wt||wt.length!==n){wt=[];for(i=0;i<n;i++)wt.push(1/n);}
+  var g=Math.PI*(3-Math.sqrt(5)),ord=wt.map(function(w,k){return k;}).sort(function(a,b){return wt[b]-wt[a];});
+  for(i=0;i<n;i++){var y=1-2*(i+.5)/n,r=Math.sqrt(1-y*y),t=g*i;N.push([Math.cos(t)*r,y,Math.sin(t)*r]);}
+  // 큰 면끼리 한쪽에 몰리지 않게 격자 자리를 띄엄띄엄 배정
+  var P=new Array(n);ord.forEach(function(face,k){P[face]=N[(k*7)%n];});
+  var used={},ok=true;for(i=0;i<n;i++){var key=P[i].join(',');if(used[key])ok=false;used[key]=1;}
+  N=ok?P:N;
+  var q=wt.map(function(w){return Math.sqrt(Math.max(w,1e-6)*n);});
+  for(it=0;it<90;it++){var f=N.map(function(){return[0,0,0];});
+    for(i=0;i<n;i++)for(j=i+1;j<n;j++){var dv=V.sub(N[i],N[j]),l=Math.max(.05,L(dv)),k=.02*q[i]*q[j]/(l*l*l);f[i]=V.add(f[i],V.mul(dv,k));f[j]=V.sub(f[j],V.mul(dv,k));}
+    N=N.map(function(p,x){return V.norm(V.add(p,f[x]));});}
+  var d=[];for(i=0;i<n;i++)d.push(1);
+  function cut(){return N.map(function(nrm,fi){
+    var ref=Math.abs(nrm[1])<.9?[0,1,0]:[1,0,0],u=V.norm(V.cross(ref,nrm)),v=V.cross(nrm,u),B=8,o=V.mul(nrm,d[fi]);
+    var poly=[[-B,-B],[B,-B],[B,B],[-B,B]].map(function(c){return V.add(o,V.add(V.mul(u,c[0]),V.mul(v,c[1])));});
+    N.forEach(function(m,mj){if(mj===fi||!poly.length)return;var out=[];
+      for(var k=0;k<poly.length;k++){var A=poly[k],Bp=poly[(k+1)%poly.length],da=V.dot(m,A)-d[mj],db=V.dot(m,Bp)-d[mj];
+        if(da<=0)out.push(A);if((da<0&&db>0)||(da>0&&db<0))out.push(V.add(A,V.mul(V.sub(Bp,A),da/(da-db))));}
       poly=out;});
-    const c=V.mul(poly.reduce((a,p)=>V.add(a,p),[0,0,0]),1/poly.length);
-    let rin=1e9;for(let k=0;k<poly.length;k++){const A=poly[k],Bp=poly[(k+1)%poly.length],e=V.norm(V.sub(Bp,A)),w=V.sub(c,A);
-      rin=Math.min(rin,Math.hypot(...V.sub(w,V.mul(e,V.dot(w,e)))));}
-    return {n:nrm,pts:poly,c,rin,u,v};
-  });
-  const R=Math.max(...faces.flatMap(f=>f.pts.map(p=>Math.hypot(...p))));
-  faces.forEach(f=>{f.pts=f.pts.map(p=>V.mul(p,1/R));f.c=V.mul(f.c,1/R);f.rin/=R;});
+    return poly;});}
+  function area(p){if(p.length<3)return 0;var s=[0,0,0];for(var k=1;k<p.length-1;k++)s=V.add(s,V.cross(V.sub(p[k],p[0]),V.sub(p[k+1],p[0])));return L(s)/2;}
+  for(it=0;it<70;it++){var ar=cut().map(area),tot=ar.reduce(function(a,b){return a+b;},0)||1;
+    for(i=0;i<n;i++){var rr=wt[i]/Math.max(ar[i]/tot,1e-4);d[i]=Math.max(.7,Math.min(1.32,d[i]*Math.pow(rr,-.1)));}}
+  var faces=cut().map(function(poly,fi){
+    if(poly.length<3){var o=V.mul(N[fi],d[fi]);return{n:N[fi],pts:[o,o,o],c:o,rin:0};}
+    var c=V.mul(poly.reduce(function(a,p){return V.add(a,p);},[0,0,0]),1/poly.length),rin=1e9;
+    for(var k=0;k<poly.length;k++){var A=poly[k],e=V.norm(V.sub(poly[(k+1)%poly.length],A)),w=V.sub(c,A);rin=Math.min(rin,L(V.sub(w,V.mul(e,V.dot(w,e)))));}
+    return{n:N[fi],pts:poly,c:c,rin:rin};});
+  var R=Math.max.apply(null,faces.map(function(fc){return Math.max.apply(null,fc.pts.map(L));}));
+  faces.forEach(function(fc){fc.pts=fc.pts.map(function(p){return V.mul(p,1/R);});fc.c=V.mul(fc.c,1/R);fc.rin/=R;});
   return faces;
+}
+function faceWeights(list){
+  /* 면 크기 = 종목 수 비중과 시총 비중(제곱근으로 완화)을 반반. 너무 작은 면은 읽을 수 있게 하한을 둔다. */
+  var n=list.length,sc=0,sn=0;list.forEach(function(s){sc+=Math.sqrt(s.cap||0);sn+=s.cnt||0;});
+  var w=list.map(function(s){return .5*Math.sqrt(s.cap||0)/(sc||1)+.5*(s.cnt||0)/(sn||1);});
+  w=w.map(function(x){return Math.max(x,.4/n);});var t=w.reduce(function(a,b){return a+b;},0);
+  return w.map(function(x){return x/t;});
 }
 
 /* 쿼터니언 */
@@ -454,7 +467,7 @@ function backToPoly(){
 }
 function crumb(){
   const c=$('#crumb');
-  if(view==='poly'){c.innerHTML=`<span>코스피200 + 코스닥150 · <b>${SECT.length}면체</b> · 색 = ${PERIODS[period].lab} 등락(시총가중)</span>`;return;}
+  if(view==='poly'){c.innerHTML=`<span>코스피200 + 코스닥150 · <b>${SECT.length}면체</b> · 면 크기 = 종목 수·시총 · 색 = ${PERIODS[period].lab} 등락(시총가중)</span>`;return;}
   const s=cur>=0?SECT[cur]:null;
   if(cur===-2){const L=CUSTOM.stocks,ch=wavg(L,period);
     c.innerHTML=`<button id="bk">◀ 다면체</button><span>›</span><b>${CUSTOM.kind} · ${CUSTOM.name}</b><span>${L.length}종목 · ${capTxt(L.reduce((a,x)=>a+x.cap,0))} · <span class="${cls(ch)}">${pct(ch)}</span></span>`;
@@ -648,7 +661,7 @@ addEventListener('keydown',e=>{
 addEventListener('resize',resize);
 
 loadData().then(d=>{
-  D=d;prep();FACES=buildPoly(SECT.length);
+  D=d;prep();FACES=buildPoly(SECT.length,faceWeights(SECT.map(x=>({cap:x.cap,cnt:x.stocks.length}))));
   $('#asof').textContent=D.asof+' 종가 기준';$('#load').style.display='none';
   resize();buildChips();crumb();legend();requestAnimationFrame(frame);
   setTimeout(loadThemes,600);

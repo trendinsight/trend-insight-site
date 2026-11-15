@@ -9,29 +9,47 @@ var V={add:function(a,b){return[a[0]+b[0],a[1]+b[1],a[2]+b[2]];},sub:function(a,
   mul:function(a,k){return[a[0]*k,a[1]*k,a[2]*k];},dot:function(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];},
   cross:function(a,b){return[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];},
   len:function(a){return Math.hypot(a[0],a[1],a[2]);},norm:function(a){var l=Math.hypot(a[0],a[1],a[2])||1;return[a[0]/l,a[1]/l,a[2]/l];}};
-function build(n){
-  var N=[],i,j,it;
-  if(n===4)N=[[1,1,1],[1,-1,-1],[-1,1,-1],[-1,-1,1]].map(V.norm);
-  else if(n===6)N=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
-  else if(n===8){[1,-1].forEach(function(x){[1,-1].forEach(function(y){[1,-1].forEach(function(z){N.push(V.norm([x,y,z]));});});});}
-  else if(n===12){var p=(1+Math.sqrt(5))/2;[1,-1].forEach(function(a){[1,-1].forEach(function(b){N.push(V.norm([0,a,b*p]),V.norm([a,b*p,0]),V.norm([b*p,0,a]));});});}
-  else{var g=Math.PI*(3-Math.sqrt(5));for(i=0;i<n;i++){var y=1-2*(i+.5)/n,r=Math.sqrt(1-y*y),t=g*i;N.push([Math.cos(t)*r,y,Math.sin(t)*r]);}
-    for(it=0;it<60;it++){var f=N.map(function(){return[0,0,0];});
-      for(i=0;i<n;i++)for(j=i+1;j<n;j++){var d=V.sub(N[i],N[j]),l=Math.max(.05,V.len(d)),k=.02/(l*l*l);f[i]=V.add(f[i],V.mul(d,k));f[j]=V.sub(f[j],V.mul(d,k));}
-      N=N.map(function(q,x){return V.norm(V.add(q,f[x]));});}}
-  var faces=N.map(function(nrm,fi){
-    var ref=Math.abs(nrm[1])<.9?[0,1,0]:[1,0,0],u=V.norm(V.cross(ref,nrm)),v=V.cross(nrm,u),B=6;
-    var poly=[[-B,-B],[B,-B],[B,B],[-B,B]].map(function(c){return V.add(nrm,V.add(V.mul(u,c[0]),V.mul(v,c[1])));});
+function buildPoly(n,wt){
+  /* 면 크기 가변: wt[i](합 1)에 비례하도록 평면 거리 d[i]를 조절한다. 가까운 평면일수록 구를 깊게 깎아 면이 커진다. */
+  var N=[],i,j,it,L=function(a){return Math.hypot(a[0],a[1],a[2]);};
+  if(!wt||wt.length!==n){wt=[];for(i=0;i<n;i++)wt.push(1/n);}
+  var g=Math.PI*(3-Math.sqrt(5)),ord=wt.map(function(w,k){return k;}).sort(function(a,b){return wt[b]-wt[a];});
+  for(i=0;i<n;i++){var y=1-2*(i+.5)/n,r=Math.sqrt(1-y*y),t=g*i;N.push([Math.cos(t)*r,y,Math.sin(t)*r]);}
+  // 큰 면끼리 한쪽에 몰리지 않게 격자 자리를 띄엄띄엄 배정
+  var P=new Array(n);ord.forEach(function(face,k){P[face]=N[(k*7)%n];});
+  var used={},ok=true;for(i=0;i<n;i++){var key=P[i].join(',');if(used[key])ok=false;used[key]=1;}
+  N=ok?P:N;
+  var q=wt.map(function(w){return Math.sqrt(Math.max(w,1e-6)*n);});
+  for(it=0;it<90;it++){var f=N.map(function(){return[0,0,0];});
+    for(i=0;i<n;i++)for(j=i+1;j<n;j++){var dv=V.sub(N[i],N[j]),l=Math.max(.05,L(dv)),k=.02*q[i]*q[j]/(l*l*l);f[i]=V.add(f[i],V.mul(dv,k));f[j]=V.sub(f[j],V.mul(dv,k));}
+    N=N.map(function(p,x){return V.norm(V.add(p,f[x]));});}
+  var d=[];for(i=0;i<n;i++)d.push(1);
+  function cut(){return N.map(function(nrm,fi){
+    var ref=Math.abs(nrm[1])<.9?[0,1,0]:[1,0,0],u=V.norm(V.cross(ref,nrm)),v=V.cross(nrm,u),B=8,o=V.mul(nrm,d[fi]);
+    var poly=[[-B,-B],[B,-B],[B,B],[-B,B]].map(function(c){return V.add(o,V.add(V.mul(u,c[0]),V.mul(v,c[1])));});
     N.forEach(function(m,mj){if(mj===fi||!poly.length)return;var out=[];
-      for(var k=0;k<poly.length;k++){var A=poly[k],Bp=poly[(k+1)%poly.length],da=V.dot(m,A)-1,db=V.dot(m,Bp)-1;
-        if(da<=0)out.push(A);if((da<0&&db>0)||(da>0&&db<0)){out.push(V.add(A,V.mul(V.sub(Bp,A),da/(da-db))));}}
+      for(var k=0;k<poly.length;k++){var A=poly[k],Bp=poly[(k+1)%poly.length],da=V.dot(m,A)-d[mj],db=V.dot(m,Bp)-d[mj];
+        if(da<=0)out.push(A);if((da<0&&db>0)||(da>0&&db<0))out.push(V.add(A,V.mul(V.sub(Bp,A),da/(da-db))));}
       poly=out;});
-    var c=V.mul(poly.reduce(function(a,q){return V.add(a,q);},[0,0,0]),1/poly.length),rin=1e9;
-    for(var k=0;k<poly.length;k++){var A=poly[k],e=V.norm(V.sub(poly[(k+1)%poly.length],A)),w=V.sub(c,A);rin=Math.min(rin,V.len(V.sub(w,V.mul(e,V.dot(w,e)))));}
-    return{n:nrm,pts:poly,c:c,rin:rin};});
-  var R=Math.max.apply(null,faces.map(function(f){return Math.max.apply(null,f.pts.map(V.len));}));
-  faces.forEach(function(f){f.pts=f.pts.map(function(q){return V.mul(q,1/R);});f.c=V.mul(f.c,1/R);f.rin/=R;});
+    return poly;});}
+  function area(p){if(p.length<3)return 0;var s=[0,0,0];for(var k=1;k<p.length-1;k++)s=V.add(s,V.cross(V.sub(p[k],p[0]),V.sub(p[k+1],p[0])));return L(s)/2;}
+  for(it=0;it<70;it++){var ar=cut().map(area),tot=ar.reduce(function(a,b){return a+b;},0)||1;
+    for(i=0;i<n;i++){var rr=wt[i]/Math.max(ar[i]/tot,1e-4);d[i]=Math.max(.7,Math.min(1.32,d[i]*Math.pow(rr,-.1)));}}
+  var faces=cut().map(function(poly,fi){
+    if(poly.length<3){var o=V.mul(N[fi],d[fi]);return{n:N[fi],pts:[o,o,o],c:o,rin:0};}
+    var c=V.mul(poly.reduce(function(a,p){return V.add(a,p);},[0,0,0]),1/poly.length),rin=1e9;
+    for(var k=0;k<poly.length;k++){var A=poly[k],e=V.norm(V.sub(poly[(k+1)%poly.length],A)),w=V.sub(c,A);rin=Math.min(rin,L(V.sub(w,V.mul(e,V.dot(w,e)))));}
+    return{n:N[fi],pts:poly,c:c,rin:rin};});
+  var R=Math.max.apply(null,faces.map(function(fc){return Math.max.apply(null,fc.pts.map(L));}));
+  faces.forEach(function(fc){fc.pts=fc.pts.map(function(p){return V.mul(p,1/R);});fc.c=V.mul(fc.c,1/R);fc.rin/=R;});
   return faces;
+}
+function faceWeights(list){
+  /* 면 크기 = 종목 수 비중과 시총 비중(제곱근으로 완화)을 반반. 너무 작은 면은 읽을 수 있게 하한을 둔다. */
+  var n=list.length,sc=0,sn=0;list.forEach(function(s){sc+=Math.sqrt(s.cap||0);sn+=s.cnt||0;});
+  var w=list.map(function(s){return .5*Math.sqrt(s.cap||0)/(sc||1)+.5*(s.cnt||0)/(sn||1);});
+  w=w.map(function(x){return Math.max(x,.4/n);});var t=w.reduce(function(a,b){return a+b;},0);
+  return w.map(function(x){return x/t;});
 }
 function qmul(a,b){return[a[0]*b[0]-a[1]*b[1]-a[2]*b[2]-a[3]*b[3],a[0]*b[1]+a[1]*b[0]+a[2]*b[3]-a[3]*b[2],a[0]*b[2]-a[1]*b[3]+a[2]*b[0]+a[3]*b[1],a[0]*b[3]+a[1]*b[2]-a[2]*b[1]+a[3]*b[0]];}
 function qaxis(ax,ang){var s=Math.sin(ang/2);return[Math.cos(ang/2),ax[0]*s,ax[1]*s,ax[2]*s];}
@@ -75,8 +93,8 @@ window.addEventListener('resize',size);
 if('IntersectionObserver' in window)new IntersectionObserver(function(en){vis=en[0].isIntersecting;}).observe(cv);
 fetch('data/market-polyhedron.json?t='+Date.now()).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(D){
   S=D.sectors.map(function(name){var st=D.stocks.filter(function(x){return x.s===name;}),s=0,w=0;
-    st.forEach(function(x){if(x.d1!=null){s+=x.d1*x.cap;w+=x.cap;}});return{name:name,chg:w?s/w:null};});
-  F=build(S.length);size();
+    var cap=0;st.forEach(function(x){cap+=x.cap;if(x.d1!=null){s+=x.d1*x.cap;w+=x.cap;}});return{name:name,chg:w?s/w:null,cap:cap,cnt:st.length};});
+  F=buildPoly(S.length,faceWeights(S));size();
   var m=document.getElementById('poly-mini-meta');if(m)m.textContent=S.length+'개 산업 · '+D.stocks.length+'종목 · '+D.asof+' 종가';
   var box=document.getElementById('hero-poly');if(box)box.classList.add('ready');
   requestAnimationFrame(draw);
