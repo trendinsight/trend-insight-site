@@ -37,20 +37,20 @@
   #sres .it small{color:var(--sub);font-size:11px;white-space:nowrap}
   #sres .it.on,#sres .it:hover{background:#1d2745}
   #sres .none{padding:12px;font-size:12.5px;color:var(--sub);line-height:1.6}
-  #hot{position:absolute;top:10px;right:12px;bottom:62px;width:300px;display:none;flex-direction:column;gap:10px;z-index:6}
+  #hot{position:absolute;top:10px;right:12px;bottom:62px;width:clamp(340px,27vw,440px);display:none;flex-direction:column;gap:12px;z-index:6}
   #hot.show{display:flex}
   #hot .hb{flex:1 1 0;min-height:0;display:flex;flex-direction:column;background:rgba(13,19,38,.88);border:1px solid var(--line);border-radius:14px;overflow:hidden}
-  #hot .hh{padding:9px 12px 7px;border-bottom:1px solid var(--line)}
-  #hot .hh b{font-size:13.5px;display:block}
-  #hot .hh small{font-size:10.5px;color:var(--sub);line-height:1.45;display:block;margin-top:2px}
+  #hot .hh{padding:12px 16px 9px;border-bottom:1px solid var(--line)}
+  #hot .hh b{font-size:17px;display:block}
+  #hot .hh small{font-size:12.5px;color:#aab6cf;line-height:1.5;display:block;margin-top:2px}
   #hot .hl{overflow:auto;flex:1}
-  #hot .hr{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:2px 8px;align-items:baseline;padding:4px 12px 3px;cursor:pointer;border-bottom:1px solid rgba(35,43,66,.6)}
+  #hot .hr{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:3px 10px;align-items:baseline;padding:8px 16px 7px;cursor:pointer;border-bottom:1px solid rgba(35,43,66,.6)}
   #hot .hr:hover{background:#1d2745}
-  #hot .hr i{font-style:normal;font-size:11px;color:var(--sub);text-align:right}
-  #hot .hr .n{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #hot .hr .p{font-size:13px;font-weight:800;text-align:right}
-  #hot .hr .d{grid-column:2/4;font-size:10.8px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #hot .he{padding:14px 12px;font-size:12px;color:var(--sub);line-height:1.6}
+  #hot .hr i{font-style:normal;font-size:13.5px;color:var(--sub);text-align:right}
+  #hot .hr .n{font-size:16.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #hot .hr .p{font-size:16.5px;font-weight:800;text-align:right}
+  #hot .hr .d{grid-column:2/4;font-size:13.5px;color:#aab6cf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #hot .he{padding:16px;font-size:14px;color:var(--sub);line-height:1.6}
   @media(max-width:900px){#hot{left:12px;width:auto;top:8px;background:transparent}}
   #asof{font-size:11.5px;color:var(--sub);white-space:nowrap}
   #stage{position:relative;flex:1;min-height:0}
@@ -312,7 +312,7 @@ function frame(){
 function rotBy(dx,dy){q=Q.norm(Q.mul(Q.mul(Q.axis([0,1,0],dx),Q.axis([1,0,0],dy)),q));}
 function drawPoly(){
   cx.setTransform(dpr,0,0,dpr,0,0);cx.clearRect(0,0,W,H);
-  const chipsH=70,hw=(hotOn&&W>900)?316:0,R=Math.min(W-hw,H-chipsH)*.43*zoom,cxp=(W-hw)/2,cyp=(H-chipsH)/2+6,cam=3.4;
+  const chipsH=70,hw=(hotOn&&W>900)?Math.max(340,Math.min(440,W*.27))+16:0,R=Math.min(W-hw,H-chipsH)*.43*zoom,cxp=(W-hw)/2,cyp=(H-chipsH)/2+6,cam=3.4;
   // 광채
   const gl=cx.createRadialGradient(cxp,cyp,R*.6,cxp,cyp,R*1.25);gl.addColorStop(0,'rgba(90,150,255,.20)');gl.addColorStop(1,'rgba(90,150,255,0)');
   cx.fillStyle=gl;cx.beginPath();cx.arc(cxp,cyp,R*1.25,0,7);cx.fill();
