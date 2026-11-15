@@ -4,13 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>산업 다면체 지도 — Trend Insight</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
   :root{--bg:#070b1a;--card:#121829;--card2:#0d1222;--line:#232b42;--txt:#e8ecf5;--sub:#93a0bb;
         --up:#e5484d;--dn:#3b82f6;--flat:#3a4258;--acc:#ff7a45;--good:#12b886;--warn:#f5a524}
   *{box-sizing:border-box}
   html,body{height:100%}
   body{margin:0;background:var(--bg);color:var(--txt);overflow:hidden;
-       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR","Malgun Gothic",sans-serif}
+       font-family:'Pretendard',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR","Malgun Gothic",sans-serif;
+       -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
   button{font-family:inherit}
   #app{position:fixed;inset:0;display:flex;flex-direction:column}
   #top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line);
@@ -332,14 +334,15 @@ function drawPoly(){
     if(p.i===hover){cx.fillStyle='rgba(255,255,255,.14)';cx.fill();}
     cx.lineWidth=p.i===hover?2.6:1.3;cx.strokeStyle=p.i===hover?'#fff':'rgba(215,228,255,.55)';cx.lineJoin='round';cx.stroke();
     if(p.nz>.3){
-      const fs=Math.max(9,Math.min(26,p.rin*.36)),a=Math.min(1,(p.nz-.3)/.35);
-      cx.globalAlpha=a;cx.textAlign='center';cx.textBaseline='middle';cx.fillStyle='#fff';
-      cx.shadowColor='rgba(0,0,0,.55)';cx.shadowBlur=4;
-      const lines=(s.name.length>6&&s.name.includes('·')?s.name.split('·').map((t,k,arr)=>t+(k<arr.length-1?'·':'')):[s.name]).map(t=>({t,f:`800 ${fs}px sans-serif`,h:fs*1.1}));
-      lines.push({t:pct(s.chg),f:`700 ${fs*.82}px sans-serif`,h:fs*1.05});
-      if(p.rin>52)lines.push({t:s.stocks.length+'종목 · '+capTxt(s.cap),f:`500 ${Math.max(9,fs*.52)}px sans-serif`,h:fs*.8,o:.85});
-      let yy=p.c[1]-lines.reduce((x,l)=>x+l.h,0)/2;
-      for(const l of lines){cx.font=l.f;cx.globalAlpha=a*(l.o||1);cx.fillText(l.t,p.c[0],yy+l.h/2);yy+=l.h;}
+      const fs=Math.round(Math.max(10,Math.min(28,p.rin*.37))),a=Math.min(1,(p.nz-.3)/.18),FF="Pretendard,'Malgun Gothic',sans-serif";
+      cx.textAlign='center';cx.textBaseline='middle';cx.lineJoin='round';
+      const lines=(s.name.length>6&&s.name.includes('·')?s.name.split('·').map((t,k,arr)=>t+(k<arr.length-1?'·':'')):[s.name]).map(t=>({t,f:`800 ${fs}px ${FF}`,h:fs*1.14,z:fs}));
+      lines.push({t:pct(s.chg),f:`800 ${Math.round(fs*.86)}px ${FF}`,h:fs*1.08,z:fs*.86});
+      if(p.rin>52)lines.push({t:s.stocks.length+'종목 · '+capTxt(s.cap),f:`600 ${Math.round(Math.max(11,fs*.56))}px ${FF}`,h:fs*.86,z:fs*.56,o:.95});
+      let yy=p.c[1]-lines.reduce((x,l)=>x+l.h,0)/2;const tx=Math.round(p.c[0]);
+      for(const l of lines){cx.font=l.f;cx.globalAlpha=a*(l.o||1);const ty=Math.round(yy+l.h/2);
+        cx.lineWidth=Math.max(2,l.z*.16);cx.strokeStyle='rgba(6,12,30,.5)';cx.strokeText(l.t,tx,ty);   // 번지는 그림자 대신 또렷한 테두리
+        cx.fillStyle='#fff';cx.fillText(l.t,tx,ty);yy+=l.h;}
       cx.shadowBlur=0;cx.globalAlpha=1;
     }
   }
@@ -663,7 +666,7 @@ function drawChart(b){
   const line=(f,col,lw)=>{c.beginPath();let st=false;for(let i=0;i<n;i++){const v=f(i);if(v==null)continue;st?c.lineTo(X(i),Y(v)):(c.moveTo(X(i),Y(v)),st=true);}c.strokeStyle=col;c.lineWidth=lw;c.stroke();};
   line(i=>sma(cl,120,i),'#8b5cf6',1);line(i=>sma(cl,60,i),'#f5a524',1);line(i=>sma(cl,20,i),'#12b886',1);
   line(i=>cl[i],cl[n-1]>=cl[0]?'#ff6b6f':'#6ea4ff',1.8);
-  c.fillStyle='#93a0bb';c.font='10px sans-serif';c.textAlign='left';c.fillText(Math.round(hi).toLocaleString(),6,10);c.fillText(Math.round(lo).toLocaleString(),6,h-28);
+  c.fillStyle='#93a0bb';c.font="600 11px Pretendard,'Malgun Gothic',sans-serif";c.textAlign='left';c.fillText(Math.round(hi).toLocaleString(),6,10);c.fillText(Math.round(lo).toLocaleString(),6,h-28);
   $('#cmeta').innerHTML=`${b.date[0]} ~ ${b.date[n-1]} · <span style="color:#12b886">20</span>·<span style="color:#f5a524">60</span>·<span style="color:#8b5cf6">120</span>일선`;
 }
 
