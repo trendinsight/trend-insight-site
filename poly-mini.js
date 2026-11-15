@@ -62,7 +62,9 @@ function rot(dx,dy){q=qmul(qmul(qaxis([0,1,0],dx),qaxis([1,0,0],dy)),q);var l=Ma
 function size(){var r=cv.getBoundingClientRect();W=r.width;H=r.height;dpr=Math.min(2,window.devicePixelRatio||1);cv.width=W*dpr;cv.height=H*dpr;}
 function draw(){
   requestAnimationFrame(draw);if(!vis||!F.length)return;
-  if(!drag){if(Math.abs(vel[0])+Math.abs(vel[1])>.0065){vel[0]*=.95;vel[1]*=.95;}else vel=[.006,0];rot(vel[0],vel[1]);}
+  if(!drag){if(Math.abs(vel[0])+Math.abs(vel[1])>.0065){vel[0]*=.95;vel[1]*=.95;}else vel=[.006,0];
+    if(vel[0]===.006&&vel[1]===0){var ax=V.norm([.5*Math.sin(Date.now()/1000*2*Math.PI/17),1,0]);q=qmul(qaxis(ax,.006),q);var ql=Math.hypot(q[0],q[1],q[2],q[3]);q=q.map(function(x){return x/ql;});}
+    else rot(vel[0],vel[1]);}
   cx.setTransform(dpr,0,0,dpr,0,0);cx.clearRect(0,0,W,H);
   var R=Math.min(W,H)*.47,ox=W/2,oy=H/2,cam=3.4,list=[];
   var gl=cx.createRadialGradient(ox,oy,R*.5,ox,oy,R*1.08);gl.addColorStop(0,'rgba(90,150,255,.22)');gl.addColorStop(1,'rgba(90,150,255,0)');
