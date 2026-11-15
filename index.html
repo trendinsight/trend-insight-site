@@ -135,6 +135,27 @@
   .stat span{font-size:.88rem;color:#92a1b8;}
   .hero-flex{display:flex;gap:56px;align-items:center;justify-content:space-between;position:relative;z-index:1;}
   .hero-card{flex:none;width:320px;background:#fff;border-radius:24px;padding:42px 36px 34px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.35);}
+  /* 로고 카드 인트로: 정제된 엠블렘(등장→호흡→회전→워드마크) 뒤 현재 로고로 마무리 */
+  .hero-card{position:relative;overflow:hidden;}
+  .hc-intro{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;gap:26px;background:#fff;}
+  .hc-emb{perspective:900px;}
+  .hc-spin{display:flex;flex-direction:column;align-items:center;transform-style:preserve-3d;}
+  .hc-dot{width:32px;height:32px;border-radius:50%;background:#2A5CAA;margin-bottom:-8px;}
+  .hc-t{font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-weight:600;font-size:182px;line-height:.86;color:#B31226;}
+  .hc-word{font-family:'Playfair Display',Georgia,serif;font-size:30px;white-space:nowrap;opacity:0;}
+  .hc-word .hw-r{font-weight:600;color:#B31226;} .hc-word .hw-k{font-weight:500;color:#1C1B19;}
+  .hero-card.hc-play .hc-intro{display:flex;animation:hcOut .7s 8.9s both;}
+  .hero-card.hc-play .hc-emb{animation:hcIn 1s .2s both cubic-bezier(.33,1,.68,1);}
+  .hero-card.hc-play .hc-breathe{animation:hcBreathe 3.2s 1.4s both ease-in-out;}
+  .hero-card.hc-play .hc-spin{animation:hcSpin 2s 5s both cubic-bezier(.65,0,.35,1);}
+  .hero-card.hc-play .hc-word{animation:hcWord 1s 7.2s both cubic-bezier(.33,1,.68,1);}
+  .hero-card.hc-play .hc-final{animation:hcFinal .9s 9.1s both ease-out;}
+  @keyframes hcIn{from{opacity:0;transform:scale(.82)}to{opacity:1;transform:scale(1)}}
+  @keyframes hcBreathe{0%,50%,100%{transform:scale(1)}12.5%{transform:scale(1.027)}37.5%{transform:scale(.935)}62.5%{transform:scale(1.065)}87.5%{transform:scale(.973)}}
+  @keyframes hcSpin{from{transform:rotateY(0)}to{transform:rotateY(360deg)}}
+  @keyframes hcWord{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  @keyframes hcOut{from{opacity:1;visibility:visible}to{opacity:0;visibility:hidden}}
+  @keyframes hcFinal{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
   .hero-card .wordmark{font-family:Georgia,'Times New Roman',serif;font-size:1.45rem;font-weight:700;margin-top:20px;letter-spacing:-.01em;}
   .hero-card .wordmark .w-red{color:var(--t-red);}
   .hero-card .wordmark .w-blue{color:var(--i-blue);}
@@ -572,7 +593,14 @@
           <a href="about.html" class="btn-ghost">회사 소개</a>
         </div>
       </div>
-      <div class="hero-card">
+      <div class="hero-card" id="hero-card" title="누르면 로고 애니메이션을 다시 봅니다">
+        <div class="hc-intro" aria-hidden="true">
+          <div class="hc-emb"><div class="hc-breathe"><div class="hc-spin">
+            <div class="hc-dot"></div><div class="hc-t">T</div>
+          </div></div></div>
+          <div class="hc-word"><span class="hw-r">Trend</span> <span class="hw-k">Insight</span></div>
+        </div>
+        <div class="hc-final">
         <svg width="150" height="185" viewBox="0 0 100 125" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Trend Insight 로고"><circle cx="50" cy="17" r="15" fill="#4a7ebd"/><text x="50" y="115" font-size="105" font-family="Georgia,serif" font-weight="bold" fill="#b22f2f" text-anchor="middle">T</text></svg>
         <div class="wordmark"><span class="w-red">Trend</span> <span class="w-blue">Insight</span></div>
         <p class="motto">
@@ -580,6 +608,7 @@
           <span class="red">빨간 T</span>는 상승, <span class="blue">파란 I</span>는 하락,<br>
           T 위의 파란 볼은 <b>재무와 대중의 균형</b>
         </p>
+        </div>
       </div>
       <div class="hg-info">
     <div class="hero-stats">
@@ -1511,6 +1540,19 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
 </script>
 <script defer src="/site-nav.js?v=2026110101"></script>
 <script src="/skillrun.js" defer></script>
+<script>
+/* 로고 카드 인트로 — 글꼴이 준비되면 한 번 재생, 카드를 누르면 다시 재생 */
+(function(){
+  var c=document.getElementById('hero-card');if(!c||!c.animate)return;
+  if(window.matchMedia&&(matchMedia('(prefers-reduced-motion: reduce)').matches||matchMedia('(max-width:980px)').matches))return;
+  var l=document.createElement('link');l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&display=swap';document.head.appendChild(l);
+  var done=false;function play(){c.classList.remove('hc-play');void c.offsetWidth;c.classList.add('hc-play');}
+  function first(){if(done)return;done=true;play();}
+  try{l.onload=function(){document.fonts.load('600 100px "Playfair Display"').then(first,first);};}catch(e){}
+  setTimeout(first,1800);
+  c.style.cursor='pointer';c.addEventListener('click',play);
+})();
+</script>
 <script src="poly-mini.js" defer></script>
 </body>
 </html>
