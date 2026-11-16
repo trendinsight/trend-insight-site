@@ -290,15 +290,41 @@ function resize(){
   for(const c of[cv,stars]){c.width=W*dpr;c.height=H*dpr;}
   drawStars();if(view==='map')renderMap();
 }
+/* 우주 비행: 별이 다면체 중심에서 바깥으로 흘러나가 앞으로 날아가는 느낌을 준다 */
+const REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let SC=[0,0],STARS=[],starT=0,bgGrad=null;
+function newStar(far){return {x:(Math.random()*2-1)*1.2,y:(Math.random()*2-1)*1.2,z:far?1:.08+Math.random()*.92,
+  b:.55+Math.random()*.45,c:Math.random()<.12?(Math.random()<.5?'#bcd3ff':'#ffe2c4'):'#fff',pz:null};}
 function drawStars(){
+  const n=Math.round(Math.min(560,Math.max(220,W*H/2600)));
+  if(STARS.length!==n){STARS=[];for(let i=0;i<n;i++)STARS.push(newStar(false));}
+  bgGrad=null;if(!SC[0])SC=[W/2,H/2];paintStars(0);
+}
+function paintStars(dt){
   const c=stars.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);
-  const g=c.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*.7);g.addColorStop(0,'#101a3a');g.addColorStop(1,'#060916');
-  c.fillStyle=g;c.fillRect(0,0,W,H);
-  let s=7;const rnd=()=>(s=(s*16807)%2147483647)/2147483647;
-  for(let i=0;i<260;i++){c.globalAlpha=.25+rnd()*.6;c.fillStyle='#fff';const r=rnd()<.08?1.6:.8;
-    c.beginPath();c.arc(rnd()*W,rnd()*H,r,0,7);c.fill();}
+  if(!bgGrad){bgGrad=c.createRadialGradient(SC[0],SC[1],0,SC[0],SC[1],Math.max(W,H)*.75);bgGrad.addColorStop(0,'#13204a');bgGrad.addColorStop(1,'#060916');}
+  c.globalAlpha=1;c.fillStyle=bgGrad;c.fillRect(0,0,W,H);
+  const f=Math.max(W,H)*.5,sp=.085;   // sp: 1초에 다가오는 깊이 (클수록 빠르다)
+  c.lineCap='round';
+  for(const st of STARS){
+    const pz=st.z;st.z-=sp*dt*(1.1-st.z*.4);
+    const x=SC[0]+st.x/st.z*f*.5,y=SC[1]+st.y/st.z*f*.5;
+    if(st.z<=.02||x<-20||x>W+20||y<-20||y>H+20){Object.assign(st,newStar(true));continue;}
+    const px=SC[0]+st.x/pz*f*.5,py=SC[1]+st.y/pz*f*.5,near=1-st.z;
+    const a=Math.min(1,.3+near*1.3)*st.b,w=.7+near*near*2.8;
+    c.globalAlpha=a;c.strokeStyle=st.c;c.lineWidth=w;
+    if(dt>0&&Math.hypot(x-px,y-py)>.6){c.beginPath();c.moveTo(px,py);c.lineTo(x,y);c.stroke();}
+    else{c.fillStyle=st.c;c.beginPath();c.arc(x,y,w*.6,0,7);c.fill();}
+  }
   c.globalAlpha=1;
 }
+function starLoop(t){
+  requestAnimationFrame(starLoop);
+  const dt=starT?Math.min(.05,(t-starT)/1000):0;starT=t;
+  if(view!=='poly'||document.hidden||REDUCE)return;   // 마켓맵이 덮여 있을 땐 멈춘다
+  paintStars(dt);
+}
+requestAnimationFrame(starLoop);
 // 자동 회전은 시간 기준(초당 라디안) — 화면 갱신이 느린 기기에서도 같은 속도. 핸드폰은 PC의 3배.
 const MOBILE=matchMedia('(max-width:900px),(pointer:coarse)').matches;
 function frame(){
@@ -318,6 +344,7 @@ function rotBy(dx,dy){q=Q.norm(Q.mul(Q.mul(Q.axis([0,1,0],dx),Q.axis([1,0,0],dy)
 function drawPoly(){
   cx.setTransform(dpr,0,0,dpr,0,0);cx.clearRect(0,0,W,H);
   const chipsH=70,hw=(hotOn&&W>900)?Math.max(340,Math.min(440,W*.27))+16:0,R=Math.min(W-hw,H-chipsH)*.43*zoom,cxp=(W-hw)/2,cyp=(H-chipsH)/2+6,cam=3.4;
+  if(SC[0]!==cxp||SC[1]!==cyp){SC=[cxp,cyp];bgGrad=null;}
   // 광채
   const gl=cx.createRadialGradient(cxp,cyp,R*.6,cxp,cyp,R*1.25);gl.addColorStop(0,'rgba(90,150,255,.20)');gl.addColorStop(1,'rgba(90,150,255,0)');
   cx.fillStyle=gl;cx.beginPath();cx.arc(cxp,cyp,R*1.25,0,7);cx.fill();
