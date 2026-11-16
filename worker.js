@@ -4392,6 +4392,7 @@ const AI_BOARDS = [
   ["stoploss", "손절 스크리너", "stop-loss-screener", "", "보유종목 SELL/WATCH/HOLD, 트레일링"],
   ["adjusted-value", "조정 적정주가", "adjusted-fair-value", "adjusted-value.html", "컨센서스 × 26변수 조정 적정가"],
   ["forensic", "포렌식 체크리스트", "forensic-checklist", "forensic.html", "회계·지배구조 GO/NO-GO"],
+  ["annual-report", "사업보고서 쉬운 요약", "annual-report-digest", "annual-report.html", "사업보고서 핵심 요약·초등학생 설명·CB/BW/EB 연결/별도 재점검"],
   ["correlation", "상관 리스크", "correlation-risk", "correlation.html", "보유종목 상관·집중 리스크"],
   ["macro-analysis", "거시 분석", "macro-analysis", "macro-analysis.html", "거시 → 섹터·종목 시사점"],
   ["trend-rider-board", "추세 라이더", "trend-rider", "trend-rider-board.html", "추세 단계·트레일링 출구"],

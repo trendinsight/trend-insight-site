@@ -1,0 +1,5 @@
+{
+ "page": "annual-report.html",
+ "howto": "게시 방법: entries 배열 맨 앞에 {date, corp, report, verdict(CLEAN|WATCH|ALERT), title, summary, kid, html} 추가 후 GitHub(trendinsight/trend-insight-site, main)에 커밋. 같은 종목·같은 보고서가 있으면 교체. html은 h3/p/table/ul/div.kid 본문 조각만.",
+ "entries": []
+}
