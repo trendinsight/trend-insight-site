@@ -299,6 +299,8 @@ function drawStars(){
     c.beginPath();c.arc(rnd()*W,rnd()*H,r,0,7);c.fill();}
   c.globalAlpha=1;
 }
+// 자동 회전은 시간 기준(초당 라디안) — 화면 갱신이 느린 기기에서도 같은 속도. 핸드폰은 PC의 3배.
+const MOBILE=matchMedia('(max-width:900px),(pointer:coarse)').matches;
 function frame(){
   requestAnimationFrame(frame);
   if(view!=='poly'&&!anim)return;
@@ -307,9 +309,10 @@ function frame(){
     if(t>=1){const cb=anim.done;anim=null;cb&&cb();}}
   else if(!dragging){
     if(Math.abs(vel[0])+Math.abs(vel[1])>.0004){rotBy(vel[0],vel[1]);vel[0]*=.94;vel[1]*=.94;}
-    else if(++idle>90&&hover<0){const ax=V.norm([.5*Math.sin(performance.now()/1000*2*Math.PI/23),1,0]);q=Q.norm(Q.mul(Q.axis(ax,.0034),q));} // 회전축을 천천히 흔들어 위·아래 면도 정면으로 오게 한다
+    else if(++idle>90&&hover<0){const t=performance.now(),dt=Math.min(.1,(t-(frame.last||t))/1000);const ax=V.norm([.5*Math.sin(t/1000*2*Math.PI/(MOBILE?11:23)),1,0]);q=Q.norm(Q.mul(Q.axis(ax,(MOBILE?.61:.204)*dt),q));} // 회전축을 천천히 흔들어 위·아래 면도 정면으로 오게 한다
   }
   drawPoly();
+  frame.last=performance.now();
 }
 function rotBy(dx,dy){q=Q.norm(Q.mul(Q.mul(Q.axis([0,1,0],dx),Q.axis([1,0,0],dy)),q));}
 function drawPoly(){
