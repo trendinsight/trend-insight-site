@@ -88,7 +88,7 @@
       ['업종 수급','/sector-flow.html'],['종목 수급','/stock-flow.html'],['업종 로테이션','/sector-rotation.html'],['코스닥 업종 로테이션','/kosdaq-sector-rotation.html'],['주간 수급 레이더','/weekly-flow.html'],['52주 신고가 레이더','/new-high.html'],['턴어라운드 스크리너','/turnaround.html'],['반도체 사이클 고점 지도','/semicon-cycle.html'],['메모리 가격 추이','/memory-price.html']]],
     ['리포트',[
       ['최신 글 (검색)','/#insights'],['리포트 요약 (데일리)','/research-digest.html'],
-      ['리포트 요약 요청','/report-summary.html'],['전체 스킬 3부 실행','/skill-run.html'],['크립토 리포트','/crypto-report.html'],
+      ['리포트 요약 요청','/report-summary.html'],['사업보고서 쉬운 요약','/annual-report.html'],['전체 스킬 3부 실행','/skill-run.html'],['크립토 리포트','/crypto-report.html'],
       ['오늘의 격언','/proverb.html']]],
     ['소개',[
       ['회사소개','/about.html'],['이용약관·정책','/terms.html'],['문의하기','/#contact'],['로그아웃','/api/auth/logout']]]
