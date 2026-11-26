@@ -33,6 +33,13 @@
 - 복구: 대시보드 > Workers > trend-insight-site > 배포 > 버전 기록에서
   직전 main 빌드(`b10a2683`) `···` > **롤백**
 
+**2026-11-26 밤 ~ 11-27 새벽**
+
+- 증상: 홈만 열리고 `gauge.html`·`login.html`·`site-nav.js`·`/api/*`·`/data/market-gauge.json` 전부 404
+  (시장 온도계 앱 바로가기 `/gauge` 가 안 열려 발견). 마지막 main 커밋은 정상(산업 다면체 데이터 3개)
+- 원인 추정: 저장소 전체가 없는 곳에서 수동 배포 1회 (같은 유형 재발)
+- 복구: main 에 새 커밋 푸시 → Workers Builds 전체 재배포
+
 ## 사고 시 복구 절차
 
 1. Cloudflare 대시보드 > Compute(Workers) > `trend-insight-site` > **배포** 탭
