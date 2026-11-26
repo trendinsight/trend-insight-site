@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>주간 Top5 | Trend Insight</title>
+<meta name="description" content="매주 토요일 코스피200+코스닥150 350종목 중 다음 주 상승 확률 상위 5종목과 주간 성과 누적 추적">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{--navy:#0b1f3f;--accent:#2e6ff2;--red:#b22f2f;--green:#2e7d32;--orange:#e8830c;--text:#1c2533;--muted:#5b6779;--line:#e4e9f1;--bg:#f5f7fb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Pretendard',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+a{text-decoration:none;color:inherit}
+header{background:var(--navy);padding:16px 24px}
+header a{color:#fff;font-weight:800}
+.wrap{max-width:1080px;margin:0 auto;padding:30px 20px 60px}
+h1{color:var(--navy);font-size:1.6rem;letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:.92rem;margin:6px 0 4px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0}
+.asof{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 16px;font-size:.88rem;font-weight:700;color:var(--navy)}
+.asof span{color:var(--accent)}
+select{font-family:inherit;font-size:.88rem;font-weight:700;color:var(--navy);border:1px solid var(--line);border-radius:999px;padding:6px 12px;background:#fff}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 1px 3px rgba(11,31,63,.05);margin-top:20px}
+.card h2{font-size:1.1rem;color:var(--navy);margin-bottom:6px}
+.gate-badge{display:inline-block;padding:6px 22px;border-radius:999px;font-size:1.1rem;font-weight:800;margin:4px 8px 4px 0}
+.g-GREEN{background:#e8f5e9;color:#2e7d32}.g-YELLOW{background:#fff8e1;color:#9a6a00}.g-RED{background:#fdecea;color:#c62828}
+table{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:10px}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:.78rem;white-space:nowrap}
+td.num,th.num{text-align:right;white-space:nowrap}
+td.name{font-weight:700;color:var(--navy);white-space:nowrap}
+td .code{font-weight:500;color:var(--muted);font-size:.76rem}
+.score{font-weight:800;color:var(--accent)}
+.up{color:#c62828;font-weight:700}.dn{color:#1258b3;font-weight:700}
+.pick{border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:14px}
+.pick h3{font-size:1rem;color:var(--navy)}
+.pick h3 small{color:var(--muted);font-weight:500;font-size:.78rem;margin-left:6px}
+.row{display:grid;grid-template-columns:110px 1fr;gap:6px 12px;margin-top:8px;font-size:.87rem}
+.row b{color:var(--muted);font-weight:700}
+.row .risk{color:var(--red)}
+.axes{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.axes span{background:#eef3fb;color:#1f4f9a;border-radius:999px;padding:2px 10px;font-size:.75rem;font-weight:700}
+.empty{text-align:center;color:var(--muted);padding:60px 20px;font-size:.95rem}
+.kpi{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
+.kpi div{background:#f5f7fb;border-radius:10px;padding:10px 16px;min-width:130px}
+.kpi b{display:block;font-size:1.2rem;color:var(--navy)}
+.kpi span{font-size:.76rem;color:var(--muted)}
+.note{font-size:.78rem;color:#9aa6b6;margin-top:24px;line-height:1.6}
+@media(max-width:720px){.hidem{display:none}.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><a href="index.html">← Trend Insight</a></header>
+<div class="wrap">
+<h1>🗓️ 주간 Top5</h1>
+<p class="sub">매주 토요일 오후 8시 — 코스피200+코스닥150(350종목)을 하나의 풀로 채점해 다음 한 주 상승 확률 상위 5종목. 다음 주 금요일 종가로 성과를 매깁니다.</p>
+<div class="bar"><span class="asof" id="asof">불러오는 중…</span><select id="issue" aria-label="회차 선택"></select></div>
+<div id="main"></div>
+<div class="card" id="perf" style="display:none">
+  <h2>📈 주간 성과 누적</h2>
+  <div class="kpi" id="kpi"></div>
+  <table><thead><tr><th>선정일</th><th class="hidem">대상 주간</th><th>게이트</th><th class="num">평균 수익률</th><th class="num">지수 대비</th><th class="num">상승 종목</th></tr></thead><tbody id="perf-body"></tbody></table>
+</div>
+<p class="note">· 채점 5축: 주간 수급 집중 · 거래량 이상 신호 · 추세·상대강도·박스 근접 · 매물대 위쪽 여유 · 다음 주 촉매 (동일 업종 최대 2종목)<br>· 종목마다 리스크·반론을 먼저 적고 상승 논거·진입 트리거·손절가·무효화 조건을 적습니다.<br>· 투자 판단의 참고 자료이며 매수·매도 권유가 아닙니다. 데이터: <code>data/weekly-top-picks.json</code> (weekly-top-picks 스킬이 게시)</p>
+</div>
+<script>
+(function(){
+  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function pct(v){if(v==null||v==='')return '—';v=+v;return '<span class="'+(v>0?'up':v<0?'dn':'')+'">'+(v>0?'+':'')+v.toFixed(2)+'%</span>';}
+  function won(v){return v==null||v===''?'—':(+v).toLocaleString('ko-KR')+'원';}
+  var AX={flow:'수급',volume:'거래량',trend:'추세·RS',room:'매물대 여유',catalyst:'촉매'};
+  var D=null;
+  function render(i){
+    var it=D.issues[i],m=document.getElementById('main');
+    var g=it.gate||{},h='';
+    h+='<div class="card"><h2>시장 게이트</h2><span class="gate-badge g-'+esc(g.verdict||'YELLOW')+'">'+esc(g.verdict||'—')+'</span><span>'+esc(g.note||'')+'</span>';
+    h+='<p class="sub">대상 주간: '+esc(it.week_from||'')+' ~ '+esc(it.week_to||'')+'</p></div>';
+    var P=it.picks||[];
+    if(!P.length){h+='<div class="card"><div class="empty">이번 회차는 게이트 판정으로 선정 종목이 없습니다.</div></div>';m.innerHTML=h;return;}
+    var done=P.some(function(p){return p.result&&p.result.ret!=null;});
+    h+='<div class="card"><h2>Top5</h2><table><thead><tr><th>#</th><th>종목</th><th class="hidem">업종</th><th class="num">점수</th><th class="num">선정 종가</th><th class="num">손절가</th>'+(done?'<th class="num">주간 수익률</th><th class="num">지수 대비</th>':'')+'</tr></thead><tbody>';
+    P.forEach(function(p,k){
+      var r=p.result||{};
+      h+='<tr><td>'+(p.rank||k+1)+'</td><td class="name">'+esc(p.name)+' <span class="code">'+esc(p.code)+' '+esc(p.market||'')+'</span></td><td class="hidem">'+esc(p.sector||'')+'</td><td class="num score">'+esc(p.score)+'</td><td class="num">'+won(p.entry_close)+'</td><td class="num">'+won(p.stop)+'</td>'+(done?'<td class="num">'+pct(r.ret)+'</td><td class="num">'+pct(r.excess)+'</td>':'')+'</tr>';
+    });
+    h+='</tbody></table>';
+    P.forEach(function(p,k){
+      var ax=p.axes||{},axh='';
+      for(var a in AX)if(ax[a]!=null)axh+='<span>'+AX[a]+' '+esc(ax[a])+'</span>';
+      h+='<div class="pick"><h3>'+(p.rank||k+1)+'. '+esc(p.name)+'<small>'+esc(p.code)+' · '+esc(p.sector||'')+'</small></h3>'+
+        (axh?'<div class="axes">'+axh+'</div>':'')+
+        '<div class="row"><b>리스크·반론</b><span class="risk">'+esc(p.risk||'—')+'</span>'+
+        '<b>상승 논거</b><span>'+esc(p.thesis||'—')+'</span>'+
+        '<b>진입 트리거</b><span>'+esc(p.trigger||'—')+'</span>'+
+        '<b>손절가</b><span>'+won(p.stop)+'</span>'+
+        '<b>무효화 조건</b><span>'+esc(p.invalid||'—')+'</span></div></div>';
+    });
+    h+='</div>';
+    m.innerHTML=h;
+  }
+  function perf(){
+    var rows='',n=0,sr=0,se=0,hit=0,tot=0;
+    D.issues.forEach(function(it){
+      var s=it.summary;if(!s||s.avg_ret==null)return;
+      n++;sr+=+s.avg_ret;se+=+(s.avg_excess||0);hit+=+(s.hits||0);tot+=(it.picks||[]).length;
+      rows+='<tr><td>'+esc(it.date)+'</td><td class="hidem">'+esc(it.week_from||'')+' ~ '+esc(it.week_to||'')+'</td><td>'+esc((it.gate||{}).verdict||'')+'</td><td class="num">'+pct(s.avg_ret)+'</td><td class="num">'+pct(s.avg_excess)+'</td><td class="num">'+esc(s.hits!=null?s.hits+'/'+(it.picks||[]).length:'—')+'</td></tr>';
+    });
+    if(!n)return;
+    document.getElementById('perf').style.display='block';
+    document.getElementById('perf-body').innerHTML=rows;
+    document.getElementById('kpi').innerHTML='<div><b>'+n+'회</b><span>성과 확정 회차</span></div><div><b>'+pct(sr/n)+'</b><span>회차 평균 수익률</span></div><div><b>'+pct(se/n)+'</b><span>평균 지수 대비</span></div><div><b>'+(tot?Math.round(hit/tot*100):0)+'%</b><span>상승 종목 비율</span></div>';
+  }
+  fetch('/data/weekly-top-picks.json?t='+Date.now()).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(j){
+    D=j;if(!D.issues||!D.issues.length)throw 0;
+    document.getElementById('asof').innerHTML='최근 선정 <span>'+esc(D.issues[0].date)+'</span>';
+    var sel=document.getElementById('issue');
+    D.issues.forEach(function(it,i){var o=document.createElement('option');o.value=i;o.textContent=it.date+' 선정';sel.appendChild(o);});
+    sel.onchange=function(){render(+sel.value);};
+    render(0);perf();
+  }).catch(function(){
+    document.getElementById('asof').textContent='아직 게시된 회차 없음';
+    document.getElementById('issue').style.display='none';
+    document.getElementById('main').innerHTML='<div class="card"><div class="empty">아직 게시된 주간 Top5가 없습니다.<br>다음 토요일 오후 8시 정기 실행부터 이 탭에 올라옵니다.</div></div>';
+  });
+})();
+</script>
+</body>
+</html>

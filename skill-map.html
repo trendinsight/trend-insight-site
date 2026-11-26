@@ -57,6 +57,7 @@ footer{max-width:1560px;margin:0 auto;padding:0 22px 40px;color:#9aa6b6;font-siz
 <main>
 <h1>🧭 스킬 맵 — 어떤 스킬을 쓸까?</h1>
 <div class="desc">투자 워크플로 순서(그룹)와 기능 유형(태그)으로 정리한 전체 스킬 지도. <b>"페이지 열기 →"가 있는 카드는 클릭 즉시 전용 페이지로 이동</b>하고, 호출 문구는 "호출 문구 ▾" 버튼으로 확인합니다.</div>
+<div class="desc" style="background:#eef6ff;border:1px solid #cfe2ff;border-radius:10px;padding:10px 14px;margin-top:8px">🧹 <b>2026-11-26 정리</b> — 겹치는 페이지를 합본으로 묶었습니다: <a href="flow-hub.html">종목 수급</a> · <a href="sector-hub.html">업종 수급</a> · <a href="timing-hub.html">타이밍 렌즈</a>(추세 라이더·종목 온도·종목 볼린저 흡수) · <a href="value-hub.html">적정주가</a>(조정 적정가 = 보정 옵션) · <a href="masters-hub.html">거장 자문단</a>(고레가와·켄 피셔·필립 피셔) · <a href="sotp-hub.html">SOTP</a> · <a href="vp-hub.html">매물대</a> · <a href="picks-hub.html">종목선정</a>(기간별 + 주간 Top5). 매도 판정은 <a href="stoploss.html">손절 스크리너</a> 하나로, 흑자전환 발굴은 <a href="turnaround.html">턴어라운드</a> 하나로 모았습니다.</div>
 <div class="toolbar">
   <input id="q" type="search" placeholder="스킬 이름·용도·호출 문구 검색 — 띄어쓰기 무시 (예: 금리예측, 시장온도계, 손절, PSR...)">
   <div class="chips" id="tagchips"></div>
@@ -91,34 +92,34 @@ const S=[
 {g:"g1",id:"macro-analysis",ko:"거시 분석",t:"분석",u:"FOMC·CPI·환율 등 거시 변수를 내 종목·섹터 영향으로 해석",tr:["오늘 시장 톤","이 지표가 내 종목에?"],p:"macro-analysis.html"},
 {g:"g1",id:"rate-forecast",ko:"금리 예측",t:"분석",u:"금통위·FOMC 방향과 6개월 금리 시나리오를 확률로 예측",tr:["금리 어떻게 될까","금리 인하 시기"],p:"posts/2026-07-10-rate-forecast-tightening.html"},
 {g:"g1",id:"industry-indicator",ko:"산업지표 보드",t:"수급·데이터",u:"21개 업종 실물 지표로 업황 판정 + 업종별 추천 종목",tr:["산업지표","어느 업종이 좋아?"],p:"industry-board.html"},
-{g:"g1",id:"sector-flow",ko:"업종 수급",t:"수급·데이터",u:"업종별 개인·외국인·기관 순매수 엑셀 자동 갱신 + 차트 게시",tr:["업종 수급 업데이트"],p:"sector-flow.html"},
+{g:"g1",id:"sector-flow",ko:"업종 수급",t:"수급·데이터",u:"업종별 개인·외국인·기관 순매수 엑셀 자동 갱신 + 차트 게시",tr:["업종 수급 업데이트"],p:"sector-hub.html#daily"},
 {g:"g1",id:"export-pulse",ko:"수출 펄스",t:"수급·데이터",u:"관세청 HS코드 수출 데이터로 실적 서프라이즈/쇼크 선행 감지",tr:["수출 펄스","OO 수출 어때?"],p:"export-pulse.html"},
 {g:"g1",id:"market-calendar-sync",ko:"증시 캘린더",t:"자동화·게시",u:"FOMC·실적발표·만기 등 시장 일정을 구글 캘린더에 등록·갱신",tr:["일정 등록해줘","이번 달 시장 일정"],p:null},
 // GROUP 2
 {g:"g2",id:"korean-stock-screener",ko:"거래량 정배열 스크리너",t:"스크리너",u:"당일 거래량 상위 + 이평선 정배열(MA5>20>60>120) 필터",tr:["정배열 종목","거래량 순위"],p:"screener.html"},
 {g:"g2",id:"canslim-screener",ko:"CANSLIM 스크리너",t:"스크리너",u:"오닐 7요건(C·A·N·S·L·I·M) 채점으로 성장 주도주 발굴",tr:["캔슬림","주도주 발굴"],p:"canslim.html"},
-{g:"g2",id:"horizon-stock-picker",ko:"기간별 종목선정",t:"스크리너",u:"단기·중기·장기 구간별 각 5종목(총 15종목) 선정 오케스트레이터",tr:["기간별 종목 골라줘","묻어둘 종목"],p:"horizon-picks.html"},
+{g:"g2",id:"horizon-stock-picker",ko:"기간별 종목선정",t:"스크리너",u:"단기·중기·장기 구간별 각 5종목(총 15종목) 선정 오케스트레이터",tr:["기간별 종목 골라줘","묻어둘 종목"],p:"picks-hub.html"},
 {g:"g2",id:"sejong-data",ko:"세종기업데이터",t:"수급·데이터",u:"2,500종목 분기실적 적재 → 서프라이즈·GARP·실적쇼크 스크리닝",tr:["실적 서프라이즈","저평가 성장주"],p:"sejong-data.html"},
 {g:"g2",id:"dividend-compounder",ko:"배당성장 복리",t:"스크리너",u:"배당 4%↑+성장 종목 발굴, DRIP 복리 시뮬레이션·배당 캘린더",tr:["배당주","배당 재투자"],p:"dividend-growth.html"},
 {g:"g2",id:"volume-insight",ko:"거래량 인사이트",t:"스크리너",u:"VSA·와이코프로 거래량 의미 판독 + S급 돌파대량 전시장 발굴",tr:["거래량 분석","매집이야 분산이야?"],p:"volume-radar.html"},
 {g:"g2",id:"rsi-adr",ko:"RSI·ADR 과매도",t:"스크리너",u:"RSI·ADR 기반 과매도 스크리닝 (요청 시 실행·게시)",tr:["RSI ADR 스크리닝"],p:"rsi-adr.html"},
 // GROUP 3
-{g:"g3",id:"masters-council",ko:"거장 자문단",t:"거장기법",u:"거장 13인이 각자 관점으로 채점·논평, 종합 판정과 토론",tr:["거장들 의견","버핏이라면"],p:"masters.html"},
-{g:"g3",id:"korekawa-method",ko:"고레가와 긴조",t:"거장기법",u:"수면 아래 소외 우량주 발굴, 카메 3칙·투자 5개조 판정",tr:["고레가와","소외 우량주 찾아줘"],p:"korekawa-board.html"},
-{g:"g3",id:"fisher-method",ko:"켄 피셔",t:"거장기법",u:"PSR·글리치로 급락 우량 성장주 발굴 + 70/20/10 탑다운 배분",tr:["PSR 싼 종목","글리치"],p:"fisher-board.html"},
-{g:"g3",id:"philip-fisher-method",ko:"필립 피셔 15포인트",t:"거장기법",u:"위대한 기업 15포인트 채점·스커틀벗 탐문·매도 3사유 판정",tr:["15포인트 채점","스커틀벗"],p:"philip-fisher-board.html"},
+{g:"g3",id:"masters-council",ko:"거장 자문단",t:"거장기법",u:"거장 13인이 각자 관점으로 채점·논평, 종합 판정과 토론",tr:["거장들 의견","버핏이라면"],p:"masters-hub.html"},
+{g:"g3",id:"korekawa-method",ko:"고레가와 긴조",t:"거장기법",u:"수면 아래 소외 우량주 발굴, 카메 3칙·투자 5개조 판정",tr:["고레가와","소외 우량주 찾아줘"],p:"masters-hub.html#korekawa.board"},
+{g:"g3",id:"fisher-method",ko:"켄 피셔",t:"거장기법",u:"PSR·글리치로 급락 우량 성장주 발굴 + 70/20/10 탑다운 배분",tr:["PSR 싼 종목","글리치"],p:"masters-hub.html#kfisher.board"},
+{g:"g3",id:"philip-fisher-method",ko:"필립 피셔 15포인트",t:"거장기법",u:"위대한 기업 15포인트 채점·스커틀벗 탐문·매도 3사유 판정",tr:["15포인트 채점","스커틀벗"],p:"masters-hub.html#pfisher.board"},
 {g:"g3",id:"trend-masters",ko:"3인 거장 추세",t:"거장기법",u:"토마스 카·리버모어·엘더 3인 독립 판정 + 매매 실행 계획",tr:["삼중스크린","피벗 돌파"],p:"trend-masters.html"},
-{g:"g3",id:"trend-rider",ko:"추세 라이더",t:"거장기법",u:"와인스타인 4단계·RS 주도주 판별·트레일링 스탑 출구 관리",tr:["추세 단계","계속 들고 가도 돼?"],p:"trend-rider-board.html"},
+{g:"g3",id:"trend-rider",ko:"추세 라이더",t:"거장기법",u:"와인스타인 4단계·RS 주도주 판별·트레일링 스탑 출구 관리",tr:["추세 단계","계속 들고 가도 돼?"],p:"timing-hub.html#trend"},
 // GROUP 4
 {g:"g4",id:"stock-analysis",ko:"종목 종합분석",t:"분석",u:"펀더멘털+기술+거시+포트+논거+리스크를 한 편으로 통합 (풀 분석)",tr:["OO 분석해줘","이 종목 어때?"],p:"cockpit.html"},
-{g:"g4",id:"fair-value-band",ko:"적정주가 밴드",t:"밸류에이션",u:"4층 구조(기본·산업·시장·기술) 내재가치 밴드, 저평가/고평가 판정",tr:["적정주가","싸? 비싸?"],p:"fair-value.html"},
-{g:"g4",id:"adjusted-fair-value",ko:"조정 적정주가",t:"밸류에이션",u:"목표주가 컨센서스에 26개 변수를 가중 반영한 조정 적정가",tr:["조정 적정주가","변수 반영해줘"],p:"adjusted-value.html"},
+{g:"g4",id:"fair-value-band",ko:"적정주가 밴드",t:"밸류에이션",u:"4층 구조(기본·산업·시장·기술) 내재가치 밴드, 저평가/고평가 판정",tr:["적정주가","싸? 비싸?"],p:"value-hub.html"},
+{g:"g4",id:"adjusted-fair-value",ko:"조정 적정주가",t:"밸류에이션",u:"목표주가 컨센서스에 26개 변수를 가중 반영한 조정 적정가",tr:["조정 적정주가","변수 반영해줘"],p:"value-hub.html#adjusted"},
 {g:"g4",id:"broker-report-digest",ko:"종목 리포트 요약",t:"리서치",u:"한 종목의 1년치 증권사 리포트를 목표가·논거·리스크로 종합 요약",tr:["OO 리포트 요약해줘"],p:"report-summary.html"},
 {g:"g4",id:"research-digest",ko:"데일리 리포트 요약",t:"리서치",u:"당일 발간된 기업·산업 리포트 전체 훑기, 목표가 상향/하향 표시",tr:["오늘 리포트 뭐 나왔어"],p:"research-digest.html"},
 {g:"g4",id:"annual-report-digest",ko:"사업보고서 쉬운 요약",t:"리서치",u:"사업보고서 핵심만 빠르게 + 초등학생 설명, CB·BW·EB 연결/별도 재점검",tr:["사업보고서 요약해줘","OO 사업보고서 쉽게","CB BW EB 연결 별도"],p:"annual-report.html"},
 {g:"g4",id:"forensic-checklist",ko:"회계 포렌식",t:"리스크·점검",u:"CB오버행·지분담보·감사의견·회전일수 등 매수 전 지뢰 6축 점검",tr:["지뢰 없어?","CB 오버행"],p:"forensic.html"},
-{g:"g4",id:"supply-demand-analyzer",ko:"종목 수급 분석",t:"수급·데이터",u:"투자자별 매집수량·분산비율·추후 매수/매도 여력 산출",tr:["누가 사고 있어?","수급 어때?"],p:"supply.html"},
-{g:"g4",id:"stock-thermometer",ko:"종목 온도계",t:"온도계",u:"개별 종목 과열/과매도 온도 + 미너비니 셋업 판정",tr:["OO 온도 어때","과열이야?"],p:"stock-gauge.html"},
+{g:"g4",id:"supply-demand-analyzer",ko:"종목 수급 분석",t:"수급·데이터",u:"투자자별 매집수량·분산비율·추후 매수/매도 여력 산출",tr:["누가 사고 있어?","수급 어때?"],p:"flow-hub.html#cockpit"},
+{g:"g4",id:"stock-thermometer",ko:"종목 온도계",t:"온도계",u:"개별 종목 과열/과매도 온도 + 미너비니 셋업 판정",tr:["OO 온도 어때","과열이야?"],p:"timing-hub.html#temp"},
 {g:"g4",id:"signal-analyzer",ko:"시그널 분석",t:"분석",u:"MACD·RSI·볼린저·OBV·ADX 통합 매수/매도 점수(0~100) 분해",tr:["시그널 분석","매수 점수"],p:"signal.html"},
 {g:"g4",id:"ichimoku-analyzer",ko:"일목균형표",t:"분석",u:"구름대·삼역호전 5대 시그널 + ADX·OBV 보완, 시나리오 확률",tr:["일목 분석","구름대 지지 되나?"],p:"ichimoku.html"},
 {g:"g4",id:"ai-biz-map",ko:"AI 활용 기업 지도",t:"분석",u:"AI로 신약을 개발하거나 이익을 내는 기업 — 한국 상세·미국/해외 개요, 이름 검색",tr:["AI 기업 지도","AI 신약개발 기업","AI 기업 지도에 OO 추가"],p:"ai-biz.html"},

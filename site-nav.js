@@ -8,7 +8,7 @@
      페이지 파일명(확장자 제외) → 그 페이지를 만들고 갱신하는 스킬 이름.
      '웹 전용' = 스킬 없이 사이트 자체 기능으로 동작하는 도구.
      새 도구를 추가하면 여기 한 줄만 넣으면 홈 메뉴·칩·카드·플로팅 메뉴에 자동 표시된다. */
-  var SKILL_MAP={'gauge':'market-thermometer','macro-gauge':'macro-thermometer','money-flow':'money-flow','crowd-gauge':'crowd-thermometer','basis-gauge':'futures-basis','cash-gauge':'cash-ratio-advisor','stock-gauge':'stock-thermometer','crypto-gauge':'crypto-thermometer','bb-gauge':'bollinger-thermometer','horizon-picks':'horizon-stock-picker','volume-radar':'volume-insight','sejong-data':'sejong-data','export-pulse':'export-pulse','dividend-growth':'dividend-compounder','ltcm-board':'ltcm-convergence','ltcm-guide':'ltcm-convergence','sa-conviction':'sa-conviction','style-rotation':'style-rotation','switch-gauge':'leverage-switcher','bear-gauge':'bear-market-trader','short-radar':'short-candidate-screener','track-record':'웹 전용','korekawa-board':'korekawa-method','fisher-board':'fisher-method','philip-fisher-board':'philip-fisher-method','philip-fisher':'philip-fisher-method','trend-rider-board':'trend-rider','volume-profile-board':'volume-profile','masters':'masters-council','thesis-board':'investment-thesis','sotp-board':'sotp-valuation','decision-board':'team-leader','kongming-board':'kongming','trading-desk':'trading-desk','stock-hub':'웹 전용','timing-lens':'horizon-timing','fair-value':'fair-value-band','adjusted-value':'adjusted-fair-value','sotp':'sotp-valuation','korekawa':'korekawa-method','fisher':'fisher-method','pyramid-calc':'pyramid-calculator','pyramid-calculator':'pyramid-calculator','stock-graph':'stock-graph','volume-profile':'volume-profile','supply':'supply-demand-analyzer','sector-flow':'sector-flow','weekly-flow':'weekly-flow-radar','new-high':'new-high-radar','semicon-cycle':'semicon-cycle-map','research-digest':'research-digest','report-summary':'broker-report-digest','crypto-report':'crypto-analysis','proverb':'daily-proverb','skill-map':'skill-navigator','signal':'signal-analyzer','ichimoku':'ichimoku-analyzer','my-stocks':'웹 전용','industry-board':'industry-indicator','macro-analysis':'macro-analysis','canslim':'canslim-screener','screener':'korean-stock-screener','rsi-adr':'rsi-adr','forensic':'forensic-checklist','annual-report':'annual-report-digest','correlation':'correlation-risk','entry':'entry-timer','risk':'risk-manager','stoploss':'stop-loss-screener','journal':'trade-journal','cockpit':'stock-analysis','trend-masters':'trend-masters','vault-audit':'vault-auditor','skill-run':'all-skills-runner','receipt-upload':'receipt-ledger','ai':'웹 전용','bb-stock':'bb-stock-strategy','collect':'웹 전용','stock-flow':'stock-flow','sector-rotation':'kospi-sector-rotation','kosdaq-sector-rotation':'kospi-sector-rotation','turnaround':'turnaround-screener','memory-price':'memory-price-tracker'};
+  var SKILL_MAP={'gauge':'market-thermometer','macro-gauge':'macro-thermometer','money-flow':'money-flow','crowd-gauge':'crowd-thermometer','basis-gauge':'futures-basis','cash-gauge':'cash-ratio-advisor','stock-gauge':'stock-thermometer','crypto-gauge':'crypto-thermometer','bb-gauge':'bollinger-thermometer','horizon-picks':'horizon-stock-picker','volume-radar':'volume-insight','sejong-data':'sejong-data','export-pulse':'export-pulse','dividend-growth':'dividend-compounder','ltcm-board':'ltcm-convergence','ltcm-guide':'ltcm-convergence','sa-conviction':'sa-conviction','style-rotation':'style-rotation','switch-gauge':'leverage-switcher','bear-gauge':'bear-market-trader','short-radar':'short-candidate-screener','track-record':'웹 전용','korekawa-board':'korekawa-method','fisher-board':'fisher-method','philip-fisher-board':'philip-fisher-method','philip-fisher':'philip-fisher-method','trend-rider-board':'trend-rider','volume-profile-board':'volume-profile','masters':'masters-council','thesis-board':'investment-thesis','sotp-board':'sotp-valuation','decision-board':'team-leader','kongming-board':'kongming','trading-desk':'trading-desk','stock-hub':'웹 전용','timing-lens':'horizon-timing','fair-value':'fair-value-band','adjusted-value':'adjusted-fair-value','sotp':'sotp-valuation','korekawa':'korekawa-method','fisher':'fisher-method','pyramid-calc':'pyramid-calculator','pyramid-calculator':'pyramid-calculator','stock-graph':'stock-graph','volume-profile':'volume-profile','supply':'supply-demand-analyzer','sector-flow':'sector-flow','weekly-flow':'weekly-flow-radar','new-high':'new-high-radar','semicon-cycle':'semicon-cycle-map','research-digest':'research-digest','report-summary':'broker-report-digest','crypto-report':'crypto-analysis','proverb':'daily-proverb','skill-map':'skill-navigator','signal':'signal-analyzer','ichimoku':'ichimoku-analyzer','my-stocks':'웹 전용','industry-board':'industry-indicator','macro-analysis':'macro-analysis','canslim':'canslim-screener','screener':'korean-stock-screener','rsi-adr':'rsi-adr','forensic':'forensic-checklist','annual-report':'annual-report-digest','correlation':'correlation-risk','entry':'entry-timer','risk':'risk-manager','stoploss':'stop-loss-screener','journal':'trade-journal','cockpit':'stock-analysis','trend-masters':'trend-masters','vault-audit':'vault-auditor','skill-run':'all-skills-runner','receipt-upload':'receipt-ledger','ai':'웹 전용','bb-stock':'bb-stock-strategy','collect':'웹 전용','stock-flow':'stock-flow','sector-rotation':'kospi-sector-rotation','kosdaq-sector-rotation':'kospi-sector-rotation','turnaround':'turnaround-screener','memory-price':'memory-price-tracker','flow-hub':'supply-demand-analyzer · stock-flow','sector-hub':'kospi-sector-rotation · sector-flow','timing-hub':'horizon-timing','value-hub':'fair-value-band','masters-hub':'masters-council','sotp-hub':'sotp-valuation','vp-hub':'volume-profile','picks-hub':'horizon-stock-picker · weekly-top-picks','weekly-top-picks':'weekly-top-picks','ai-biz':'ai-biz-map','market-polyhedron':'industry-polyhedron'};
   window.TI_SKILL_MAP=SKILL_MAP;
   function skillOf(href){
     if(!href)return null;
@@ -61,38 +61,38 @@
   }
   if(document.getElementById('sn-fab'))return;
 
+  /* 2026-11-26 스킬 정리 — 겹치는 페이지는 합본(허브) 하나로. 원본 주소는 그대로 살아 있다 (tools/build_hubs.py) */
   var GROUPS=[
     ['온도계',[
       ['시장 온도계','/gauge.html'],['거시 온도계','/macro-gauge.html'],['돈의 흐름','/money-flow.html'],
       ['군중심리 온도계','/crowd-gauge.html'],['선물 온도계','/basis-gauge.html'],['예수금 온도계','/cash-gauge.html'],
-      ['종목 온도계','/stock-gauge.html'],['코인 온도계','/crypto-gauge.html'],['볼린저밴드 온도계','/bb-gauge.html'],['종목 볼린저 전략','/bb-stock.html']]],
+      ['코인 온도계','/crypto-gauge.html'],['볼린저밴드 온도계','/bb-gauge.html']]],
     ['스크리닝·레이더',[
-      ['기간별 종목선정','/horizon-picks.html'],['거래량 레이더','/volume-radar.html'],
-      ['세종기업데이터','/sejong-data.html'],['수출 펄스','/export-pulse.html'],
+      ['종목선정 (기간별·주간 Top5)','/picks-hub.html'],['거래량 레이더','/volume-radar.html'],
+      ['수출 펄스','/export-pulse.html'],
       ['배당성장','/dividend-growth.html'],['LTCM 수렴','/ltcm-board.html'],
       ['SA 컨빅션','/sa-conviction.html'],['스타일 로테이션','/style-rotation.html'],
       ['레버리지 스위치','/switch-gauge.html'],['하락장 레이더','/bear-gauge.html'],
       ['숏 후보 레이더','/short-radar.html']]],
     ['전략 보드',[
-      ['트랙레코드','/track-record.html'],['고레가와 보드','/korekawa-board.html'],['피셔 보드','/fisher-board.html'],
-      ['위대한 기업','/philip-fisher-board.html'],['추세 라이더','/trend-rider-board.html'],
-      ['매물대 보드','/volume-profile-board.html'],['거장 자문단','/masters.html'],['논거 보드','/thesis-board.html'],
-      ['서버 수집','/collect.html'],['SOTP 보드','/sotp-board.html'],['결재 보드','/decision-board.html'],['공명 책략','/kongming-board.html'],
+      ['트랙레코드','/track-record.html'],['거장 자문단 (고레가와·켄 피셔·필립 피셔)','/masters-hub.html'],['매도 판정','/stoploss.html'],
+      ['논거 보드','/thesis-board.html'],['서버 수집','/collect.html'],['결재 보드','/decision-board.html'],['공명 책략','/kongming-board.html'],
       ['트레이딩 데스크','/trading-desk.html']]],
     ['웹앱 도구',[
-      ['내 종목','/my-stocks.html'],['종목 360°','/stock-hub.html'],['타이밍 렌즈','/timing-lens.html'],
-      ['적정주가','/fair-value.html'],['SOTP','/sotp.html'],['시그널','/signal.html'],
-      ['일목균형표','/ichimoku.html'],['고레가와','/korekawa.html'],
-      ['피셔','/fisher.html'],['피라미드 계산기','/pyramid-calc.html'],
-      ['종목 그래프','/stock-graph.html'],['매물대','/volume-profile.html'],['수급 콕핏','/supply.html'],
-      ['업종 수급','/sector-flow.html'],['종목 수급','/stock-flow.html'],['업종 로테이션','/sector-rotation.html'],['코스닥 업종 로테이션','/kosdaq-sector-rotation.html'],['주간 수급 레이더','/weekly-flow.html'],['52주 신고가 레이더','/new-high.html'],['턴어라운드 스크리너','/turnaround.html'],['반도체 사이클 고점 지도','/semicon-cycle.html'],['메모리 가격 추이','/memory-price.html']]],
+      ['내 종목','/my-stocks.html'],['종목 360°','/stock-hub.html'],['타이밍 렌즈 (추세·온도·볼린저)','/timing-hub.html'],
+      ['산업 다면체 지도','/market-polyhedron.html'],
+      ['적정주가','/value-hub.html'],['SOTP','/sotp-hub.html'],['시그널','/signal.html'],
+      ['일목균형표','/ichimoku.html'],['피라미드 계산기','/pyramid-calc.html'],
+      ['종목 그래프','/stock-graph.html'],['매물대','/vp-hub.html'],['종목 수급','/flow-hub.html'],
+      ['업종 수급 (코스피·코스닥)','/sector-hub.html'],['주간 수급 레이더','/weekly-flow.html'],['52주 신고가 레이더','/new-high.html'],['턴어라운드 스크리너','/turnaround.html'],['반도체 사이클 고점 지도','/semicon-cycle.html'],['메모리 가격 추이','/memory-price.html'],['AI 활용 기업 지도','/ai-biz.html'],['세종기업데이터 (원장)','/sejong-data.html']]],
     ['리포트',[
       ['최신 글 (검색)','/#insights'],['리포트 요약 (데일리)','/research-digest.html'],
-      ['리포트 요약 요청','/report-summary.html'],['사업보고서 쉬운 요약','/annual-report.html'],['전체 스킬 3부 실행','/skill-run.html'],['크립토 리포트','/crypto-report.html'],
+      ['사업보고서 요약','/annual-report.html'],['전체 스킬 3부 실행','/skill-run.html'],['크립토 리포트','/crypto-report.html'],
       ['오늘의 격언','/proverb.html']]],
     ['소개',[
       ['회사소개','/about.html'],['이용약관·정책','/terms.html'],['문의하기','/#contact'],['로그아웃','/api/auth/logout']]]
   ];
+
 
   var css=
     '#sn-fab{position:fixed;right:18px;bottom:18px;z-index:99990;width:48px;height:48px;border-radius:50%;'+
@@ -172,7 +172,10 @@
 
   var rl=document.createElement('button');rl.type='button';rl.id='sn-rl';rl.title='새로 고침 (F5)';rl.setAttribute('aria-label','새로 고침');rl.textContent='↻';
   rl.addEventListener('click',function(){rl.classList.add('spin');location.reload();});
+  /* 합본(허브) 페이지의 탭 안(iframe)에서는 플로팅 메뉴를 겹쳐 그리지 않는다 — 바깥 허브가 메뉴를 가진다 */
+  var framed=false;try{framed=window.top!==window.self;}catch(e){framed=true;}
   function mount(){
+    if(framed)return;
     document.body.appendChild(rl);
     document.body.appendChild(fab);
     document.body.appendChild(ov);
@@ -203,7 +206,7 @@
     '/canslim.html':'canslim.json','/screener.html':'screener.json',
     '/rsi-adr.html':'rsi-adr.json','/forensic.html':'forensic.json','/annual-report.html':'annual-report.json',
     '/correlation.html':'correlation.json','/vault-audit.html':'vault-audit.json',
-    '/crypto-report.html':'crypto-report.json','/semicon-cycle.html':'semicon-cycle-prices.json'
+    '/crypto-report.html':'crypto-report.json','/semicon-cycle.html':'semicon-cycle-prices.json','/weekly-top-picks.html':'weekly-top-picks.json'
   };
   var _p=path.replace(/\/+$/,'');
   if(!/\.html$/.test(_p))_p+='.html';

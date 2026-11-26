@@ -388,21 +388,6 @@
     .hero{padding:130px 0 80px;}
   }
 
-  #stance-bar{display:block;position:absolute;top:118px;left:0;right:0;z-index:5;background:rgba(8,18,38,.55);border-top:1px solid rgba(255,255,255,.07);border-bottom:1px solid rgba(255,255,255,.07);backdrop-filter:blur(4px);}
-  @media(max-width:960px){#stance-bar{top:100px}}
-  #stance-bar .sb-in{max-width:1180px;margin:0 auto;padding:9px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;color:#c9d6ea;font-size:.86rem;}
-  #stance-bar .sb-t{font-weight:700;color:#8fa4c4;white-space:nowrap;}
-  #stance-bar .sb-stance{font-size:1rem;padding:2px 12px;border-radius:8px;white-space:nowrap;}
-  #stance-bar .sb-stance.st-agg{background:rgba(26,127,55,.25);color:#5fd382;}
-  #stance-bar .sb-stance.st-act{background:rgba(26,127,55,.18);color:#8fd9a5;}
-  #stance-bar .sb-stance.st-neu{background:rgba(120,140,170,.2);color:#c9d6ea;}
-  #stance-bar .sb-stance.st-cau{background:rgba(199,119,0,.25);color:#f0b357;}
-  #stance-bar .sb-stance.st-def{background:rgba(198,40,40,.25);color:#f28b8b;}
-  #stance-bar .sb-alloc{font-weight:800;color:#fff;white-space:nowrap;}
-  #stance-bar .sb-why{color:#8fa4c4;}
-  #stance-bar .sb-date{margin-left:auto;color:#5d7195;font-size:.76rem;white-space:nowrap;}
-  #stance-bar:hover .sb-why{color:#c9d6ea;}
-  @media(max-width:700px){#stance-bar .sb-date{display:none}#stance-bar .sb-why{font-size:.78rem}}
 .sid{margin-left:7px;font-size:.68rem;font-weight:500;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:nowrap}
 </style>
 
@@ -419,7 +404,6 @@
 <style id="ti-polish">
   /* ── 2026-11-12 홈 정돈: 헤더 한 줄 · 모바일 길이 · 계기판 격자 · 오래된 신호 표시 ── */
   :root{--hdr-h:69px;--sb-h:44px;}
-  #stance-bar{top:var(--hdr-h);}
   .hero{padding-top:calc(var(--hdr-h) + var(--sb-h) + 58px);}
   @media (min-width:1061px){
     .nav{flex-wrap:nowrap;gap:8px 10px;}
@@ -493,17 +477,15 @@
           <a href="crowd-gauge.html" style="color:#e5484d;">군중심리 온도계<span class="sid">crowd-thermometer</span></a>
           <a href="basis-gauge.html" style="color:#3e8ef7;">선물 온도계<span class="sid">futures-basis</span></a>
           <a href="cash-gauge.html" style="color:#f5a524;">예수금 온도계<span class="sid">cash-ratio-advisor</span></a>
-          <a href="stock-gauge.html" style="color:#c62828;">종목 온도계<span class="sid">stock-thermometer</span></a>
           <a href="crypto-gauge.html" style="color:#e8830c;">코인 온도계<span class="sid">crypto-thermometer</span></a>
-          <a href="bb-gauge.html" style="color:#12b886;">볼린저밴드 온도계<span class="sid">bollinger-thermometer</span></a> <a href="bb-stock.html" style="color:#12b886;">종목 볼린저 전략<span class="sid">bb-stock-strategy</span></a>
+          <a href="bb-gauge.html" style="color:#12b886;">볼린저밴드 온도계<span class="sid">bollinger-thermometer</span></a>
         </div>
       </div>
       <div class="nav-group">
         <button type="button" class="nav-group-btn">스크리닝·레이더 <span class="caret">▾</span></button>
         <div class="nav-dropdown">
-          <a href="horizon-picks.html" style="color:#2e6ff2;">기간별 종목선정<span class="sid">horizon-stock-picker</span></a>
+          <a href="picks-hub.html" style="color:#2e6ff2;">종목선정 (기간별·주간 Top5)<span class="sid">horizon-stock-picker · weekly-top-picks</span></a>
           <a href="volume-radar.html" style="color:#2f6db2;">거래량 레이더<span class="sid">volume-insight</span></a>
-          <a href="sejong-data.html" style="color:#2f6db2;">세종기업데이터<span class="sid">sejong-data</span></a>
           <a href="export-pulse.html" style="color:#1a7f37;">수출 펄스<span class="sid">export-pulse</span></a>
           <a href="dividend-growth.html" style="color:#1a7f37;">배당성장<span class="sid">dividend-compounder</span></a>
           <a href="ltcm-board.html" style="color:#7c4dcf;">LTCM 수렴<span class="sid">ltcm-convergence</span></a>
@@ -518,15 +500,10 @@
         <button type="button" class="nav-group-btn">전략 보드 <span class="caret">▾</span></button>
         <div class="nav-dropdown">
           <a href="track-record.html" style="color:#c62828;">트랙레코드</a>
-          <a href="korekawa-board.html" style="color:#12b886;">고레가와 보드<span class="sid">korekawa-method</span></a>
-          <a href="fisher-board.html" style="color:#f5a524;">피셔 보드<span class="sid">fisher-method</span></a>
-          <a href="philip-fisher-board.html" style="color:#7bc86c;">위대한 기업<span class="sid">philip-fisher-method</span></a>
-          <a href="trend-rider-board.html" style="color:#f59f00;">추세 라이더<span class="sid">trend-rider</span></a>
-          <a href="volume-profile-board.html" style="color:#12b886;">매물대 보드<span class="sid">volume-profile</span></a>
-          <a href="masters.html" style="color:#c9a227;">거장 자문단<span class="sid">masters-council</span></a>
+          <a href="masters-hub.html" style="color:#c9a227;">거장 자문단 (고레가와·켄 피셔·필립 피셔)<span class="sid">masters-council</span></a>
+          <a href="stoploss.html" style="color:#c62828;">매도 판정<span class="sid">stop-loss-screener</span></a>
           <a href="thesis-board.html" style="color:#2e6ff2;">논거 보드<span class="sid">investment-thesis</span></a>
           <a href="collect.html" style="color:#2e6ff2;">서버 수집</a>
-          <a href="sotp-board.html" style="color:#ff922b;">SOTP 보드<span class="sid">sotp-valuation</span></a>
           <a href="decision-board.html" style="color:#7c3aed;">결재 보드<span class="sid">team-leader</span></a>
           <a href="kongming-board.html" style="color:#0e7c66;">공명 책략<span class="sid">kongming</span></a>
           <a href="trading-desk.html" style="color:#d4380d;">트레이딩 데스크<span class="sid">trading-desk</span></a>
@@ -536,17 +513,14 @@
         <button type="button" class="nav-group-btn">웹앱 도구 <span class="caret">▾</span></button>
         <div class="nav-dropdown">
           <a href="stock-hub.html" style="color:#ff7a45;">종목 360°</a>
-          <a href="timing-lens.html" style="color:#7cd4c0;">타이밍 렌즈</a>
+          <a href="timing-hub.html" style="color:#7cd4c0;">타이밍 렌즈 (추세·온도·볼린저)<span class="sid">horizon-timing</span></a>
           <a href="market-polyhedron.html" style="color:#7aa7ff;">산업 다면체 지도<span class="sid">industry-polyhedron</span></a>
-          <a href="fair-value.html" style="color:#e6b422;">적정주가<span class="sid">fair-value-band</span></a>
-          <a href="sotp.html" style="color:#ff922b;">SOTP<span class="sid">sotp-valuation</span></a>
-          <a href="korekawa.html" style="color:#0e7c5a;">고레가와<span class="sid">korekawa-method</span></a>
-          <a href="fisher.html" style="color:#f5a524;">피셔<span class="sid">fisher-method</span></a>
+          <a href="value-hub.html" style="color:#e6b422;">적정주가<span class="sid">fair-value-band</span></a>
+          <a href="sotp-hub.html" style="color:#ff922b;">SOTP<span class="sid">sotp-valuation</span></a>
           <a href="pyramid-calc.html" style="color:#2e7d32;">피라미드 계산기<span class="sid">pyramid-calculator</span></a>
           <a href="stock-graph.html" style="color:#2dd4bf;">종목 그래프<span class="sid">stock-graph</span></a>
-          <a href="volume-profile.html" style="color:#12b886;">매물대<span class="sid">volume-profile</span></a>
-          <a href="supply.html" style="color:#9d6bff;">수급 콕핏<span class="sid">supply-demand-analyzer</span></a>
-          <a href="sector-flow.html" style="color:#2e7d32;">업종 수급<span class="sid">sector-flow</span></a> <a href="stock-flow.html" style="color:#2e7d32;font-weight:700;">종목 수급<span class="sid">stock-flow</span></a> <a href="sector-rotation.html" style="color:#2e7d32;font-weight:700;">업종 로테이션<span class="sid">kospi-sector-rotation</span></a> <a href="kosdaq-sector-rotation.html" style="color:#2e7d32;font-weight:700;">코스닥 업종 로테이션<span class="sid">kospi-sector-rotation</span></a> <a href="weekly-flow.html" style="color:#c62828;font-weight:700;">주간 수급 레이더<span class="sid">weekly-flow-radar</span></a> <a href="new-high.html" style="color:#c62828;font-weight:700;">52주 신고가 레이더<span class="sid">new-high-radar</span></a> <a href="turnaround.html" style="color:#1b7f4b;font-weight:700;">턴어라운드 스크리너<span class="sid">turnaround-screener</span></a> <a href="semicon-cycle.html" style="color:#a8541f;font-weight:700;">반도체 사이클 고점 지도<span class="sid">semicon-cycle-map</span></a> <a href="memory-price.html" style="color:#0b5cad;font-weight:700;">메모리 가격 추이<span class="sid">memory-price-tracker</span></a> <a href="ai-biz.html" style="color:#6b3fa0;font-weight:700;">AI 활용 기업 지도<span class="sid">ai-biz-map</span></a>
+          <a href="vp-hub.html" style="color:#12b886;">매물대<span class="sid">volume-profile</span></a>
+          <a href="flow-hub.html" style="color:#9d6bff;font-weight:700;">종목 수급<span class="sid">supply-demand-analyzer · stock-flow</span></a> <a href="sector-hub.html" style="color:#2e7d32;font-weight:700;">업종 수급 (코스피·코스닥)<span class="sid">kospi-sector-rotation · sector-flow</span></a> <a href="weekly-flow.html" style="color:#c62828;font-weight:700;">주간 수급 레이더<span class="sid">weekly-flow-radar</span></a> <a href="new-high.html" style="color:#c62828;font-weight:700;">52주 신고가 레이더<span class="sid">new-high-radar</span></a> <a href="turnaround.html" style="color:#1b7f4b;font-weight:700;">턴어라운드 스크리너<span class="sid">turnaround-screener</span></a> <a href="semicon-cycle.html" style="color:#a8541f;font-weight:700;">반도체 사이클 고점 지도<span class="sid">semicon-cycle-map</span></a> <a href="memory-price.html" style="color:#0b5cad;font-weight:700;">메모리 가격 추이<span class="sid">memory-price-tracker</span></a> <a href="ai-biz.html" style="color:#6b3fa0;font-weight:700;">AI 활용 기업 지도<span class="sid">ai-biz-map</span></a> <a href="sejong-data.html" style="color:#2f6db2;">세종기업데이터 (원장)<span class="sid">sejong-data</span></a>
         </div>
       </div>
       <div class="nav-group">
@@ -554,8 +528,7 @@
         <div class="nav-dropdown">
           <a href="#insights">최신 글</a>
           <a href="research-digest.html" style="color:#e8830c;">리포트 요약 (데일리)<span class="sid">research-digest</span></a>
-          <a href="report-summary.html" style="color:#0e7c86;">리포트 요약 요청<span class="sid">broker-report-digest</span></a>
-          <a href="annual-report.html" style="color:#0e7c86;">사업보고서 쉬운 요약<span class="sid">annual-report-digest</span></a>
+          <a href="annual-report.html" style="color:#0e7c86;">사업보고서 요약<span class="sid">annual-report-digest</span></a>
           <a href="crypto-report.html" style="color:#2e6ff2;">크립토 리포트<span class="sid">crypto-analysis</span></a>
           <a href="proverb.html" style="color:#c9a227;">오늘의 격언<span class="sid">daily-proverb</span></a>
           <a href="#reports">리포트 카테고리</a>
@@ -584,15 +557,6 @@
 </header>
 
 <section class="hero">
-<a id="stance-bar" href="cash-gauge.html" style="display:none;text-decoration:none;">
-  <div class="sb-in">
-    <span class="sb-t">🧭 오늘 스탠스</span>
-    <b class="sb-stance" id="sb-stance">—</b>
-    <span class="sb-alloc mono" id="sb-alloc"></span>
-    <span class="sb-why" id="sb-why"></span>
-    <span class="sb-date" id="sb-date"></span>
-  </div>
-</a>
   <div class="container">
     <div class="hero-grid">
       <div class="hg-text">
@@ -666,13 +630,13 @@
         </div>
         <div class="ss-chips">
           <button type="button" data-href="stock-hub.html">🧭 종목 360°</button>
-          <button type="button" data-href="fair-value.html">💰 적정주가</button>
-          <button type="button" data-href="sotp.html">🧩 SOTP</button>
+          <button type="button" data-href="value-hub.html">💰 적정주가</button>
+          <button type="button" data-href="sotp-hub.html">🧩 SOTP</button>
           <button type="button" data-href="signal.html">📶 시그널</button>
           <button type="button" data-href="ichimoku.html">☁️ 일목균형표</button>
-          <button type="button" data-href="supply.html">🧲 수급 콕핏</button>
-          <button type="button" data-href="stock-gauge.html">🌡️ 종목 온도계</button>
-          <button type="button" data-href="volume-profile.html">📊 매물대</button>
+          <button type="button" data-href="flow-hub.html">🧲 종목 수급</button>
+          <button type="button" data-href="timing-hub.html">🔭 타이밍 렌즈</button>
+          <button type="button" data-href="vp-hub.html">📊 매물대</button>
         </div>
       </div>
     </div>
@@ -727,7 +691,7 @@
       <a class="sig-card" id="sig-bear" href="bear-gauge.html"><div class="n">하락장 레이더</div><div class="v">—</div><div class="d"></div></a>
       <a class="sig-card" id="sig-style" href="style-rotation.html"><div class="n">스타일 로테이션</div><div class="v">—</div><div class="d"></div></a>
       <a class="sig-card" id="sig-thesis" href="thesis-board.html"><div class="n">논거 보드</div><div class="v">—</div><div class="d"></div></a>
-      <a class="sig-card" id="sig-horizon" href="horizon-picks.html"><div class="n">기간별 시장 게이트</div><div class="v">—</div><div class="d"></div></a>
+      <a class="sig-card" id="sig-horizon" href="picks-hub.html"><div class="n">기간별 시장 게이트</div><div class="v">—</div><div class="d"></div></a>
     </div>
 
     <!-- 전체 스킬 3부 실행 (skillrun.js가 렌더링) -->
@@ -1330,7 +1294,8 @@ window.__tiPostsInit=function(){
   function go(href){
     var q=query();
     if(!q){inp.classList.add('err');inp.focus();setTimeout(function(){inp.classList.remove('err');},900);return;}
-    location.href=href+'?q='+encodeURIComponent(q);
+    var hp=String(href).split('#');
+    location.href=hp[0]+'?q='+encodeURIComponent(q)+(hp[1]?'#'+hp[1]:'');
   }
   inp.addEventListener('input',function(){
     picked='';chipState();
@@ -1505,32 +1470,6 @@ window.__tiPostsInit=function(){
       if(window.TISignal)[].forEach.call(g.querySelectorAll('[data-sig]'),function(b){TISignal.badge(b,b.dataset.sig);});
       document.getElementById('my-wl').style.display='block';
     }).catch(function(){});
-  }).catch(function(){});
-})();
-</script>
-<script>
-(function(){
-  fetch('data/cash-gauge.json').then(function(r){return r.json();}).then(function(d){
-    var h=d.history?d.history[d.history.length-1]:d;
-    if(!h||h.cash_pct==null)return;
-    var cash=Math.round(h.cash_pct),stock=100-cash;
-    var st=h.stance||'중립';
-    var cls={'공격':'st-agg','적극':'st-act','중립':'st-neu','경계':'st-cau','방어':'st-def'}[st]||'st-neu';
-    var el=function(id){return document.getElementById(id);};
-    el('sb-stance').textContent=st;el('sb-stance').className='sb-stance '+cls;
-    el('sb-alloc').textContent='주식 '+stock+' · 현금 '+cash;
-    var t=(h.total&&h.total.temps)||{};
-    var why=[];
-    if(t.market!=null)why.push('시장 '+Math.round(t.market)+'°');
-    if(t.macro!=null)why.push('거시 '+Math.round(t.macro)+'°');
-    if(t.crowd!=null)why.push('심리 '+Math.round(t.crowd)+'°');
-    var mk=h.markets||{};
-    if(mk.kospi&&mk.kosdaq)why.push('코스피 현금 '+Math.round(mk.kospi.cash_pct)+'% · 코스닥 '+Math.round(mk.kosdaq.cash_pct)+'%');
-    el('sb-why').textContent=why.join('  |  ');
-    var ds=String(h.date||'');
-    if(/^\d{8}$/.test(ds))ds=ds.slice(0,4)+'.'+ds.slice(4,6)+'.'+ds.slice(6);
-    el('sb-date').textContent='예수금 온도계 기준 '+ds+' · 상세 →';
-    document.getElementById('stance-bar').style.display='block';
   }).catch(function(){});
 })();
 </script>

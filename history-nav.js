@@ -7,6 +7,7 @@
      브라우저가 '앞으로 갈 곳이 있는지' 알려주지 않는 Safari·Firefox에서도 버튼 활성/비활성이 맞다 */
 (function () {
   if (window.__tiHistNav) return;
+  try { if (window.top !== window.self) return; } catch (e) { return; } // 허브 탭(iframe) 안에서는 바깥 페이지가 기록을 맡는다
   window.__tiHistNav = true;
 
   var KEY = 'ti-hist-v1';

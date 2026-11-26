@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>적정주가 — Trend Insight</title>
+<meta name="description" content="적정가치 밴드 + 보정 옵션(adjusted-fair-value)">
+<link rel="icon" href="/icon-192.png">
+<!-- 이 파일은 tools/build_hubs.py 가 생성한다. 직접 고치지 말고 생성기를 고칠 것. -->
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#f4f6fa;font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic',sans-serif;color:#13294b}
+#hub-top{background:#0b1f3f;color:#fff;padding:10px 16px 0;position:sticky;top:0;z-index:50;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.hb-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.hb-logo{font-weight:800;text-decoration:none;font-size:.95rem;white-space:nowrap}
+.hb-logo .r{color:#ff6b6b}.hb-logo .b{color:#7aa7ff}
+.hb-title{font-size:1.05rem;font-weight:800}
+.hb-skill{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.72rem;color:#8fa4c4}
+.hb-desc{font-size:.78rem;color:#c9d6ea;margin-left:auto}
+@media(max-width:760px){.hb-desc{display:none}}
+.hb-tabs{display:flex;gap:4px;margin-top:9px;overflow-x:auto;scrollbar-width:none}
+.hb-tabs::-webkit-scrollbar{display:none}
+.hb-tab{flex:0 0 auto;border:none;background:transparent;color:#c9d6ea;font:inherit;font-size:.88rem;font-weight:700;padding:9px 14px;border-radius:9px 9px 0 0;cursor:pointer;white-space:nowrap}
+.hb-tab:hover{color:#fff;background:rgba(255,255,255,.06)}
+.hb-tab.on{background:#f4f6fa;color:#0b1f3f}
+#hub-sub{display:none;align-items:center;gap:6px;padding:8px 16px;background:#fff;border-bottom:1px solid #e1e6ef;flex-wrap:wrap}
+#hub-sub.on{display:flex}
+.hb-sub{border:1px solid #d5dce8;background:#fff;color:#3c4757;font:inherit;font-size:.82rem;font-weight:700;padding:6px 13px;border-radius:999px;cursor:pointer}
+.hb-sub.on{background:#2e6ff2;border-color:#2e6ff2;color:#fff}
+.hb-note{font-size:.76rem;color:#6b778a;margin-left:6px}
+.hb-open{margin-left:auto;font-size:.78rem;color:#2e6ff2;text-decoration:none;font-weight:700}
+#hub-frames{position:relative}
+#hub-frames iframe{display:none;width:100%;border:0;background:#fff}
+#hub-frames iframe.on{display:block}
+#hub-load{position:absolute;left:0;right:0;top:40px;text-align:center;color:#8a96a8;font-size:.9rem;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="hub-top">
+  <div class="hb-row">
+    <a class="hb-logo" href="/"><span class="r">Trend</span> <span class="b">Insight</span></a>
+    <span class="hb-title">적정주가</span>
+    <span class="hb-skill">(fair-value-band)</span>
+    <span class="hb-desc">적정가치 밴드 + 보정 옵션(adjusted-fair-value)</span>
+  </div>
+  <div class="hb-tabs" id="hub-tabs" role="tablist"></div>
+</div>
+<div id="hub-sub"></div>
+<div id="hub-frames"><div id="hub-load">불러오는 중…</div></div>
+<script>
+(function(){
+  var TABS=[["band", "적정주가 밴드", "/fair-value.html", "fair-value-band 기본 산출"], ["adjusted", "보정 옵션", "/adjusted-value.html", "보정 적정가 (adjusted-fair-value)"]];
+  var KEY='ti-hub:'+location.pathname;
+  var tabsEl=document.getElementById('hub-tabs'),subEl=document.getElementById('hub-sub'),
+      framesEl=document.getElementById('hub-frames'),loadEl=document.getElementById('hub-load');
+  var frames={},cur=null;
+  function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}}
+  function srcOf(u){return u+(location.search||'');}
+  function fit(){
+    var h=window.innerHeight-document.getElementById('hub-top').offsetHeight-(subEl.classList.contains('on')?subEl.offsetHeight:0);
+    for(var k in frames)frames[k].style.height=Math.max(h,320)+'px';
+  }
+  function find(key){
+    var p=String(key||'').split('.'),t=null,s=null;
+    for(var i=0;i<TABS.length;i++)if(TABS[i][0]===p[0])t=TABS[i];
+    if(!t)t=TABS[0];
+    if(Array.isArray(t[2])){
+      for(var j=0;j<t[2].length;j++)if(t[2][j][0]===p[1])s=t[2][j];
+      if(!s)s=t[2][0];
+    }
+    return {t:t,s:s};
+  }
+  function show(key,push){
+    var f=find(key),t=f.t,s=f.s,url=s?s[2]:t[2],id=t[0]+(s?'.'+s[0]:'');
+    [].forEach.call(tabsEl.children,function(b){b.classList.toggle('on',b.dataset.k===t[0]);b.setAttribute('aria-selected',b.dataset.k===t[0]);});
+    subEl.innerHTML='';
+    if(s){
+      t[2].forEach(function(x){var b=document.createElement('button');b.className='hb-sub'+(x[0]===s[0]?' on':'');b.textContent=x[1];b.onclick=function(){show(t[0]+'.'+x[0],true);};subEl.appendChild(b);});
+    }
+    var note=document.createElement('span');note.className='hb-note';note.textContent=t[3]||'';subEl.appendChild(note);
+    var a=document.createElement('a');a.className='hb-open';a.href=srcOf(url);a.target='_blank';a.rel='noopener';a.textContent='새 창으로 열기 ↗';subEl.appendChild(a);
+    subEl.classList.add('on');
+    if(!frames[id]){
+      var fr=document.createElement('iframe');fr.src=srcOf(url);fr.title=(s?t[1]+' · '+s[1]:t[1]);
+      fr.addEventListener('load',function(){loadEl.style.display='none';
+        try{var d=fr.contentDocument;if(d&&d.title)document.title=document.title;}catch(e){}});
+      framesEl.appendChild(fr);frames[id]=fr;loadEl.style.display='block';
+    }
+    for(var k in frames)frames[k].classList.toggle('on',k===id);
+    cur=id;store(KEY,id);
+    if(push&&location.hash!=='#'+id)history.replaceState(null,'','#'+id);
+    fit();
+  }
+  TABS.forEach(function(t){
+    var b=document.createElement('button');b.type='button';b.className='hb-tab';b.dataset.k=t[0];b.setAttribute('role','tab');b.textContent=t[1];b.title=t[3]||'';
+    b.onclick=function(){show(t[0],true);};tabsEl.appendChild(b);
+  });
+  window.addEventListener('resize',fit);
+  window.addEventListener('hashchange',function(){var h=location.hash.slice(1);if(h&&h!==cur)show(h,false);});
+  show(location.hash.slice(1)||store(KEY)||TABS[0][0],false);
+})();
+</script>
+</body>
+</html>

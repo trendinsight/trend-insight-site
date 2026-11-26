@@ -82,6 +82,7 @@ svg{width:100%;height:auto;display:block}
 <div class="wrap">
   <h1>세종기업데이터 — 실적 스크리닝</h1>
   <p class="sub">코스피·코스닥 전 종목의 분기 실적을 스코어링한다. 분기를 바꾸면 모든 점수가 그 분기 기준으로 다시 계산된다.</p>
+  <p class="sub" style="background:#eef6ff;border:1px solid #cfe2ff;border-radius:10px;padding:8px 12px;color:#1f4f9a">📒 이 페이지는 세종 분기 실적 <b>원장(데이터 소스)</b>입니다. 흑자전환 종목 발굴은 <a href="/turnaround.html" style="color:#2e6ff2;font-weight:700;text-decoration:underline">턴어라운드 스크리너</a> 한 곳에서 합니다.</p>
   <div id="meta"></div>
 
   <div class="card">
@@ -542,7 +543,7 @@ function build(){
       ?'점수 하위 = 이익 급감·적자전환 종목. 보유 중이면 매도 점검, 아니면 회피·숏 후보로 본다.'
       :'영업이익 YoY(35) + 가속도(20) + 매출 YoY(20) + OPM 수준·개선(15) + 연속성(10) = 100점.';
     kp.innerHTML=box([['실적 반영 종목',ROWS.length],['SURPRISE',ROWS.filter(r=>r.grade==='SURPRISE').length],
-      ['STRONG',ROWS.filter(r=>r.grade==='STRONG').length],['흑자전환',ROWS.filter(r=>r.flags.some(x=>x[0]==='흑자전환')).length],
+      ['STRONG',ROWS.filter(r=>r.grade==='STRONG').length],['흑자전환 (발굴은 턴어라운드)',ROWS.filter(r=>r.flags.some(x=>x[0]==='흑자전환')).length],
       ['적자전환·쇼크',ROWS.filter(r=>r.grade==='SHOCK').length]]);
   }
   sortRows(); draw();
