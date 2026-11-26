@@ -1,5 +1,5 @@
 /* Trend Insight PWA 서비스워커 — 네트워크 우선, 실패 시 캐시 폴백 */
-const CACHE = 'ti-v1';
+const CACHE = 'ti-v2'; // 2026-11-27: 배포 사고 때 받아 둔 옛날 홈 사본을 비우려고 올림
 const CORE = ['/', '/index.html', '/icon-192.png', '/icon-512.png', '/manifest.json'];
 
 self.addEventListener('install', e => {
