@@ -53,12 +53,13 @@ HUBS = {
     },
     "masters-hub.html": {
         "title": "거장 자문단", "skill": "masters-council",
-        "desc": "거장 13인 종합 채점이 본체 — 고레가와·켄 피셔·필립 피셔는 상세 탭",
+        "desc": "거장 13인 종합 채점이 본체 — 고레가와·켄 피셔·필립 피셔·추세 3인은 상세 탭",
         "tabs": [
             ["council", "거장 자문단 13인", "/masters.html", "13인 거장 종합 채점 (masters-council)"],
             ["korekawa", "고레가와", [["app", "검색", "/korekawa.html"], ["board", "누적 기록", "/korekawa-board.html"]], "소외 저PBR 매집 (korekawa-method)"],
             ["kfisher", "켄 피셔", [["app", "검색", "/fisher.html"], ["board", "누적 기록", "/fisher-board.html"]], "PSR·글리치 (fisher-method)"],
             ["pfisher", "필립 피셔", [["app", "15포인트 채점", "/philip-fisher.html"], ["board", "위대한 기업 기록", "/philip-fisher-board.html"]], "15포인트 위대한 기업 (philip-fisher-method)"],
+            ["trend", "거장 추세 3인", "/trend-masters.html", "토마스 카·리버모어·엘더 진입·손절·분할 계획 (trend-masters)"],
         ],
     },
     "sotp-hub.html": {
