@@ -1,11 +1,11 @@
 {
- "updated": "2026-11-28 16:10",
+ "updated": "2026-11-28 16:25",
  "run_date": "2026-11-28",
- "summary_url": "/posts/2026-11-14-all-skills-summary.html",
+ "summary_url": "/posts/2026-11-28-all-skills-summary.html",
  "total": {
-  "ok": 25,
-  "partial": 6,
-  "skip": 4,
+  "ok": 40,
+  "partial": 11,
+  "skip": 8,
   "fail": 1
  },
  "parts": {
@@ -48,6 +48,22 @@
     "BTC 하락추세 52주 저점권",
     "격언 downtrend",
     "entry-timer 하나마이크론·코오롱인더·피델릭스 NO_SETUP"
+   ]
+  },
+  "3": {
+   "date": "2026-11-28",
+   "ok": 15,
+   "partial": 5,
+   "skip": 4,
+   "fail": 0,
+   "headline": "월간 손실 −6.6% CRITICAL로 신규 매수 중단 · 손절·집행 2(4,800 트리거 발동 → 1/2 상향)·축소 4·매수 0 · 원장 갱신이 선행조건",
+   "items": [
+    "리스크: MTD −6.6% CRITICAL · 현금 3.35% BREACH · 손절가 0/354",
+    "손절레이더 SELL 336/353 · ENB 39.2 · 군집 90.2%",
+    "공시: 보유 2종목 메자닌 발행·최대주주 담보",
+    "매트릭스 Top15: 중기 EXIT 13 · 관망 11 · 세층정합 1",
+    "심층 1종목: 정상화 적정가 근접·포렌식 조건부 GO → 보유 유지",
+    "공명 조건부동의 — 원장 갱신 선행"
    ]
   }
  }
